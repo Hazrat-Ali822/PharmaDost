@@ -1,0 +1,175 @@
+{% extends 'partials/base.html' %}
+{% block title %}{{ patient.full_name }} — History{% endblock %}
+{% block page_title %}Patient History{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>{{ patient.full_name }}</h2>
+    <div class="muted">MRN {{ patient.mrn }} · {{ patient.get_gender_display }}{% if patient.age_years %} · {{ patient.age_years }} yrs{% endif %}{% if patient.phone %} · {{ patient.phone }}{% endif %}</div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <a class="btn" href="{% url 'patient_record_add' patient.pk %}">+ Add Clinical Record</a>
+    {% if nav.billing %}<a class="btn success" href="{% url 'patient_bill' patient.pk %}">💵 Bill / Collect Payment</a>{% endif %}
+    {% if nav.lab %}<a class="btn alt" href="{% url 'lab:order_create' %}?patient={{ patient.pk }}">+ Order Lab Test</a>{% endif %}
+    {% if nav.imaging %}<a class="btn alt" href="{% url 'imaging:study_create' %}?patient={{ patient.pk }}">+ Imaging Study</a>{% endif %}
+    <a class="btn alt" href="{% url 'patient_edit' patient.pk %}">Edit</a>
+    <a class="btn alt" href="{% url 'patient_list' %}">Back</a>
+  </div>
+</div>
+
+{% if patient.allergies %}
+<div class="msg warning" style="margin-bottom:14px">⚠️ Allergies: {{ patient.allergies }}</div>
+{% endif %}
+
+<div class="stat-grid">
+  <div class="stat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg></div><div class="meta"><span class="value">{{ appointments|length }}</span><span class="label">Visits</span></div></div>
+  <div class="stat"><div class="ic green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9a4 4 0 0 1 0 8H6z"/><path d="M6 11l9 10"/></svg></div><div class="meta"><span class="value">{{ prescriptions|length }}</span><span class="label">Prescriptions</span></div></div>
+  <div class="stat"><div class="ic amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3v6l-5 9a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3l-5-9V3"/></svg></div><div class="meta"><span class="value">{{ lab_orders|length }}</span><span class="label">Lab Orders</span></div></div>
+  <div class="stat"><div class="ic red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a5 5 0 0 0-5 5v3a5 5 0 0 0 10 0V7a5 5 0 0 0-5-5zM5 21h14"/></svg></div><div class="meta"><span class="value">{{ clinical|length }}</span><span class="label">Procedures / Records</span></div></div>
+  <div class="stat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="11" r="3"/><path d="M12 3v2M12 19v2"/></svg></div><div class="meta"><span class="value">{{ imaging_studies|length }}</span><span class="label">Imaging / Scans</span></div></div>
+</div>
+
+<!-- Clinical records: consultations, procedures, operations, scans -->
+<div class="card" style="margin-bottom:16px">
+  <div class="page-head"><h3>Clinical Records (Diagnosis / Operations / Scans)</h3>
+    <a class="btn sm" href="{% url 'patient_record_add' patient.pk %}">+ Add</a></div>
+  <table class="tbl">
+    <thead><tr><th>Date</th><th>Type</th><th>Title</th><th>Diagnosis</th><th>Details / Vitals</th><th>By</th></tr></thead>
+    <tbody>
+      {% for r in clinical %}
+      <tr>
+        <td>{{ r.date }}</td>
+        <td><span class="badge">{{ r.get_record_type_display }}</span></td>
+        <td>{{ r.title }}</td>
+        <td>{{ r.diagnosis|default:"—" }}</td>
+        <td>
+          {% if r.details %}{{ r.details|linebreaksbr }}{% endif %}
+          {% if r.bp or r.pulse or r.temperature or r.weight %}
+          <div class="muted" style="font-size:12px;margin-top:4px">
+            {% if r.bp %}BP {{ r.bp }} {% endif %}{% if r.pulse %}· Pulse {{ r.pulse }} {% endif %}{% if r.temperature %}· Temp {{ r.temperature }} {% endif %}{% if r.weight %}· Wt {{ r.weight }}{% endif %}
+          </div>{% endif %}
+        </td>
+        <td>{{ r.doctor.full_name|default:r.created_by.email|default:"—" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="muted">No clinical records yet. Add operations, ultrasound, x-ray, diagnosis here.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Appointments / visits -->
+<div class="card" style="margin-bottom:16px">
+  <h3>Visits / Appointments</h3>
+  <table class="tbl">
+    <thead><tr><th>Date</th><th>Doctor</th><th>Type</th><th>Token</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for a in appointments %}
+      <tr><td>{{ a.appointment_date }}</td><td>{{ a.doctor.full_name }}</td><td>{{ a.get_visit_type_display }}</td><td>{{ a.token_no }}</td><td><span class="badge gray">{{ a.get_status_display }}</span></td></tr>
+      {% empty %}
+      <tr><td colspan="5" class="muted">No visits recorded.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Prescriptions -->
+<div class="card" style="margin-bottom:16px">
+  <h3>Prescriptions</h3>
+  {% for p in prescriptions %}
+  <div style="border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px">
+    <div class="muted" style="font-size:12px">{{ p.created_at|date:"Y-m-d" }} · {{ p.appointment.doctor.full_name }}{% if p.diagnosis %} · Dx: {{ p.diagnosis }}{% endif %}</div>
+    {% if p.complaint %}<div><strong>Complaint:</strong> {{ p.complaint }}</div>{% endif %}
+    <ul style="margin:6px 0 0;padding-left:18px">
+      {% for it in p.items.all %}<li>{{ it.medicine }} — {{ it.dosage }}{% if it.duration_days %} × {{ it.duration_days }}d{% endif %}{% if it.instructions %} ({{ it.instructions }}){% endif %}</li>{% endfor %}
+    </ul>
+  </div>
+  {% empty %}
+  <p class="muted">No prescriptions.</p>
+  {% endfor %}
+</div>
+
+<!-- Lab orders + results -->
+<div class="card" style="margin-bottom:16px">
+  <h3>Lab Tests &amp; Results</h3>
+  {% for o in lab_orders %}
+  <div style="border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px">
+    <div class="muted" style="font-size:12px;display:flex;justify-content:space-between;align-items:center">
+      <span>Order #{{ o.id }} · {{ o.order_date|date:"Y-m-d" }} · {{ o.status }}</span>
+      <a class="btn sm alt" href="{% url 'lab:order_report' o.id %}" target="_blank">Print report</a>
+    </div>
+    <table class="tbl" style="margin-top:6px">
+      <thead><tr><th>Test</th><th>Result</th><th>Normal Range</th><th>Unit</th></tr></thead>
+      <tbody>
+        {% for r in o.results.all %}
+        <tr><td>{{ r.lab_test.name }}</td><td>{{ r.result_value|default:"—" }}</td><td>{{ r.lab_test.normal_range|default:"—" }}</td><td>{{ r.lab_test.unit|default:"" }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% empty %}
+  <p class="muted">No lab orders.</p>
+  {% endfor %}
+</div>
+
+<!-- Imaging / Radiology: ultrasound, x-ray, CT, MRI, ECG -->
+<div class="card" style="margin-bottom:16px">
+  <div class="page-head"><h3>Imaging &amp; Radiology (Ultrasound / X-Ray / CT / MRI)</h3></div>
+  {% for s in imaging_studies %}
+  <div style="border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px">
+    <div class="muted" style="font-size:12px">
+      <span class="badge">{{ s.get_modality_display }}</span>
+      <a href="{% url 'imaging:study_detail' s.id %}">{{ s.study_name }}</a>
+      · {{ s.study_date|date:"Y-m-d" }} · {{ s.status }}
+      {% if s.performed_by %}· by {{ s.performed_by.get_full_name|default:s.performed_by.email }}{% endif %}
+    </div>
+    {% if s.impression %}<div style="margin-top:4px"><strong>Impression:</strong> {{ s.impression }}</div>
+    {% elif s.findings %}<div style="margin-top:4px">{{ s.findings|truncatewords:30 }}</div>{% endif %}
+    <div style="margin-top:6px;display:flex;gap:8px;align-items:center">
+      <a class="btn sm alt" href="{% url 'imaging:study_report' s.id %}" target="_blank">Print report</a>
+      {% if s.image %}<a class="btn sm alt" href="{{ s.image.url }}" target="_blank">View film</a>{% endif %}
+    </div>
+  </div>
+  {% empty %}
+  <p class="muted">No imaging studies. Register an ultrasound / x-ray from the Imaging module.</p>
+  {% endfor %}
+</div>
+
+<!-- Pharmacy purchases -->
+<div class="card" style="margin-bottom:16px">
+  <h3>Pharmacy Purchases</h3>
+  {% for s in pharmacy_sales %}
+  <div style="border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px">
+    <div class="muted" style="font-size:12px">
+      <a href="{% url 'sale_detail' s.id %}">Bill #{{ s.id }}</a> · {{ s.created_at|date:"Y-m-d" }} · {{ s.get_sale_type_display }} · Total {{ s.total }}{% if s.is_returned %} · <span class="danger">RETURNED</span>{% endif %}
+    </div>
+    <div>{% for it in s.items.all %}{{ it.medicine.name }} ×{{ it.quantity }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>
+  </div>
+  {% empty %}
+  <p class="muted">No pharmacy purchases linked to this patient.</p>
+  {% endfor %}
+</div>
+
+<!-- Invoices / bills -->
+<div class="card">
+  <h3>Bills / Invoices</h3>
+  <table class="tbl">
+    <thead><tr><th>#</th><th>Date</th><th>For</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for inv in invoices %}
+      <tr>
+        <td>{% if nav.billing %}<a href="{% url 'invoice_detail' inv.id %}">{{ inv.id }}</a>{% else %}{{ inv.id }}{% endif %}</td>
+        <td>{{ inv.created_at|date:"Y-m-d" }}</td>
+        <td>{% for it in inv.items.all %}{{ it.description }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
+        <td>{{ inv.total }}</td>
+        <td>{{ inv.paid }}</td>
+        <td>{{ inv.balance }}</td>
+        <td>{% if inv.is_paid %}<span class="badge green">Paid</span>{% else %}<span class="badge amber">Unpaid</span>{% endif %}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="muted">No invoices.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

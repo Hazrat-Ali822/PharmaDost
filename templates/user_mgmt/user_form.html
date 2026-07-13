@@ -1,0 +1,78 @@
+{% extends 'partials/base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h2>{{ title }}</h2>
+  <div class="muted">Role sets default access; tick “Customize” to fine-tune this one user</div></div>
+  <a class="btn alt" href="{% url 'user_mgmt:user_list' %}">Back</a></div>
+
+<form method="post">{% csrf_token %}
+  <div class="card" style="max-width:620px;margin-bottom:16px">
+    <h3>Account</h3>
+    {% for field in form %}
+    <div class="form-row" style="align-items:flex-start">
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      <div style="flex:1">
+        {{ field }}
+        {% if field.help_text %}<div class="muted" style="font-size:12px;margin-top:4px">{{ field.help_text }}</div>{% endif %}
+        {% for e in field.errors %}<div class="danger" style="font-size:12px">{{ e }}</div>{% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="card" style="max-width:760px;margin-bottom:16px">
+    <div class="page-head" style="margin-bottom:10px">
+      <h3>Access</h3>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:600;margin:0">
+        <input type="checkbox" name="customize" id="customize" {% if customize %}checked{% endif %}>
+        Customize access (override role defaults)
+      </label>
+    </div>
+    <p class="muted" id="access-hint" style="font-size:13px;margin-top:0"></p>
+
+    <div id="feature-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">
+      {% for group, items in groups %}
+      <div style="border:1px solid var(--border);border-radius:12px;padding:12px">
+        <div style="font-weight:700;margin-bottom:8px">{{ group }}</div>
+        {% for key, label in items %}
+        <label style="display:flex;align-items:center;gap:8px;padding:4px 0;font-weight:500">
+          <input type="checkbox" class="feat" name="features" value="{{ key }}" {% if key in selected %}checked{% endif %}>
+          {{ label }}
+        </label>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <button class="btn primary" type="submit">Save User</button>
+</form>
+
+<script id="role-defaults" type="application/json">{{ role_defaults_json|safe }}</script>
+<script>
+(function(){
+  const roleDefaults = JSON.parse(document.getElementById('role-defaults').textContent);
+  const customize = document.getElementById('customize');
+  const roleSel = document.getElementById('id_role');
+  const feats = Array.from(document.querySelectorAll('.feat'));
+  const hint = document.getElementById('access-hint');
+
+  function applyRoleDefaults(){
+    const def = new Set(roleDefaults[roleSel.value] || []);
+    feats.forEach(cb => { cb.checked = def.has(cb.value); });
+  }
+  function syncEnabled(){
+    const on = customize.checked;
+    feats.forEach(cb => { cb.disabled = !on; });
+    hint.textContent = on
+      ? 'Custom access — tick exactly what this user can open.'
+      : 'Using role defaults (below). Tick “Customize” to change individual modules.';
+    if (!on) applyRoleDefaults();
+  }
+  customize.addEventListener('change', syncEnabled);
+  roleSel.addEventListener('change', function(){ if (!customize.checked) applyRoleDefaults(); });
+  syncEnabled();
+})();
+</script>
+{% endblock %}

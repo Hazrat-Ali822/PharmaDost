@@ -1,0 +1,35 @@
+{% extends 'partials/base.html' %}
+{% block title %}Accounts Dashboard{% endblock %}
+{% block page_title %}Accounts{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>Accounts Desk 📊</h2><div class="muted">{{ request.user.get_full_name|default:request.user.email }}</div></div>
+  <a class="btn" href="{% url 'profit_report' %}">Profit Report</a>
+</div>
+<div class="stat-grid">
+  <a class="stat" href="{% url 'sales_report' %}" style="text-decoration:none;color:inherit">
+    <div class="ic green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V4M20 20H4"/><path d="M8 16v-4M12 16V8M16 16v-6"/></svg></div>
+    <div class="meta"><span class="value" style="font-size:18px">Sales Report</span><span class="label">Daily / monthly</span></div>
+  </a>
+  <a class="stat" href="{% url 'profit_report' %}" style="text-decoration:none;color:inherit">
+    <div class="ic green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V4M20 20H4"/><path d="M7 14l4-4 3 3 4-6"/></svg></div>
+    <div class="meta"><span class="value" style="font-size:18px">Profit Report</span><span class="label">Margins &amp; COGS</span></div>
+  </a>
+  <a class="stat" href="{% url 'supplier_list' %}" style="text-decoration:none;color:inherit">
+    <div class="ic red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h11v10H3zM14 10h4l3 3v4h-7"/></svg></div>
+    <div class="meta"><span class="value" style="font-size:18px">Supplier Payables</span><span class="label">Ledgers &amp; payments</span></div>
+  </a>
+  <a class="stat" href="{% url 'customer_list' %}" style="text-decoration:none;color:inherit">
+    <div class="ic amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="3"/><path d="M2 20c0-3 3-5 6-5s6 2 6 5"/></svg></div>
+    <div class="meta"><span class="value" style="font-size:18px">Receivables</span><span class="label">Customer khata</span></div>
+  </a>
+</div>
+<div class="card">
+  <h3>Quick Links</h3>
+  <p style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+    <a class="btn alt" href="{% url 'inventory_report' %}">Inventory Report</a>
+    <a class="btn alt" href="{% url 'invoice_list' %}">Billing</a>
+    <a class="btn alt" href="{% url 'sale_list' %}">Bills</a>
+  </p>
+</div>
+{% endblock %}

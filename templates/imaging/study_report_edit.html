@@ -1,0 +1,35 @@
+{% extends 'partials/base.html' %}
+{% block title %}Report — Study #{{ study.id }}{% endblock %}
+{% block page_title %}Imaging Report{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>{{ study.get_modality_display }} — {{ study.study_name }}</h2>
+    <div class="muted">{{ study.patient.full_name }} · MRN {{ study.patient.mrn }} · {{ study.study_date|date:"Y-m-d H:i" }}</div>
+  </div>
+  <a class="btn alt" href="{% url 'imaging:study_detail' study.id %}">Back</a>
+</div>
+
+{% if study.clinical_note %}
+<div class="msg" style="margin-bottom:12px"><strong>Referring note:</strong> {{ study.clinical_note }}</div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data" class="card" style="max-width:760px">{% csrf_token %}
+  {% for field in form %}
+  <div class="form-row" style="align-items:flex-start">
+    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+    <div style="flex:1">
+      {{ field }}
+      {% if field.help_text %}<div class="muted" style="font-size:12px;margin-top:4px">{{ field.help_text }}</div>{% endif %}
+      {% for e in field.errors %}<div class="danger" style="font-size:12px">{{ e }}</div>{% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+  {% if study.image %}
+  <div class="form-row"><label>Current film</label>
+    <a href="{{ study.image.url }}" target="_blank"><img src="{{ study.image.url }}" alt="film" style="max-height:120px;border-radius:8px;border:1px solid var(--border)"></a>
+  </div>
+  {% endif %}
+  <button class="btn primary" type="submit">Save Report</button>
+</form>
+{% endblock %}

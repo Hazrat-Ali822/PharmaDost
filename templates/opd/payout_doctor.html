@@ -1,0 +1,63 @@
+{% extends 'partials/base.html' %}
+{% block title %}{{ doctor.full_name }} — Payouts{% endblock %}
+{% block page_title %}Doctor Payout Ledger{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>{{ doctor.full_name }}</h2>
+    <div class="muted">{{ doctor.specialty }} · Fee {{ doctor.opd_fee }} / Follow-up {{ doctor.followup_fee }} · Share {{ doctor.share_percent }}%</div></div>
+  <a class="btn alt" href="{% url 'payout_list' %}">Back</a>
+</div>
+
+<div class="stat-grid">
+  <div class="stat">
+    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 21h8M12 17v4M4 4h16v9a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"/></svg></div>
+    <div class="meta"><span class="value">{{ earnings.consultations }}</span><span class="label">Total Consultations</span></div>
+  </div>
+  <div class="stat">
+    <div class="ic green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+    <div class="meta"><span class="value">{{ earned }}</span><span class="label">Earned (all-time)</span></div>
+  </div>
+  <div class="stat">
+    <div class="ic amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg></div>
+    <div class="meta"><span class="value">{{ paid }}</span><span class="label">Paid Out</span></div>
+  </div>
+  <div class="stat">
+    <div class="ic {% if balance > 0 %}red{% else %}green{% endif %}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></div>
+    <div class="meta"><span class="value">{{ balance }}</span><span class="label">Balance Owed</span></div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:16px;max-width:560px">
+  <h3>Record a Payout</h3>
+  <form method="post">{% csrf_token %}
+    {% for field in form %}
+    <div class="form-row" style="align-items:flex-start">
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      <div style="flex:1">{{ field }}
+        {% for e in field.errors %}<div class="danger" style="font-size:12px">{{ e }}</div>{% endfor %}</div>
+    </div>
+    {% endfor %}
+    <button class="btn primary" type="submit">Save Payout</button>
+  </form>
+</div>
+
+<div class="card">
+  <h3>Payout History</h3>
+  <table class="tbl">
+    <thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Note</th><th>By</th></tr></thead>
+    <tbody>
+      {% for p in payouts %}
+      <tr>
+        <td>{{ p.date|date:"Y-m-d" }}</td>
+        <td><strong>{{ p.amount }}</strong></td>
+        <td>{{ p.payment_method }}</td>
+        <td>{{ p.note|default:"—" }}</td>
+        <td class="muted">{% if p.paid_by %}{{ p.paid_by.get_full_name|default:p.paid_by.email }}{% else %}—{% endif %}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="muted">No payouts recorded yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

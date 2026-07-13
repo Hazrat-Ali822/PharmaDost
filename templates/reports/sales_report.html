@@ -1,0 +1,51 @@
+{% extends 'partials/base.html' %}
+{% block title %}Sales Report{% endblock %}
+{% block page_title %}Sales Report{% endblock %}
+{% block content %}
+<div class="page-head"><h2>Sales Report</h2></div>
+{% include 'reports/_range_filter.html' %}
+
+<div class="stat-grid">
+  <div class="stat">
+    <div class="ic green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+    <div class="meta"><span class="value">{{ data.total }}</span><span class="label">Total Sales</span></div>
+  </div>
+  <div class="stat">
+    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h5"/></svg></div>
+    <div class="meta"><span class="value">{{ data.bills }}</span><span class="label">Bills</span></div>
+  </div>
+  <div class="stat">
+    <div class="ic green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></div>
+    <div class="meta"><span class="value">{{ data.paid }}</span><span class="label">Paid (Cash-in)</span></div>
+  </div>
+  <div class="stat">
+    <div class="ic red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg></div>
+    <div class="meta"><span class="value">{{ data.credit }}</span><span class="label">Credit (Receivable)</span></div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:16px">
+  <h3>Retail vs Wholesale</h3>
+  <table class="tbl">
+    <thead><tr><th>Type</th><th>Bills</th><th>Total</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge">Retail</span></td><td>{{ data.retail.bills }}</td><td>{{ data.retail.total }}</td></tr>
+      <tr><td><span class="badge amber">Wholesale</span></td><td>{{ data.wholesale.bills }}</td><td>{{ data.wholesale.total }}</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h3>By Payment Method</h3>
+  <table class="tbl">
+    <thead><tr><th>Method</th><th>Bills</th><th>Total</th></tr></thead>
+    <tbody>
+      {% for method, row in data.by_payment.items %}
+      <tr><td>{{ method }}</td><td>{{ row.bills }}</td><td>{{ row.total }}</td></tr>
+      {% empty %}
+      <tr><td colspan="3" class="muted">No sales in this period.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

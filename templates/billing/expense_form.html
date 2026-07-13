@@ -1,0 +1,20 @@
+{% extends 'partials/base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><h2>{{ title }}</h2></div>
+  <a class="btn alt" href="{% url 'expense_list' %}">Back</a></div>
+
+<form method="post" class="card" style="max-width:560px">{% csrf_token %}
+  {% for field in form %}
+  <div class="form-row" style="align-items:flex-start">
+    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+    <div style="flex:1">
+      {{ field }}
+      {% for e in field.errors %}<div class="danger" style="font-size:12px">{{ e }}</div>{% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+  <button class="btn primary" type="submit">Save Expense</button>
+</form>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends 'partials/base.html' %}
+{% block title %}Reception Dashboard{% endblock %}
+{% block page_title %}Reception{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>Front Desk 🧑‍💼</h2><div class="muted">Welcome, {{ request.user.get_full_name|default:request.user.email }}</div></div>
+  <a class="btn" href="{% url 'patient_add' %}">+ Register Patient</a>
+</div>
+<div class="stat-grid">
+  <a class="stat" href="{% url 'patient_add' %}" style="text-decoration:none;color:inherit">
+    <div class="ic amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></div>
+    <div class="meta"><span class="value" style="font-size:18px">Register Patient</span><span class="label">New MRN</span></div>
+  </a>
+  <a class="stat" href="{% url 'appointment_add' %}" style="text-decoration:none;color:inherit">
+    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg></div>
+    <div class="meta"><span class="value" style="font-size:18px">Book Appointment</span><span class="label">Assign token</span></div>
+  </a>
+  <a class="stat" href="{% url 'invoice_create' %}" style="text-decoration:none;color:inherit">
+    <div class="ic green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg></div>
+    <div class="meta"><span class="value" style="font-size:18px">Create Invoice</span><span class="label">OPD / counter</span></div>
+  </a>
+  <a class="stat" href="{% url 'patient_list' %}" style="text-decoration:none;color:inherit">
+    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h5"/></svg></div>
+    <div class="meta"><span class="value" style="font-size:18px">Patient Registry</span><span class="label">Search patients</span></div>
+  </a>
+</div>
+<div class="card">
+  <h3>Quick Links</h3>
+  <p style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+    <a class="btn alt" href="{% url 'appointment_list' %}">Appointments</a>
+    <a class="btn alt" href="{% url 'invoice_list' %}">Invoices</a>
+    <a class="btn alt" href="{% url 'prescription_list' %}">Prescriptions</a>
+  </p>
+</div>
+{% endblock %}

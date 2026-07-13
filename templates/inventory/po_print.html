@@ -1,0 +1,48 @@
+{% extends 'print/base_print.html' %}
+{% block title %}Purchase Order #{{ req.id }}{% endblock %}
+{% block doctitle %}PURCHASE ORDER{% endblock %}
+{% block headmeta %}
+  <b>PO #:</b> {{ req.id }}<br>
+  <b>Date:</b> {{ req.created_at|date:"Y-m-d" }}<br>
+  <b>Supplier:</b> {{ req.display_supplier }}
+{% endblock %}
+
+{% block body %}
+  <p style="font-size: 13.5px; margin-bottom: 12px;">Please supply the following items under this purchase order:</p>
+  
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 50px;">#</th>
+        <th>Medicine</th>
+        <th style="width: 120px;" class="num">Order Qty</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for it in items %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ it.medicine.name }}</td>
+        <td class="num">{{ it.quantity }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <th colspan="2" style="background:#f3f4f6; color:#000; text-align:right;">Total Items: {{ req.item_count }}</th>
+        <th class="num" style="background:#f3f4f6; color:#000;">{{ req.total_qty }} units</th>
+      </tr>
+    </tfoot>
+  </table>
+
+  {% if req.note %}
+  <div style="margin-top: 20px; padding: 12px; background: #f8fafc; border: 1px solid var(--line); border-radius: 8px;">
+    <strong>Note / Instructions:</strong>
+    <p class="muted" style="margin: 4px 0 0 0; font-size: 13px;">{{ req.note }}</p>
+  </div>
+  {% endif %}
+  
+  <p class="muted" style="font-size:11.5px; margin-top:20px; border-top: 1px dashed var(--line); padding-top: 8px;">
+    * This is an official Purchase Order. All prices, taxes, and availability must be confirmed by the supplier prior to shipment.
+  </p>
+{% endblock %}

@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="ur"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PharmaDost — User Guide</title>
+<style>
+  *{box-sizing:border-box}
+  body{font-family:"Segoe UI",Tahoma,Arial,sans-serif;max-width:900px;margin:0 auto;padding:24px;
+       color:#1f2937;line-height:1.7;background:#f8fafc}
+  h1{color:#4f46e5;margin:0 0 4px}
+  h2{color:#4f46e5;border-bottom:2px solid #e5e7eb;padding-bottom:6px;margin-top:34px}
+  h3{color:#0f766e;margin-top:22px}
+  .sub{color:#6b7280;margin-top:0}
+  .card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px 18px;margin:14px 0;
+        box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .step{background:#eef2ff;border-right:0;border-left:4px solid #4f46e5;padding:10px 14px;border-radius:8px;margin:8px 0}
+  .tip{background:#ecfdf5;border-left:4px solid #10b981;padding:10px 14px;border-radius:8px;margin:8px 0}
+  .warn{background:#fff7ed;border-left:4px solid #f59e0b;padding:10px 14px;border-radius:8px;margin:8px 0}
+  code,.btn{background:#eef2ff;color:#3730a3;padding:1px 7px;border-radius:6px;font-family:inherit;font-weight:600;font-size:.94em}
+  table{width:100%;border-collapse:collapse;margin:10px 0;background:#fff}
+  th,td{border:1px solid #e5e7eb;padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:#f1f5f9}
+  ol{margin:6px 0 6px 4px}
+  .toc a{display:inline-block;margin:3px 8px 3px 0;color:#4f46e5;text-decoration:none;background:#eef2ff;
+         padding:4px 10px;border-radius:20px;font-size:.9em}
+  @media print{body{background:#fff}.card,.step,.tip,.warn{break-inside:avoid}}
+</style></head>
+<body>
+
+<h1>PharmaDost — Istemal ki Guide 📗</h1>
+<p class="sub">Hospital &amp; Pharmacy Management System — asaan Roman Urdu rehnuma</p>
+
+<div class="card toc">
+  <b>Fehrist:</b><br>
+  <a href="#open">App kholna</a>
+  <a href="#setup">Pehli baar Setup</a>
+  <a href="#login">Login &amp; Password</a>
+  <a href="#modules">Modules (kya kya hai)</a>
+  <a href="#roles">Users / Roles</a>
+  <a href="#tasks">Rozana ke kaam (step by step)</a>
+  <a href="#backup">Backup</a>
+</div>
+
+<h2 id="open">1) App kaise kholein</h2>
+<div class="card">
+  <ol>
+    <li>Aap ko jo <b>PharmaDost</b> folder mila, use kholein.</li>
+    <li><b>PharmaDost.exe</b> par <b>double-click</b> karein.</li>
+    <li>Agar Windows "protected your PC" kahe → <b>More info</b> → <b>Run anyway</b> (bilkul mehfooz hai).</li>
+    <li>Ek chhoti kaali window khulegi aur app browser mein khul jayegi. Band karne ke liye us kaali window ko band kar dein.</li>
+  </ol>
+  <div class="tip">Internet ki zaroorat nahi. Data aap ke apne computer par mehfooz rehta hai.</div>
+</div>
+
+<h2 id="setup">2) Pehli baar — Setup Wizard</h2>
+<div class="card">
+  <p>Sabse pehli dafa app khulte hi <b>Setup</b> screen aayegi. Yahan:</p>
+  <ol>
+    <li><b>Business ka naam</b> likhein (jaise "Al-Shifa Pharmacy").</li>
+    <li><b>Admin (malik) ka email aur password</b> banayein — <b>yehi aap ka login hoga</b>.</li>
+    <li><b>Modules</b> tick karein jo aap use karenge (Pharmacy, OPD/Hospital, Lab, Imaging, Billing, Reports).</li>
+    <li><b>Finish</b> → ho gaya. Ab apne banaye email/password se login karein.</li>
+  </ol>
+  <div class="warn"><b>Password ke bare mein:</b> is app mein koi "default password" nahi hota. Jo password aap Setup mein banate hain, wohi admin ka password hai — use yaad rakhein / mehfooz likh lein. Aage jab aap staff (users) banayenge, un ka password bhi aap khud banayenge.</div>
+</div>
+
+<h2 id="login">3) Login</h2>
+<div class="card">
+  <p>Email + password daal kar <b>Login</b>. Har banda apne account se login karta hai aur usko sirf apne kaam wale modules dikhte hain.</p>
+</div>
+
+<h2 id="modules">4) Modules — kaunsa module kya karta hai</h2>
+<p>Baayein taraf <b>sidebar</b> mein sab modules hote hain (jo aap ne Setup mein on kiye). Woh yahan groups mein hain:</p>
+
+<h3>🩺 Clinical (Hospital / OPD)</h3>
+<table>
+  <tr><th>Module</th><th>Kaam</th></tr>
+  <tr><td><b>Patients</b></td><td>Marizon ka record — register karna, poori history dekhna.</td></tr>
+  <tr><td><b>OPD / Appointments</b></td><td>Doctor ke sath appointment/token. Fee khud bill mein lag jaati hai.</td></tr>
+  <tr><td><b>Doctors</b></td><td>Doctors ki list + un ki fee set/edit karna.</td></tr>
+  <tr><td><b>Prescriptions</b></td><td>Doctor ka nuskha — dawaiyan + lab tests + scans ek jagah.</td></tr>
+  <tr><td><b>Lab</b></td><td>Khoon/test orders, result bharna, report print.</td></tr>
+  <tr><td><b>Imaging / Radiology</b></td><td>Ultrasound / X-Ray / CT / MRI — study + report.</td></tr>
+</table>
+
+<h3>💊 Pharmacy</h3>
+<table>
+  <tr><th>Module</th><th>Kaam</th></tr>
+  <tr><td><b>Create Bill</b> (POS)</td><td>Dawai bechna (retail ya wholesale), bill print.</td></tr>
+  <tr><td><b>Bills</b></td><td>Purani bikri ki list.</td></tr>
+  <tr><td><b>Wholesale Orders</b></td><td>Bade wholesale order (100–1000 items) tez banana → print → bill.</td></tr>
+  <tr><td><b>Purchase Orders</b></td><td>Supplier se maal <b>mangwana</b> → print/bhejna → maal aaye to stock mein daalna.</td></tr>
+  <tr><td><b>Purchases (stock-in)</b></td><td>Aaya hua maal seedha stock mein daalna.</td></tr>
+  <tr><td><b>Inventory</b></td><td>Dawaiyon ki list, nayi dawai add, qeemat/stock.</td></tr>
+  <tr><td><b>Customers / Suppliers</b></td><td>Wholesale grahak aur supplier ke khate (udhaar/balance).</td></tr>
+</table>
+
+<h3>💰 Finance</h3>
+<table>
+  <tr><th>Module</th><th>Kaam</th></tr>
+  <tr><td><b>Patient Billing</b></td><td>Kisi bhi mariz ka poora bill (consultation + test + scan + dawai) aur payment lena.</td></tr>
+  <tr><td><b>Invoices</b></td><td>Tamam invoices/bills ki list.</td></tr>
+  <tr><td><b>Expenses</b></td><td>Kharche likhna (bijli, kiraya waghera).</td></tr>
+  <tr><td><b>Day Book / Cash Closing</b></td><td>Din ke akhir mein hisaab + cash milan.</td></tr>
+  <tr><td><b>Doctor Payouts</b></td><td>Doctor ka hissa/commission adaigi.</td></tr>
+  <tr><td><b>Reports</b></td><td>Bikri, munafa, stock ki reports.</td></tr>
+</table>
+
+<h3>🏷️ Price List &amp; ⚙️ System</h3>
+<table>
+  <tr><th>Module</th><th>Kaam</th></tr>
+  <tr><td><b>Lab Test Prices / Scan Prices</b></td><td>Har test aur scan ka rate set karna (admin).</td></tr>
+  <tr><td><b>Users</b></td><td>Staff ke account banana + kis ko kya access.</td></tr>
+  <tr><td><b>Settings</b></td><td>Business naam, logo, rang, modules on/off, Backup.</td></tr>
+  <tr><td><b>Audit Log</b></td><td>Kis ne kya kiya — record.</td></tr>
+</table>
+
+<h2 id="roles">5) Users / Roles — kaun kya kar sakta hai</h2>
+<p>Admin har staff ko ek <b>role</b> deta hai; us role ko sirf apne kaam wale modules milte hain.</p>
+<table>
+  <tr><th>Role</th><th>Aam tor par kya karta hai</th></tr>
+  <tr><td><b>Admin</b></td><td>Malik — sab kuch. Sirf Admin ke paas Settings/Users.</td></tr>
+  <tr><td><b>Receptionist</b></td><td>Patient register, appointment, bill/payment.</td></tr>
+  <tr><td><b>Doctor</b></td><td>Apne patients, prescription, test/scan order.</td></tr>
+  <tr><td><b>Pharmacist</b></td><td>POS bikri, inventory, purchases.</td></tr>
+  <tr><td><b>Wholesale</b></td><td>Sirf wholesale bikri + customers.</td></tr>
+  <tr><td><b>Lab Tech</b></td><td>Lab orders + results.</td></tr>
+  <tr><td><b>Sonographer</b></td><td>Ultrasound/imaging + reports.</td></tr>
+  <tr><td><b>Accountant</b></td><td>Billing, expenses, cash, reports.</td></tr>
+</table>
+<div class="tip">Kisi ek bande ko default se zyada/kam access dena ho to User banate waqt <b>"Customize access"</b> tick kar ke modules chun lein.</div>
+
+<h2 id="tasks">6) Rozana ke kaam — step by step</h2>
+
+<div class="card">
+  <h3>👤 Naya patient add karna</h3>
+  <div class="step">Sidebar → <b>Patients</b> → <b>+ Add Patient</b> → naam, gender, umar, phone bharein → <b>Save</b>.</div>
+  <div class="tip">Purana patient? Register mat karein — <b>Patients</b> mein naam/phone se search karke kholein.</div>
+</div>
+
+<div class="card">
+  <h3>🩺 Doctor ke sath appointment (fee khud bill hoti hai)</h3>
+  <div class="step">Sidebar → <b>OPD / Appointments</b> → <b>+ New Appointment</b> → patient + doctor chunein → <b>Save</b>.</div>
+  <p>Doctor ki fee apne aap ek pending bill ban jaati hai (fee doctor ke profile se aati hai).</p>
+</div>
+
+<div class="card">
+  <h3>📝 Prescription likhna (dawai + test + scan ek sath)</h3>
+  <div class="step">OPD → <b>Appointments</b> → us appointment ke saamne <b>"Rx"</b> button.</div>
+  <ol>
+    <li><b>Medicines</b>: "+ Add medicine" se jitni chahein dawaiyan.</li>
+    <li><b>Lab Tests</b>: neeche checkboxes se test tick karein.</li>
+    <li><b>Scans</b>: ultrasound/x-ray tick karein.</li>
+    <li><b>Save Prescription</b> → test lab ko, scan radiology ko chala jata hai, aur har cheez ka bill ban jata hai.</li>
+  </ol>
+</div>
+
+<div class="card">
+  <h3>🧪 Lab test / 🩻 Scan alag se order karna</h3>
+  <div class="step">Patient kholein → upar <b>+ Order Lab Test</b> ya <b>+ Imaging Study</b>.</div>
+  <p>Lab tech result bhar kar <b>Save &amp; Print Report</b> karta hai — report patient ki history mein bhi save.</p>
+</div>
+
+<div class="card">
+  <h3>💵 Bill banana / payment lena</h3>
+  <div class="step">Do tareeqe: Patient kholein → <b>💵 Bill / Collect Payment</b>; <b>ya</b> Sidebar → <b>Patient Billing</b> → naam search → <b>Bill / Collect</b>.</div>
+  <p>Yahan consultation + test + scan + dawai ka <b>ek grand total</b>. Neeche amount daal kar <b>Collect</b>, phir <b>Print</b> se rasid.</p>
+</div>
+
+<div class="card">
+  <h3>🛒 Dawai bechna (retail — aam grahak)</h3>
+  <div class="step">Sidebar → <b>Create Bill</b> → Sale type <b>Retail</b> → dawaiyan + qty add → paisa lein → <b>Save</b> → bill print.</div>
+</div>
+
+<div class="card">
+  <h3>🏪 Wholesale bechna</h3>
+  <div class="step">Pehli baar customer register: <b>Customers</b> → <b>+ Add Customer</b>. Phir <b>Create Bill</b> → Sale type <b>Wholesale</b> → <b>customer chunein</b> (zaroori) → items → Save.</div>
+  <div class="warn">Wholesale rate sirf registered customer ko aur sirf jab Wholesale select ho.</div>
+</div>
+
+<div class="card">
+  <h3>📦 Bada wholesale order (100–1000 items — tez tareeqa)</h3>
+  <div class="step">Sidebar → <b>Wholesale Orders</b> → <b>+ New Order</b> → customer.</div>
+  <ol>
+    <li><b>Paste</b>: poori list ek box mein (har line: naam qty) → "Add all".</li>
+    <li>ya <b>Quick add</b> (search/barcode), ya <b>Repeat</b> (pichla order load).</li>
+    <li><b>Print</b> se sheet bhejein, ya <b>Convert to Bill</b> se seedha bill (stock kam ho jata hai).</li>
+  </ol>
+</div>
+
+<div class="card">
+  <h3>🚚 Supplier se maal mangwana (Purchase Order)</h3>
+  <div class="step">Sidebar → <b>Purchase Orders</b> → <b>+ New Order</b> → supplier.</div>
+  <ol>
+    <li><b>Add low-stock items</b> button → jo dawai khatam ho rahi hai khud aa jati hai. (Ya Paste/Quick-add/Repeat.)</li>
+    <li><b>Print &amp; send</b> → supplier ko bhej dein.</li>
+    <li>Maal aaye → <b>Receive into stock</b> → har item ka cost/expiry bharein → <b>Confirm</b>. Stock barh jata hai aur supplier ka khata update.</li>
+  </ol>
+</div>
+
+<div class="card">
+  <h3>💊 Nayi dawai inventory mein add</h3>
+  <div class="step">Sidebar → <b>Inventory</b> → <b>+ Add Medicine</b> → naam, retail price, <b>wholesale price</b>, quantity, expiry → Save.</div>
+</div>
+
+<div class="card">
+  <h3>🏷️ Test / Scan ke rate set karna (Admin)</h3>
+  <div class="step">Sidebar → <b>Lab Test Prices</b> ya <b>Scan Prices</b> (ya Settings → Manage Prices) → har item ke saamne price daalein → <b>Save All Prices</b>.</div>
+  <div class="tip">Yehi rate prescription/bill mein khud lagte hain — is liye shuru mein ek dafa set kar lein.</div>
+</div>
+
+<div class="card">
+  <h3>🩺 Doctor add karna + fee</h3>
+  <div class="step">Sidebar → <b>Doctors</b> → <b>Add Doctor</b> → naam, <b>OPD Fee</b>, Follow-up Fee, Share% → Save.</div>
+  <p>Fee badalni ho: Doctors → <b>Edit fee</b>.</p>
+</div>
+
+<div class="card">
+  <h3>👥 Staff (user) banana</h3>
+  <div class="step">Sidebar → <b>Users</b> → <b>Add User</b> → naam, email, <b>role</b> chunein, <b>password</b> banayein → Save.</div>
+  <p>Us staff ko apne role wale modules mil jayenge. Zyada/kam dena ho to "Customize access".</p>
+</div>
+
+<div class="card">
+  <h3>⚙️ Modules on/off (business ke hisaab se)</h3>
+  <div class="step">Sidebar → <b>Settings</b> → <b>Modules</b> section → jo chahiye tick, jo nahi untick → <b>Save Settings</b>.</div>
+  <p>Off module sab ke sidebar se ghayab ho jata hai.</p>
+</div>
+
+<h2 id="backup">7) Backup — bohot zaroori 💾</h2>
+<div class="card">
+  <div class="step">Admin Dashboard → <b>💾 Backup</b> (ya Settings → Backup) → ek <b>.zip</b> file download.</div>
+  <p>Ye file mehfooz jagah (USB/Drive) rakhein. Naye computer par app install kar ke is zip ko data folder mein wapas daal dein to sab bahaal.</p>
+  <div class="tip"><b>Mashwara:</b> har hafte ek backup zaroor lein. Aur roz ke akhir mein Cash Closing kar lein.</div>
+</div>
+
+<hr style="margin:30px 0;border:none;border-top:1px solid #e5e7eb">
+<p class="sub" style="text-align:center">PharmaDost — is safha ko <b>print</b> (Ctrl+P) kar ke rakh sakte hain.</p>
+
+</body></html>

@@ -1,0 +1,40 @@
+{% extends 'print/base_print.html' %}
+{% block title %}Lab Report #{{ order.id }}{% endblock %}
+{% block doctitle %}Laboratory Report{% endblock %}
+
+{% block headmeta %}
+  <b>Report #{{ order.id }}</b><br>
+  {{ order.order_date|date:"d M Y · g:i A" }}<br>
+  Status: {{ order.status }}
+{% endblock %}
+
+{% block body %}
+<div class="who">
+  <div>
+    <b>Patient:</b> {{ order.patient.full_name }}<br>
+    <b>MRN:</b> {{ order.patient.mrn }} · <b>Gender:</b> {{ order.patient.get_gender_display }}{% if order.patient.age_years %} · {{ order.patient.age_years }} yrs{% endif %}
+  </div>
+  <div style="text-align:right">
+    <b>Phone:</b> {{ order.patient.phone|default:'—' }}<br>
+    {% if order.ordered_by %}<b>Referred by:</b> {{ order.ordered_by.get_full_name|default:order.ordered_by.email }}{% endif %}
+  </div>
+</div>
+
+<h3 class="sec">Results</h3>
+<table>
+  <thead><tr><th>Test</th><th>Result</th><th>Normal Range</th><th>Unit</th><th>Remarks</th></tr></thead>
+  <tbody>
+    {% for r in order.results.all %}
+    <tr>
+      <td>{{ r.lab_test.name }}</td>
+      <td><b>{{ r.result_value|default:"—" }}</b></td>
+      <td>{{ r.lab_test.normal_range|default:"—" }}</td>
+      <td>{{ r.lab_test.unit|default:"" }}</td>
+      <td>{{ r.remarks|default:"" }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="sign"><span class="line">Verified by (Lab)</span></div>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends 'partials/base.html' %}
+{% block title %}Doctor Payouts{% endblock %}
+{% block page_title %}Doctor Payouts{% endblock %}
+{% block content %}
+<div class="page-head"><div><h2>Doctor Payouts 👨‍⚕️</h2>
+  <div class="muted">Earned share vs paid out — per doctor</div></div></div>
+{% include 'reports/_range_filter.html' %}
+
+<div class="stat-grid">
+  <div class="stat">
+    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 21h8M12 17v4M4 4h16v9a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"/></svg></div>
+    <div class="meta"><span class="value">{{ totals.consultations }}</span><span class="label">Consultations (period)</span></div>
+  </div>
+  <div class="stat">
+    <div class="ic green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+    <div class="meta"><span class="value">{{ totals.earned }}</span><span class="label">Earned (period)</span></div>
+  </div>
+  <div class="stat">
+    <div class="ic amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg></div>
+    <div class="meta"><span class="value">{{ totals.paid }}</span><span class="label">Paid (period)</span></div>
+  </div>
+  <div class="stat">
+    <div class="ic red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg></div>
+    <div class="meta"><span class="value">{{ totals.balance }}</span><span class="label">Owed (all-time)</span></div>
+  </div>
+</div>
+
+<div class="card">
+  <table class="tbl">
+    <thead><tr><th>Doctor</th><th>Share%</th><th>Consults</th><th>Fees</th><th>Earned</th><th>Paid</th><th>Balance owed</th><th></th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td><strong>{{ r.doctor.full_name }}</strong><div class="muted" style="font-size:12px">{{ r.doctor.specialty }}</div></td>
+        <td>{{ r.doctor.share_percent }}%</td>
+        <td>{{ r.consultations }}</td>
+        <td>{{ r.gross }}</td>
+        <td>{{ r.earned }}</td>
+        <td>{{ r.paid }}</td>
+        <td>{% if r.balance > 0 %}<span class="badge amber">{{ r.balance }}</span>{% else %}<span class="badge green">{{ r.balance }}</span>{% endif %}</td>
+        <td><a class="btn sm" href="{% url 'payout_doctor' r.doctor.pk %}">Pay / Ledger</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8" class="muted">No doctors yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

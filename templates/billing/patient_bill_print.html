@@ -1,0 +1,38 @@
+{% extends 'print/base_print.html' %}
+{% block title %}Bill — {{ patient.full_name }}{% endblock %}
+{% block doctitle %}Patient Bill / Statement{% endblock %}
+
+{% block headmeta %}
+  <b>{{ patient.full_name }}</b><br>
+  MRN: {{ patient.mrn }}<br>
+  {% if patient.phone %}☎ {{ patient.phone }}{% endif %}
+{% endblock %}
+
+{% block body %}
+<h3 class="sec">Charges</h3>
+<table>
+  <thead><tr><th>Date</th><th>Type</th><th>Details</th><th class="num">Total</th><th class="num">Paid</th><th class="num">Balance</th></tr></thead>
+  <tbody>
+    {% for inv in s.invoices %}
+    <tr>
+      <td>{{ inv.created_at|date:"d M Y" }}</td><td>Service</td>
+      <td>{% for it in inv.items.all %}{{ it.description }}{% if not forloop.last %}, {% endif %}{% empty %}Invoice #{{ inv.id }}{% endfor %}</td>
+      <td class="num">{{ inv.total }}</td><td class="num">{{ inv.paid }}</td><td class="num">{{ inv.balance }}</td>
+    </tr>
+    {% endfor %}
+    {% for sale in s.sales %}
+    <tr>
+      <td>{{ sale.created_at|date:"d M Y" }}</td><td>Pharmacy</td>
+      <td>{% for it in sale.items.all %}{{ it.medicine.name }} ×{{ it.quantity }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
+      <td class="num">{{ sale.total }}</td><td class="num">{{ sale.paid }}</td><td class="num">{{ sale.balance }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<table style="width:320px;margin-left:auto;margin-top:14px;font-size:14px">
+  <tr><td>Total Charged</td><td class="num">Rs {{ s.charged }}</td></tr>
+  <tr><td>Total Paid</td><td class="num">Rs {{ s.paid }}</td></tr>
+  <tr style="font-size:16px;font-weight:800;color:var(--pri)"><td>Outstanding</td><td class="num">Rs {{ s.outstanding }}</td></tr>
+</table>
+{% endblock %}

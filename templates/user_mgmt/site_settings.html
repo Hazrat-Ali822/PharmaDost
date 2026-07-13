@@ -1,0 +1,121 @@
+{% extends 'partials/base.html' %}
+{% block title %}Site Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>Branding &amp; Appearance</h2><div class="muted">Customise the name, logo and colours of your system.</div></div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start">
+  <div class="form-card" style="max-width:none">
+    <form method="post" enctype="multipart/form-data" id="settings-form">{% csrf_token %}
+      <p><label>Brand Name</label>{{ form.brand_name }}</p>
+      <p><label>Tagline</label>{{ form.brand_tagline }}</p>
+      <p><label>Logo Letter (1–2 chars, used if no image)</label>{{ form.logo_text }}</p>
+      <p><label>Logo Image (optional)</label>{{ form.logo_image }}
+         {% if site.logo_image %}<br><small class="muted">Current: <img src="{{ site.logo_image.url }}" style="height:28px;vertical-align:middle;border-radius:6px"></small>{% endif %}</p>
+      <div class="form-row">
+        <div><label>Primary Colour</label><br>{{ form.primary_color }}</div>
+        <div><label>Accent Colour</label><br>{{ form.accent_color }}</div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
+      <h3>Printed Bill / Report Header</h3>
+      <p class="muted" style="font-size:13px;margin-bottom:10px">These appear on the top of printed bills, receipts and lab reports.</p>
+      <p><label>Address</label>{{ form.address }}</p>
+      <div class="form-row">
+        <div><label>Phone</label>{{ form.phone }}</div>
+        <div><label>Email</label>{{ form.email }}</div>
+      </div>
+      <p><label>Licence / Registration No.</label>{{ form.license_no }}</p>
+      <p><label>Bill Footer Message</label>{{ form.receipt_footer }}</p>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
+      <h3>Print Design</h3>
+      <p class="muted" style="font-size:13px;margin-bottom:10px">Choose how printed lab reports, bills and receipts look. Address prints centered at the bottom (letterpad style).</p>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+        {% for val, label in form.print_theme.field.choices %}
+        <label class="pt-opt" style="display:flex;gap:10px;align-items:center;border:1px solid var(--border);border-radius:10px;padding:10px;cursor:pointer">
+          <input type="radio" name="print_theme" value="{{ val }}" {% if form.print_theme.value == val %}checked{% endif %}>
+          <span><b>{{ label }}</b><br><span class="muted" style="font-size:12px">
+            {% if val == 'classic' %}Logo + brand on top, colour rule
+            {% elif val == 'modern' %}Full colour band header
+            {% elif val == 'elegant' %}Serif, thin lines, formal
+            {% elif val == 'letterhead' %}For your OWN pre-printed paper — blank top, only patient + results
+            {% else %}Clean, no colour blocks{% endif %}
+          </span></span>
+        </label>
+        {% endfor %}
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
+      <h3>Modules</h3>
+      <p class="muted" style="font-size:13px;margin-bottom:10px">Turn modules on/off for your whole system. Off modules disappear from the sidebar for everyone.</p>
+      {% for key, label, desc, feats in modules %}
+      <label style="display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--border)">
+        <input type="checkbox" name="modules" value="{{ key }}" style="margin-top:3px;width:17px;height:17px" {% if key in enabled %}checked{% endif %}>
+        <span><b>{{ label }}</b><br><span class="muted" style="font-size:13px">{{ desc }}</span></span>
+      </label>
+      {% endfor %}
+
+      <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" type="submit">Save Settings</button>
+        <button class="btn danger" type="submit" name="reset" value="1"
+                onclick="return confirm('Reset name, logo and colours back to defaults?');">Reset to Default</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h3>Live Preview</h3>
+    <div id="preview" style="border-radius:12px;overflow:hidden;border:1px solid var(--border);margin-top:8px">
+      <div id="pv-bar" style="display:flex;align-items:center;gap:10px;padding:12px;color:#fff">
+        <span id="pv-logo" style="width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,.2);font-weight:800"></span>
+        <span><b id="pv-name"></b><br><small id="pv-tag" style="opacity:.85"></small></span>
+      </div>
+      <div style="padding:12px;background:#fff">
+        <button class="btn" id="pv-btn" type="button" style="pointer-events:none">Sample Button</button>
+      </div>
+    </div>
+    <p class="muted" style="font-size:12px;margin-top:8px">Preview updates as you type. Save to apply everywhere.</p>
+  </div>
+
+  <div class="card">
+    <h3>🏷️ Manage Prices</h3>
+    <p class="muted" style="font-size:13px;margin-top:6px">Set the fees for lab tests and scans. These prices are used automatically when a doctor orders them.</p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+      <a class="btn alt" href="{% url 'lab:test_catalog' %}">🧪 Lab Test Prices</a>
+      <a class="btn alt" href="{% url 'imaging:scan_catalog' %}">🩻 Scan / Imaging Prices</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>💾 Backup</h3>
+    <p class="muted" style="font-size:13px;margin-top:6px">Download a full copy of your data (database + uploaded files) as a single <b>.zip</b>. Keep it somewhere safe. To restore, unzip it back into your data folder.</p>
+    <a class="btn" href="{% url 'user_mgmt:backup_download' %}" style="margin-top:10px">Download Backup Now</a>
+  </div>
+</div>
+
+<script>
+(function(){
+  const f = document.getElementById('settings-form');
+  const name = f.querySelector('[name=brand_name]');
+  const tag = f.querySelector('[name=brand_tagline]');
+  const letter = f.querySelector('[name=logo_text]');
+  const primary = f.querySelector('[name=primary_color]');
+  const accent = f.querySelector('[name=accent_color]');
+  const bar = document.getElementById('pv-bar');
+  const btn = document.getElementById('pv-btn');
+  function upd(){
+    const p = primary.value || '#4f46e5', a = accent.value || '#0ea5a4';
+    bar.style.background = `linear-gradient(135deg, ${p}, ${a})`;
+    btn.style.background = p; btn.style.color = '#fff';
+    document.getElementById('pv-name').textContent = name.value || 'PharmaDost';
+    document.getElementById('pv-tag').textContent = tag.value || '';
+    document.getElementById('pv-logo').textContent = (letter.value || 'P').toUpperCase();
+  }
+  [name,tag,letter,primary,accent].forEach(el => { el.addEventListener('input', upd); });
+  upd();
+})();
+</script>
+{% endblock %}

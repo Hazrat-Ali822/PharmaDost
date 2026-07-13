@@ -1,0 +1,91 @@
+{% extends 'partials/base.html' %}
+{% block title %}{% if hospital %}Edit Hospital{% else %}Create Hospital{% endif %} — PharmaDost{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h2>{% if hospital %}Edit Hospital: {{ hospital.name }}{% else %}Register New Hospital{% endif %}</h2>
+  <a class="btn alt" href="{% url 'saas:dashboard' %}">Back to Portal</a>
+</div>
+
+<div class="grid" style="grid-template-columns: 2fr 1fr; gap: 20px; align-items: start;">
+  <div class="card">
+    <form method="post">
+      {% csrf_token %}
+      
+      <h3>Hospital Details</h3>
+      <p style="margin-bottom:15px;"></p>
+      
+      <p>
+        <label>Hospital Name</label>
+        <input type="text" name="name" value="{{ hospital.name|default:'' }}" required placeholder="e.g. Noor Hospital">
+      </p>
+      
+      {% if not hospital %}
+      <p>
+        <label>Custom Link / Slug (Optional)</label>
+        <input type="text" name="slug" placeholder="e.g. noor-hospital (auto-generated if empty)">
+      </p>
+      {% endif %}
+      
+      <p>
+        <label>Monthly Subscription Price (PKR)</label>
+        <input type="number" step="0.01" name="monthly_price" value="{{ hospital.monthly_price|default:'0.00' }}" required placeholder="e.g. 5000">
+      </p>
+
+      <p>
+        <label>Subscription Expiry Date</label>
+        <input type="date" name="expiry_date" value="{{ hospital.expiry_date|date:'Y-m-d' }}" required>
+      </p>
+
+      <label style="display:flex; gap:10px; align-items:center; margin: 15px 0;">
+        <input type="checkbox" name="is_active" {% if hospital %}{% if hospital.is_active %}checked{% endif %}{% else %}checked{% endif %}>
+        <span><strong>Active Subscription</strong> (uncheck to immediately suspend/block all hospital access)</span>
+      </label>
+
+      <hr style="border:none; border-top:1px solid var(--border); margin: 20px 0;">
+
+      <h3>Enabled Modules</h3>
+      <p class="muted" style="font-size:13px; margin-bottom:10px;">Select which modules are accessible by this hospital tenant.</p>
+      
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        {% for key, label, desc, feats in modules %}
+        <label style="display:flex; gap:10px; align-items:flex-start; padding:8px 0; border-bottom:1px solid var(--border)">
+          <input type="checkbox" name="modules" value="{{ key }}" style="margin-top:3px;"
+                 {% if hospital %}{% if key in hospital.enabled_modules %}checked{% endif %}{% else %}checked{% endif %}>
+          <span><b>{{ label }}</b><br><span class="muted" style="font-size:12.5px">{{ desc }}</span></span>
+        </label>
+        {% endfor %}
+      </div>
+
+      {% if not hospital %}
+      <hr style="border:none; border-top:1px solid var(--border); margin: 25px 0;">
+      <h3>Create Hospital Admin User</h3>
+      <p class="muted" style="font-size:13px; margin-bottom:15px;">Setup the primary administrator account for this hospital. They can log in and create other staff members.</p>
+      
+      <p>
+        <label>Admin Email Address</label>
+        <input type="email" name="admin_email" required placeholder="e.g. admin@noorhospital.com">
+      </p>
+      
+      <p>
+        <label>Admin Password</label>
+        <input type="password" name="admin_password" required placeholder="Minimum 6 characters">
+      </p>
+      {% endif %}
+
+      <div style="margin-top:20px;">
+        <button class="btn" type="submit">{% if hospital %}Save Changes{% else %}Register Hospital{% endif %}</button>
+      </div>
+    </form>
+  </div>
+  
+  <div class="card">
+    <h3>💡 Instructions</h3>
+    <ul style="padding-left: 20px; font-size: 13px; line-height: 1.6; color: var(--muted); margin-top: 8px;">
+      <li><strong>Custom Link:</strong> Once registered, the hospital admin and their staff can log in using their custom URL.</li>
+      <li><strong>Modules limit:</strong> Enabling or disabling modules here controls what features are visible to this hospital. The hospital admin will not be able to delegate permissions to modules that are not enabled here.</li>
+      <li><strong>Suspending:</strong> Unchecking "Active Subscription" blocks access immediately for all staff belonging to this hospital.</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

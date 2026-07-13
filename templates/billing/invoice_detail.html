@@ -1,0 +1,52 @@
+{% extends 'partials/base.html' %}
+{% block title %}Invoice #{{ invoice.pk }}{% endblock %}
+{% block page_title %}Invoice{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Invoice #{{ invoice.pk }}
+      {% if invoice.is_paid %}<span class="badge green">Paid</span>{% else %}<span class="badge amber">Unpaid</span>{% endif %}
+    </h2>
+    <div class="muted">
+      <a href="{% url 'patient_detail' invoice.patient.pk %}">{{ invoice.patient.full_name }}</a>
+      · {{ invoice.created_at|date:"Y-m-d H:i" }} · by {{ invoice.created_by.get_full_name|default:invoice.created_by.email }}
+    </div>
+  </div>
+  <a class="btn alt" href="{% url 'invoice_list' %}">Back</a>
+</div>
+
+<div class="card" style="max-width:640px">
+  <table class="tbl">
+    <thead><tr><th>Description</th><th style="text-align:right">Amount</th></tr></thead>
+    <tbody>
+      {% for it in invoice.items.all %}
+      <tr><td>{{ it.description }}</td><td style="text-align:right">{{ it.amount }}</td></tr>
+      {% empty %}
+      <tr><td colspan="2" class="muted">No line items.</td></tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr><td style="text-align:right">Subtotal</td><td style="text-align:right">{{ invoice.subtotal }}</td></tr>
+      {% if invoice.discount %}<tr><td style="text-align:right">Discount</td><td style="text-align:right">-{{ invoice.discount }}</td></tr>{% endif %}
+      <tr><td style="text-align:right"><strong>Total</strong></td><td style="text-align:right"><strong>{{ invoice.total }}</strong></td></tr>
+      <tr><td style="text-align:right">Paid</td><td style="text-align:right">{{ invoice.paid }}</td></tr>
+      <tr><td style="text-align:right"><strong>Balance</strong></td><td style="text-align:right"><strong>{{ invoice.balance }}</strong></td></tr>
+    </tfoot>
+  </table>
+
+  {% if not invoice.is_paid %}
+  <form method="post" action="{% url 'invoice_mark_paid' invoice.pk %}" style="margin-top:14px;display:flex;gap:8px;align-items:center">
+    {% csrf_token %}
+    <label style="margin:0">Collect payment</label>
+    <select name="payment_method" style="width:auto">
+      <option value="CASH">Cash</option>
+      <option value="CARD">Card</option>
+      <option value="ONLINE">Online</option>
+    </select>
+    <button class="btn success" type="submit">Mark Paid (Rs {{ invoice.balance }})</button>
+  </form>
+  {% else %}
+  <div class="msg success" style="margin-top:14px">Fully paid via {{ invoice.payment_method }}.</div>
+  {% endif %}
+</div>
+{% endblock %}

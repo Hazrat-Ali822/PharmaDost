@@ -1,0 +1,65 @@
+{% extends 'partials/base.html' %}
+{% block title %}Lab Test Prices{% endblock %}
+{% block page_title %}Lab Test Prices{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>🧪 Lab Test Prices</h2><div class="muted">Set the fee for each lab test. These prices are used when a test is ordered.</div></div>
+  <a class="btn alt" href="{% url 'user_mgmt:site_settings' %}">Back to Settings</a>
+</div>
+
+<!-- Add a new test -->
+<div class="card" style="margin-bottom:16px">
+  <h3>➕ Add a test</h3>
+  <form method="post" style="margin-top:8px">{% csrf_token %}
+    <input type="hidden" name="add" value="1">
+    <div class="form-row">
+      <div><label>Test name</label><input name="name" required placeholder="e.g. Vitamin D"></div>
+      <div><label>Existing category</label>
+        <select name="category">
+          <option value="">— choose —</option>
+          {% for c in categories %}<option value="{{ c.id }}">{{ c.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div><label>…or new category</label><input name="new_category" placeholder="e.g. Hormones"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Price (Rs)</label><input name="price" type="number" step="0.01" min="0" value="0"></div>
+      <div><label>Unit</label><input name="unit" placeholder="e.g. mg/dL"></div>
+      <div><label>Normal range</label><input name="normal_range" placeholder="e.g. 70–110"></div>
+    </div>
+    <button class="btn" type="submit">Add Test</button>
+  </form>
+</div>
+
+<!-- Bulk price editor -->
+<form method="post">{% csrf_token %}
+  {% for category, tests in groups %}
+  <div class="card" style="margin-bottom:14px">
+    <h3>{{ category.name }}</h3>
+    <table class="tbl">
+      <thead><tr><th style="width:32%">Test</th><th>Unit</th><th>Normal range <span class="muted" style="font-weight:400">(optional)</span></th><th style="width:130px">Price (Rs)</th></tr></thead>
+      <tbody>
+        {% for t in tests %}
+        <tr>
+          <td>{{ t.name }}</td>
+          <td><input name="unit_{{ t.id }}" value="{{ t.unit }}" placeholder="e.g. mg/dL" style="width:100%"></td>
+          <td><input name="nr_{{ t.id }}" value="{{ t.normal_range }}" placeholder="e.g. 70–110 (optional)" style="width:100%"></td>
+          <td><input name="price_{{ t.id }}" type="number" step="0.01" min="0" value="{{ t.price }}" style="width:115px"></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="muted">No tests in this category.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% empty %}
+  <div class="card"><p class="muted">No lab tests yet. Add one above.</p></div>
+  {% endfor %}
+
+  {% if groups %}
+  <div style="position:sticky;bottom:12px;display:flex;gap:8px">
+    <button class="btn" type="submit">💾 Save All Prices</button>
+  </div>
+  {% endif %}
+</form>
+{% endblock %}

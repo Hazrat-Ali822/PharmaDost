@@ -1,0 +1,105 @@
+{% extends 'partials/base.html' %}
+{% block title %}Bill — {{ patient.full_name }}{% endblock %}
+{% block page_title %}Patient Bill{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>{{ patient.full_name }}</h2>
+    <div class="muted">MRN {{ patient.mrn }}{% if patient.phone %} · {{ patient.phone }}{% endif %}</div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <a class="btn alt" href="{% url 'patient_bill_print' patient.pk %}" target="_blank">🖨️ Print Bill</a>
+    <a class="btn alt" href="{% url 'patient_detail' patient.pk %}">History</a>
+  </div>
+</div>
+
+<div class="stat-grid">
+  <div class="stat">
+    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg></div>
+    <div class="meta"><span class="value">{{ s.charged }}</span><span class="label">Total Charged</span></div>
+  </div>
+  <div class="stat">
+    <div class="ic green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></div>
+    <div class="meta"><span class="value">{{ s.paid }}</span><span class="label">Total Paid</span></div>
+  </div>
+  <div class="stat">
+    <div class="ic {% if s.outstanding > 0 %}red{% else %}green{% endif %}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg></div>
+    <div class="meta"><span class="value">{{ s.outstanding }}</span><span class="label">Outstanding</span></div>
+  </div>
+</div>
+
+{% if s.outstanding > 0 %}
+<div class="card" style="margin-bottom:16px;max-width:560px">
+  <h3>Collect Payment</h3>
+  <form method="post" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">{% csrf_token %}
+    <div><label class="muted" style="font-size:12px;display:block">Amount</label>
+      <input type="number" step="0.01" min="0" name="amount" value="{{ s.outstanding }}" style="width:140px"></div>
+    <div><label class="muted" style="font-size:12px;display:block">Method</label>
+      <select name="payment_method" style="width:auto">
+        <option value="CASH">Cash</option><option value="CARD">Card</option><option value="ONLINE">Online</option>
+      </select></div>
+    <div style="flex:1;min-width:140px"><label class="muted" style="font-size:12px;display:block">Note</label>
+      <input type="text" name="note" placeholder="optional"></div>
+    <button class="btn success" type="submit">Receive Payment</button>
+  </form>
+  <p class="muted" style="font-size:12px;margin:10px 0 0">Payment applies to the oldest unpaid items first.</p>
+</div>
+{% else %}
+<div class="msg success" style="margin-bottom:16px">✅ Fully settled — nothing outstanding.</div>
+{% endif %}
+
+<div class="card" style="margin-bottom:16px">
+  <h3>Charges</h3>
+  <table class="tbl">
+    <thead><tr><th>Date</th><th>Type</th><th>Details</th><th>Total</th><th>Paid</th><th>Balance</th></tr></thead>
+    <tbody>
+      {% for inv in s.invoices %}
+      <tr>
+        <td>{{ inv.created_at|date:"Y-m-d" }}</td>
+        <td><span class="badge">Service</span></td>
+        <td><a href="{% url 'invoice_detail' inv.id %}">{% for it in inv.items.all %}{{ it.description }}{% if not forloop.last %}, {% endif %}{% empty %}Invoice #{{ inv.id }}{% endfor %}</a></td>
+        <td>{{ inv.total }}</td><td>{{ inv.paid }}</td>
+        <td>{% if inv.balance > 0 %}<span class="danger">{{ inv.balance }}</span>{% else %}0{% endif %}</td>
+      </tr>
+      {% endfor %}
+      {% for sale in s.sales %}
+      <tr>
+        <td>{{ sale.created_at|date:"Y-m-d" }}</td>
+        <td><span class="badge amber">Pharmacy</span></td>
+        <td><a href="{% url 'sale_detail' sale.id %}">{% for it in sale.items.all %}{{ it.medicine.name }} ×{{ it.quantity }}{% if not forloop.last %}, {% endif %}{% endfor %}</a></td>
+        <td>{{ sale.total }}</td><td>{{ sale.paid }}</td>
+        <td>{% if sale.balance > 0 %}<span class="danger">{{ sale.balance }}</span>{% else %}0{% endif %}</td>
+      </tr>
+      {% endfor %}
+      {% if not s.invoices and not s.sales %}
+      <tr><td colspan="6" class="muted">No charges yet.</td></tr>
+      {% endif %}
+    </tbody>
+    <tfoot>
+      <tr><td colspan="3" style="text-align:right"><strong>Grand Total</strong></td>
+        <td><strong>{{ s.charged }}</strong></td><td><strong>{{ s.paid }}</strong></td>
+        <td><strong>{{ s.outstanding }}</strong></td></tr>
+    </tfoot>
+  </table>
+</div>
+
+<div class="card">
+  <h3>Payment History</h3>
+  <table class="tbl">
+    <thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Collected By</th><th>Note</th></tr></thead>
+    <tbody>
+      {% for p in s.payments %}
+      <tr>
+        <td>{{ p.created_at|date:"Y-m-d H:i" }}</td>
+        <td><strong>{{ p.amount }}</strong></td>
+        <td>{{ p.payment_method }}</td>
+        <td class="muted">{{ p.collected_by.get_full_name|default:p.collected_by.email }}</td>
+        <td>{{ p.note|default:"—" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="muted">No payments recorded yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

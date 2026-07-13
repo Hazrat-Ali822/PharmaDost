@@ -1,0 +1,33 @@
+{% extends 'partials/base.html' %}
+{% block title %}Return #{{ ret.id }}{% endblock %}
+{% block page_title %}Purchase Return #{{ ret.id }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Purchase Return #{{ ret.id }}</h2>
+  <a class="btn alt" href="{% url 'preturn_list' %}">Back</a>
+</div>
+<div class="card" style="margin-bottom:12px">
+  <strong>Supplier:</strong> {{ ret.supplier|default:"—" }} &nbsp;|&nbsp;
+  <strong>Reason:</strong> {{ ret.get_reason_display }} &nbsp;|&nbsp;
+  <strong>Date:</strong> {{ ret.created_at|date:"Y-m-d H:i" }}
+  {% if ret.notes %}<div class="muted" style="margin-top:6px">{{ ret.notes }}</div>{% endif %}
+</div>
+<table class="tbl">
+  <thead>
+    <tr><th>#</th><th>Medicine</th><th>Batch</th><th>Qty</th><th>Cost Price</th><th>Line Total</th></tr>
+  </thead>
+  <tbody>
+    {% for it in ret.items.all %}
+    <tr>
+      <td>{{ forloop.counter }}</td>
+      <td>{{ it.batch.medicine.name }}</td>
+      <td>{{ it.batch.batch_number|default:it.batch.id }}</td>
+      <td>{{ it.quantity }}</td>
+      <td>{{ it.cost_price }}</td>
+      <td>{{ it.line_total }}</td>
+    </tr>
+    {% endfor %}
+    <tr><td colspan="5" style="text-align:right"><strong>Total</strong></td><td><strong>{{ ret.total }}</strong></td></tr>
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends 'partials/base.html' %}
+{% block title %}Ultrasound Dashboard{% endblock %}
+{% block page_title %}Ultrasound / Radiology{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>Ultrasound Desk 🩻</h2><div class="muted">{{ request.user.get_full_name|default:request.user.email }}</div></div>
+  <a class="btn primary" href="{% url 'imaging:study_create' %}">+ New Study</a>
+</div>
+
+<div class="stat-grid">
+  <div class="stat"><div class="ic amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><div class="meta"><span class="value">{{ pending_count }}</span><span class="label">Pending Scans</span></div></div>
+  <div class="stat"><div class="ic green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg></div><div class="meta"><span class="value">{{ reported_count }}</span><span class="label">Reported</span></div></div>
+  <a class="stat" href="{% url 'imaging:study_list' %}" style="text-decoration:none;color:inherit">
+    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="11" r="3"/></svg></div>
+    <div class="meta"><span class="value" style="font-size:18px">All Studies</span><span class="label">Open list</span></div>
+  </a>
+  <a class="stat" href="{% url 'patient_list' %}" style="text-decoration:none;color:inherit">
+    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></div>
+    <div class="meta"><span class="value" style="font-size:18px">Patients</span><span class="label">Look up</span></div>
+  </a>
+</div>
+
+<div class="card" style="margin-top:16px">
+  <div class="page-head"><h3>Pending / In-progress studies</h3>
+    <a class="btn sm alt" href="{% url 'imaging:study_list' %}">View all</a></div>
+  <table class="tbl">
+    <thead><tr><th>#</th><th>Date</th><th>Patient</th><th>Modality</th><th>Study</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for s in pending_studies %}
+      <tr>
+        <td>{{ s.id }}</td>
+        <td>{{ s.study_date|date:"Y-m-d H:i" }}</td>
+        <td>{{ s.patient.full_name }}</td>
+        <td><span class="badge">{{ s.get_modality_display }}</span></td>
+        <td>{{ s.study_name }}</td>
+        <td><span class="badge gray">{{ s.status }}</span></td>
+        <td><a class="btn sm" href="{% url 'imaging:study_report_edit' s.id %}">Report</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="muted">No pending studies. 🎉</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

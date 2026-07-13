@@ -1,0 +1,15 @@
+{% extends 'partials/base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}Pay Supplier{% endblock %}
+{% block content %}
+<div class="form-card">
+  <h2>{{ title }}</h2>
+  <p>Current payable: <strong>{{ supplier.balance }}</strong></p>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button class="btn" type="submit">Record Payment</button>
+    <a class="btn alt" href="{% url 'supplier_ledger' supplier.pk %}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

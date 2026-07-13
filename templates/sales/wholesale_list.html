@@ -1,0 +1,36 @@
+{% extends 'partials/base.html' %}
+{% block title %}Wholesale Orders{% endblock %}
+{% block page_title %}Wholesale Orders{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>📦 Wholesale Orders</h2><div class="muted">Build a big order fast, print it, then bill it in one click.</div></div>
+  <a class="btn" href="{% url 'wholesale_order_create' %}">+ New Order</a>
+</div>
+<div class="card">
+  <table class="tbl">
+    <thead><tr><th>#</th><th>Date</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for o in orders %}
+      <tr>
+        <td>{{ o.id }}</td>
+        <td>{{ o.created_at|date:"Y-m-d H:i" }}</td>
+        <td>{{ o.display_customer }}</td>
+        <td>{{ o.item_count }} lines · {{ o.total_qty }} units</td>
+        <td>Rs {{ o.total }}</td>
+        <td>
+          {% if o.status == 'DRAFT' %}<span class="badge amber">Draft</span>
+          {% elif o.status == 'BILLED' %}<span class="badge green">Billed</span>
+          {% else %}<span class="badge gray">Cancelled</span>{% endif %}
+        </td>
+        <td>
+          {% if o.status == 'BILLED' and o.sale_id %}<a class="btn sm alt" href="{% url 'sale_detail' o.sale_id %}">Bill</a>
+          {% else %}<a class="btn sm" href="{% url 'wholesale_order_edit' o.id %}">Open</a>{% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="muted">No wholesale orders yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

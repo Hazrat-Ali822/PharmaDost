@@ -1,0 +1,66 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Setup — PharmaDost</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <style>
+    body { background: var(--bg); }
+    .wrap { max-width: 720px; margin: 40px auto; padding: 0 18px; }
+    .hero { display:flex; align-items:center; gap:14px; margin-bottom: 20px; }
+    .hero .logo { width:52px;height:52px;border-radius:14px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:24px;
+      background:linear-gradient(135deg,var(--primary),var(--accent)); }
+    .hero h1 { font-size:26px; margin:0; }
+    .mod { display:flex; gap:10px; align-items:flex-start; padding:12px; border:1px solid var(--border);
+      border-radius:12px; margin-bottom:8px; cursor:pointer; transition:border-color .15s, background .15s; }
+    .mod:hover { border-color: var(--primary); }
+    .mod input { margin-top:3px; width:18px; height:18px; }
+    .mod b { display:block; }
+    .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    @media (max-width:600px){ .grid2{ grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <span class="logo">P</span>
+    <div><h1>Welcome to PharmaDost</h1><div class="muted">Let’s set up your system — takes a minute.</div></div>
+  </div>
+
+  {% if error %}<div class="msg error" style="margin-bottom:14px">{{ error }}</div>{% endif %}
+
+  <form method="post">{% csrf_token %}
+    <div class="card" style="margin-bottom:16px">
+      <h3>1 · Your Business</h3>
+      <p><label>Business Name</label><input type="text" name="brand_name" placeholder="e.g. Al-Shifa Clinic & Pharmacy" required></p>
+      <p><label>Tagline (optional)</label><input type="text" name="brand_tagline" placeholder="Hospital &amp; Pharmacy"></p>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <h3>2 · Admin Account</h3>
+      <p class="muted" style="font-size:13px;margin-top:0">You’ll use this to log in and manage everything.</p>
+      <div class="grid2">
+        <p><label>Admin Email</label><input type="email" name="email" placeholder="admin@yourclinic.com" required></p>
+        <p><label>Password</label><input type="password" name="password" placeholder="min 6 characters" required></p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <h3>3 · Which modules do you use?</h3>
+      <p class="muted" style="font-size:13px;margin-top:0">Tick only what your business needs — you can change this later in Settings.</p>
+      {% for key, label, desc, feats in modules %}
+      <label class="mod">
+        <input type="checkbox" name="modules" value="{{ key }}" {% if key in selected %}checked{% endif %}>
+        <span><b>{{ label }}</b><span class="muted" style="font-size:13px">{{ desc }}</span></span>
+      </label>
+      {% endfor %}
+    </div>
+
+    <button class="btn primary" type="submit" style="width:100%;justify-content:center;padding:12px;font-size:15px">Finish Setup →</button>
+  </form>
+</div>
+</body>
+</html>

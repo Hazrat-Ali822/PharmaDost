@@ -1,0 +1,21 @@
+{% extends 'partials/base.html' %}
+{% block title %}New Wholesale Order{% endblock %}
+{% block page_title %}New Wholesale Order{% endblock %}
+{% block content %}
+<div class="form-card" style="max-width:560px">
+  <div class="page-head"><h2>📦 New Wholesale Order</h2>
+    <a class="btn alt" href="{% url 'wholesale_order_list' %}">Back</a></div>
+  <form method="post">{% csrf_token %}
+    <p><label>Customer (registered — needed to bill at wholesale rate)</label>
+      <select name="customer">
+        <option value="">— walk-in / choose later —</option>
+        {% for c in customers %}<option value="{{ c.id }}">{{ c.shop_name|default:c.name }}{% if c.phone %} · {{ c.phone }}{% endif %}</option>{% endfor %}
+      </select>
+    </p>
+    <p><label>…or a name (if not registered yet)</label><input name="customer_name" placeholder="e.g. Ali Medical Store"></p>
+    <p><label>Note (optional)</label><input name="note" placeholder="e.g. order for 12-Jul"></p>
+    <button class="btn" type="submit">Create &amp; add items →</button>
+  </form>
+  <p class="muted" style="font-size:13px;margin-top:10px">Next you'll add items fast — paste a whole list, quick-add with search/barcode, or repeat a previous order.</p>
+</div>
+{% endblock %}

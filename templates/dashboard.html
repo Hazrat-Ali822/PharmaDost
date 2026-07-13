@@ -1,0 +1,72 @@
+{% extends 'partials/base.html' %}
+{% block title %}Dashboard — PharmaDost{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Welcome back 👋</h2>
+    <div class="muted">{{ today|date:"l, d M Y" }}</div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <a class="btn" href="{% url 'patient_add' %}">+ Patient</a>
+    <a class="btn alt" href="{% url 'appointment_add' %}">Book Appointment</a>
+    <a class="btn alt" href="{% url 'sale_create' %}">New Bill</a>
+    <a class="btn alt" href="{% url 'invoice_create' %}">Create Invoice</a>
+  </div>
+</div>
+
+<div class="stat-grid">
+  <div class="stat">
+    <div class="ic amber">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18v13H3z"/><path d="M3 7l2-3h14l2 3M9 12h6"/></svg>
+    </div>
+    <div class="meta"><span class="value">{{ low_stock|length }}</span><span class="label">Low Stock Items</span></div>
+  </div>
+  <div class="stat">
+    <div class="ic red">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+    </div>
+    <div class="meta"><span class="value">{{ expiring|length }}</span><span class="label">Expiring ≤ 30 days</span></div>
+  </div>
+  <div class="stat">
+    <div class="ic green">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 2v4M16 2v4M4 10h16"/></svg>
+    </div>
+    <div class="meta"><span class="value">{{ today|date:"d M" }}</span><span class="label">Today</span></div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:16px">
+  <div class="page-head">
+    <h3>Low Stock (below reorder level)</h3>
+    <a class="btn alt sm" href="{% url 'medicine_list' %}">View inventory</a>
+  </div>
+  <table class="tbl">
+    <thead><tr><th>Name</th><th>Brand</th><th>Qty</th></tr></thead>
+    <tbody>
+      {% for m in low_stock %}
+      <tr><td>{{ m.name }}</td><td>{{ m.brand }}</td><td><span class="badge amber">{{ m.quantity }}</span></td></tr>
+      {% empty %}
+      <tr><td colspan="3" class="muted">No low stock items 🎉</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <div class="page-head">
+    <h3>Expiring Soon (next 30 days)</h3>
+    <a class="btn alt sm" href="{% url 'inventory_report' %}">Inventory report</a>
+  </div>
+  <table class="tbl">
+    <thead><tr><th>Name</th><th>Brand</th><th>Expiry</th></tr></thead>
+    <tbody>
+      {% for m in expiring %}
+      <tr><td>{{ m.name }}</td><td>{{ m.brand }}</td><td><span class="badge red">{{ m.expiry_date }}</span></td></tr>
+      {% empty %}
+      <tr><td colspan="3" class="muted">Nothing expiring in the next 30 days.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

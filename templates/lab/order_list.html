@@ -1,0 +1,36 @@
+{% extends "lab/_base.html" %}
+{% block title %}Lab Orders{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>Lab Orders 🧪</h2><div class="muted">Pathology / laboratory tests</div></div>
+  <a class="btn primary" href="{% url 'lab:order_create' %}">+ New Order</a>
+</div>
+
+<table class="tbl">
+  <thead><tr><th>#</th><th>Date</th><th>Patient</th><th>Tests</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+    {% for o in orders %}
+    <tr>
+      <td>{{ o.id }}</td>
+      <td>{{ o.order_date|date:"Y-m-d H:i" }}</td>
+      <td><a href="{% url 'patient_detail' o.patient.pk %}">{{ o.patient.full_name }}</a></td>
+      <td>{{ o.results.count }} test{{ o.results.count|pluralize }}</td>
+      <td>
+        {% if o.status == 'Completed' or o.status == 'Verified' or o.status == 'Delivered' %}
+          <span class="badge green">{{ o.status }}</span>
+        {% else %}
+          <span class="badge gray">{{ o.status }}</span>
+        {% endif %}
+      </td>
+      <td style="white-space:nowrap">
+        <a class="btn sm alt" href="{% url 'lab:order_detail' o.id %}">View</a>
+        <a class="btn sm" href="{% url 'lab:order_results_edit' o.id %}">Results</a>
+        <a class="btn sm alt" href="{% url 'lab:order_report' o.id %}" target="_blank">Print</a>
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="6" class="muted">No lab orders yet. Click “New Order”.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

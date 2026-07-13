@@ -1,0 +1,12 @@
+{% extends "lab/_base.html" %}
+{% block title %}Create User{% endblock %}
+{% block content %}
+<div class="card">
+<h2>Create User</h2>
+<form method="post">{% csrf_token %}
+<table>{{ form.as_table }}</table>
+<button class="btn btn-primary" type="submit">Create</button>
+</form>
+<p class="muted" style="margin-top:8px;">Only Superuser can create Admins. Admins can create Manager/Pharmacist/LabTech/Sonographer.</p>
+</div>
+{% endblock %}

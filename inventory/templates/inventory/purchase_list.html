@@ -1,0 +1,15 @@
+{% extends 'partials/base.html' %}
+{% block content %}
+<h2>Purchases</h2>
+<table>
+  <tr><th>ID</th><th>Supplier</th><th>Received</th><th>Lines</th></tr>
+  {% for o in orders %}
+  <tr>
+    <td><a href="{% url 'purchase_detail' pk=o.id %}">{{ o.id }}</a></td>
+    <td>{{ o.supplier }}</td>
+    <td>{{ o.received_at }}</td>
+    <td>{{ o.items.count }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

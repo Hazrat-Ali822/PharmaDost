@@ -1,0 +1,38 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Portal Suspended — PharmaDost</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <style>
+    body { background: #f3f4f6; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: 'Inter', sans-serif; margin: 0; padding: 20px; }
+    .susp-card { background: #fff; border-radius: 16px; padding: 40px 32px; box-shadow: 0 4px 20px rgba(0,0,0,.08); max-width: 500px; width: 100%; text-align: center; border: 1px solid var(--border); }
+    .susp-icon { font-size: 54px; margin-bottom: 20px; }
+    h2 { font-size: 26px; color: #111827; margin: 0 0 12px; }
+    p { color: #4b5563; font-size: 15px; line-height: 1.6; margin: 0 0 24px; }
+    .btn-contact { background: #4f46e5; color: #fff; border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 15px; cursor: pointer; text-decoration: none; display: inline-block; }
+    .footer { font-size: 12px; color: #9ca3af; margin-top: 30px; }
+  </style>
+</head>
+<body>
+  <div class="susp-card">
+    <div class="susp-icon">⚠️</div>
+    <h2>Portal Temporarily Suspended</h2>
+    <p>
+      The system access for <strong>{{ hospital.name }}</strong> has been suspended due to pending subscription payment or license expiration.
+    </p>
+    <p style="font-size:14px; background:#fef2f2; color:#ef4444; border:1px solid #fecaca; padding:12px; border-radius:8px; margin-bottom:24px;">
+      Please clear your pending dues to resume using the system.
+    </p>
+    <a href="mailto:support@pharmadost.com" class="btn-contact">Contact Platform Owner</a>
+    <div class="footer">
+      Powered by PharmaDost SaaS
+    </div>
+  </div>
+</body>
+</html>

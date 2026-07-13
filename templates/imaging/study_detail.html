@@ -1,0 +1,46 @@
+{% extends 'partials/base.html' %}
+{% block title %}Study #{{ study.id }}{% endblock %}
+{% block page_title %}Imaging Study{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>{{ study.get_modality_display }} — {{ study.study_name }}</h2>
+    <div class="muted">
+      <a href="{% url 'patient_detail' study.patient.pk %}">{{ study.patient.full_name }}</a>
+      · MRN {{ study.patient.mrn }} · {{ study.study_date|date:"Y-m-d H:i" }}
+      · <span class="badge {% if study.status == 'Reported' or study.status == 'Delivered' %}green{% else %}gray{% endif %}">{{ study.status }}</span>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a class="btn" href="{% url 'imaging:study_report_edit' study.id %}">Edit Report</a>
+    <a class="btn alt" href="{% url 'imaging:study_report' study.id %}" target="_blank">Print</a>
+    {% if study.status != 'Delivered' %}
+    <a class="btn success" href="{% url 'imaging:study_mark_delivered' study.id %}">Mark Delivered</a>
+    {% endif %}
+    <a class="btn alt" href="{% url 'imaging:study_list' %}">Back</a>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:16px">
+  <div class="muted" style="font-size:13px">
+    Referred by: {% if study.referred_by %}{{ study.referred_by.get_full_name|default:study.referred_by.email }}{% else %}—{% endif %}
+    · Performed by: {% if study.performed_by %}{{ study.performed_by.get_full_name|default:study.performed_by.email }}{% else %}—{% endif %}
+    {% if study.price %}· Fee: {{ study.price }}{% endif %}
+  </div>
+  {% if study.clinical_note %}<p style="margin-top:8px"><strong>Referring note:</strong> {{ study.clinical_note }}</p>{% endif %}
+</div>
+
+<div class="card" style="margin-bottom:16px">
+  <h3>Findings</h3>
+  <p>{{ study.findings|linebreaksbr|default:"— not reported yet —" }}</p>
+  <h3 style="margin-top:12px">Impression</h3>
+  <p>{{ study.impression|linebreaksbr|default:"—" }}</p>
+</div>
+
+{% if study.image %}
+<div class="card">
+  <h3>Film / Image</h3>
+  <a href="{{ study.image.url }}" target="_blank"><img src="{{ study.image.url }}" alt="film" style="max-width:100%;border-radius:10px;border:1px solid var(--border)"></a>
+</div>
+{% endif %}
+{% endblock %}

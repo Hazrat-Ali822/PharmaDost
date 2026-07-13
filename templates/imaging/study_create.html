@@ -1,0 +1,23 @@
+{% extends 'partials/base.html' %}
+{% block title %}New Imaging Study{% endblock %}
+{% block page_title %}New Imaging Study{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>Register Imaging Study</h2><div class="muted">Ultrasound / X-Ray / CT / MRI / ECG</div></div>
+  <a class="btn alt" href="{% url 'imaging:study_list' %}">Back</a>
+</div>
+
+<form method="post" class="card" style="max-width:640px">{% csrf_token %}
+  {% for field in form %}
+  <div class="form-row" style="align-items:flex-start">
+    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+    <div style="flex:1">
+      {{ field }}
+      {% if field.help_text %}<div class="muted" style="font-size:12px;margin-top:4px">{{ field.help_text }}</div>{% endif %}
+      {% for e in field.errors %}<div class="danger" style="font-size:12px">{{ e }}</div>{% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+  <button class="btn primary" type="submit">Register &amp; Add Report →</button>
+</form>
+{% endblock %}

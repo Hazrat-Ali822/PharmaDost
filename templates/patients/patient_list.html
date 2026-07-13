@@ -1,0 +1,40 @@
+{% extends 'partials/base.html' %}
+{% block title %}Patients{% endblock %}
+{% block page_title %}Patients{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>{% if is_doctor %}My Patients{% else %}Patient Registry{% endif %}</h2>
+  {% if not is_doctor %}<a class="btn" href="{% url 'patient_add' %}">Register Patient</a>{% endif %}
+</div>
+{% if is_doctor %}<div class="msg info" style="margin-bottom:12px">Showing only patients assigned to you (via appointments).</div>{% endif %}
+<form class="search" method="get">
+  <input type="text" name="q" value="{{ q }}" placeholder="Search by name, phone, MRN or CNIC" />
+  <button class="btn" type="submit">Search</button>
+</form>
+<div class="card">
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th>MRN</th><th>Name</th><th>Phone</th><th>Gender</th><th>Blood Group</th><th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for patient in patients %}
+      <tr>
+        <td>{{ patient.mrn }}</td>
+        <td><a href="{% url 'patient_detail' patient.pk %}">{{ patient.full_name }}</a></td>
+        <td>{{ patient.phone }}</td>
+        <td>{{ patient.get_gender_display }}</td>
+        <td>{{ patient.blood_group }}</td>
+        <td>
+          <a class="btn sm" href="{% url 'patient_detail' patient.pk %}">History</a>
+          <a class="btn sm alt" href="{% url 'patient_edit' patient.pk %}">Edit</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="muted">No patients found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

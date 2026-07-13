@@ -1,0 +1,41 @@
+{% extends 'partials/base.html' %}
+{% block title %}Receive Order #{{ req.id }}{% endblock %}
+{% block page_title %}Receive Goods{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>📥 Receive Order #{{ req.id }}</h2><div class="muted">{{ req.display_supplier }} — confirm what actually arrived. This adds the stock.</div></div>
+  <a class="btn alt" href="{% url 'po_edit' req.id %}">Back</a>
+</div>
+
+<form method="post">{% csrf_token %}
+<div class="card" style="margin-bottom:14px">
+  <div class="form-row">
+    <div><label>Supplier invoice #</label><input name="invoice_number" placeholder="optional"></div>
+    <div><label>Paid now (Rs)</label><input name="paid" type="number" min="0" step="0.01" placeholder="blank = full"></div>
+  </div>
+  <p class="muted" style="font-size:13px">Leave “Paid” blank to mark the whole bill paid; enter a smaller amount to put the rest on the supplier's khata.</p>
+</div>
+
+<div class="card">
+  <h3>Items received</h3>
+  <table class="tbl">
+    <thead><tr><th>Medicine</th><th style="width:100px">Qty</th><th style="width:110px">Cost</th><th style="width:150px">Expiry *</th><th style="width:130px">Batch #</th></tr></thead>
+    <tbody>
+      {% for it in items %}
+      <tr>
+        <td>{{ it.medicine.name }}</td>
+        <td><input name="recv_qty_{{ it.id }}" type="number" min="0" value="{{ it.quantity }}" style="width:85px"></td>
+        <td><input name="recv_cost_{{ it.id }}" type="number" min="0" step="0.01" value="{{ it.cost_price }}" style="width:95px"></td>
+        <td><input name="recv_exp_{{ it.id }}" type="date" value="{{ it.medicine.expiry_date|date:'Y-m-d' }}"></td>
+        <td><input name="recv_batch_{{ it.id }}" placeholder="optional" style="width:115px"></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted" style="font-size:12px;margin-top:8px">* Expiry drives FEFO dispensing — set it to the batch that arrived. Set a qty to 0 to skip a line (e.g. supplier didn't send it).</p>
+  <div style="margin-top:12px">
+    <button class="btn success" type="submit" onclick="return confirm('Add these to stock?');">✅ Confirm &amp; add to stock</button>
+  </div>
+</div>
+</form>
+{% endblock %}

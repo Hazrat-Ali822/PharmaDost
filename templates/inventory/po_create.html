@@ -1,0 +1,21 @@
+{% extends 'partials/base.html' %}
+{% block title %}New Purchase Order{% endblock %}
+{% block page_title %}New Purchase Order{% endblock %}
+{% block content %}
+<div class="form-card" style="max-width:560px">
+  <div class="page-head"><h2>🚚 New Purchase Order</h2>
+    <a class="btn alt" href="{% url 'po_list' %}">Back</a></div>
+  <form method="post">{% csrf_token %}
+    <p><label>Supplier</label>
+      <select name="supplier">
+        <option value="">— choose later —</option>
+        {% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}{% if s.phone %} · {{ s.phone }}{% endif %}</option>{% endfor %}
+      </select>
+    </p>
+    <p><label>…or a name (if not saved yet)</label><input name="supplier_name" placeholder="e.g. ABC Distributors"></p>
+    <p><label>Note (optional)</label><input name="note" placeholder="e.g. weekly order"></p>
+    <button class="btn" type="submit">Create &amp; add items →</button>
+  </form>
+  <p class="muted" style="font-size:13px;margin-top:10px">Next: add items fast — paste a list, quick-add with search/barcode, repeat a past order, or auto-fill everything that's running low.</p>
+</div>
+{% endblock %}

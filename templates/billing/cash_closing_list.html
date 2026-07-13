@@ -1,0 +1,35 @@
+{% extends 'partials/base.html' %}
+{% block title %}Cash Closing{% endblock %}
+{% block page_title %}Cash Closing{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>Cash Closing 🧾</h2><div class="muted">Day-end drawer reconciliation</div></div>
+  <a class="btn primary" href="{% url 'cash_closing_new' %}">+ Close a Day</a>
+</div>
+
+<div class="card">
+  <table class="tbl">
+    <thead><tr><th>Date</th><th>Opening</th><th>Cash In</th><th>Cash Out</th><th>Expected</th><th>Counted</th><th>Difference</th><th>Closed By</th></tr></thead>
+    <tbody>
+      {% for c in closings %}
+      <tr>
+        <td><strong>{{ c.date|date:"Y-m-d" }}</strong></td>
+        <td>{{ c.opening }}</td>
+        <td class="muted">+{{ c.cash_in }}</td>
+        <td class="muted">−{{ c.cash_out }}</td>
+        <td>{{ c.expected }}</td>
+        <td>{{ c.counted }}</td>
+        <td>
+          {% if c.difference == 0 %}<span class="badge green">0 (tallied)</span>
+          {% elif c.difference > 0 %}<span class="badge amber">+{{ c.difference }} (excess)</span>
+          {% else %}<span class="badge red">{{ c.difference }} (short)</span>{% endif %}
+        </td>
+        <td class="muted">{{ c.closed_by.get_full_name|default:c.closed_by.email }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8" class="muted">No days closed yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

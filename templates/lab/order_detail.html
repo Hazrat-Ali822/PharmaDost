@@ -1,0 +1,40 @@
+{% extends "lab/_base.html" %}
+{% block title %}Order #{{ order.id }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Lab Order #{{ order.id }}</h2>
+    <div class="muted">
+      <a href="{% url 'patient_detail' order.patient.pk %}">{{ order.patient.full_name }}</a>
+      · {{ order.order_date|date:"Y-m-d H:i" }}
+      · <span class="badge {% if order.status == 'Completed' or order.status == 'Verified' or order.status == 'Delivered' %}green{% else %}gray{% endif %}">{{ order.status }}</span>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <a class="btn" href="{% url 'lab:order_results_edit' order.id %}">Edit Results</a>
+    <a class="btn success" href="{% url 'lab:order_report' order.id %}" target="_blank">Print Report</a>
+    {% if order.status != 'Completed' %}
+    <a class="btn alt" href="{% url 'lab:order_mark_completed' order.id %}">Mark Completed</a>
+    {% endif %}
+    <a class="btn alt" href="{% url 'lab:order_list' %}">Back</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="muted" style="font-size:13px;margin-bottom:8px">Ordered by: {{ order.ordered_by|default:"—" }}</div>
+  <table class="tbl">
+    <thead><tr><th>Test</th><th>Result</th><th>Normal Range</th><th>Unit</th><th>Remarks</th></tr></thead>
+    <tbody>
+      {% for r in order.results.all %}
+      <tr>
+        <td>{{ r.lab_test.name }}</td>
+        <td><strong>{{ r.result_value|default:"—" }}</strong></td>
+        <td>{{ r.lab_test.normal_range|default:"—" }}</td>
+        <td>{{ r.lab_test.unit|default:"" }}</td>
+        <td>{{ r.remarks|default:"" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
