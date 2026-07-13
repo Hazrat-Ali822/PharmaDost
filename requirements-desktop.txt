@@ -1,6 +1,0 @@
-# Extra packages needed only to run / build the local Windows desktop app.
-# Install with:  pip install -r requirements.txt -r requirements-desktop.txt
--r requirements.txt
-waitress==3.0.0        # local WSGI server the launcher runs
-pywebview==5.2         # native desktop window (optional — falls back to browser)
-pyinstaller==6.10.0    # build-time only: bundles everything into PharmaDost.exe

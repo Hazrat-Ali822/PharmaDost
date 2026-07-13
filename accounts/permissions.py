@@ -17,6 +17,8 @@ FEATURES = {
     'prescriptions': {'ADMIN', 'DOCTOR', 'RECEPTIONIST'},
     'lab':           {'ADMIN', 'DOCTOR', 'LABTECH', 'RECEPTIONIST'},
     'imaging':       {'ADMIN', 'DOCTOR', 'SONOGRAPHER', 'RECEPTIONIST'},
+    'ipd':           {'ADMIN', 'RECEPTIONIST', 'DOCTOR', 'ACCOUNTANT'},
+    'ot':            {'ADMIN', 'DOCTOR'},
     # Pharmacy
     'pos':           {'ADMIN', 'PHARMACIST', 'WHOLESALE'},
     'inventory':     {'ADMIN', 'PHARMACIST'},
@@ -49,6 +51,8 @@ FEATURE_GROUPS = [
         ('prescriptions', 'Prescriptions'),
         ('lab', 'Lab'),
         ('imaging', 'Imaging / Radiology'),
+        ('ipd', 'IPD / Patient Admission'),
+        ('ot', 'OT / Surgery Management'),
     ]),
     ('Pharmacy', [
         ('pos', 'Point of Sale / Bills'),
@@ -87,6 +91,10 @@ MODULES = [
      ['pos', 'inventory', 'customers', 'suppliers']),
     ('opd', 'OPD / Hospital', 'Patients, doctors, appointments & prescriptions',
      ['patients', 'opd', 'appointments', 'doctors', 'prescriptions']),
+    ('ipd', 'Inpatient (IPD)', 'Ward, bed, patient admission and daily rounds management',
+     ['ipd']),
+    ('ot', 'Operation Theatre (OT)', 'Surgery booking, team scheduling and logs management',
+     ['ot']),
     ('lab', 'Laboratory', 'Lab test orders & printed reports',
      ['lab']),
     ('imaging', 'Imaging / Radiology', 'Ultrasound, X-ray, CT, MRI studies & reports',

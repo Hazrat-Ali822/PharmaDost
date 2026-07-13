@@ -1,0 +1,49 @@
+{% extends 'partials/base.html' %}
+{% block title %}Manage Wards & Beds{% endblock %}
+{% block page_title %}Wards & Beds Manager{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Wards & Beds Configuration</h2>
+  <div style="display:flex; gap:10px;">
+    <a class="btn alt" href="{% url 'ipd:admission_list' %}">Back to Registry</a>
+    <a class="btn alt success" href="{% url 'ipd:ward_create' %}" style="background:#22c55e; color:white;">Add Ward</a>
+    <a class="btn" href="{% url 'ipd:bed_create' %}">Add Bed</a>
+  </div>
+</div>
+
+<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:20px;">
+  {% for w in wards %}
+  <div class="card" style="padding:20px; border-radius:12px; border:1px solid var(--border); background:var(--card-bg);">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px;">
+      <h3 style="margin:0; font-weight:700; font-size:16.5px; color:var(--text)">{{ w.name }}</h3>
+      <span style="font-size:13px; font-weight:600; color:var(--primary)">Rs {{ w.daily_rate }}/day</span>
+    </div>
+    
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <span class="muted" style="font-size:12px; display:block;">Registered Beds:</span>
+      <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap:10px;">
+        {% for b in w.beds.all %}
+        <div style="padding:10px; border-radius:8px; border:1px solid var(--border); text-align:center; background:var(--bg); transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1.0)'">
+          <strong style="display:block; font-size:14px; margin-bottom:4px; color:var(--text)">Bed {{ b.bed_number }}</strong>
+          
+          {% if b.status == 'Available' %}
+          <span style="background:#22c55e; color:#fff; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:600;">Available</span>
+          {% elif b.status == 'Occupied' %}
+          <span style="background:#ef4444; color:#fff; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:600;">Occupied</span>
+          {% else %}
+          <span style="background:#f59e0b; color:#fff; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:600;">Maintenance</span>
+          {% endif %}
+        </div>
+        {% empty %}
+        <div style="grid-column:1/-1;" class="muted text-center py-2">No beds added yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="card" style="grid-column: 1 / -1; text-align:center; padding:40px; color:var(--muted)">
+    No Wards or Beds configured yet. Click "Add Ward" or "Add Bed" to register one.
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

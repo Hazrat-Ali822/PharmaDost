@@ -75,6 +75,8 @@ INSTALLED_APPS = [
     "user_mgmt",
     "audit",
     "sales.apps.SalesConfig",
+    "ipd",
+    "ot",
 ]
 
 LOGIN_URL = '/login/'

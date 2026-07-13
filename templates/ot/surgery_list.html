@@ -1,0 +1,91 @@
+{% extends 'partials/base.html' %}
+{% block title %}Operation Theatre (OT){% endblock %}
+{% block page_title %}Operation Theatre (OT) Portal{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Operation Theatre (OT)</h2>
+  <div style="display:flex; gap:10px;">
+    <a class="btn alt" href="{% url 'ot:procedure_list' %}">Surgery Catalog</a>
+    <a class="btn" href="{% url 'ot:surgery_create' %}">Schedule Surgery</a>
+  </div>
+</div>
+
+<h3 style="margin-bottom:12px; font-weight:700;">Scheduled & In-Progress Surgeries</h3>
+<div class="card" style="margin-bottom:40px;">
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th>Patient</th>
+        <th>Procedure</th>
+        <th>Start Time</th>
+        <th>Lead Surgeon</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in upcoming_surgeries %}
+      <tr>
+        <td><strong>{{ s.patient.full_name }}</strong></td>
+        <td><span style="color:var(--primary); font-weight:600;">{{ s.procedure.name }}</span></td>
+        <td>{{ s.start_time|date:"Y-m-d H:i" }}</td>
+        <td>Dr. {{ s.lead_surgeon.name }}</td>
+        <td>
+          {% if s.end_time %}
+          <span class="badge success" style="background:#22c55e; color:white; padding:3px 8px; border-radius:6px; font-size:11px;">Scheduled</span>
+          {% else %}
+          <span class="badge warning" style="background:#f59e0b; color:white; padding:3px 8px; border-radius:6px; font-size:11px;">In Progress</span>
+          {% endif %}
+        </td>
+        <td>
+          <a class="btn sm" href="{% url 'ot:surgery_detail' s.pk %}">Details</a>
+          <a class="btn sm alt" href="{% url 'ot:surgery_edit' s.pk %}">Update Log</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="muted">No upcoming or active surgeries scheduled.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h3 style="margin-bottom:12px; font-weight:700;">Completed Operations History</h3>
+<div class="card">
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th>Patient</th>
+        <th>Procedure</th>
+        <th>Date</th>
+        <th>Lead Surgeon</th>
+        <th>Anesthesia</th>
+        <th>Outcome</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in completed_surgeries %}
+      <tr>
+        <td><strong>{{ s.patient.full_name }}</strong></td>
+        <td>{{ s.procedure.name }}</td>
+        <td>{{ s.start_time|date:"Y-m-d" }}</td>
+        <td>Dr. {{ s.lead_surgeon.name }}</td>
+        <td>{{ s.anesthesia_type }}</td>
+        <td>
+          {% if s.outcome == 'Successful' %}
+          <span style="color:#22c55e; font-weight:600;">Successful</span>
+          {% else %}
+          <span style="color:#ef4444; font-weight:600;">{{ s.outcome }}</span>
+          {% endif %}
+        </td>
+        <td>
+          <a class="btn sm alt" href="{% url 'ot:surgery_detail' s.pk %}">Report View</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="muted">No past surgery records found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

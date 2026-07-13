@@ -28,6 +28,8 @@ urlpatterns = [
     path('manage/', include('user_mgmt.urls')),
     path('lab/', include('lab.urls')),
     path('imaging/', include('imaging.urls')),
+    path('ipd/', include('ipd.urls')),
+    path('ot/', include('ot.urls')),
     path('manage/audit/', include('audit.urls')),
     path('accounts/', include('django.contrib.auth.urls')),
     path('<slug:hospital_slug>/', hospital_login, name='hospital_login_landing'),

@@ -1,0 +1,72 @@
+{% extends 'partials/base.html' %}
+{% block title %}Surgery Detail - {{ record.patient.full_name }}{% endblock %}
+{% block page_title %}Surgery Log Report{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Surgery Log Report</h2>
+  <div style="display:flex; gap:10px;">
+    <a class="btn alt" href="{% url 'ot:surgery_list' %}">Back to Portal</a>
+    <a class="btn alt success" href="{% url 'ot:surgery_edit' record.pk %}" style="background:#22c55e; color:white;">Update / Edit Log</a>
+  </div>
+</div>
+
+<div class="grid" style="grid-template-columns: 1fr 2fr; gap: 20px; align-items: start;">
+  <!-- Left Side: Surgical Profile -->
+  <div class="card" style="padding:20px; border-radius:12px; border: 1px solid var(--border);">
+    <h3 style="margin-top:0; font-weight:700; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px;">Surgical Profile</h3>
+    
+    <div style="display:flex; flex-direction:column; gap:12px; font-size:14px;">
+      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Patient Name</span><strong style="font-size:16px;">{{ record.patient.full_name }}</strong></p>
+      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">MRN</span><strong>{{ record.patient.mrn }}</strong></p>
+      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Lead Surgeon</span><strong>Dr. {{ record.lead_surgeon.name }}</strong></p>
+      <hr style="border:0; border-top:1px solid var(--border); margin:5px 0;" />
+      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Surgical Procedure</span><strong style="color:var(--primary); font-size:15px;">{{ record.procedure.name }}</strong></p>
+      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Procedure Fee</span><strong>Rs {{ record.procedure.standard_charge }}</strong></p>
+      <hr style="border:0; border-top:1px solid var(--border); margin:5px 0;" />
+      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Start Time</span><strong>{{ record.start_time|date:"Y-m-d H:i" }}</strong></p>
+      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">End Time</span>
+        {% if record.end_time %}
+        <strong>{{ record.end_time|date:"Y-m-d H:i" }}</strong>
+        {% else %}
+        <span class="badge warning" style="background:#f59e0b; color:white; padding:2px 6px; border-radius:4px; font-size:10px;">In Progress</span>
+        {% endif %}
+      </p>
+      
+      <hr style="border:0; border-top:1px solid var(--border); margin:5px 0;" />
+      <p style="margin:0;">
+        <span class="muted" style="display:block; font-size:12px;">Outcome</span>
+        {% if record.outcome == 'Successful' %}
+        <span class="badge success" style="background:#22c55e; color:white; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:600;">Successful</span>
+        {% elif record.outcome == 'Complications' %}
+        <span class="badge warning" style="background:#f59e0b; color:white; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:600;">Complications</span>
+        {% else %}
+        <span class="badge danger" style="background:#ef4444; color:white; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:600;">Failed</span>
+        {% endif %}
+      </p>
+    </div>
+  </div>
+
+  <!-- Right Side: Detailed Operation Notes -->
+  <div style="display:flex; flex-direction:column; gap:20px;">
+    <div class="card" style="padding:25px; border-radius:12px; border: 1px solid var(--border);">
+      <h3 style="margin-top:0; font-weight:700; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px;">Operation Notes & Details</h3>
+      
+      <div style="display:flex; flex-direction:column; gap:15px; font-size:14px;">
+        <div>
+          <span class="muted" style="display:block; font-size:12px; margin-bottom:4px;">Anesthesia Administered:</span>
+          <strong>{{ record.anesthesia_type|default:"None / Local" }}</strong>
+        </div>
+        <div>
+          <span class="muted" style="display:block; font-size:12px; margin-bottom:4px;">Surgical Team Members:</span>
+          <p style="margin:0; white-space:pre-wrap;">{{ record.surgical_team|default:"No other team members logged." }}</p>
+        </div>
+        <hr style="border:0; border-top:1px solid var(--border); margin:5px 0;" />
+        <div>
+          <span class="muted" style="display:block; font-size:12px; margin-bottom:6px;">Detailed Operative Notes:</span>
+          <p style="margin:0; white-space:pre-wrap; line-height:1.6; color:var(--text);">{{ record.operation_notes }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
