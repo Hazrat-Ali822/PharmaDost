@@ -8,6 +8,7 @@ urlpatterns = [
     path('new/', views.admission_create, name='admission_create'),
     path('<int:pk>/', views.admission_detail, name='admission_detail'),
     path('<int:pk>/round/', views.doctor_round_add, name='doctor_round_add'),
+    path('<int:pk>/medication/', views.medication_log_add, name='medication_log_add'),
     path('<int:pk>/discharge/', views.admission_discharge, name='admission_discharge'),
     path('wards/', views.ward_bed_list, name='ward_bed_list'),
     path('wards/new/', views.ward_create, name='ward_create'),

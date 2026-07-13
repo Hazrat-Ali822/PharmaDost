@@ -6,7 +6,7 @@ from opd.models import Doctor
 class WardForm(forms.ModelForm):
     class Meta:
         model = Ward
-        fields = ['name', 'daily_rate']
+        fields = ['name', 'ward_type', 'daily_rate']
 
 class BedForm(forms.ModelForm):
     class Meta:
@@ -42,10 +42,21 @@ class DoctorRoundForm(forms.ModelForm):
             'prescription_updates': forms.Textarea(attrs={'rows': 2}),
         }
 
+from .models import Ward, Bed, Admission, DoctorRound, MedicationLog
+
 class DischargeForm(forms.ModelForm):
     class Meta:
         model = Admission
         fields = ['discharge_notes']
         widgets = {
             'discharge_notes': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Enter discharge summary and medications advised...'}),
+        }
+
+class MedicationLogForm(forms.ModelForm):
+    class Meta:
+        model = MedicationLog
+        fields = ['medicine_name', 'dosage', 'administered_at', 'notes']
+        widgets = {
+            'administered_at': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'notes': forms.TextInput(attrs={'placeholder': 'e.g. given after lunch, patient tolerated well'}),
         }

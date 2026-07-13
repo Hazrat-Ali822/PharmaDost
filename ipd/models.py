@@ -3,14 +3,26 @@ from django.utils import timezone
 from saas.utils import TenantManager
 
 class Ward(models.Model):
+    WARD_TYPE_CHOICES = [
+        ('General Male', 'General Ward (Male)'),
+        ('General Female', 'General Ward (Female)'),
+        ('ICU', 'Intensive Care Unit (ICU)'),
+        ('CCU', 'Coronary Care Unit (CCU)'),
+        ('Paediatric', 'Paediatric (Kids) Ward'),
+        ('Surgical', 'Surgical Ward'),
+        ('Maternity', 'Maternity Ward'),
+        ('Private Room', 'Private Room'),
+        ('Semi-Private Room', 'Semi-Private Room'),
+    ]
     name = models.CharField(max_length=100)
+    ward_type = models.CharField(max_length=50, choices=WARD_TYPE_CHOICES, default='General Male')
     daily_rate = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
 
     objects = TenantManager()
 
     def __str__(self):
-        return f"{self.name} (Rs {self.daily_rate}/day)"
+        return f"{self.name} [{self.get_ward_type_display()}] (Rs {self.daily_rate}/day)"
 
 class Bed(models.Model):
     STATUS_CHOICES = [
@@ -62,3 +74,17 @@ class DoctorRound(models.Model):
 
     def __str__(self):
         return f"Round: {self.admission.patient.name} at {self.round_time.strftime('%Y-%m-%d %H:%M')}"
+
+class MedicationLog(models.Model):
+    admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name='medication_logs')
+    medicine_name = models.CharField(max_length=150, verbose_name="Medicine Name")
+    dosage = models.CharField(max_length=100, help_text="e.g. 500mg, 1 tablet, 2 puffs")
+    administered_at = models.DateTimeField(default=timezone.now, verbose_name="Administered Date & Time")
+    administered_by = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='medications_administered')
+    notes = models.CharField(max_length=255, blank=True)
+    hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
+
+    objects = TenantManager()
+
+    def __str__(self):
+        return f"{self.medicine_name} ({self.dosage}) to {self.admission.patient.full_name} by {self.administered_by.email}"
