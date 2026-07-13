@@ -31,7 +31,7 @@
           <div class="bed-container" style="position:relative;">
             {% if b.status == 'Available' %}
               <a href="{% url 'ipd:admission_create' %}?bed_id={{ b.pk }}" style="text-decoration:none;">
-                <div class="bed-card available">
+                <div class="bed-card available" title="Available - Click to Admit">
                   <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" style="width:28px; height:28px;">
                     <path d="M2 20V9a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v11M2 17h20M22 20v-5a2 2 0 0 0-2-2h-4v7"/>
                     <circle cx="6" cy="11" r="1.5" fill="#22c55e"/>
@@ -41,50 +41,28 @@
                 </div>
               </a>
               
-              <div class="bed-tooltip" style="text-align:center; padding:10px; width:160px;">
-                <span style="font-size:13px; font-weight:700; color:#22c55e;">Available</span>
-                <div style="font-size:11px; color:var(--muted); margin-top:4px;">Click to Admit Patient</div>
-              </div>
-              
             {% elif b.status == 'Occupied' %}
-              <div class="bed-card occupied">
-                <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" style="width:28px; height:28px;">
-                  <path d="M2 20V9a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v11M2 17h20M22 20v-5a2 2 0 0 0-2-2h-4v7"/>
-                  <circle cx="6" cy="11" r="1.5" fill="#ef4444"/>
-                </svg>
-                <strong style="display:block; font-size:13.5px; color:var(--text)">Bed {{ b.bed_number }}</strong>
-                <span style="font-size:10px; font-weight:700; text-transform:uppercase; color:#ef4444; letter-spacing:0.3px;">Occupied</span>
-              </div>
-              
               {% for adm in b.admissions.all %}
                 {% if adm.status == 'Admitted' %}
-                <div class="bed-tooltip">
-                  <div style="font-weight:700; margin-bottom:8px; border-bottom:1px solid var(--border); padding-bottom:6px; color:var(--text); font-size:14px;">
-                    {{ adm.patient.full_name }}
-                  </div>
-                  <div style="font-size:12px; margin-bottom:5px; color:var(--text);"><span class="muted">MRN:</span> <strong>{{ adm.patient.mrn }}</strong></div>
-                  <div style="font-size:12px; margin-bottom:5px; color:var(--text);"><span class="muted">Doctor:</span> <strong>Dr. {{ adm.attending_doctor.full_name }}</strong></div>
-                  <div style="font-size:12px; margin-bottom:12px; color:var(--text);"><span class="muted">Admitted:</span> <strong>{{ adm.admission_date|date:"Y-m-d H:i" }}</strong></div>
-                  <div style="display:flex; gap:8px;">
-                    <a href="{% url 'ipd:admission_detail' adm.pk %}" class="btn sm alt" style="flex:1; text-align:center; font-size:11px; padding:4px 8px;">View Logs</a>
-                    <a href="{% url 'ipd:admission_discharge' adm.pk %}" class="btn sm danger" style="flex:1; text-align:center; font-size:11px; padding:4px 8px; background:#ef4444; color:white; border:none;">Discharge</a>
-                  </div>
+                <div class="bed-card occupied" onclick="showBedDetails('{{ adm.patient.full_name|escapejs }}', '{{ adm.patient.mrn|escapejs }}', 'Dr. {{ adm.attending_doctor.full_name|escapejs }}', '{{ adm.admission_date|date:'Y-m-d H:i' }}', '{% url 'ipd:admission_detail' adm.pk %}', '{% url 'ipd:admission_discharge' adm.pk %}', '{{ b.bed_number|escapejs }}', '{{ w.name|escapejs }}')" title="Occupied - Click for Details">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" style="width:28px; height:28px;">
+                    <path d="M2 20V9a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v11M2 17h20M22 20v-5a2 2 0 0 0-2-2h-4v7"/>
+                    <circle cx="6" cy="11" r="1.5" fill="#ef4444"/>
+                  </svg>
+                  <strong style="display:block; font-size:13.5px; color:var(--text)">Bed {{ b.bed_number }}</strong>
+                  <span style="font-size:10px; font-weight:700; text-transform:uppercase; color:#ef4444; letter-spacing:0.3px;">Occupied</span>
                 </div>
                 {% endif %}
               {% endfor %}
               
             {% else %}
-              <div class="bed-card maintenance">
+              <div class="bed-card maintenance" title="Maintenance" onclick="alert('Bed {{ b.bed_number }} is currently under maintenance.')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" style="width:28px; height:28px;">
                   <path d="M2 20V9a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v11M2 17h20M22 20v-5a2 2 0 0 0-2-2h-4v7"/>
                   <circle cx="6" cy="11" r="1.5" fill="#f59e0b"/>
                 </svg>
                 <strong style="display:block; font-size:13.5px; color:var(--text)">Bed {{ b.bed_number }}</strong>
                 <span style="font-size:10px; font-weight:700; text-transform:uppercase; color:#f59e0b; letter-spacing:0.3px;">Service</span>
-              </div>
-              <div class="bed-tooltip" style="text-align:center; padding:10px; width:160px;">
-                <span style="font-size:13px; font-weight:700; color:#f59e0b;">Maintenance</span>
-                <div style="font-size:11px; color:var(--muted); margin-top:4px;">Bed Under Service</div>
               </div>
             {% endif %}
           </div>
@@ -102,6 +80,51 @@
   </div>
   {% endfor %}
 </div>
+
+<!-- Modal Popup for Bed Details -->
+<div id="bedDetailsModal" style="display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); backdrop-filter:blur(4px); align-items:center; justify-content:center;">
+  <div class="card" style="width:400px; padding:25px; border-radius:16px; border:1px solid var(--border); background:var(--surface); box-shadow:var(--shadow-xl); position:relative;">
+    <h3 style="margin-top:0; font-weight:700; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px; color:var(--text);" id="modalTitle">Bed Details</h3>
+    <div style="display:flex; flex-direction:column; gap:12px; font-size:14.5px; margin-bottom:20px;">
+      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Patient Name</span><strong id="modalPatient" style="font-size:16px; color:var(--primary);"></strong></p>
+      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">MRN</span><strong id="modalMRN"></strong></p>
+      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Attending Doctor</span><strong id="modalDoctor"></strong></p>
+      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Admission Date & Time</span><strong id="modalDate"></strong></p>
+    </div>
+    <div style="display:flex; gap:10px;">
+      <a href="#" id="modalViewLog" class="btn alt" style="flex:1; text-align:center; color:var(--text) !important;">View Logs</a>
+      <a href="#" id="modalDischarge" class="btn danger" style="flex:1; text-align:center; background:#ef4444; color:white !important; border:none;">Discharge</a>
+    </div>
+    <button onclick="closeModal()" style="position:absolute; top:15px; right:15px; background:none; border:none; font-size:18px; cursor:pointer; color:var(--muted); line-height:1;">✕</button>
+  </div>
+</div>
+
+<script>
+  function showBedDetails(patientName, mrn, doctor, admDate, detailUrl, dischargeUrl, bedNumber, wardName) {
+    document.getElementById('modalTitle').innerText = 'Bed ' + bedNumber + ' (' + wardName + ')';
+    document.getElementById('modalPatient').innerText = patientName;
+    document.getElementById('modalMRN').innerText = mrn;
+    document.getElementById('modalDoctor').innerText = doctor;
+    document.getElementById('modalDate').innerText = admDate;
+    
+    document.getElementById('modalViewLog').href = detailUrl;
+    document.getElementById('modalDischarge').href = dischargeUrl;
+    
+    const modal = document.getElementById('bedDetailsModal');
+    modal.style.display = 'flex';
+  }
+  
+  function closeModal() {
+    document.getElementById('bedDetailsModal').style.display = 'none';
+  }
+  
+  window.onclick = function(event) {
+    const modal = document.getElementById('bedDetailsModal');
+    if (event.target == modal) {
+      modal.style.display = 'none';
+    }
+  }
+</script>
 
 <style>
   .bed-card {
@@ -148,30 +171,6 @@
     border-color: #f59e0b;
     box-shadow: 0 4px 12px rgba(245, 158, 11, 0.12);
     transform: translateY(-2px);
-  }
-
-  .bed-tooltip {
-    visibility: hidden;
-    opacity: 0;
-    width: 250px;
-    background: var(--card-bg);
-    color: var(--text);
-    border: 1px solid var(--border);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.05);
-    border-radius: 12px;
-    padding: 16px;
-    position: absolute;
-    z-index: 100;
-    bottom: 112%;
-    left: 50%;
-    transform: translateX(-50%) translateY(8px);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    text-align: left;
-  }
-  .bed-container:hover .bed-tooltip {
-    visibility: visible;
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
   }
 </style>
 {% endblock %}

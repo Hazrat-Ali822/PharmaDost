@@ -261,10 +261,12 @@ h3 { font-size: 16px; }
   background: linear-gradient(100deg, transparent, rgba(255,255,255,.35), transparent);
   transform: skewX(-18deg); transition: left .55s var(--ease); pointer-events: none;
 }
-.btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--primary) 55%, transparent); }
+.btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--primary) 55%, transparent); color: #fff !important; }
 .btn:hover::after { left: 130%; }
 .btn:active { transform: translateY(0) scale(.985); }
 .btn:focus-visible { outline: none; box-shadow: var(--ring); }
+a.btn:hover, button.btn:hover { color: #fff !important; }
+a.btn.alt:hover, button.btn.alt:hover { color: var(--text) !important; }
 
 .btn.alt, .btn-link {
   background: var(--surface); background-image: none; color: var(--text); border-color: var(--border-strong);
