@@ -16,12 +16,53 @@ from django.shortcuts import reverse
 
 @feature_required('inventory')
 def dashboard(request):
+    import json
+    from datetime import timedelta
+    from django.db.models import Sum
+    from billing.models import Invoice, Expense
+    from sales.models import Sale
+
     low_stock = Medicine.objects.low_stock()
     expiring = Medicine.objects.expiring_soon(30)
+    
+    # Financial Analytics (Last 7 Days)
+    today = timezone.localdate()
+    seven_days_ago = today - timedelta(days=6)
+    
+    labels = []
+    daily_income = []
+    daily_expense = []
+    
+    for i in range(7):
+        day = seven_days_ago + timedelta(days=i)
+        labels.append(day.strftime("%a %d"))
+        
+        # Calculate income
+        day_inv = Invoice.objects.filter(created_at__date=day).aggregate(s=Sum('paid'))['s'] or 0
+        day_sale = Sale.objects.filter(created_at__date=day, is_returned=False).aggregate(s=Sum('paid'))['s'] or 0
+        daily_income.append(float(day_inv + day_sale))
+        
+        # Calculate expenses
+        day_exp = Expense.objects.filter(date=day).aggregate(s=Sum('amount'))['s'] or 0
+        daily_expense.append(float(day_exp))
+        
+    # Calculate 30-day summaries
+    thirty_days_ago = today - timedelta(days=29)
+    tot_inv_30d = Invoice.objects.filter(created_at__date__gte=thirty_days_ago).aggregate(s=Sum('paid'))['s'] or 0
+    tot_sale_30d = Sale.objects.filter(created_at__date__gte=thirty_days_ago, is_returned=False).aggregate(s=Sum('paid'))['s'] or 0
+    total_income_30d = float(tot_inv_30d + tot_sale_30d)
+    
+    total_expense_30d = float(Expense.objects.filter(date__gte=thirty_days_ago).aggregate(s=Sum('amount'))['s'] or 0)
+    
     return render(request, 'dashboard.html', {
         'low_stock': low_stock,
         'expiring': expiring,
-        'today': timezone.localdate(),
+        'today': today,
+        'finance_labels': json.dumps(labels),
+        'finance_income': json.dumps(daily_income),
+        'finance_expense': json.dumps(daily_expense),
+        'total_income_30d': total_income_30d,
+        'total_expense_30d': total_expense_30d,
     })
 
 

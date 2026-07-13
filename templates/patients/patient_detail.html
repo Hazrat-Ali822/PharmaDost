@@ -29,6 +29,126 @@
   <div class="stat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="11" r="3"/><path d="M12 3v2M12 19v2"/></svg></div><div class="meta"><span class="value">{{ imaging_studies|length }}</span><span class="label">Imaging / Scans</span></div></div>
 </div>
 
+<!-- Patient Clinical Vitals Trend Chart -->
+<div class="card" style="margin-bottom:16px; padding: 25px;">
+  <h3 style="margin-top:0; font-weight:700; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px; display:flex; align-items:center; gap:8px;">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:20px; height:20px; color:var(--primary);"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+    Clinical Vitals Trend Chart
+  </h3>
+  <div id="chart-container">
+    <canvas id="vitalsChart" style="max-height:280px; width:100%;"></canvas>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const data = JSON.parse('{{ vitals_json|escapejs }}');
+    if (!data || data.length === 0) {
+      document.getElementById('chart-container').innerHTML = '<p class="muted" style="text-align:center; padding: 20px 0;">No vital signs records (Temperature, Pulse or BP) logged yet for this patient.</p>';
+      return;
+    }
+    const labels = data.map(item => item.date);
+    const temps = data.map(item => item.temp);
+    const pulses = data.map(item => item.pulse);
+    
+    const ctx = document.getElementById('vitalsChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Temperature (°F)',
+            data: temps,
+            borderColor: '#f59e0b',
+            backgroundColor: 'rgba(245, 158, 11, 0.05)',
+            borderWidth: 3,
+            tension: 0.35,
+            yAxisID: 'yTemp',
+            spanGaps: true,
+            pointRadius: 4,
+            pointHoverRadius: 6
+          },
+          {
+            label: 'Pulse Rate (bpm)',
+            data: pulses,
+            borderColor: '#ef4444',
+            backgroundColor: 'rgba(239, 68, 68, 0.05)',
+            borderWidth: 3,
+            tension: 0.35,
+            yAxisID: 'yPulse',
+            spanGaps: true,
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              font: {
+                family: 'Inter',
+                weight: '600'
+              }
+            }
+          },
+          tooltip: {
+            padding: 12,
+            callbacks: {
+              afterLabel: function(context) {
+                const index = context.dataIndex;
+                const bp = data[index].bp;
+                const source = data[index].source;
+                return (bp ? '\nBlood Pressure: ' + bp : '') + (source ? '\nDept: ' + source : '');
+              }
+            }
+          }
+        },
+        scales: {
+          yTemp: {
+            type: 'linear',
+            position: 'left',
+            title: {
+              display: true,
+              text: 'Temperature (°F)',
+              font: {
+                family: 'Inter',
+                weight: '600'
+              }
+            },
+            min: 94,
+            max: 106,
+            grid: {
+              color: 'rgba(0,0,0,0.03)'
+            }
+          },
+          yPulse: {
+            type: 'linear',
+            position: 'right',
+            title: {
+              display: true,
+              text: 'Pulse (bpm)',
+              font: {
+                family: 'Inter',
+                weight: '600'
+              }
+            },
+            min: 40,
+            max: 160,
+            grid: {
+              drawOnChartArea: false
+            }
+          }
+        }
+      }
+    });
+  });
+</script>
+
 <!-- Clinical records: consultations, procedures, operations, scans -->
 <div class="card" style="margin-bottom:16px">
   <div class="page-head"><h3>Clinical Records (Diagnosis / Operations / Scans)</h3>

@@ -95,6 +95,52 @@ def patient_detail(request, pk):
                       .prefetch_related('items', 'items__medicine')
                       .order_by('-created_at'))
 
+    # Gather chronological vital signs history (OPD + IPD)
+    import json
+    vitals_history = []
+    
+    # 1. OPD Clinical Records
+    for record in clinical:
+        if record.temperature or record.bp or record.pulse:
+            dt_str = record.date.strftime("%Y-%m-%d") if record.date else "—"
+            vitals_history.append({
+                'source': 'OPD',
+                'date': dt_str,
+                'temp': float(record.temperature) if record.temperature else None,
+                'bp': record.bp or '',
+                'pulse': int(record.pulse) if record.pulse else None,
+            })
+            
+    # 2. IPD Daily Rounds
+    from ipd.models import Admission, DoctorRound
+    admissions = Admission.objects.filter(patient=patient)
+    rounds = DoctorRound.objects.filter(admission__in=admissions).order_by('round_time')
+    for round_rec in rounds:
+        if round_rec.vitals_temp or round_rec.vitals_bp or round_rec.vitals_pulse:
+            temp_val = None
+            try:
+                temp_val = float(round_rec.vitals_temp.replace('°F', '').strip())
+            except (ValueError, AttributeError):
+                pass
+            pulse_val = None
+            try:
+                pulse_val = int(round_rec.vitals_pulse.replace('bpm', '').strip())
+            except (ValueError, AttributeError):
+                pass
+                
+            dt_str = round_rec.round_time.strftime("%Y-%m-%d %H:%M") if round_rec.round_time else "—"
+            vitals_history.append({
+                'source': 'IPD',
+                'date': dt_str,
+                'temp': temp_val,
+                'bp': round_rec.vitals_bp or '',
+                'pulse': pulse_val,
+            })
+
+    # Sort chronological
+    vitals_history.sort(key=lambda x: x['date'])
+    vitals_json = json.dumps(vitals_history)
+
     return render(request, 'patients/patient_detail.html', {
         'patient': patient,
         'appointments': appointments,
@@ -104,6 +150,7 @@ def patient_detail(request, pk):
         'imaging_studies': imaging_studies,
         'invoices': invoices,
         'pharmacy_sales': pharmacy_sales,
+        'vitals_json': vitals_json,
     })
 
 
