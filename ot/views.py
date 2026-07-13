@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.utils import timezone
+from django.db.models import Q
 from accounts.decorators import feature_required
 from .models import SurgeryCategory, SurgeryProcedure, SurgeryRecord
 from .forms import SurgeryCategoryForm, SurgeryProcedureForm, SurgeryRecordForm
@@ -10,7 +11,7 @@ def surgery_list(request):
     now = timezone.now()
     # Active/Scheduled surgeries (start time in future or no end time)
     upcoming_surgeries = SurgeryRecord.objects.filter(
-        models.Q(start_time__gt=now) | models.Q(end_time__isnull=True)
+        Q(start_time__gt=now) | Q(end_time__isnull=True)
     ).select_related('patient', 'procedure', 'lead_surgeon').order_by('start_time')
     
     # Completed surgeries
