@@ -1,0 +1,62 @@
+{% extends 'partials/base.html' %}
+{% block title %}Audit Log{% endblock %}
+{% block page_title %}Audit Log{% endblock %}
+{% block content %}
+<div class="page-head"><div><h2>Audit Log 🛡️</h2>
+  <div class="muted">Who did what, and when</div></div></div>
+
+<form method="get" class="search" style="align-items:flex-end">
+  <div><label class="muted" style="font-size:12px;display:block">Action</label>
+    <select name="action" onchange="this.form.submit()">
+      <option value="">All</option>
+      {% for val, lbl in actions %}<option value="{{ val }}" {% if f.action == val %}selected{% endif %}>{{ lbl }}</option>{% endfor %}
+    </select></div>
+  <div><label class="muted" style="font-size:12px;display:block">Model</label>
+    <select name="model" onchange="this.form.submit()">
+      <option value="">All</option>
+      {% for m in models %}<option value="{{ m }}" {% if f.model == m %}selected{% endif %}>{{ m }}</option>{% endfor %}
+    </select></div>
+  <div><label class="muted" style="font-size:12px;display:block">User</label>
+    <select name="user" onchange="this.form.submit()">
+      <option value="">All</option>
+      {% for u in users %}<option value="{{ u.id }}" {% if f.user == u.id|stringformat:'s' %}selected{% endif %}>{{ u.get_full_name|default:u.email }}</option>{% endfor %}
+    </select></div>
+  <div><label class="muted" style="font-size:12px;display:block">Search</label>
+    <input type="search" name="q" value="{{ f.q }}" placeholder="object…"></div>
+  <button class="btn" type="submit">Filter</button>
+</form>
+
+<div class="card">
+  <table class="tbl">
+    <thead><tr><th>When</th><th>User</th><th>Action</th><th>Type</th><th>Object</th></tr></thead>
+    <tbody>
+      {% for log in page %}
+      <tr>
+        <td class="muted" style="white-space:nowrap">{{ log.timestamp|date:"Y-m-d H:i:s" }}</td>
+        <td>{% if log.user %}{{ log.user.get_full_name|default:log.user.email }}{% else %}<span class="muted">system</span>{% endif %}</td>
+        <td>
+          {% if log.action == 'CREATE' %}<span class="badge green">Create</span>
+          {% elif log.action == 'DELETE' %}<span class="badge red">Delete</span>
+          {% elif log.action == 'LOGIN' %}<span class="badge">Login</span>
+          {% elif log.action == 'LOGOUT' %}<span class="badge gray">Logout</span>
+          {% elif log.action == 'LOGIN_FAILED' %}<span class="badge red">Login failed</span>
+          {% else %}<span class="badge amber">Update</span>{% endif %}
+        </td>
+        <td>{{ log.model_name }}</td>
+        <td>{{ log.object_repr|default:log.description|default:"—" }}{% if log.object_id %} <span class="muted">#{{ log.object_id }}</span>{% endif %}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="muted">No audit entries match.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if page.paginator.num_pages > 1 %}
+  <div style="display:flex;gap:8px;align-items:center;justify-content:center;margin-top:14px">
+    {% if page.has_previous %}<a class="btn sm alt" href="?{% if f.action %}action={{ f.action }}&{% endif %}{% if f.model %}model={{ f.model }}&{% endif %}{% if f.user %}user={{ f.user }}&{% endif %}{% if f.q %}q={{ f.q }}&{% endif %}page={{ page.previous_page_number }}">← Prev</a>{% endif %}
+    <span class="muted">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}<a class="btn sm alt" href="?{% if f.action %}action={{ f.action }}&{% endif %}{% if f.model %}model={{ f.model }}&{% endif %}{% if f.user %}user={{ f.user }}&{% endif %}{% if f.q %}q={{ f.q }}&{% endif %}page={{ page.next_page_number }}">Next →</a>{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

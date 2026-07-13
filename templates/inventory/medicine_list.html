@@ -1,0 +1,51 @@
+{% extends 'partials/base.html' %}
+{% block title %}Medicines{% endblock %}
+{% block page_title %}Inventory{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Medicines</h2>
+  <a class="btn" href="{% url 'medicine_add' %}">+ Add Medicine</a>
+</div>
+<form method="get" class="search">
+  <input type="text" name="q" value="{{ q }}" placeholder="Search name, generic, brand or barcode">
+  <button class="btn" type="submit">Search</button>
+</form>
+<table class="tbl">
+  <thead>
+    <tr>
+      <th></th><th>Name</th><th>Generic</th><th>Category</th><th>Rack</th>
+      <th>Retail</th><th>Wholesale</th><th>Qty</th><th>Expiry</th><th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for m in meds %}
+    <tr>
+      <td style="width:44px">
+        {% if m.image %}
+          <img src="{{ m.image.url }}" alt="" style="width:38px;height:38px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">
+        {% else %}
+          <div style="width:38px;height:38px;border-radius:8px;background:var(--primary-50);color:var(--primary);display:grid;place-items:center;font-weight:700">{{ m.name|first|upper }}</div>
+        {% endif %}
+      </td>
+      <td>
+        {{ m.name }}
+        {% if m.brand %}<div class="muted" style="font-size:12px">{{ m.brand }}</div>{% endif %}
+      </td>
+      <td>{{ m.generic_name|default:"—" }}</td>
+      <td>{% if m.category %}<span class="badge gray">{{ m.get_category_display }}</span>{% else %}—{% endif %}</td>
+      <td>{{ m.rack_location|default:"—" }}</td>
+      <td>{{ m.price }}</td>
+      <td>{% if m.wholesale_price %}{{ m.wholesale_price }}{% else %}<span class="muted">—</span>{% endif %}</td>
+      <td>{% if m.is_low_stock %}<span class="badge amber">{{ m.quantity }}</span>{% else %}{{ m.quantity }}{% endif %}</td>
+      <td class="{% if m.is_expired %}danger{% endif %}">{{ m.expiry_date }}</td>
+      <td>
+        <a class="btn alt sm" href="{% url 'medicine_edit' m.id %}">Edit</a>
+        <a class="btn danger sm" href="{% url 'medicine_delete' m.id %}">Delete</a>
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="10" class="muted">No medicines yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

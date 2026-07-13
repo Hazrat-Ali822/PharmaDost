@@ -1,0 +1,77 @@
+name,brand,price,quantity,expiry_date,supplier
+Paracetamol 500mg,ACME,100.00,80,2029-01-10,ACME Pharma
+Ibuprofen 200mg,HealthPlus,120.00,60,2028-11-15,HealthPlus
+Amoxicillin 500mg,NovaCare,250.00,40,2027-06-01,NovaCare
+Cetirizine 10mg,Zenith Meds,80.00,120,2027-12-20,Zenith Meds
+Omeprazole 20mg,BlueRiver Labs,150.00,90,2028-03-30,BlueRiver Labs
+Metformin 500mg,MediLife,200.00,100,2029-09-15,MediLife
+Atorvastatin 10mg,ACME,300.00,70,2030-02-01,ACME Pharma
+Losartan 50mg,HealthPlus,220.00,65,2028-07-07,HealthPlus
+Amlodipine 5mg,NovaCare,210.00,75,2029-10-10,NovaCare
+Azithromycin 500mg,Zenith Meds,350.00,50,2027-05-25,Zenith Meds
+Diclofenac 50mg,GreenLeaf,130.00,110,2028-04-04,GreenLeaf
+Pantoprazole 40mg,BlueRiver Labs,170.00,85,2029-08-18,BlueRiver Labs
+Doxycycline 100mg,MediLife,260.00,55,2027-09-12,MediLife
+Levofloxacin 500mg,ACME,390.00,30,2028-12-05,ACME Pharma
+Ciprofloxacin 500mg,HealthPlus,320.00,45,2027-07-21,HealthPlus
+Clopidogrel 75mg,NovaCare,410.00,25,2030-01-19,NovaCare
+Aspirin 75mg,Zenith Meds,90.00,150,2029-06-09,Zenith Meds
+Hydrochlorothiazide 25mg,GreenLeaf,140.00,80,2028-10-28,GreenLeaf
+Lisinopril 10mg,BlueRiver Labs,230.00,70,2029-03-13,BlueRiver Labs
+Furosemide 40mg,MediLife,160.00,60,2028-02-20,MediLife
+Spironolactone 25mg,ACME,240.00,55,2030-06-06,ACME Pharma
+Gliclazide 80mg,HealthPlus,210.00,50,2029-05-05,HealthPlus
+Glimipiride 2mg,NovaCare,190.00,65,2028-01-18,NovaCare
+Insulin Regular 100IU,Zenith Meds,850.00,25,2027-11-11,Zenith Meds
+Insulin NPH 100IU,GreenLeaf,870.00,20,2027-11-25,GreenLeaf
+Levothyroxine 50mcg,BlueRiver Labs,180.00,95,2029-09-01,BlueRiver Labs
+Prednisolone 5mg,MediLife,110.00,100,2028-06-16,MediLife
+Budesonide Inhaler 200mcg,ACME,950.00,18,2027-10-10,ACME Pharma
+Salbutamol Inhaler,HealthPlus,500.00,35,2028-08-08,HealthPlus
+Montelukast 10mg,NovaCare,260.00,70,2029-12-12,NovaCare
+Loratadine 10mg,Zenith Meds,95.00,130,2028-05-03,Zenith Meds
+Fexofenadine 120mg,GreenLeaf,210.00,60,2029-03-22,GreenLeaf
+Ranitidine 150mg,BlueRiver Labs,140.00,90,2026-12-31,BlueRiver Labs
+Esomeprazole 40mg,MediLife,270.00,65,2029-04-17,MediLife
+Calcium + Vitamin D3,ACME,220.00,120,2030-03-03,ACME Pharma
+Ferrous Sulfate 200mg,HealthPlus,160.00,100,2028-09-27,HealthPlus
+Folic Acid 5mg,NovaCare,75.00,140,2029-01-01,NovaCare
+Vitamin B-Complex,Zenith Meds,130.00,150,2030-07-07,Zenith Meds
+Vitamin C 500mg,GreenLeaf,90.00,160,2029-02-14,GreenLeaf
+Zinc Sulfate 20mg,BlueRiver Labs,85.00,140,2028-03-03,BlueRiver Labs
+ORS Sachet,MediLife,35.00,200,2027-08-08,MediLife
+Loperamide 2mg,ACME,70.00,120,2028-01-20,ACME Pharma
+Domperidone 10mg,HealthPlus,110.00,110,2029-10-10,HealthPlus
+Ondansetron 4mg,NovaCare,240.00,60,2028-12-01,NovaCare
+Metronidazole 400mg,Zenith Meds,150.00,100,2027-09-09,Zenith Meds
+Cefixime 200mg,GreenLeaf,360.00,45,2028-04-19,GreenLeaf
+Cefuroxime 500mg,BlueRiver Labs,520.00,30,2027-07-07,BlueRiver Labs
+Amoxicillin+Clavulanate 625mg,MediLife,480.00,35,2028-10-15,MediLife
+Clarithromycin 500mg,ACME,540.00,28,2027-05-20,ACME Pharma
+Warfarin 5mg,HealthPlus,210.00,40,2029-11-30,HealthPlus
+Enoxaparin 40mg,NovaCare,1250.00,15,2027-06-06,NovaCare
+Apixaban 5mg,Zenith Meds,1450.00,12,2029-09-09,Zenith Meds
+Rivaroxaban 20mg,GreenLeaf,1600.00,10,2030-01-25,GreenLeaf
+Clonazepam 0.5mg,BlueRiver Labs,190.00,55,2028-08-18,BlueRiver Labs
+Sertraline 50mg,MediLife,310.00,45,2029-02-02,MediLife
+Fluoxetine 20mg,ACME,280.00,50,2028-05-05,ACME Pharma
+Amitriptyline 25mg,HealthPlus,170.00,70,2029-03-03,HealthPlus
+Quetiapine 100mg,NovaCare,590.00,20,2030-04-14,NovaCare
+Olanzapine 10mg,Zenith Meds,560.00,22,2028-11-11,Zenith Meds
+Gabapentin 300mg,GreenLeaf,420.00,30,2029-06-06,GreenLeaf
+Pregabalin 75mg,BlueRiver Labs,650.00,25,2030-02-02,BlueRiver Labs
+Tramadol 50mg,MediLife,230.00,40,2028-09-09,MediLife
+Codeine Phosphate 30mg,ACME,270.00,35,2027-12-12,ACME Pharma
+Acetylcysteine 600mg,HealthPlus,300.00,50,2029-07-07,HealthPlus
+Guaifenesin Syrup,NovaCare,180.00,80,2028-03-03,NovaCare
+Dextromethorphan Syrup,Zenith Meds,160.00,90,2028-10-10,Zenith Meds
+Betamethasone Cream,GreenLeaf,140.00,60,2027-06-30,GreenLeaf
+Clotrimazole Cream,BlueRiver Labs,130.00,70,2029-01-15,BlueRiver Labs
+Mupirocin Ointment,MediLife,320.00,40,2028-12-31,MediLife
+Cetirizine Syrup 5mg/5ml,ACME,120.00,90,2029-05-20,ACME Pharma
+Azithromycin Suspension,HealthPlus,380.00,35,2027-08-18,HealthPlus
+ORAL Rehydration Salts (Flavored),NovaCare,45.00,220,2028-02-14,NovaCare
+Calamine Lotion,Zenith Meds,110.00,95,2029-09-09,Zenith Meds
+Hydrocortisone 1% Cream,GreenLeaf,150.00,60,2028-06-06,GreenLeaf
+Chlorhexidine Mouthwash,BlueRiver Labs,190.00,70,2029-04-04,BlueRiver Labs
+Lidocaine Jelly 2%,MediLife,260.00,30,2027-10-01,MediLife

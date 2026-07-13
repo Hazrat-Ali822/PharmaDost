@@ -1,0 +1,145 @@
+{% load static %}<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Print{% endblock %} — {{ branding.brand_name|default:"PharmaDost" }}</title>
+<style>
+  :root{
+    --pri: {{ branding.primary_color|default:'#4f46e5' }};
+    --acc: {{ branding.accent_color|default:'#0ea5a4' }};
+    --ink:#1f2937; --soft:#6b7280; --line:#e5e7eb;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font-family:"Segoe UI",Arial,Helvetica,sans-serif;color:var(--ink);background:#f3f4f6}
+  .sheet{background:#fff;max-width:820px;margin:16px auto;padding:34px 40px 120px;position:relative;min-height:1040px;
+         box-shadow:0 2px 14px rgba(0,0,0,.08)}
+  .noprint{max-width:820px;margin:12px auto 0;display:flex;gap:8px;align-items:center;justify-content:flex-end}
+  .noprint button,.noprint a{background:var(--pri);color:#fff;border:none;border-radius:8px;padding:8px 16px;
+       font-size:14px;font-weight:600;cursor:pointer;text-decoration:none}
+  .noprint .muted{color:#6b7280;font-size:13px;margin-right:auto}
+
+  /* ---- letterhead ---- */
+  .lh{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+  .lh .brand{display:flex;gap:12px;align-items:center}
+  .lh .logo{width:52px;height:52px;border-radius:12px;display:grid;place-items:center;font-weight:800;font-size:22px;
+       background:var(--pri);color:#fff;flex:none;overflow:hidden}
+  .lh .logo img{width:100%;height:100%;object-fit:cover}
+  .lh .bname{font-size:23px;font-weight:800;letter-spacing:.2px;line-height:1.1}
+  .lh .tag{color:var(--soft);font-size:12.5px}
+  .lh .meta{text-align:right;font-size:12.5px;color:var(--soft);line-height:1.6}
+  .lh .meta b{color:var(--ink)}
+  .rule{height:3px;background:linear-gradient(90deg,var(--pri),var(--acc));border-radius:3px;margin:14px 0 6px}
+
+  .doc-title{text-align:center;font-size:15px;letter-spacing:3px;text-transform:uppercase;color:var(--pri);
+       font-weight:800;margin:14px 0 4px}
+  .who{display:flex;justify-content:space-between;gap:16px;font-size:13px;background:#f8fafc;border:1px solid var(--line);
+       border-radius:10px;padding:10px 14px;margin:12px 0}
+  .who b{color:var(--ink)}
+
+  h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:1px;color:var(--pri);margin:16px 0 6px;
+       border-bottom:1px solid var(--line);padding-bottom:4px}
+  table{width:100%;border-collapse:collapse;margin:8px 0;font-size:13px}
+  th,td{padding:8px 10px;text-align:left}
+  thead th{background:var(--pri);color:#fff;font-weight:600}
+  tbody tr{border-bottom:1px solid var(--line)}
+  .num{text-align:right}
+  .sign{margin-top:46px;text-align:right;font-size:13px}
+  .sign .line{display:inline-block;border-top:1px solid var(--ink);padding-top:4px;min-width:200px;text-align:center}
+
+  /* ---- letterpad footer: address centered at the very bottom ---- */
+  .lh-foot{position:absolute;left:40px;right:40px;bottom:34px;text-align:center;font-size:12px;color:var(--soft);
+       border-top:1px solid var(--line);padding-top:10px}
+  .lh-foot .addr{color:var(--ink);font-weight:600}
+
+  /* =================== THEMES =================== */
+  /* Modern — coloured band header */
+  body.theme-modern .sheet{padding-top:0}
+  body.theme-modern .band{background:linear-gradient(120deg,var(--pri),var(--acc));color:#fff;margin:0 -40px 8px;
+       padding:26px 40px;display:flex;justify-content:space-between;align-items:center}
+  body.theme-modern .band .logo{background:rgba(255,255,255,.22)}
+  body.theme-modern .band .bname{color:#fff}
+  body.theme-modern .band .tag{color:rgba(255,255,255,.85)}
+  body.theme-modern .band .meta,body.theme-modern .band .meta b{color:#fff}
+  body.theme-modern .rule{display:none}
+  body.theme-modern thead th{background:var(--pri)}
+
+  /* Elegant — serif, thin lines, spacious */
+  body.theme-elegant{font-family:Georgia,"Times New Roman",serif}
+  body.theme-elegant .bname{letter-spacing:1px}
+  body.theme-elegant .rule{height:1px;background:var(--ink)}
+  body.theme-elegant .doc-title{color:var(--ink);font-weight:700;letter-spacing:5px}
+  body.theme-elegant thead th{background:#fff;color:var(--ink);border-bottom:2px solid var(--ink)}
+  body.theme-elegant h3.sec{color:var(--ink)}
+  body.theme-elegant .logo{border-radius:50%}
+
+  /* Minimal — clean, no colour blocks */
+  body.theme-minimal .rule{background:var(--line);height:1px}
+  body.theme-minimal .doc-title{color:var(--ink);letter-spacing:2px;font-weight:700}
+  body.theme-minimal thead th{background:#f3f4f6;color:var(--ink);border-bottom:1px solid #cbd5e1}
+  body.theme-minimal h3.sec{color:var(--ink)}
+  body.theme-minimal .logo{background:var(--ink)}
+  body.theme-minimal .who{background:#fff}
+
+  /* Pre-printed Letterhead — leave the top blank (their own printed header),
+     no app brand header and no app address footer. Just content. */
+  .lh-space{height:38mm}                 /* blank room for their pre-printed letterhead */
+  body.theme-letterhead .doc-title{color:var(--ink)}
+  body.theme-letterhead thead th{background:#f3f4f6;color:var(--ink);border-bottom:1px solid #cbd5e1}
+  body.theme-letterhead h3.sec{color:var(--ink);border-color:var(--line)}
+  body.theme-letterhead .sheet{padding-bottom:40px}
+  @media print{ body.theme-letterhead .lh-space{height:35mm} }
+
+  @media print{
+    body{background:#fff}
+    .noprint{display:none}
+    .sheet{box-shadow:none;margin:0;max-width:none;min-height:auto;padding:12px 8px 90px}
+    .lh-foot{position:fixed;left:8px;right:8px;bottom:10px}
+    @page{margin:14mm}
+  }
+</style></head>
+<body class="theme-{{ branding.print_theme|default:'classic' }}">
+
+<div class="noprint">
+  <span class="muted">Design: {{ branding.get_print_theme_display }} — change it in Settings → Print Design</span>
+  <button onclick="window.print()">🖨 Print</button>
+</div>
+
+<div class="sheet">
+  {% block letterhead %}
+  {% if branding.print_theme == 'letterhead' %}
+    {# their own pre-printed letterhead paper — leave the top blank #}
+    <div class="lh-space"></div>
+  {% else %}
+  <div class="{% if branding.print_theme == 'modern' %}band{% else %}lh{% endif %}">
+    <div class="brand">
+      <div class="logo">{% if branding.logo_image %}<img src="{{ branding.logo_image.url }}" alt="">{% else %}{{ branding.logo_text|default:'P' }}{% endif %}</div>
+      <div>
+        <div class="bname">{{ branding.brand_name|default:"PharmaDost" }}</div>
+        {% if branding.brand_tagline %}<div class="tag">{{ branding.brand_tagline }}</div>{% endif %}
+      </div>
+    </div>
+    <div class="meta">{% block headmeta %}{% endblock %}</div>
+  </div>
+  {% if branding.print_theme != 'modern' %}<div class="rule"></div>{% endif %}
+  {% endif %}
+  {% endblock %}
+
+  <div class="doc-title">{% block doctitle %}Document{% endblock %}</div>
+
+  {% block body %}{% endblock %}
+
+  {% if branding.print_theme != 'letterhead' %}
+  <div class="lh-foot">
+    <div class="addr">{{ branding.brand_name|default:"PharmaDost" }}</div>
+    {% if branding.address %}{{ branding.address }}{% endif %}
+    {% if branding.phone %} · ☎ {{ branding.phone }}{% endif %}
+    {% if branding.email %} · {{ branding.email }}{% endif %}
+    {% if branding.license_no %}<br>Licence: {{ branding.license_no }}{% endif %}
+    {% if branding.receipt_footer %}<br><span style="font-style:italic">{{ branding.receipt_footer }}</span>{% endif %}
+  </div>
+  {% endif %}
+</div>
+
+{% if request.GET.print %}<script>window.addEventListener('load',function(){setTimeout(function(){window.print();},250);});</script>{% endif %}
+</body></html>

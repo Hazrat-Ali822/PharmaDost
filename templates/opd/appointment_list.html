@@ -1,0 +1,28 @@
+{% extends 'partials/base.html' %}
+{% block title %}Appointments{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Appointments</h2>
+  {% if nav.appointments %}<a class="btn" href="{% url 'appointment_add' %}">Book Appointment</a>{% endif %}
+</div>
+<div class="card">
+  <table class="tbl">
+    <thead>
+      <tr><th>Patient</th><th>Doctor</th><th>Date</th><th>Token</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      {% for appointment in appointments %}
+      <tr>
+        <td>{{ appointment.patient.full_name }}</td>
+        <td>{{ appointment.doctor.full_name }}</td>
+        <td>{{ appointment.appointment_date }}</td>
+        <td>{{ appointment.token_no }}</td>
+        <td>{{ appointment.status }} <a class="btn sm" href="{% url 'prescription_create' appointment.pk %}">Rx</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5">No appointments yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

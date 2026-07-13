@@ -1,0 +1,38 @@
+{% extends 'partials/base.html' %}
+{% block title %}Ledger - {{ supplier.name }}{% endblock %}
+{% block page_title %}Supplier Ledger{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Ledger - {{ supplier.name }}</h2>
+  <div>
+    <a class="btn" href="{% url 'supplier_payment_add' supplier.pk %}">Pay Supplier</a>
+    <a class="btn alt" href="{% url 'supplier_list' %}">Back</a>
+  </div>
+</div>
+<div class="card" style="margin-bottom:12px">
+  <strong>Outstanding payable:</strong>
+  <span class="{% if supplier.balance > 0 %}danger{% endif %}">{{ supplier.balance }}</span>
+  &nbsp;|&nbsp; Phone: {{ supplier.phone }}
+</div>
+<div class="card">
+  <table class="tbl">
+    <thead>
+      <tr><th>Date</th><th>Type</th><th>Reference</th><th>Debit (owed)</th><th>Credit (paid/return)</th><th>Running Payable</th></tr>
+    </thead>
+    <tbody>
+      {% for e in entries %}
+      <tr>
+        <td>{{ e.when|date:"Y-m-d H:i" }}</td>
+        <td>{{ e.kind }}</td>
+        <td>{{ e.ref }}</td>
+        <td>{% if e.debit %}{{ e.debit }}{% endif %}</td>
+        <td>{% if e.credit %}{{ e.credit }}{% endif %}</td>
+        <td>{{ e.running|floatformat:2 }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="muted">No ledger entries yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

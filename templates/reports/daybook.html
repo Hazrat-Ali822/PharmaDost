@@ -1,0 +1,82 @@
+{% extends 'partials/base.html' %}
+{% block title %}Day Book{% endblock %}
+{% block page_title %}Day Book{% endblock %}
+{% block content %}
+<div class="page-head"><div><h2>Day Book — Cash Summary 📒</h2>
+  <div class="muted">Income (collected) vs expenses = net cash</div></div></div>
+{% include 'reports/_range_filter.html' %}
+
+<div class="stat-grid">
+  <div class="stat">
+    <div class="ic green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+    <div class="meta"><span class="value">{{ data.total_income }}</span><span class="label">Total Income (collected)</span></div>
+  </div>
+  <div class="stat">
+    <div class="ic red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5v14" opacity=".25"/></svg></div>
+    <div class="meta"><span class="value">{{ data.exp_total }}</span><span class="label">Expenses</span></div>
+  </div>
+  <div class="stat">
+    <div class="ic {% if data.net_cash < 0 %}red{% else %}green{% endif %}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg></div>
+    <div class="meta"><span class="value">{{ data.net_cash }}</span><span class="label">Net Cash</span></div>
+  </div>
+  <div class="stat">
+    <div class="ic amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg></div>
+    <div class="meta"><span class="value">{{ data.receivable_total }}</span><span class="label">Receivable (not collected)</span></div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:16px">
+  <h3>Income</h3>
+  <table class="tbl">
+    <thead><tr><th>Source</th><th>Billed</th><th>Collected</th><th>Outstanding</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="badge">Pharmacy Sales</span> <span class="muted">({{ data.sales_bills }} bills)</span></td>
+        <td>{{ data.sales_total }}</td>
+        <td><strong>{{ data.sales_collected }}</strong></td>
+        <td>{{ data.sales_credit }}</td>
+      </tr>
+      <tr>
+        <td><span class="badge green">Service / OPD Invoices</span> <span class="muted">({{ data.inv_count }})</span></td>
+        <td>{{ data.inv_total }}</td>
+        <td><strong>{{ data.inv_collected }}</strong></td>
+        <td>{{ data.inv_outstanding }}</td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr><td style="text-align:right"><strong>Total collected</strong></td><td></td>
+        <td><strong>{{ data.total_income }}</strong></td><td></td></tr>
+    </tfoot>
+  </table>
+</div>
+
+<div class="card" style="margin-bottom:16px">
+  <h3>Sales collected — by payment method</h3>
+  <table class="tbl">
+    <thead><tr><th>Method</th><th style="text-align:right">Collected</th></tr></thead>
+    <tbody>
+      {% for method, amt in data.sales_by_method.items %}
+      <tr><td>{{ method }}</td><td style="text-align:right">{{ amt }}</td></tr>
+      {% empty %}
+      <tr><td colspan="2" class="muted">No sales in this period.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <div class="page-head"><h3>Expenses by category</h3>
+    <a class="btn sm alt" href="{% url 'expense_list' %}">Manage expenses</a></div>
+  <table class="tbl">
+    <thead><tr><th>Category</th><th style="text-align:right">Amount</th></tr></thead>
+    <tbody>
+      {% for cat, amt in data.exp_by_cat.items %}
+      <tr><td>{{ cat }}</td><td style="text-align:right">{{ amt }}</td></tr>
+      {% empty %}
+      <tr><td colspan="2" class="muted">No expenses in this period.</td></tr>
+      {% endfor %}
+    </tbody>
+    <tfoot><tr><td style="text-align:right"><strong>Total</strong></td><td style="text-align:right"><strong>{{ data.exp_total }}</strong></td></tr></tfoot>
+  </table>
+</div>
+{% endblock %}

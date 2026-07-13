@@ -1,0 +1,11 @@
+{% extends 'partials/base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}Inventory{% endblock %}
+{% block content %}
+<h2>{{ title }}</h2>
+<form method="post" class="form-card" enctype="multipart/form-data">{% csrf_token %}
+{{ form.as_p }}
+<button class="btn" type="submit">Save</button>
+<a class="btn alt" href="{% url 'medicine_list' %}">Cancel</a>
+</form>
+{% endblock %}

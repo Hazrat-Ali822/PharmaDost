@@ -1,0 +1,51 @@
+{% extends 'partials/base.html' %}
+{% block title %}Imaging / Radiology{% endblock %}
+{% block page_title %}Imaging / Radiology{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>Imaging Studies 🩻</h2><div class="muted">Ultrasound · X-Ray · CT · MRI · ECG</div></div>
+  <a class="btn primary" href="{% url 'imaging:study_create' %}">+ New Study</a>
+</div>
+
+<div class="card" style="margin-bottom:12px">
+  <form method="get" class="form-row" style="margin:0">
+    <label>Modality</label>
+    <select name="modality" onchange="this.form.submit()">
+      <option value="">All</option>
+      {% for val, label in modalities %}
+      <option value="{{ val }}" {% if val == modality %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <noscript><button class="btn alt sm" type="submit">Filter</button></noscript>
+  </form>
+</div>
+
+<table class="tbl">
+  <thead><tr><th>#</th><th>Date</th><th>Patient</th><th>Modality</th><th>Study</th><th>Status</th><th>By</th><th></th></tr></thead>
+  <tbody>
+    {% for s in studies %}
+    <tr>
+      <td>{{ s.id }}</td>
+      <td>{{ s.study_date|date:"Y-m-d H:i" }}</td>
+      <td><a href="{% url 'patient_detail' s.patient.pk %}">{{ s.patient.full_name }}</a></td>
+      <td><span class="badge">{{ s.get_modality_display }}</span></td>
+      <td>{{ s.study_name }}</td>
+      <td>
+        {% if s.status == 'Delivered' or s.status == 'Reported' %}
+          <span class="badge green">{{ s.status }}</span>
+        {% else %}
+          <span class="badge gray">{{ s.status }}</span>
+        {% endif %}
+      </td>
+      <td>{% if s.performed_by %}{{ s.performed_by.get_full_name|default:s.performed_by.email }}{% else %}—{% endif %}</td>
+      <td style="white-space:nowrap">
+        <a class="btn sm alt" href="{% url 'imaging:study_detail' s.id %}">View</a>
+        {% if not s.is_reported %}<a class="btn sm" href="{% url 'imaging:study_report_edit' s.id %}">Report</a>{% endif %}
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="8" class="muted">No imaging studies yet. Click “New Study” to register an ultrasound / x-ray.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

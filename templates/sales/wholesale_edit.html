@@ -1,0 +1,146 @@
+{% extends 'partials/base.html' %}
+{% block title %}Wholesale Order #{{ order.id }}{% endblock %}
+{% block page_title %}Wholesale Order{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>📦 Order #{{ order.id }}
+      {% if order.status == 'DRAFT' %}<span class="badge amber">Draft</span>
+      {% elif order.status == 'BILLED' %}<span class="badge green">Billed</span>
+      {% else %}<span class="badge gray">Cancelled</span>{% endif %}
+    </h2>
+    <div class="muted">{{ order.display_customer }}{% if order.note %} · {{ order.note }}{% endif %}</div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <a class="btn alt" href="{% url 'wholesale_order_print' order.id %}" target="_blank">🖨 Print order sheet</a>
+    {% if order.status == 'BILLED' and order.sale_id %}<a class="btn success" href="{% url 'sale_detail' order.sale_id %}">View Bill #{{ order.sale_id }}</a>{% endif %}
+    <a class="btn alt" href="{% url 'wholesale_order_list' %}">Back</a>
+  </div>
+</div>
+
+<div class="stat-grid">
+  <div class="stat"><div class="meta"><span class="value">{{ order.item_count }}</span><span class="label">Line items</span></div></div>
+  <div class="stat"><div class="meta"><span class="value">{{ order.total_qty }}</span><span class="label">Total units</span></div></div>
+  <div class="stat"><div class="meta"><span class="value">Rs {{ order.total }}</span><span class="label">Order value</span></div></div>
+</div>
+
+{% if order.status == 'DRAFT' %}
+<div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:16px;margin-bottom:16px">
+  <!-- 1) Paste -->
+  <div class="card">
+    <h3 style="display:flex;align-items:center;gap:8px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;color:var(--primary)"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+      Paste a list
+    </h3>
+    <p class="muted" style="font-size:12.5px;margin-bottom:10px;">One item per line: <code>name qty</code> — e.g. <code>Panadol 500mg | 100</code>. Matched to stock automatically.</p>
+    <form method="post" action="{% url 'wholesale_order_paste' order.id %}">{% csrf_token %}
+      <textarea name="bulk" rows="6" placeholder="Panadol 500mg | 100&#10;Augmentin 625 x 50&#10;Brufen 400   200" style="font-family:monospace;font-size:13px;"></textarea>
+      <button class="btn" type="submit" style="margin-top:8px;width:100%">Add all items from list</button>
+    </form>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <!-- 2) Quick add -->
+    <div class="card">
+      <h3 style="display:flex;align-items:center;gap:8px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;color:var(--accent)"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+        Quick add (search / barcode)
+      </h3>
+      <form method="post" action="{% url 'wholesale_order_add' order.id %}" style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">{% csrf_token %}
+        <div style="flex:1;min-width:160px"><label>Medicine</label>
+          <input type="text" list="med-list" name="medicine" id="medQuickAdd" placeholder="Type or scan…" autocomplete="off" autofocus required>
+          <datalist id="med-list">
+            {% for m in medicines %}<option value="{{ m.name }}{% if m.barcode %} — {{ m.barcode }}{% endif %}"></option>{% endfor %}
+          </datalist>
+        </div>
+        <div style="width:90px"><label>Qty</label><input type="number" name="quantity" min="1" value="1"></div>
+        <button class="btn" type="submit">Add</button>
+      </form>
+    </div>
+
+    <!-- 3) Repeat -->
+    <div class="card">
+      <h3 style="display:flex;align-items:center;gap:8px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;color:var(--muted)"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18"></path></svg>
+        Repeat a previous order
+      </h3>
+      {% if repeatable %}
+      <form method="post" action="{% url 'wholesale_order_repeat' order.id %}" style="display:flex;gap:8px;align-items:end">{% csrf_token %}
+        <div style="flex:1"><label>This customer's past orders</label>
+          <select name="source">
+            {% for o in repeatable %}<option value="{{ o.id }}">#{{ o.id }} · {{ o.created_at|date:"Y-m-d" }} · {{ o.item_count }} items</option>{% endfor %}
+          </select>
+        </div>
+        <button class="btn alt" type="submit">Load items</button>
+      </form>
+      {% else %}
+      <p class="muted" style="font-size:12.5px;margin: 8px 0 0 0;">No previous orders for this customer yet.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Items -->
+<form method="post" action="{% url 'wholesale_order_update' order.id %}">{% csrf_token %}
+<div class="card">
+  <div class="page-head"><h3>Items</h3>
+    {% if order.status == 'DRAFT' %}<button class="btn sm" type="submit">💾 Save quantities</button>{% endif %}</div>
+  <table class="tbl">
+    <thead><tr><th>#</th><th>Medicine</th><th>In stock</th><th style="width:110px">Qty</th><th style="width:120px">Rate</th><th>Line total</th>{% if order.status == 'DRAFT' %}<th></th>{% endif %}</tr></thead>
+    <tbody>
+      {% for it in items %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ it.medicine.name }}</td>
+        <td class="{% if it.medicine.quantity < it.quantity %}danger{% else %}muted{% endif %}">{{ it.medicine.quantity }}</td>
+        {% if order.status == 'DRAFT' %}
+        <td><input name="qty_{{ it.id }}" type="number" min="1" value="{{ it.quantity }}" style="width:95px"></td>
+        <td><input name="price_{{ it.id }}" type="number" min="0" step="0.01" value="{{ it.unit_price }}" style="width:105px"></td>
+        {% else %}
+        <td>{{ it.quantity }}</td><td>Rs {{ it.unit_price }}</td>
+        {% endif %}
+        <td>Rs {{ it.line_total }}</td>
+        {% if order.status == 'DRAFT' %}
+        <td><a class="btn sm danger" href="{% url 'wholesale_order_item_delete' order.id it.id %}">✕</a></td>
+        {% endif %}
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="muted">No items yet — add some above.</td></tr>
+      {% endfor %}
+    </tbody>
+    <tfoot><tr><th colspan="5" style="text-align:right">Order total</th><th>Rs {{ order.total }}</th>{% if order.status == 'DRAFT' %}<th></th>{% endif %}</tr></tfoot>
+  </table>
+</div>
+</form>
+
+{% if order.status == 'DRAFT' and order.item_count %}
+<div class="card" style="margin-top:16px">
+  <h3>Convert to wholesale bill</h3>
+  <p class="muted" style="font-size:13px">This creates a real wholesale sale and deducts stock (FEFO). Needs a registered customer.</p>
+  <form method="post" action="{% url 'wholesale_order_convert' order.id %}" style="display:flex;gap:10px;align-items:end;flex-wrap:wrap">{% csrf_token %}
+    <div style="width:150px"><label>Paid now (Rs)</label><input name="paid" type="number" min="0" step="0.01" value="0" placeholder="0 = credit"></div>
+    <div style="width:150px"><label>Method</label>
+      <select name="payment_method">
+        <option value="CREDIT">Credit / Khata</option>
+        <option value="CASH">Cash</option>
+        <option value="CARD">Card</option>
+      </select>
+    </div>
+    <button class="btn success" type="submit" onclick="return confirm('Create the wholesale bill and deduct stock?');">✅ Convert to Bill</button>
+    <a class="btn danger" href="#" onclick="event.preventDefault();if(confirm('Cancel this order?')){document.getElementById('cancel-form').submit();}">Cancel order</a>
+  </form>
+</div>
+<form id="cancel-form" method="post" action="{% url 'wholesale_order_cancel' order.id %}" style="display:none">{% csrf_token %}</form>
+{% endif %}
+
+<script>
+  window.addEventListener('DOMContentLoaded', () => {
+    const input = document.getElementById('medQuickAdd');
+    if (input) {
+      input.focus();
+      input.select();
+    }
+  });
+</script>
+{% endblock %}

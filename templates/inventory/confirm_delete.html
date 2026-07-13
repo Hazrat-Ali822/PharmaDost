@@ -1,0 +1,9 @@
+{% extends 'partials/base.html' %}
+{% block title %}Confirm Delete{% endblock %}
+{% block content %}
+<h3>Delete: {{ object }}?</h3>
+<form method="post">{% csrf_token %}
+  <button class="btn danger" type="submit">Yes, delete</button>
+  <a class="btn alt" href="{% url cancel_url %}">Cancel</a>
+</form>
+{% endblock %}

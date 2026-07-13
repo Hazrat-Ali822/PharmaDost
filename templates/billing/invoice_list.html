@@ -1,0 +1,37 @@
+{% extends 'partials/base.html' %}
+{% block title %}Invoices{% endblock %}
+{% block page_title %}Billing{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>Invoices</h2><div class="muted">OPD, lab, imaging &amp; service bills</div></div>
+  <div style="display:flex;gap:8px">
+    <a class="btn alt {% if status == 'unpaid' %}primary{% endif %}" href="?status=unpaid">Unpaid only</a>
+    {% if status %}<a class="btn alt" href="{% url 'invoice_list' %}">All</a>{% endif %}
+    <a class="btn" href="{% url 'invoice_create' %}">Create Invoice</a>
+  </div>
+</div>
+<div class="card">
+  <table class="tbl">
+    <thead>
+      <tr><th>#</th><th>Date</th><th>Patient</th><th>For</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for invoice in invoices %}
+      <tr>
+        <td>{{ invoice.pk }}</td>
+        <td>{{ invoice.created_at|date:"Y-m-d" }}</td>
+        <td>{{ invoice.patient.full_name }}</td>
+        <td>{% for it in invoice.items.all %}{{ it.description }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
+        <td>{{ invoice.total }}</td>
+        <td>{{ invoice.paid }}</td>
+        <td>{{ invoice.balance }}</td>
+        <td>{% if invoice.is_paid %}<span class="badge green">Paid</span>{% else %}<span class="badge amber">Unpaid</span>{% endif %}</td>
+        <td><a class="btn sm alt" href="{% url 'invoice_detail' invoice.pk %}">View</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="9" class="muted">No invoices yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

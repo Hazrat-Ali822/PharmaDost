@@ -1,0 +1,27 @@
+{% extends "lab/_base.html" %}
+{% block title %}New Order{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>New Lab Order</h2><div class="muted">Doctor recommends, or lab desk registers the tests</div></div>
+  <a class="btn alt" href="{% url 'lab:order_list' %}">Back</a>
+</div>
+
+<form method="post" class="card" style="max-width:680px">{% csrf_token %}
+  <div class="form-row" style="align-items:flex-start">
+    <label for="{{ form.patient.id_for_label }}">Patient</label>
+    <div style="flex:1">
+      {{ form.patient }}
+      {% for e in form.patient.errors %}<div class="danger" style="font-size:12px">{{ e }}</div>{% endfor %}
+    </div>
+  </div>
+  <div class="form-row" style="align-items:flex-start">
+    <label>Tests</label>
+    <div style="flex:1">
+      {{ form.tests }}
+      <div class="muted" style="font-size:12px;margin-top:4px">{{ form.tests.help_text }}</div>
+      {% for e in form.tests.errors %}<div class="danger" style="font-size:12px">{{ e }}</div>{% endfor %}
+    </div>
+  </div>
+  <button class="btn primary" type="submit">Create Order &amp; Enter Results →</button>
+</form>
+{% endblock %}

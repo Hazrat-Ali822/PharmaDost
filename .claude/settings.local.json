@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.venv/Scripts/python.exe manage.py check)",
+      "Bash(.venv/Scripts/python.exe manage.py makemigrations --check --dry-run)",
+      "Bash(.venv/Scripts/python.exe manage.py makemigrations customers sales)",
+      "Bash(.venv/Scripts/python.exe manage.py makemigrations sales --empty --name backfill_sale_totals)",
+      "Bash(.venv/Scripts/python.exe manage.py migrate)",
+      "Bash(.venv/Scripts/python.exe manage.py seed_demo)"
+    ]
+  }
+}

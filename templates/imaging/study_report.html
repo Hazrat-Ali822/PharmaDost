@@ -1,0 +1,42 @@
+{% extends 'print/base_print.html' %}
+{% block title %}Imaging Report #{{ study.id }}{% endblock %}
+{% block doctitle %}{{ study.get_modality_display }} Report{% endblock %}
+
+{% block headmeta %}
+  <b>Study #{{ study.id }}</b><br>
+  {{ study.study_date|date:"d M Y · g:i A" }}<br>
+  {{ study.get_modality_display }}
+{% endblock %}
+
+{% block body %}
+<div class="who">
+  <div>
+    <b>Patient:</b> {{ study.patient.full_name }}<br>
+    <b>MRN:</b> {{ study.patient.mrn }} · <b>Gender:</b> {{ study.patient.get_gender_display }}{% if study.patient.age_years %} · {{ study.patient.age_years }} yrs{% endif %}
+  </div>
+  <div style="text-align:right">
+    <b>Study:</b> {{ study.study_name }}<br>
+    {% if study.referred_by %}<b>Referred by:</b> {{ study.referred_by.get_full_name|default:study.referred_by.email }}{% endif %}
+  </div>
+</div>
+
+{% if study.clinical_note %}
+<h3 class="sec">Clinical Indication</h3>
+<p>{{ study.clinical_note|linebreaksbr }}</p>
+{% endif %}
+
+<h3 class="sec">Findings</h3>
+<p>{{ study.findings|linebreaksbr|default:"—" }}</p>
+
+<h3 class="sec">Impression</h3>
+<p>{{ study.impression|linebreaksbr|default:"—" }}</p>
+
+{% if study.image %}
+<h3 class="sec">Film</h3>
+<img src="{{ study.image.url }}" alt="film" style="max-width:100%;max-height:360px;border:1px solid var(--line);border-radius:8px">
+{% endif %}
+
+<div class="sign">
+  <span class="line">{% if study.performed_by %}{{ study.performed_by.get_full_name|default:study.performed_by.email }}{% else %}Radiologist / Sonographer{% endif %}</span>
+</div>
+{% endblock %}

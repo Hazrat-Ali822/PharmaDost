@@ -1,0 +1,117 @@
+{% extends 'partials/base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}Prescription{% endblock %}
+{% block content %}
+<div class="form-card" style="max-width:920px">
+  <div class="page-head">
+    <div>
+      <h2>{{ title }}</h2>
+      <div class="muted">{{ appointment.patient.full_name }} · {{ appointment.doctor.full_name }} · {{ appointment.appointment_date|date:"Y-m-d" }}</div>
+    </div>
+    <a class="btn alt" href="{% url 'patient_detail' appointment.patient.pk %}">Back</a>
+  </div>
+
+  {% if form.errors or med_formset.non_form_errors or med_formset.errors %}
+  <div class="msg error" style="margin-bottom:14px">
+    ⚠️ The prescription could not be saved. Please fix the highlighted fields below and try again.
+    {{ form.non_field_errors }}{{ med_formset.non_form_errors }}
+  </div>
+  {% endif %}
+
+  <form method="post">
+    {% csrf_token %}
+
+    <div class="form-row">
+      <div><label>Complaint</label>{{ form.complaint }}{{ form.complaint.errors }}</div>
+      <div><label>Diagnosis</label>{{ form.diagnosis }}{{ form.diagnosis.errors }}</div>
+    </div>
+    <p><label>Notes</label>{{ form.notes }}</p>
+
+    <!-- ---------------- Medicines (multiple) ---------------- -->
+    <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
+    <div class="page-head"><h3>💊 Medicines</h3>
+      <button type="button" class="btn sm" id="add-med">+ Add medicine</button></div>
+    {{ med_formset.management_form }}
+    <table class="tbl" id="med-table">
+      <thead><tr><th style="width:34%">Medicine</th><th>Dosage</th><th>Days</th><th>Instructions</th><th></th></tr></thead>
+      <tbody id="med-body">
+        {% for f in med_formset %}
+        <tr class="med-row">
+          {{ f.id }}
+          <td>{{ f.medicine }}{{ f.medicine.errors }}</td>
+          <td>{{ f.dosage }}</td>
+          <td>{{ f.duration_days }}</td>
+          <td>{{ f.instructions }}</td>
+          <td class="del-cell">{% if f.instance.pk %}{{ f.DELETE }}{% else %}<button type="button" class="btn sm danger rm-row">✕</button>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="muted" style="font-size:12px">Leave a row blank if not needed — empty rows are ignored. A prescription with no medicine (tests only) is fine.</p>
+
+    <!-- ---------------- Lab tests ---------------- -->
+    <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
+    <h3>🧪 Lab Tests <span class="muted" style="font-weight:400;font-size:13px">(optional — tick to order)</span></h3>
+    <div style="columns:2;gap:18px;margin-top:8px">
+      {% for cb in form.tests %}
+      <label style="display:flex;gap:8px;align-items:center;padding:4px 0;break-inside:avoid">{{ cb.tag }} <span>{{ cb.choice_label }}</span></label>
+      {% empty %}
+      <p class="muted">No lab tests defined yet.</p>
+      {% endfor %}
+    </div>
+
+    <!-- ---------------- Imaging / Scans ---------------- -->
+    <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
+    <h3>🩻 Scans <span class="muted" style="font-weight:400;font-size:13px">(optional — ultrasound, x-ray, CT, MRI…)</span></h3>
+    <div style="columns:2;gap:18px;margin-top:8px">
+      {% for cb in form.scans %}
+      <label style="display:flex;gap:8px;align-items:center;padding:4px 0;break-inside:avoid">{{ cb.tag }} <span>{{ cb.choice_label }}</span></label>
+      {% empty %}
+      <p class="muted">No scans defined yet. Add them under <b>Settings → Scan Prices</b>.</p>
+      {% endfor %}
+    </div>
+
+    <div style="margin-top:18px;display:flex;gap:8px">
+      <button class="btn" type="submit">Save Prescription</button>
+      <a class="btn alt" href="{% url 'patient_detail' appointment.patient.pk %}">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<!-- empty-row templates for cloning -->
+<template id="med-empty">
+  <tr class="med-row">
+    <td>{{ med_formset.empty_form.medicine }}</td>
+    <td>{{ med_formset.empty_form.dosage }}</td>
+    <td>{{ med_formset.empty_form.duration_days }}</td>
+    <td>{{ med_formset.empty_form.instructions }}</td>
+    <td class="del-cell"><button type="button" class="btn sm danger rm-row">✕</button></td>
+  </tr>
+</template>
+<script>
+(function(){
+  function addRow(prefix, bodyId, tmplId){
+    const total = document.querySelector('#id_'+prefix+'-TOTAL_FORMS');
+    const body = document.getElementById(bodyId);
+    const tmpl = document.getElementById(tmplId).innerHTML;
+    const idx = parseInt(total.value, 10);
+    const html = tmpl.replace(/__prefix__/g, idx);
+    const tr = document.createElement('tbody');
+    tr.innerHTML = html.trim();
+    body.appendChild(tr.firstChild);
+    total.value = idx + 1;
+  }
+  document.getElementById('add-med').addEventListener('click', function(){ addRow('meds','med-body','med-empty'); });
+  // remove a not-yet-saved medicine row (clear inputs so the blank row is ignored on save)
+  document.addEventListener('click', function(e){
+    if(e.target.classList.contains('rm-row')){
+      const row = e.target.closest('tr');
+      row.querySelectorAll('input, select, textarea').forEach(function(el){
+        if(el.type === 'checkbox') el.checked = false; else el.value = '';
+      });
+      row.style.display = 'none';
+    }
+  });
+})();
+</script>
+{% endblock %}

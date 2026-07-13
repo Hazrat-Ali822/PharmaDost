@@ -1,0 +1,58 @@
+{% extends 'partials/base.html' %}
+{% block title %}Profit Report{% endblock %}
+{% block page_title %}Profit Report{% endblock %}
+{% block content %}
+<div class="page-head"><h2>Profit Report</h2></div>
+{% include 'reports/_range_filter.html' %}
+
+<div class="stat-grid">
+  <div class="stat">
+    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+    <div class="meta"><span class="value">{{ data.revenue }}</span><span class="label">Revenue</span></div>
+  </div>
+  <div class="stat">
+    <div class="ic amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7 12 3 4 7v10l8 4 8-4z"/><path d="M4 7l8 4 8-4M12 21V11"/></svg></div>
+    <div class="meta"><span class="value">{{ data.cost }}</span><span class="label">Cost of Goods</span></div>
+  </div>
+  <div class="stat">
+    <div class="ic green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V4M20 20H4"/><path d="M7 14l4-4 3 3 4-6"/></svg></div>
+    <div class="meta"><span class="value">{{ data.gross_profit }}</span><span class="label">Gross Profit</span></div>
+  </div>
+  <div class="stat">
+    <div class="ic green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 5 5 19M9 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM21 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/></svg></div>
+    <div class="meta"><span class="value">{{ data.margin|floatformat:1 }}%</span><span class="label">Margin</span></div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:16px">
+  <h3>Retail vs Wholesale</h3>
+  <table class="tbl">
+    <thead><tr><th>Type</th><th>Revenue</th><th>Cost</th><th>Profit</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge">Retail</span></td><td>{{ data.by_type.RETAIL.revenue }}</td><td>{{ data.by_type.RETAIL.cost }}</td><td>{{ data.by_type.RETAIL.profit }}</td></tr>
+      <tr><td><span class="badge amber">Wholesale</span></td><td>{{ data.by_type.WHOLESALE.revenue }}</td><td>{{ data.by_type.WHOLESALE.cost }}</td><td>{{ data.by_type.WHOLESALE.profit }}</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h3>Top Profitable Items</h3>
+  <table class="tbl">
+    <thead><tr><th>#</th><th>Medicine</th><th>Qty Sold</th><th>Revenue</th><th>Profit</th></tr></thead>
+    <tbody>
+      {% for it in data.top_items %}
+      <tr>
+        <td>{{ forloop.counter }}</td>
+        <td>{{ it.name }}</td>
+        <td>{{ it.qty }}</td>
+        <td>{{ it.revenue }}</td>
+        <td class="{% if it.profit < 0 %}danger{% endif %}">{{ it.profit }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="muted">No sales in this period.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted" style="font-size:12px;margin-top:8px">Cost basis = batch purchase price. Items sold without a linked batch (legacy) count as zero cost.</p>
+</div>
+{% endblock %}

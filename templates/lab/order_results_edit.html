@@ -1,0 +1,31 @@
+{% extends "lab/_base.html" %}
+{% block title %}Enter Results – Order #{{ order.id }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Enter Results — Order #{{ order.id }}</h2>
+    <div class="muted">{{ order.patient.full_name }} · MRN {{ order.patient.mrn }}</div>
+  </div>
+  <a class="btn alt" href="{% url 'lab:order_detail' order.id %}">Back</a>
+</div>
+
+<form method="post" class="card">{% csrf_token %}
+  {{ formset.management_form }}
+  <table class="tbl">
+    <thead><tr><th>Test</th><th>Result Value</th><th>Remarks</th></tr></thead>
+    <tbody>
+      {% for form in formset %}
+      <tr>
+        <td>{{ form.instance.lab_test.name }}{{ form.lab_test.as_hidden }}{{ form.id }}</td>
+        <td>{{ form.result_value }}</td>
+        <td>{{ form.remarks }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div style="display:flex;gap:8px;margin-top:12px">
+    <button class="btn primary" type="submit" name="save" value="1">Save</button>
+    <button class="btn success" type="submit" name="save_print" value="1">Save &amp; Print Report 🖨️</button>
+  </div>
+</form>
+{% endblock %}

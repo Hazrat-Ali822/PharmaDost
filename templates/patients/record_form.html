@@ -1,0 +1,15 @@
+{% extends 'partials/base.html' %}
+{% block title %}Add Clinical Record{% endblock %}
+{% block page_title %}Clinical Record{% endblock %}
+{% block content %}
+<div class="form-card">
+  <h2>Add Clinical Record — {{ patient.full_name }}</h2>
+  <p class="muted" style="font-size:13px">Record a consultation, procedure, operation, ultrasound, x-ray etc. with full details. It will appear in the patient's history.</p>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button class="btn" type="submit">Save to History</button>
+    <a class="btn alt" href="{% url 'patient_detail' patient.pk %}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

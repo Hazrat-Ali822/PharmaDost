@@ -1,0 +1,36 @@
+{% extends 'partials/base.html' %}
+{% block title %}New Stock Adjustment{% endblock %}
+{% block page_title %}Stock Adjustment{% endblock %}
+{% block content %}
+<div class="form-card">
+  <h2>New Stock Adjustment</h2>
+  <p class="muted">Use negative quantity to remove stock (damage / expiry write-off), positive to add (stock count correction).</p>
+  <form method="post">{% csrf_token %}
+    <div class="form-row">
+      <label>Batch</label>
+      <select name="batch" required>
+        <option value="">-- select batch --</option>
+        {% for b in batches %}
+        <option value="{{ b.id }}">{{ b.medicine.name }} — batch {{ b.batch_number|default:b.id }} (exp {{ b.expiry_date }}, qty {{ b.quantity }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Qty Change (+/-)</label>
+      <input type="number" name="qty_change" step="1" placeholder="e.g. -5 or 3" required>
+    </div>
+    <div class="form-row">
+      <label>Reason</label>
+      <select name="reason">
+        {% for val, lbl in reasons %}<option value="{{ val }}">{{ lbl }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Notes</label>
+      <textarea name="notes" rows="2" placeholder="Optional"></textarea>
+    </div>
+    <button class="btn" type="submit">Save Adjustment</button>
+    <a class="btn alt" href="{% url 'adjustment_list' %}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

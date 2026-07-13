@@ -1,0 +1,23 @@
+{# expects `rng` in context #}
+<form method="get" class="search" style="align-items:flex-end">
+  <div>
+    <label class="muted" style="font-size:12px;display:block">Period</label>
+    <select name="preset" onchange="this.form.submit()">
+      <option value="today" {% if rng.preset == 'today' %}selected{% endif %}>Today</option>
+      <option value="yesterday" {% if rng.preset == 'yesterday' %}selected{% endif %}>Yesterday</option>
+      <option value="week" {% if rng.preset == 'week' %}selected{% endif %}>This Week</option>
+      <option value="month" {% if rng.preset == 'month' %}selected{% endif %}>This Month</option>
+      <option value="custom" {% if rng.preset == 'custom' %}selected{% endif %}>Custom</option>
+    </select>
+  </div>
+  <div>
+    <label class="muted" style="font-size:12px;display:block">From</label>
+    <input type="date" name="from" value="{{ rng.start|date:'Y-m-d' }}">
+  </div>
+  <div>
+    <label class="muted" style="font-size:12px;display:block">To</label>
+    <input type="date" name="to" value="{{ rng.end|date:'Y-m-d' }}">
+  </div>
+  <button class="btn" type="submit">Apply</button>
+  <span class="muted" style="align-self:center">Showing: <strong>{{ rng.label }}</strong></span>
+</form>

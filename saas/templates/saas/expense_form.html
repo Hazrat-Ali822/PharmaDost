@@ -1,0 +1,39 @@
+{% extends 'partials/base.html' %}
+{% block title %}Record Platform Expense — PharmaDost{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h2>Record Platform Expense 📉</h2>
+  <a class="btn alt" href="{% url 'saas:dashboard' %}">Back to Portal</a>
+</div>
+
+<div class="card" style="max-width:600px; margin: 0 auto;">
+  <form method="post">
+    {% csrf_token %}
+    
+    <p>
+      <label>Expense Title / Description</label>
+      <input type="text" name="title" required placeholder="e.g. Supabase DB Hosting / Domain bill">
+    </p>
+    
+    <p>
+      <label>Amount Paid (PKR)</label>
+      <input type="number" step="0.01" name="amount" required placeholder="e.g. 1500">
+    </p>
+
+    <p>
+      <label>Expense Date</label>
+      <input type="date" name="expense_date" required value="{% now 'Y-m-d' %}">
+    </p>
+
+    <p>
+      <label>Notes</label>
+      <textarea name="note" placeholder="e.g. Monthly hosting charge paid via credit card" style="width:100%; height:80px; padding:8px; border-radius:6px; border:1px solid var(--border);"></textarea>
+    </p>
+
+    <div style="margin-top:20px;">
+      <button class="btn danger" type="submit">Log Expense</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

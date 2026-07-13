@@ -1,0 +1,27 @@
+{% extends 'partials/base.html' %}
+{% block title %}Doctor Dashboard{% endblock %}
+{% block page_title %}Doctor{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>Consultation Desk 🩺</h2><div class="muted">{{ request.user.get_full_name|default:request.user.email }}</div></div>
+  <a class="btn" href="{% url 'appointment_list' %}">Today's Appointments</a>
+</div>
+<div class="stat-grid">
+  <a class="stat" href="{% url 'appointment_list' %}" style="text-decoration:none;color:inherit">
+    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg></div>
+    <div class="meta"><span class="value" style="font-size:18px">Appointments</span><span class="label">Queue &amp; tokens</span></div>
+  </a>
+  <a class="stat" href="{% url 'patient_list' %}" style="text-decoration:none;color:inherit">
+    <div class="ic amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></div>
+    <div class="meta"><span class="value" style="font-size:18px">Patients</span><span class="label">History &amp; details</span></div>
+  </a>
+  <a class="stat" href="{% url 'prescription_list' %}" style="text-decoration:none;color:inherit">
+    <div class="ic green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9a4 4 0 0 1 0 8H6z"/><path d="M6 11l9 10"/></svg></div>
+    <div class="meta"><span class="value" style="font-size:18px">Prescriptions</span><span class="label">Write &amp; view</span></div>
+  </a>
+  <a class="stat" href="{% url 'lab:order_list' %}" style="text-decoration:none;color:inherit">
+    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3v6l-5 9a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3l-5-9V3M8 3h8"/></svg></div>
+    <div class="meta"><span class="value" style="font-size:18px">Lab Orders</span><span class="label">Investigations</span></div>
+  </a>
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends 'partials/base.html' %}
+{% block title %}Customers{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Customers</h2>
+  <a class="btn" href="{% url 'customer_add' %}">Add Customer</a>
+</div>
+<form class="search" method="get">
+  <input type="text" name="q" value="{{ q }}" placeholder="Search by name, shop, phone or area" />
+  <select name="type">
+    <option value="">All types</option>
+    <option value="RETAIL" {% if ctype == 'RETAIL' %}selected{% endif %}>Retail Khata</option>
+    <option value="WHOLESALE" {% if ctype == 'WHOLESALE' %}selected{% endif %}>Wholesale</option>
+  </select>
+  <button class="btn" type="submit">Search</button>
+</form>
+<div class="card">
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th>Name</th><th>Shop</th><th>Type</th><th>Phone</th><th>Area</th>
+        <th>Credit Limit</th><th>Balance</th><th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in customers %}
+      <tr>
+        <td>{{ c.name }}</td>
+        <td>{{ c.shop_name }}</td>
+        <td>{{ c.get_type_display }}</td>
+        <td>{{ c.phone }}</td>
+        <td>{{ c.area }}</td>
+        <td>{{ c.credit_limit }}</td>
+        <td class="{% if c.balance > 0 %}danger{% endif %}">{{ c.balance }}</td>
+        <td>
+          <a class="btn sm" href="{% url 'customer_ledger' c.pk %}">Ledger</a>
+          <a class="btn sm alt" href="{% url 'customer_payment_add' c.pk %}">Payment</a>
+          <a class="btn sm alt" href="{% url 'customer_edit' c.pk %}">Edit</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8">No customers found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

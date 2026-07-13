@@ -1,0 +1,57 @@
+{% extends 'partials/base.html' %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block page_title %}Admin{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>Admin Control 🛠️</h2><div class="muted">Full access — {{ request.user.email }}</div></div>
+  <div style="display:flex;gap:8px">
+    <a class="btn" href="{% url 'user_mgmt:site_settings' %}">⚙ Settings</a>
+    <a class="btn alt" href="{% url 'user_mgmt:user_list' %}">👥 Users</a>
+    <a class="btn alt" href="{% url 'user_mgmt:backup_download' %}">💾 Backup</a>
+  </div>
+</div>
+<div class="stat-grid">
+  {% if nav.overview %}
+  <a class="stat" href="{% url 'dashboard' %}" style="text-decoration:none;color:inherit">
+    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10.5 12 4l9 6.5M5 9.5V20h14V9.5"/></svg></div>
+    <div class="meta"><span class="value" style="font-size:18px">Overview</span><span class="label">Stock &amp; alerts</span></div>
+  </a>
+  {% endif %}
+  {% if nav.patients or nav.opd %}
+  <a class="stat" href="{% url 'patient_list' %}" style="text-decoration:none;color:inherit">
+    <div class="ic amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></div>
+    <div class="meta"><span class="value" style="font-size:18px">Patients &amp; OPD</span><span class="label">Registry, appointments</span></div>
+  </a>
+  {% endif %}
+  {% if nav.pos %}
+  <a class="stat" href="{% url 'sale_create' %}" style="text-decoration:none;color:inherit">
+    <div class="ic green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.4 12.4a2 2 0 0 0 2 1.6h8.2a2 2 0 0 0 2-1.6L23 7H6"/></svg></div>
+    <div class="meta"><span class="value" style="font-size:18px">Pharmacy POS</span><span class="label">Sell &amp; inventory</span></div>
+  </a>
+  {% endif %}
+  {% if nav.reports or nav.profit %}
+  <a class="stat" href="{% if nav.profit %}{% url 'profit_report' %}{% else %}{% url 'sales_report' %}{% endif %}" style="text-decoration:none;color:inherit">
+    <div class="ic green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V4M20 20H4"/><path d="M7 14l4-4 3 3 4-6"/></svg></div>
+    <div class="meta"><span class="value" style="font-size:18px">Reports</span><span class="label">Sales, profit, stock</span></div>
+  </a>
+  {% endif %}
+</div>
+<div class="card">
+  <h3>All Modules</h3>
+  <p style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+    {% if nav.patients %}<a class="btn alt" href="{% url 'patient_list' %}">Patients</a>{% endif %}
+    {% if nav.doctors %}<a class="btn alt" href="{% url 'doctor_list' %}">OPD</a>{% endif %}
+    {% if nav.prescriptions %}<a class="btn alt" href="{% url 'prescription_list' %}">Prescriptions</a>{% endif %}
+    {% if nav.lab %}<a class="btn alt" href="{% url 'lab:order_list' %}">Lab</a>{% endif %}
+    {% if nav.imaging %}<a class="btn alt" href="{% url 'imaging:study_list' %}">Imaging</a>{% endif %}
+    {% if nav.inventory %}<a class="btn alt" href="{% url 'medicine_list' %}">Inventory</a>{% endif %}
+    {% if nav.pos %}<a class="btn alt" href="{% url 'sale_list' %}">Bills</a>{% endif %}
+    {% if nav.customers %}<a class="btn alt" href="{% url 'customer_list' %}">Customers</a>{% endif %}
+    {% if nav.suppliers %}<a class="btn alt" href="{% url 'supplier_list' %}">Suppliers</a>{% endif %}
+    {% if nav.inventory %}<a class="btn alt" href="{% url 'purchase_list' %}">Purchases</a>{% endif %}
+    {% if nav.billing %}<a class="btn alt" href="{% url 'invoice_list' %}">Billing</a>{% endif %}
+    {% if nav.reports %}<a class="btn alt" href="{% url 'sales_report' %}">Sales Report</a>{% endif %}
+    {% if nav.reports %}<a class="btn alt" href="{% url 'inventory_report' %}">Inventory Report</a>{% endif %}
+  </p>
+</div>
+{% endblock %}

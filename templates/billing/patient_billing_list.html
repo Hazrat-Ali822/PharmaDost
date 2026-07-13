@@ -1,0 +1,45 @@
+{% extends 'partials/base.html' %}
+{% block title %}Patient Billing{% endblock %}
+{% block page_title %}Patient Billing{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>💳 Patient Billing</h2><div class="muted">Find a patient and collect their payment. Walk-in? Register them first, then bill.</div></div>
+  <a class="btn alt" href="{% url 'patient_add' %}">+ Register / Walk-in Patient</a>
+</div>
+
+<div class="card" style="margin-bottom:16px">
+  <form method="get" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <input name="q" value="{{ q }}" placeholder="Search by name, MRN or phone…" style="flex:1;min-width:240px">
+    <button class="btn" type="submit">Search</button>
+    {% if q %}<a class="btn alt" href="{% url 'patient_billing_list' %}">Clear</a>{% endif %}
+  </form>
+</div>
+
+<div class="card">
+  <div class="page-head">
+    <h3>{% if q %}Search results for “{{ q }}”{% else %}Patients with outstanding balance{% endif %}</h3>
+    {% if not q %}<span class="badge amber">Total due: Rs {{ total_due }}</span>{% endif %}
+  </div>
+  <table class="tbl">
+    <thead><tr><th>Patient</th><th>MRN</th><th>Phone</th><th>Charged</th><th>Paid</th><th>Outstanding</th><th></th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.patient.full_name }}</td>
+        <td class="muted">{{ r.patient.mrn }}</td>
+        <td class="muted">{{ r.patient.phone|default:"—" }}</td>
+        <td>Rs {{ r.charged }}</td>
+        <td>Rs {{ r.paid }}</td>
+        <td>{% if r.outstanding > 0 %}<b class="danger">Rs {{ r.outstanding }}</b>{% else %}<span class="badge green">Clear</span>{% endif %}</td>
+        <td><a class="btn sm" href="{% url 'patient_bill' r.patient.pk %}">Bill / Collect</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="muted">
+        {% if q %}No patient matched “{{ q }}”. <a href="{% url 'patient_add' %}">Register a new one?</a>
+        {% else %}No outstanding balances. 🎉 Use search to open any patient's bill.{% endif %}
+      </td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends 'partials/base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<h2>{{ title }}</h2>
+<form method="post" class="form-card">{% csrf_token %}
+{{ form.as_p }}
+<button class="btn" type="submit">Save</button>
+<a class="btn alt" href="{% url 'supplier_list' %}">Cancel</a>
+</form>
+{% endblock %}
