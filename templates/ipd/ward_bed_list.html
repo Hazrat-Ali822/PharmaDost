@@ -14,8 +14,11 @@
 <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:20px;">
   {% for w in wards %}
   <div class="card" style="padding:20px; border-radius:12px; border:1px solid var(--border); background:var(--card-bg);">
-    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px;">
-      <h3 style="margin:0; font-weight:700; font-size:16.5px; color:var(--text)">{{ w.name }}</h3>
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px;">
+      <h3 style="margin:0; font-weight:700; font-size:16.5px; color:var(--text)">
+        {{ w.name }}
+        <small style="display:block; font-size:12px; color:var(--muted); font-weight:500; margin-top:3px;">{{ w.get_ward_type_display }}</small>
+      </h3>
       <span style="font-size:13px; font-weight:600; color:var(--primary)">Rs {{ w.daily_rate }}/day</span>
     </div>
     

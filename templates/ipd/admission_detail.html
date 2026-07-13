@@ -7,8 +7,9 @@
   <div style="display:flex; gap:10px;">
     <a class="btn alt" href="{% url 'ipd:admission_list' %}">Back to Registry</a>
     {% if admission.status == 'Admitted' %}
-      <a class="btn success" href="{% url 'ipd:doctor_round_add' admission.pk %}" style="display:inline-flex; align-items:center; background:#22c55e;">Record Round</a>
-      <a class="btn danger" href="{% url 'ipd:admission_discharge' admission.pk %}" style="display:inline-flex; align-items:center; background:#ef4444;">Discharge Patient</a>
+      <a class="btn success" href="{% url 'ipd:doctor_round_add' admission.pk %}" style="display:inline-flex; align-items:center; background:#22c55e; color:white;">Record Round</a>
+      <a class="btn" href="{% url 'ipd:medication_log_add' admission.pk %}" style="display:inline-flex; align-items:center; background:var(--primary); color:white;">Record Medication</a>
+      <a class="btn danger" href="{% url 'ipd:admission_discharge' admission.pk %}" style="display:inline-flex; align-items:center; background:#ef4444; color:white;">Discharge Patient</a>
     {% endif %}
   </div>
 </div>
@@ -76,6 +77,29 @@
         </div>
         {% empty %}
         <p class="muted" style="text-align:center; padding:20px 0; margin:0;">No doctor rounds recorded for this admission yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card" style="padding:25px; border-radius:12px; border:1px solid var(--border);">
+      <h3 style="margin-top:0; font-weight:700; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:20px;">Medication Administration Log (Nursing Chart)</h3>
+      
+      <div style="display:flex; flex-direction:column; gap:15px;">
+        {% for log in medication_logs %}
+        <div style="border-left: 3px solid #22c55e; padding-left:15px; position:relative; margin-bottom:5px;">
+          <div style="width:11px; height:11px; border-radius:50%; background:#22c55e; position:absolute; left:-7px; top:4px;"></div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <strong style="font-size:14.5px; color:var(--primary);">{{ log.medicine_name }}</strong>
+            <span class="muted" style="font-size:12px;">{{ log.administered_at|date:"Y-m-d H:i" }}</span>
+          </div>
+          <p style="margin:0 0 4px 0; font-size:13.5px;"><span class="muted">Dosage:</span> <strong>{{ log.dosage }}</strong></p>
+          <p style="margin:0 0 4px 0; font-size:13px; color:var(--text);"><span class="muted">Administered by:</span> {{ log.administered_by.email }}</p>
+          {% if log.notes %}
+          <p style="margin:0; font-size:13px; font-style:italic; color:var(--muted);"><span class="muted">Notes:</span> "{{ log.notes }}"</p>
+          {% endif %}
+        </div>
+        {% empty %}
+        <p class="muted" style="text-align:center; padding:20px 0; margin:0;">No medications administered yet.</p>
         {% endfor %}
       </div>
     </div>

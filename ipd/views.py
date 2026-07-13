@@ -2,8 +2,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.utils import timezone
 from accounts.decorators import feature_required
-from .models import Ward, Bed, Admission, DoctorRound
-from .forms import WardForm, BedForm, AdmissionForm, DoctorRoundForm, DischargeForm
+from .models import Ward, Bed, Admission, DoctorRound, MedicationLog
+from .forms import WardForm, BedForm, AdmissionForm, DoctorRoundForm, DischargeForm, MedicationLogForm
 
 @feature_required('ipd')
 def admission_list(request):
@@ -37,9 +37,30 @@ def admission_create(request):
 def admission_detail(request, pk):
     admission = get_object_or_404(Admission.objects.select_related('patient', 'bed__ward', 'attending_doctor'), pk=pk)
     rounds = admission.rounds.all().order_by('-round_time')
+    medication_logs = admission.medication_logs.all().select_related('administered_by').order_by('-administered_at')
     return render(request, 'ipd/admission_detail.html', {
         'admission': admission,
         'rounds': rounds,
+        'medication_logs': medication_logs,
+    })
+
+@feature_required('ipd')
+def medication_log_add(request, pk):
+    admission = get_object_or_404(Admission, pk=pk)
+    if request.method == 'POST':
+        form = MedicationLogForm(request.POST)
+        if form.is_valid():
+            log = form.save(commit=False)
+            log.admission = admission
+            log.administered_by = request.user
+            log.save()
+            messages.success(request, f"Medication '{log.medicine_name}' logged successfully.")
+            return redirect('ipd:admission_detail', pk=admission.pk)
+    else:
+        form = MedicationLogForm()
+    return render(request, 'ipd/medication_form.html', {
+        'form': form,
+        'admission': admission,
     })
 
 @feature_required('ipd')
