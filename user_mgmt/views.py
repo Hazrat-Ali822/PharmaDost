@@ -40,6 +40,8 @@ def _template_for(user):
 
 @login_required
 def dashboard_router(request):
+    if request.user.is_superuser and not getattr(request.user, 'hospital', None):
+        return redirect('saas:dashboard')
     ctx = {'role': getattr(request.user, 'role', None)}
     if ctx['role'] == 'SONOGRAPHER':
         from imaging.models import ImagingStudy
