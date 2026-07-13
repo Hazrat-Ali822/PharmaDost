@@ -32,10 +32,24 @@ render_host = os.getenv("RENDER_EXTERNAL_HOSTNAME")
 if render_host:
     ALLOWED_HOSTS.append(render_host)
 
+# PythonAnywhere integration
+if str(BASE_DIR).startswith("/home/"):
+    parts = str(BASE_DIR).split("/")
+    if len(parts) > 2:
+        username = parts[2]
+        ALLOWED_HOSTS.append(f"{username}.pythonanywhere.com")
+        ALLOWED_HOSTS.append(f"*.pythonanywhere.com")
+
 # HTTPS origins allowed to POST (needed for the pythonanywhere domain on Django 4.2)
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.getenv("DJANGO_CSRF_TRUSTED", "").split(",") if o.strip()]
 if render_host:
     CSRF_TRUSTED_ORIGINS.append(f"https://{render_host}")
+if str(BASE_DIR).startswith("/home/"):
+    parts = str(BASE_DIR).split("/")
+    if len(parts) > 2:
+        username = parts[2]
+        CSRF_TRUSTED_ORIGINS.append(f"https://{username}.pythonanywhere.com")
+        CSRF_TRUSTED_ORIGINS.append(f"https://*.pythonanywhere.com")
 
 if os.getenv("DJANGO_ENV") == "production" and not os.getenv("DJANGO_SECRET_KEY"):
     raise RuntimeError("DJANGO_SECRET_KEY is required in production")
