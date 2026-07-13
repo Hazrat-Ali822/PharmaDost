@@ -3,7 +3,7 @@
 {% block page_title %}Wards & Beds Manager{% endblock %}
 {% block content %}
 <div class="page-head">
-  <h2>Wards & Beds Configuration</h2>
+  <h2>Wards & Beds Interactive Map</h2>
   <div style="display:flex; gap:10px;">
     <a class="btn alt" href="{% url 'ipd:admission_list' %}">Back to Registry</a>
     <a class="btn alt success" href="{% url 'ipd:ward_create' %}" style="background:#22c55e; color:white;">Add Ward</a>
@@ -11,35 +11,88 @@
   </div>
 </div>
 
-<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:20px;">
+<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap:24px;">
   {% for w in wards %}
-  <div class="card" style="padding:20px; border-radius:12px; border:1px solid var(--border); background:var(--card-bg);">
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px;">
-      <h3 style="margin:0; font-weight:700; font-size:16.5px; color:var(--text)">
-        {{ w.name }}
-        <small style="display:block; font-size:12px; color:var(--muted); font-weight:500; margin-top:3px;">{{ w.get_ward_type_display }}</small>
-      </h3>
-      <span style="font-size:13px; font-weight:600; color:var(--primary)">Rs {{ w.daily_rate }}/day</span>
-    </div>
-    
-    <div style="display:flex; flex-direction:column; gap:10px;">
-      <span class="muted" style="font-size:12px; display:block;">Registered Beds:</span>
-      <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap:10px;">
-        {% for b in w.beds.all %}
-        <div style="padding:10px; border-radius:8px; border:1px solid var(--border); text-align:center; background:var(--bg); transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1.0)'">
-          <strong style="display:block; font-size:14px; margin-bottom:4px; color:var(--text)">Bed {{ b.bed_number }}</strong>
+  <div class="card" style="padding:20px; border-radius:12px; border:1px solid var(--border); background:var(--card-bg); display:flex; flex-direction:column; justify-content:space-between;">
+    <div>
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:20px;">
+        <h3 style="margin:0; font-weight:700; font-size:16.5px; color:var(--text)">
+          {{ w.name }}
+          <small style="display:block; font-size:12.5px; color:var(--muted); font-weight:500; margin-top:4px;">{{ w.get_ward_type_display }}</small>
+        </h3>
+        <span style="font-size:13.5px; font-weight:700; color:var(--primary); background:rgba(79,70,229,0.05); padding:4px 8px; border-radius:6px;">Rs {{ w.daily_rate }}/day</span>
+      </div>
+      
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        <span class="muted" style="font-size:12px; font-weight:600; display:block; text-transform:uppercase; letter-spacing:0.5px;">Beds Status Map:</span>
+        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap:15px;">
+          {% for b in w.beds.all %}
           
-          {% if b.status == 'Available' %}
-          <span style="background:#22c55e; color:#fff; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:600;">Available</span>
-          {% elif b.status == 'Occupied' %}
-          <span style="background:#ef4444; color:#fff; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:600;">Occupied</span>
-          {% else %}
-          <span style="background:#f59e0b; color:#fff; font-size:10px; padding:2px 6px; border-radius:4px; font-weight:600;">Maintenance</span>
-          {% endif %}
+          <div class="bed-container" style="position:relative;">
+            {% if b.status == 'Available' %}
+              <a href="{% url 'ipd:admission_create' %}?bed_id={{ b.pk }}" style="text-decoration:none;">
+                <div class="bed-card available">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" style="width:28px; height:28px;">
+                    <path d="M2 20V9a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v11M2 17h20M22 20v-5a2 2 0 0 0-2-2h-4v7"/>
+                    <circle cx="6" cy="11" r="1.5" fill="#22c55e"/>
+                  </svg>
+                  <strong style="display:block; font-size:13.5px; color:var(--text)">Bed {{ b.bed_number }}</strong>
+                  <span style="font-size:10px; font-weight:700; text-transform:uppercase; color:#22c55e; letter-spacing:0.3px;">Available</span>
+                </div>
+              </a>
+              
+              <div class="bed-tooltip" style="text-align:center; padding:10px; width:160px;">
+                <span style="font-size:13px; font-weight:700; color:#22c55e;">Available</span>
+                <div style="font-size:11px; color:var(--muted); margin-top:4px;">Click to Admit Patient</div>
+              </div>
+              
+            {% elif b.status == 'Occupied' %}
+              <div class="bed-card occupied">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" style="width:28px; height:28px;">
+                  <path d="M2 20V9a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v11M2 17h20M22 20v-5a2 2 0 0 0-2-2h-4v7"/>
+                  <circle cx="6" cy="11" r="1.5" fill="#ef4444"/>
+                </svg>
+                <strong style="display:block; font-size:13.5px; color:var(--text)">Bed {{ b.bed_number }}</strong>
+                <span style="font-size:10px; font-weight:700; text-transform:uppercase; color:#ef4444; letter-spacing:0.3px;">Occupied</span>
+              </div>
+              
+              {% for adm in b.admissions.all %}
+                {% if adm.status == 'Admitted' %}
+                <div class="bed-tooltip">
+                  <div style="font-weight:700; margin-bottom:8px; border-bottom:1px solid var(--border); padding-bottom:6px; color:var(--text); font-size:14px;">
+                    {{ adm.patient.full_name }}
+                  </div>
+                  <div style="font-size:12px; margin-bottom:5px; color:var(--text);"><span class="muted">MRN:</span> <strong>{{ adm.patient.mrn }}</strong></div>
+                  <div style="font-size:12px; margin-bottom:5px; color:var(--text);"><span class="muted">Doctor:</span> <strong>Dr. {{ adm.attending_doctor.full_name }}</strong></div>
+                  <div style="font-size:12px; margin-bottom:12px; color:var(--text);"><span class="muted">Admitted:</span> <strong>{{ adm.admission_date|date:"Y-m-d H:i" }}</strong></div>
+                  <div style="display:flex; gap:8px;">
+                    <a href="{% url 'ipd:admission_detail' adm.pk %}" class="btn sm alt" style="flex:1; text-align:center; font-size:11px; padding:4px 8px;">View Logs</a>
+                    <a href="{% url 'ipd:admission_discharge' adm.pk %}" class="btn sm danger" style="flex:1; text-align:center; font-size:11px; padding:4px 8px; background:#ef4444; color:white; border:none;">Discharge</a>
+                  </div>
+                </div>
+                {% endif %}
+              {% endfor %}
+              
+            {% else %}
+              <div class="bed-card maintenance">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" style="width:28px; height:28px;">
+                  <path d="M2 20V9a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v11M2 17h20M22 20v-5a2 2 0 0 0-2-2h-4v7"/>
+                  <circle cx="6" cy="11" r="1.5" fill="#f59e0b"/>
+                </svg>
+                <strong style="display:block; font-size:13.5px; color:var(--text)">Bed {{ b.bed_number }}</strong>
+                <span style="font-size:10px; font-weight:700; text-transform:uppercase; color:#f59e0b; letter-spacing:0.3px;">Service</span>
+              </div>
+              <div class="bed-tooltip" style="text-align:center; padding:10px; width:160px;">
+                <span style="font-size:13px; font-weight:700; color:#f59e0b;">Maintenance</span>
+                <div style="font-size:11px; color:var(--muted); margin-top:4px;">Bed Under Service</div>
+              </div>
+            {% endif %}
+          </div>
+          
+          {% empty %}
+          <div style="grid-column:1/-1;" class="muted text-center py-2">No beds added yet.</div>
+          {% endfor %}
         </div>
-        {% empty %}
-        <div style="grid-column:1/-1;" class="muted text-center py-2">No beds added yet.</div>
-        {% endfor %}
       </div>
     </div>
   </div>
@@ -49,4 +102,76 @@
   </div>
   {% endfor %}
 </div>
+
+<style>
+  .bed-card {
+    padding: 18px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    text-align: center;
+    background: var(--card-bg);
+    cursor: pointer;
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  }
+  .bed-card.available {
+    border-color: rgba(34, 197, 94, 0.2);
+    background: rgba(34, 197, 94, 0.02);
+  }
+  .bed-card.available:hover {
+    background: rgba(34, 197, 94, 0.08);
+    border-color: #22c55e;
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.12);
+    transform: translateY(-2px);
+  }
+  .bed-card.occupied {
+    border-color: rgba(239, 68, 68, 0.2);
+    background: rgba(239, 68, 68, 0.02);
+  }
+  .bed-card.occupied:hover {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: #ef4444;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.12);
+    transform: translateY(-2px);
+  }
+  .bed-card.maintenance {
+    border-color: rgba(245, 158, 11, 0.2);
+    background: rgba(245, 158, 11, 0.02);
+  }
+  .bed-card.maintenance:hover {
+    background: rgba(245, 158, 11, 0.08);
+    border-color: #f59e0b;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.12);
+    transform: translateY(-2px);
+  }
+
+  .bed-tooltip {
+    visibility: hidden;
+    opacity: 0;
+    width: 250px;
+    background: var(--card-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.05);
+    border-radius: 12px;
+    padding: 16px;
+    position: absolute;
+    z-index: 100;
+    bottom: 112%;
+    left: 50%;
+    transform: translateX(-50%) translateY(8px);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    text-align: left;
+  }
+  .bed-container:hover .bed-tooltip {
+    visibility: visible;
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
 {% endblock %}

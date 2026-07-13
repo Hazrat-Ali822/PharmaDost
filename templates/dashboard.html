@@ -15,7 +15,7 @@
   </div>
 </div>
 
-<div class="stat-grid">
+<div class="stat-grid" style="margin-bottom:24px;">
   <div class="stat">
     <div class="ic amber">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h18v13H3z"/><path d="M3 7l2-3h14l2 3M9 12h6"/></svg>
@@ -30,43 +30,141 @@
   </div>
   <div class="stat">
     <div class="ic green">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 2v4M16 2v4M4 10h16"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
     </div>
-    <div class="meta"><span class="value">{{ today|date:"d M" }}</span><span class="label">Today</span></div>
+    <div class="meta"><span class="value" style="font-size:20px; font-weight:800;">Rs {{ total_income_30d|floatformat:0 }}</span><span class="label">30-Day Revenue</span></div>
+  </div>
+  <div class="stat">
+    <div class="ic red" style="background:rgba(239,68,68,0.1); color:#ef4444;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    </div>
+    <div class="meta"><span class="value" style="font-size:20px; font-weight:800;">Rs {{ total_expense_30d|floatformat:0 }}</span><span class="label">30-Day Expenses</span></div>
   </div>
 </div>
 
-<div class="card" style="margin-bottom:16px">
-  <div class="page-head">
-    <h3>Low Stock (below reorder level)</h3>
-    <a class="btn alt sm" href="{% url 'medicine_list' %}">View inventory</a>
+<div class="grid" style="grid-template-columns: 3fr 2fr; gap: 24px; align-items: start; margin-bottom: 24px;">
+  <!-- Left Side: Weekly Financial Analytics Chart -->
+  <div class="card" style="padding:25px; border-radius:12px; border:1px solid var(--border);">
+    <h3 style="margin-top:0; font-weight:700; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px; display:flex; align-items:center; gap:8px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:20px; height:20px; color:var(--primary);"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Weekly Financial Performance
+    </h3>
+    <canvas id="financeChart" style="max-height:280px; width:100%;"></canvas>
   </div>
-  <table class="tbl">
-    <thead><tr><th>Name</th><th>Brand</th><th>Qty</th></tr></thead>
-    <tbody>
-      {% for m in low_stock %}
-      <tr><td>{{ m.name }}</td><td>{{ m.brand }}</td><td><span class="badge amber">{{ m.quantity }}</span></td></tr>
-      {% empty %}
-      <tr><td colspan="3" class="muted">No low stock items 🎉</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+
+  <!-- Right Side: Smart Inventory Alerts -->
+  <div style="display:flex; flex-direction:column; gap:20px;">
+    <div class="card" style="padding:20px; border-radius:12px; border:1px solid var(--border);">
+      <div class="page-head" style="margin-bottom:12px; padding:0; border:none; display:flex; justify-content:space-between; align-items:center;">
+        <h4 style="margin:0; font-weight:700; color:var(--text)">Critical Low Stock</h4>
+        <a class="btn alt sm" href="{% url 'medicine_list' %}" style="font-size:11px; padding:3px 8px;">Restock</a>
+      </div>
+      <table class="tbl" style="font-size:13px; margin:0;">
+        <thead><tr><th>Medicine Name</th><th style="text-align:right;">Current Qty</th></tr></thead>
+        <tbody>
+          {% for m in low_stock|slice:":5" %}
+          <tr>
+            <td><strong>{{ m.name }}</strong> <small class="muted" style="display:block;">{{ m.brand }}</small></td>
+            <td style="text-align:right;"><span class="badge amber" style="background:#f59e0b; color:white; padding:2px 6px; border-radius:4px; font-weight:700;">{{ m.quantity }} left</span></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="2" class="muted text-center">No low stock items. All set! 🎉</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card" style="padding:20px; border-radius:12px; border:1px solid var(--border);">
+      <div class="page-head" style="margin-bottom:12px; padding:0; border:none; display:flex; justify-content:space-between; align-items:center;">
+        <h4 style="margin:0; font-weight:700; color:var(--text)">Expiring Batches (30d)</h4>
+        <a class="btn alt sm" href="{% url 'inventory_report' %}" style="font-size:11px; padding:3px 8px;">Report</a>
+      </div>
+      <table class="tbl" style="font-size:13px; margin:0;">
+        <thead><tr><th>Medicine Name</th><th style="text-align:right;">Expiry Date</th></tr></thead>
+        <tbody>
+          {% for m in expiring|slice:":5" %}
+          <tr>
+            <td><strong>{{ m.name }}</strong> <small class="muted" style="display:block;">{{ m.brand }}</small></td>
+            <td style="text-align:right;"><span class="badge red" style="background:#ef4444; color:white; padding:2px 6px; border-radius:4px; font-weight:700;">{{ m.expiry_date|date:"Y-m-d" }}</span></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="2" class="muted text-center">No batches expiring soon. Great!</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 </div>
 
-<div class="card">
-  <div class="page-head">
-    <h3>Expiring Soon (next 30 days)</h3>
-    <a class="btn alt sm" href="{% url 'inventory_report' %}">Inventory report</a>
-  </div>
-  <table class="tbl">
-    <thead><tr><th>Name</th><th>Brand</th><th>Expiry</th></tr></thead>
-    <tbody>
-      {% for m in expiring %}
-      <tr><td>{{ m.name }}</td><td>{{ m.brand }}</td><td><span class="badge red">{{ m.expiry_date }}</span></td></tr>
-      {% empty %}
-      <tr><td colspan="3" class="muted">Nothing expiring in the next 30 days.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const labels = JSON.parse('{{ finance_labels|escapejs }}');
+    const income = JSON.parse('{{ finance_income|escapejs }}');
+    const expense = JSON.parse('{{ finance_expense|escapejs }}');
+    
+    const ctx = document.getElementById('financeChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Income (Rs)',
+            data: income,
+            backgroundColor: '#4f46e5',
+            borderColor: '#4f46e5',
+            borderWidth: 1,
+            borderRadius: 4,
+            maxBarThickness: 24
+          },
+          {
+            label: 'Expenses (Rs)',
+            data: expense,
+            backgroundColor: '#ef4444',
+            borderColor: '#ef4444',
+            borderWidth: 1,
+            borderRadius: 4,
+            maxBarThickness: 24
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              font: {
+                family: 'Inter',
+                weight: '600'
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Amount (PKR)',
+              font: {
+                family: 'Inter',
+                weight: '600'
+              }
+            },
+            grid: {
+              color: 'rgba(0,0,0,0.03)'
+            }
+          },
+          x: {
+            grid: {
+              display: false
+            }
+          }
+        }
+      }
+    });
+  });
+</script>
 {% endblock %}

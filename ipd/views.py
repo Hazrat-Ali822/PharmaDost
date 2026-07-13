@@ -27,7 +27,15 @@ def admission_create(request):
             messages.success(request, f"Patient {admission.patient.full_name} admitted successfully to Bed {bed.bed_number}.")
             return redirect('ipd:admission_detail', pk=admission.pk)
     else:
-        form = AdmissionForm()
+        initial = {}
+        bed_id = request.GET.get('bed_id')
+        if bed_id:
+            try:
+                bed = Bed.objects.get(pk=bed_id, status='Available')
+                initial['bed'] = bed
+            except Bed.DoesNotExist:
+                pass
+        form = AdmissionForm(initial=initial)
     return render(request, 'ipd/admission_form.html', {
         'form': form,
         'title': 'Admit New Patient'
