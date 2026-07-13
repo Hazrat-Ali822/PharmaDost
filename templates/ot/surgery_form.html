@@ -1,0 +1,52 @@
+{% extends 'partials/base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>{{ title }}</h2>
+  <a class="btn alt" href="{% url 'ot:surgery_list' %}">Back to Portal</a>
+</div>
+
+<div class="card" style="max-width:700px; margin: 0 auto; padding: 30px;">
+  <form method="post" novalidate>
+    {% csrf_token %}
+    
+    {% for field in form %}
+    <div class="form-group" style="margin-bottom:20px;">
+      <label for="{{ field.id_for_label }}" style="display:block; font-weight:600; margin-bottom:6px; color:var(--text)">
+        {{ field.label }}
+      </label>
+      {{ field }}
+      {% if field.help_text %}
+      <small style="display:block; color:var(--muted); margin-top:4px;">{{ field.help_text }}</small>
+      {% endif %}
+      {% for error in field.errors %}
+      <div style="color:#ef4444; font-size:12px; margin-top:4px;">{{ error }}</div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+
+    <div style="margin-top:30px; display:flex; gap:10px;">
+      <button class="btn" type="submit" style="flex:1;">Save Surgery Record</button>
+      <a class="btn alt" href="{% url 'ot:surgery_list' %}" style="flex:1; text-align:center;">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<style>
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--card-bg);
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    border-color: var(--primary);
+  }
+</style>
+{% endblock %}

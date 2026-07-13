@@ -1,0 +1,57 @@
+{% extends 'partials/base.html' %}
+{% block title %}Record Doctor Round - {{ admission.patient.full_name }}{% endblock %}
+{% block page_title %}Record Doctor Round{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Daily Doctor Round Checklist</h2>
+  <a class="btn alt" href="{% url 'ipd:admission_detail' admission.pk %}">Back to Admission</a>
+</div>
+
+<div class="card" style="max-width:600px; margin: 0 auto; padding: 30px;">
+  <div style="background:var(--bg); border: 1px solid var(--border); padding:15px; border-radius:8px; margin-bottom:25px;">
+    <h4 style="margin:0 0 6px 0; font-weight:700;">{{ admission.patient.full_name }}</h4>
+    <p style="margin:0; font-size:13px; color:var(--muted)">Bed {{ admission.bed.bed_number }} ({{ admission.bed.ward.name }}) | Attending: Dr. {{ admission.attending_doctor.name }}</p>
+  </div>
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+    
+    {% for field in form %}
+    <div class="form-group" style="margin-bottom:20px;">
+      <label for="{{ field.id_for_label }}" style="display:block; font-weight:600; margin-bottom:6px; color:var(--text)">
+        {{ field.label }}
+      </label>
+      {{ field }}
+      {% if field.help_text %}
+      <small style="display:block; color:var(--muted); margin-top:4px;">{{ field.help_text }}</small>
+      {% endif %}
+      {% for error in field.errors %}
+      <div style="color:#ef4444; font-size:12px; margin-top:4px;">{{ error }}</div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+
+    <div style="margin-top:30px; display:flex; gap:10px;">
+      <button class="btn" type="submit" style="flex:1; background:#22c55e; border-color:#22c55e; color:white;">Save Checklist</button>
+      <a class="btn alt" href="{% url 'ipd:admission_detail' admission.pk %}" style="flex:1; text-align:center;">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<style>
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--card-bg);
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    border-color: var(--primary);
+  }
+</style>
+{% endblock %}

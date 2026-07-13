@@ -1,0 +1,78 @@
+{% extends 'partials/base.html' %}
+{% block title %}Inpatient Department (IPD){% endblock %}
+{% block page_title %}Inpatient (IPD) Admissions{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Inpatient Department (IPD)</h2>
+  <div style="display:flex; gap:10px;">
+    <a class="btn alt" href="{% url 'ipd:ward_bed_list' %}">Manage Wards & Beds</a>
+    <a class="btn" href="{% url 'ipd:admission_create' %}">Admit Patient</a>
+  </div>
+</div>
+
+<h3 style="margin-bottom:12px; font-weight:700;">Active Admissions</h3>
+<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:20px; margin-bottom:40px;">
+  {% for adm in active_admissions %}
+  <div class="card" style="padding:20px; border: 1px solid var(--border); display:flex; flex-direction:column; justify-content:space-between; border-radius:12px; background:var(--card-bg);">
+    <div>
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+        <h4 style="margin:0; font-size:18px; font-weight:700;"><a href="{% url 'ipd:admission_detail' adm.pk %}" style="color:var(--text); text-decoration:none;">{{ adm.patient.full_name }}</a></h4>
+        <span class="badge success" style="background:#22c55e; color:#fff; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:600;">Admitted</span>
+      </div>
+      <p style="margin-bottom:8px; font-size:13.5px;">
+        <span class="muted">Bed/Ward:</span> <strong>Bed {{ adm.bed.bed_number }}</strong> ({{ adm.bed.ward.name }})
+      </p>
+      <p style="margin-bottom:8px; font-size:13.5px;">
+        <span class="muted">Admitted On:</span> <strong>{{ adm.admission_date|date:"Y-m-d H:i" }}</strong>
+      </p>
+      <p style="margin-bottom:8px; font-size:13.5px;">
+        <span class="muted">Attending Doctor:</span> <strong>Dr. {{ adm.attending_doctor.name }}</strong>
+      </p>
+      <p style="margin-bottom:15px; font-size:13.5px;">
+        <span class="muted">Reason:</span> {{ adm.admission_reason|truncatechars:50 }}
+      </p>
+    </div>
+    <div style="display:flex; gap:10px; border-top:1px solid var(--border); padding-top:15px; margin-top:auto;">
+      <a href="{% url 'ipd:admission_detail' adm.pk %}" class="btn alt sm" style="flex:1; text-align:center;">View Logs</a>
+      <a href="{% url 'ipd:admission_discharge' adm.pk %}" class="btn sm danger" style="flex:1; text-align:center; background:#ef4444; color:#fff; border:none;">Discharge</a>
+    </div>
+  </div>
+  {% empty %}
+  <div class="card" style="grid-column: 1 / -1; text-align:center; padding:40px; color:var(--muted)">
+    No active inpatients currently admitted.
+  </div>
+  {% endfor %}
+</div>
+
+<h3 style="margin-bottom:12px; font-weight:700;">Recent Discharge History</h3>
+<div class="card">
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th>Patient</th>
+        <th>Ward & Bed</th>
+        <th>Admitted</th>
+        <th>Discharged</th>
+        <th>Attending Doctor</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for adm in past_admissions %}
+      <tr>
+        <td><strong>{{ adm.patient.full_name }}</strong></td>
+        <td>{{ adm.bed.ward.name }} - Bed {{ adm.bed.bed_number }}</td>
+        <td>{{ adm.admission_date|date:"Y-m-d" }}</td>
+        <td>{{ adm.discharge_date|date:"Y-m-d" }}</td>
+        <td>Dr. {{ adm.attending_doctor.name }}</td>
+        <td>
+          <a class="btn sm alt" href="{% url 'ipd:admission_detail' adm.pk %}">Discharge Summary</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="muted">No discharge logs registered.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

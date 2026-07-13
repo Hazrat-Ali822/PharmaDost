@@ -1,0 +1,49 @@
+{% extends 'partials/base.html' %}
+{% block title %}Surgery Catalog{% endblock %}
+{% block page_title %}Surgery Procedures Catalog{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Surgery Catalog Configuration</h2>
+  <div style="display:flex; gap:10px;">
+    <a class="btn alt" href="{% url 'ot:surgery_list' %}">Back to Portal</a>
+    <a class="btn alt success" href="{% url 'ot:category_create' %}" style="background:#22c55e; color:white;">Add Category</a>
+    <a class="btn" href="{% url 'ot:procedure_create' %}">Add Procedure</a>
+  </div>
+</div>
+
+<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:20px;">
+  {% for cat in categories %}
+  <div class="card" style="padding:20px; border-radius:12px; border:1px solid var(--border); background:var(--card-bg);">
+    <div style="border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px;">
+      <h3 style="margin:0; font-weight:700; font-size:16.5px; color:var(--text)">{{ cat.name }}</h3>
+    </div>
+    
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <span class="muted" style="font-size:12px; display:block;">Registered Procedures:</span>
+      <table class="tbl" style="font-size:13px; margin:0;">
+        <thead>
+          <tr>
+            <th>Procedure Name</th>
+            <th style="text-align:right;">Standard Charge</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in cat.procedures.all %}
+          <tr>
+            <td><strong>{{ p.name }}</strong></td>
+            <td style="text-align:right; font-weight:600; color:var(--primary)">Rs {{ p.standard_charge }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="2" class="muted">No procedures added.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% empty %}
+  <div class="card" style="grid-column: 1 / -1; text-align:center; padding:40px; color:var(--muted)">
+    No Surgery Categories or Procedures registered yet. Click "Add Category" or "Add Procedure" to build the catalog.
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends 'partials/base.html' %}
+{% block title %}Admission Detail - {{ admission.patient.full_name }}{% endblock %}
+{% block page_title %}Admission Logs{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Admission Log Details</h2>
+  <div style="display:flex; gap:10px;">
+    <a class="btn alt" href="{% url 'ipd:admission_list' %}">Back to Registry</a>
+    {% if admission.status == 'Admitted' %}
+      <a class="btn success" href="{% url 'ipd:doctor_round_add' admission.pk %}" style="display:inline-flex; align-items:center; background:#22c55e;">Record Round</a>
+      <a class="btn danger" href="{% url 'ipd:admission_discharge' admission.pk %}" style="display:inline-flex; align-items:center; background:#ef4444;">Discharge Patient</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid" style="grid-template-columns: 1fr 2fr; gap: 20px; align-items: start;">
+  <!-- Left Side: Patient & Ward Profile Info -->
+  <div class="card" style="padding:20px; border-radius:12px; border: 1px solid var(--border);">
+    <h3 style="margin-top:0; font-weight:700; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px;">Inpatient Profile</h3>
+    
+    <div style="display:flex; flex-direction:column; gap:12px; font-size:14px;">
+      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Full Name</span><strong style="font-size:16px;">{{ admission.patient.full_name }}</strong></p>
+      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">MRN</span><strong>{{ admission.patient.mrn }}</strong></p>
+      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Gender</span><strong>{{ admission.patient.get_gender_display }}</strong></p>
+      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Age</span><strong>{{ admission.patient.age_years }} Years</strong></p>
+      <hr style="border:0; border-top:1px solid var(--border); margin:5px 0;" />
+      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Assigned Bed / Ward</span><strong style="color:var(--primary)">Bed {{ admission.bed.bed_number }}</strong> ({{ admission.bed.ward.name }})</p>
+      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Attending Doctor</span><strong>Dr. {{ admission.attending_doctor.name }}</strong></p>
+      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Admission Date & Time</span><strong>{{ admission.admission_date|date:"Y-m-d H:i" }}</strong></p>
+      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Reason for Admission</span>{{ admission.admission_reason }}</p>
+      
+      {% if admission.status == 'Discharged' %}
+      <hr style="border:0; border-top:1px solid var(--border); margin:5px 0;" />
+      <div style="background:rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); padding:12px; border-radius:8px;">
+        <span class="badge success" style="margin-bottom:6px; background:#22c55e;">Discharged</span>
+        <p style="margin:0 0 4px 0; font-size:12px;"><span class="muted">Discharged On:</span> <strong>{{ admission.discharge_date|date:"Y-m-d H:i" }}</strong></p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Right Side: Rounds Log / Discharge Summary details -->
+  <div style="display:flex; flex-direction:column; gap:20px;">
+    {% if admission.status == 'Discharged' %}
+    <div class="card" style="padding:25px; border-radius:12px; border: 1px solid var(--border); background:rgba(34,197,94,0.02)">
+      <h3 style="margin-top:0; font-weight:700; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px; display:flex; align-items:center; gap:8px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" style="width:20px; height:20px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        Discharge Summary
+      </h3>
+      <p style="font-size:14.5px; white-space:pre-wrap; line-height:1.6; color:var(--text);">{{ admission.discharge_notes }}</p>
+    </div>
+    {% endif %}
+
+    <div class="card" style="padding:25px; border-radius:12px; border:1px solid var(--border);">
+      <h3 style="margin-top:0; font-weight:700; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:20px;">Attending Doctor Rounds Timeline</h3>
+      
+      <div style="display:flex; flex-direction:column; gap:20px;">
+        {% for r in rounds %}
+        <div style="border-left: 3px solid var(--primary); padding-left:15px; position:relative; margin-bottom:5px;">
+          <div style="width:11px; height:11px; border-radius:50%; background:var(--primary); position:absolute; left:-7px; top:4px;"></div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <strong style="font-size:14.5px;">Round Checklist</strong>
+            <span class="muted" style="font-size:12px;">{{ r.round_time|date:"Y-m-d H:i" }}</span>
+          </div>
+          
+          <div style="display:flex; gap:15px; margin-bottom:10px; font-size:12.5px; flex-wrap:wrap;">
+            {% if r.vitals_temp %}<span style="background:var(--bg); padding:3px 8px; border-radius:6px; border:1px solid var(--border);">🌡️ Temp: <strong>{{ r.vitals_temp }}</strong></span>{% endif %}
+            {% if r.vitals_bp %}<span style="background:var(--bg); padding:3px 8px; border-radius:6px; border:1px solid var(--border);">💓 BP: <strong>{{ r.vitals_bp }}</strong></span>{% endif %}
+            {% if r.vitals_pulse %}<span style="background:var(--bg); padding:3px 8px; border-radius:6px; border:1px solid var(--border);">⏱️ Pulse: <strong>{{ r.vitals_pulse }}</strong></span>{% endif %}
+          </div>
+          
+          <p style="margin:0 0 6px 0; font-size:13.5px;"><span class="muted">Progress Notes:</span> {{ r.clinical_notes }}</p>
+          {% if r.prescription_updates %}
+          <p style="margin:0; font-size:13.5px;"><span class="muted">Medication updates:</span> <strong style="color:var(--text)">{{ r.prescription_updates }}</strong></p>
+          {% endif %}
+        </div>
+        {% empty %}
+        <p class="muted" style="text-align:center; padding:20px 0; margin:0;">No doctor rounds recorded for this admission yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
