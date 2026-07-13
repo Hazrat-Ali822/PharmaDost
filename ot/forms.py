@@ -34,4 +34,4 @@ class SurgeryRecordForm(forms.ModelForm):
         self.fields['patient'].queryset = Patient.objects.all().order_by('full_name')
         self.fields['admission'].queryset = Admission.objects.filter(status='Admitted').order_by('-admission_date')
         self.fields['procedure'].queryset = SurgeryProcedure.objects.all().order_by('name')
-        self.fields['lead_surgeon'].queryset = Doctor.objects.all().order_by('name')
+        self.fields['lead_surgeon'].queryset = Doctor.objects.all().order_by('full_name')

@@ -25,7 +25,7 @@ class AdmissionForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # Filter patients, doctors, and beds by current hospital (TenantManager does it, but we can double check)
         self.fields['patient'].queryset = Patient.objects.all().order_by('full_name')
-        self.fields['attending_doctor'].queryset = Doctor.objects.all().order_by('name')
+        self.fields['attending_doctor'].queryset = Doctor.objects.all().order_by('full_name')
         
         # Only show available beds, plus the currently assigned bed if editing
         avail_beds = Bed.objects.filter(status='Available')
