@@ -10,6 +10,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
   {% if branding.primary_color %}<style>:root{ --primary: {{ branding.primary_color }}; --accent: {{ branding.accent_color }}; }</style>{% endif %}
+  <style>
+    a.btn:hover, button.btn:hover { color: #ffffff !important; text-decoration: none; }
+    a.btn.alt:hover, button.btn.alt:hover { color: var(--text) !important; }
+  </style>
   {% block extra_head %}{% endblock %}
 </head>
 <body>
