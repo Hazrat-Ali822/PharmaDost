@@ -294,3 +294,125 @@ def preturn_detail(request, pk):
         pk=pk,
     )
     return render(request, 'inventory/preturn_detail.html', {'ret': ret})
+
+
+@feature_required('inventory')
+def medicine_import_catalog(request):
+    import datetime
+    from django.db import IntegrityError
+    from django.views.decorators.http import require_POST
+    
+    if request.method != 'POST':
+        return redirect('medicine_list')
+
+    # Essential medicine catalog based on 20+ years of pharmacist expertise
+    STANDARD_MEDICINES = [
+        # Analgesics & Antipyretics
+        {"name": "Panadol 500mg", "generic_name": "Paracetamol", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
+        {"name": "Panadol Extra", "generic_name": "Paracetamol + Caffeine", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
+        {"name": "Brufen 400mg", "generic_name": "Ibuprofen", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Ponstan 250mg", "generic_name": "Mefenamic Acid", "brand": "Pfizer", "category": "TABLET", "manufacturer": "Pfizer Pakistan"},
+        {"name": "Disprin 300mg", "generic_name": "Aspirin", "brand": "Reckitt", "category": "TABLET", "manufacturer": "Reckitt Benckiser"},
+        {"name": "Tramal 50mg", "generic_name": "Tramadol Hydrochloride", "brand": "Searle", "category": "CAPSULE", "manufacturer": "Searle Pakistan"},
+        {"name": "Calpol Suspension", "generic_name": "Paracetamol", "brand": "GSK", "category": "SYRUP", "manufacturer": "GSK Pharma"},
+        
+        # Antibiotics & Antivirals
+        {"name": "Augmentin 625mg", "generic_name": "Co-amoxiclav", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
+        {"name": "Augmentin DS Suspension", "generic_name": "Co-amoxiclav", "brand": "GSK", "category": "SYRUP", "manufacturer": "GSK Pharma"},
+        {"name": "Amoxil 500mg", "generic_name": "Amoxicillin", "brand": "GSK", "category": "CAPSULE", "manufacturer": "GSK Pharma"},
+        {"name": "Flagyl 400mg", "generic_name": "Metronidazole", "brand": "Sanofi", "category": "TABLET", "manufacturer": "Sanofi-Aventis"},
+        {"name": "Flagyl Suspension", "generic_name": "Metronidazole", "brand": "Sanofi", "category": "SYRUP", "manufacturer": "Sanofi-Aventis"},
+        {"name": "Ciproxin 500mg", "generic_name": "Ciprofloxacin", "brand": "Bayer", "category": "TABLET", "manufacturer": "Bayer Pakistan"},
+        {"name": "Klaricid 250mg", "generic_name": "Clarithromycin", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Azomax 500mg", "generic_name": "Azithromycin", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
+        {"name": "Ceclor 250mg", "generic_name": "Cefaclor", "brand": "Eli Lilly", "category": "CAPSULE", "manufacturer": "Eli Lilly"},
+        
+        # Gastrointestinal
+        {"name": "Risek 20mg", "generic_name": "Omeprazole", "brand": "Getz", "category": "CAPSULE", "manufacturer": "Getz Pharma"},
+        {"name": "Risek 40mg", "generic_name": "Omeprazole", "brand": "Getz", "category": "CAPSULE", "manufacturer": "Getz Pharma"},
+        {"name": "Zantac 150mg", "generic_name": "Ranitidine", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
+        {"name": "Gravinate 50mg", "generic_name": "Dimenhydrinate", "brand": "Searle", "category": "TABLET", "manufacturer": "Searle Pakistan"},
+        {"name": "Gaviscon Liquid", "generic_name": "Sodium Alginate + Potassium Bicarbonate", "brand": "Reckitt", "category": "SYRUP", "manufacturer": "Reckitt Benckiser"},
+        {"name": "Entamizole", "generic_name": "Diloxanide Furoate + Metronidazole", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Colofac 135mg", "generic_name": "Mebeverine HCl", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Heptalac Syrup", "generic_name": "Lactulose", "brand": "Searle", "category": "SYRUP", "manufacturer": "Searle Pakistan"},
+
+        # Cardiovascular & Blood Pressure
+        {"name": "Loprin 75mg", "generic_name": "Aspirin", "brand": "Highnoon", "category": "TABLET", "manufacturer": "Highnoon Laboratories"},
+        {"name": "Capoten 25mg", "generic_name": "Captopril", "brand": "Bristol-Myers", "category": "TABLET", "manufacturer": "Bristol-Myers Squibb"},
+        {"name": "Concor 5mg", "generic_name": "Bisoprolol Fumarate", "brand": "Merck", "category": "TABLET", "manufacturer": "Merck Pakistan"},
+        {"name": "Norvasc 5mg", "generic_name": "Amlodipine Besylate", "brand": "Pfizer", "category": "TABLET", "manufacturer": "Pfizer Pakistan"},
+        {"name": "Lipiget 10mg", "generic_name": "Atorvastatin Calcium", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
+        {"name": "Angised 0.5mg", "generic_name": "Glyceryl Trinitrate", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
+
+        # Antidiabetic
+        {"name": "Glucophage 500mg", "generic_name": "Metformin HCl", "brand": "Merck", "category": "TABLET", "manufacturer": "Merck Pakistan"},
+        {"name": "Getryl 2mg", "generic_name": "Glimepiride", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
+        {"name": "Diamicron 60mg MR", "generic_name": "Gliclazide", "brand": "Servier", "category": "TABLET", "manufacturer": "Servier Research"},
+
+        # Respiratory & Allergy
+        {"name": "Panadol CF", "generic_name": "Paracetamol + Pseudoephedrine + Chlorpheniramine", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
+        {"name": "Arinac", "generic_name": "Ibuprofen + Pseudoephedrine", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Kestine 10mg", "generic_name": "Ebastine", "brand": "Searle", "category": "TABLET", "manufacturer": "Searle Pakistan"},
+        {"name": "Zyrtec 10mg", "generic_name": "Cetirizine HCl", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
+        {"name": "Ventolin Inhaler", "generic_name": "Salbutamol", "brand": "GSK", "category": "INHALER", "manufacturer": "GSK Pharma"},
+        {"name": "Ventolin Syrup", "generic_name": "Salbutamol", "brand": "GSK", "category": "SYRUP", "manufacturer": "GSK Pharma"},
+        {"name": "Acefyl Syrup", "generic_name": "Acefylline Piperazine", "brand": "Herbion", "category": "SYRUP", "manufacturer": "Herbion Pakistan"},
+        {"name": "Rigix 10mg", "generic_name": "Cetirizine", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
+        {"name": "Montika 10mg", "generic_name": "Montelukast", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
+
+        # Hormones / Steroids / Vitamins
+        {"name": "Decadron 4mg", "generic_name": "Dexamethasone", "brand": "Organon", "category": "TABLET", "manufacturer": "Organon"},
+        {"name": "Avil Tablet", "generic_name": "Pheniramine Maleate", "brand": "Sanofi", "category": "TABLET", "manufacturer": "Sanofi-Aventis"},
+        {"name": "Surbex-Z", "generic_name": "Zinc + Vitamin B-Complex + Vitamin C", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Cac 1000 Plus", "generic_name": "Calcium + Vitamin C", "brand": "Sandoz", "category": "SACHET", "manufacturer": "Sandoz Pakistan"},
+        {"name": "Evion 400mg", "generic_name": "Vitamin E", "brand": "Merck", "category": "CAPSULE", "manufacturer": "Merck Pakistan"},
+        {"name": "Sangobion Capsule", "generic_name": "Iron + Vitamin B12 + Folic Acid", "brand": "Merck", "category": "CAPSULE", "manufacturer": "Merck Pakistan"},
+        {"name": "Neurobion Tablet", "generic_name": "Vitamin B1, B6, B12", "brand": "Merck", "category": "TABLET", "manufacturer": "Merck Pakistan"},
+
+        # Creams & Topical
+        {"name": "Polyfax Skin Ointment", "generic_name": "Polymyxin B + Bacitracin", "brand": "GSK", "category": "CREAM", "manufacturer": "GSK Pharma"},
+        {"name": "Polyfax Eye Ointment", "generic_name": "Polymyxin B + Bacitracin", "brand": "GSK", "category": "CREAM", "manufacturer": "GSK Pharma"},
+        {"name": "Betnovate-N Cream", "generic_name": "Betamethasone Valerate + Neomycin", "brand": "GSK", "category": "CREAM", "manufacturer": "GSK Pharma"},
+        {"name": "Pyodine Solution", "generic_name": "Povidone-Iodine", "brand": "Brookes", "category": "DROPS", "manufacturer": "Brookes Pharma"},
+        {"name": "Betnovate-C Cream", "generic_name": "Betamethasone Valerate + Clioquinol", "brand": "GSK", "category": "CREAM", "manufacturer": "GSK Pharma"},
+        {"name": "Daktarin Cream", "generic_name": "Miconazole Nitrate", "brand": "Janssen", "category": "CREAM", "manufacturer": "Janssen Pharma"}
+    ]
+    
+    count = 0
+    today = datetime.date.today()
+    one_year_later = today + datetime.timedelta(days=365)
+    
+    for med_data in STANDARD_MEDICINES:
+        # Check if already exists in this hospital
+        exists = Medicine.all_objects.filter(
+            name=med_data["name"],
+            brand=med_data["brand"],
+            hospital=request.user.hospital
+        ).exists()
+        
+        if not exists:
+            try:
+                Medicine.objects.create(
+                    name=med_data["name"],
+                    generic_name=med_data["generic_name"],
+                    brand=med_data["brand"],
+                    manufacturer=med_data["manufacturer"],
+                    category=med_data["category"],
+                    price=Decimal("0.00"),
+                    wholesale_price=Decimal("0.00"),
+                    quantity=0,
+                    expiry_date=one_year_later,
+                    is_active=True,
+                    hospital=request.user.hospital
+                )
+                count += 1
+            except IntegrityError:
+                pass
+                
+    if count > 0:
+        messages.success(request, f"Successfully loaded {count} standard medicines. You can now configure their quantities, prices and batches.")
+    else:
+        messages.info(request, "All standard medicines are already loaded in your inventory.")
+        
+    return redirect('medicine_list')
