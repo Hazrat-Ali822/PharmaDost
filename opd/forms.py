@@ -30,3 +30,9 @@ class AppointmentForm(forms.ModelForm):
             'appointment_date': forms.DateInput(attrs={'type': 'date'}),
             'slot_time': forms.TimeInput(attrs={'type': 'time'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from patients.models import Patient
+        self.fields['doctor'].queryset = Doctor.objects.filter(is_active=True)
+        self.fields['patient'].queryset = Patient.objects.filter(is_active=True)

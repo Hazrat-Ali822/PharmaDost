@@ -15,7 +15,7 @@ PAYOUT_ROLES = ["ADMIN", "ACCOUNTANT"]
 
 @feature_required('doctors')
 def doctor_list(request):
-    doctors = Doctor.objects.all()
+    doctors = Doctor.objects.filter(is_active=True)
     return render(request, 'opd/doctor_list.html', {'doctors': doctors})
 
 
@@ -45,7 +45,43 @@ def doctor_edit(request, pk):
     else:
         form = DoctorForm(instance=doctor)
     return render(request, 'opd/doctor_form.html',
-                  {'form': form, 'title': f'Edit {doctor.full_name}'})
+                  {'form': form, 'title': f'Edit {doctor.full_name}', 'doctor': doctor})
+
+
+@feature_required('doctors')
+@role_required(['ADMIN'])
+def doctor_delete(request, pk):
+    doctor = get_object_or_404(Doctor, pk=pk)
+    
+    # Check if doctor has any history
+    has_history = False
+    if doctor.appointments.exists():
+        has_history = True
+    elif hasattr(doctor, 'payouts') and doctor.payouts.exists():
+        has_history = True
+    elif hasattr(doctor, 'clinical_records') and doctor.clinical_records.exists():
+        has_history = True
+        
+    if request.method == 'POST':
+        action = request.POST.get('action', 'archive')
+        if action == 'delete' and not has_history:
+            name = doctor.full_name
+            # Delete linked user account if exists
+            if doctor.user:
+                doctor.user.delete()
+            doctor.delete()
+            messages.success(request, f"Doctor '{name}' was permanently deleted.")
+            return redirect('doctor_list')
+        else:
+            doctor.is_active = False
+            doctor.save()
+            messages.success(request, f"Doctor '{doctor.full_name}' was marked inactive.")
+            return redirect('doctor_list')
+            
+    return render(request, 'opd/doctor_confirm_delete.html', {
+        'doctor': doctor,
+        'has_history': has_history
+    })
 
 
 # --- Appointments ---------------------------------------------------------

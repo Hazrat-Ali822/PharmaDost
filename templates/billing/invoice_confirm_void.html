@@ -1,0 +1,19 @@
+{% extends 'partials/base.html' %}
+{% block title %}Void Invoice — PharmaDost{% endblock %}
+{% block content %}
+<div class="card" style="max-width:550px; margin: 50px auto; padding: 30px; text-align: center; border-radius: 12px; border: 1px solid var(--border);">
+  <h2 style="color:#ef4444; margin-top:0; font-weight:700;">Void / Cancel Invoice</h2>
+  
+  <p style="font-size:15px; line-height:1.6; color:var(--text); margin-bottom:25px;">
+    Are you sure you want to void <strong>Invoice #{{ invoice.pk }}</strong> for patient <strong>{{ invoice.patient.full_name }}</strong> totaling <strong>Rs {{ invoice.total }}</strong>?
+    <br><br>
+    This will cancel the invoice, mark it as voided, and exclude its amount from all financial reports, charts, and billing calculations. This action is audited and cannot be undone.
+  </p>
+
+  <form method="post" onsubmit="this.querySelector('button[type=submit]').disabled = true; this.querySelector('button[type=submit]').innerText = 'Processing...';" style="display:flex; gap:10px; justify-content:center;">
+    {% csrf_token %}
+    <button class="btn danger" type="submit" style="background:#ef4444; border:none; color:white !important; padding:10px 24px; font-weight:600; cursor:pointer; border-radius:8px;">Yes, Void Invoice</button>
+    <a class="btn alt" href="{% url 'invoice_detail' invoice.pk %}" style="padding:10px 24px; font-weight:600; text-decoration:none; border-radius:8px;">Cancel</a>
+  </form>
+</div>
+{% endblock %}

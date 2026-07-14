@@ -18,6 +18,7 @@ class Doctor(models.Model):
     share_percent = models.DecimalField(
         max_digits=5, decimal_places=2, default=Decimal('100'),
         help_text="Doctor's share of the consultation fee (%). 100 = keeps the full fee.")
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return self.full_name

@@ -7,6 +7,9 @@
     {% csrf_token %}
     {{ form.as_p }}
     <button class="btn" type="submit">Save</button>
+    {% if doctor %}
+      <a class="btn danger" href="{% url 'doctor_delete' doctor.pk %}" style="background:#ef4444; color:white !important; border:none; padding:10px 16px; border-radius:8px; text-decoration:none; display:inline-flex; align-items:center;">Delete Doctor</a>
+    {% endif %}
     <a class="btn alt" href="{% url 'doctor_list' %}">Cancel</a>
   </form>
 </div>

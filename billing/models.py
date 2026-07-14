@@ -7,6 +7,11 @@ from opd.models import Appointment
 from saas.utils import TenantManager
 
 
+class ActiveInvoiceManager(TenantManager):
+    def get_queryset(self):
+        return super().get_queryset().filter(status='ACTIVE')
+
+
 class Invoice(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.PROTECT, related_name='invoices')
     appointment = models.ForeignKey(Appointment, on_delete=models.SET_NULL, null=True, blank=True, related_name='invoices')
@@ -18,11 +23,13 @@ class Invoice(models.Model):
     created_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name='created_invoices')
     created_at = models.DateTimeField(default=timezone.now)
     hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
+    status = models.CharField(max_length=20, default='ACTIVE', choices=[('ACTIVE', 'Active'), ('VOID', 'Void / Cancelled')])
 
     class Meta:
         ordering = ('-created_at',)
 
-    objects = TenantManager()
+    objects = ActiveInvoiceManager()
+    all_objects = TenantManager()
 
     def __str__(self):
         return f'Invoice #{self.pk}'
