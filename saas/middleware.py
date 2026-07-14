@@ -55,7 +55,7 @@ class TenantMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        if request.user.is_authenticated and not request.user.is_superuser:
+        if request.user.is_authenticated and getattr(request.user, 'hospital', None):
             set_current_hospital(request.user.hospital)
         else:
             set_current_hospital(None)
