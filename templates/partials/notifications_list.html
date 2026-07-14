@@ -1,5 +1,5 @@
 {% for n in unread_notifications %}
-  <div class="notif-item" style="padding: 12px 16px; border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='none'">
+  <div class="notif-item" data-id="{{ n.pk }}" style="padding: 12px 16px; border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='none'">
     <div style="font-size: 13px; line-height: 1.4; color: var(--text); margin-bottom: 4px;">{{ n.message }}</div>
     <div style="display: flex; justify-content: space-between; align-items: center;">
       <span style="font-size: 10px; color: var(--text-muted);">{{ n.created_at|timesince }} ago</span>

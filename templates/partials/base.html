@@ -13,6 +13,51 @@
   <style>
     a.btn:hover, button.btn:hover { color: #ffffff !important; text-decoration: none; }
     a.btn.alt:hover, button.btn.alt:hover { color: var(--text) !important; }
+    
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-width: 380px;
+      pointer-events: none;
+    }
+    .toast-popup {
+      background: var(--bg-card, #ffffff);
+      color: var(--text, #1e293b);
+      border-left: 4px solid var(--primary, #4f46e5);
+      border-radius: 8px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+      padding: 16px 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      pointer-events: auto;
+      cursor: pointer;
+      animation: toastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      transition: transform 0.2s, opacity 0.2s, box-shadow 0.2s;
+    }
+    .toast-popup:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.2);
+    }
+    .toast-popup.fade-out {
+      transform: translateX(120%);
+      opacity: 0;
+    }
+    @keyframes toastSlideIn {
+      from {
+        transform: translateX(120%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
   </style>
   {% block extra_head %}{% endblock %}
 </head>
@@ -634,6 +679,48 @@
       });
     }
 
+    // Keep track of unread notification IDs we've already seen/alerted
+    let seenNotifIds = Array.from(document.querySelectorAll('.notif-item')).map(el => el.getAttribute('data-id')).filter(Boolean);
+
+    function showToast(message, linkHref, id) {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      toast.className = 'toast-popup';
+      toast.innerHTML = `
+        <div style="font-size:18px;">🔔</div>
+        <div>
+          <div style="font-weight:700; font-size:11px; color:var(--primary); margin-bottom:2px; text-transform:uppercase; letter-spacing:0.5px;">New Alert</div>
+          <div style="font-size:13px; line-height:1.4; color:var(--text);">${message}</div>
+        </div>
+      `;
+
+      // Click to view/dismiss
+      toast.addEventListener('click', function() {
+        if (linkHref) {
+          markReadAjax(id, function() {
+            window.location.href = linkHref;
+          });
+        } else {
+          markReadAjax(id, function() {
+            toast.classList.add('fade-out');
+            setTimeout(() => toast.remove(), 300);
+          });
+        }
+      });
+
+      container.appendChild(toast);
+
+      // Auto dismiss
+      setTimeout(() => {
+        if (toast.parentNode) {
+          toast.classList.add('fade-out');
+          setTimeout(() => toast.remove(), 300);
+        }
+      }, 7000);
+    }
+
     // Poll endpoint every 5 seconds for new notifications
     setInterval(function() {
       fetch("{% url 'accounts:get_notifications_latest' %}")
@@ -658,6 +745,21 @@
           if (markAllReadBtn) markAllReadBtn.style.display = 'none';
         }
         
+        // Check for newly arrived notifications
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(data.html, 'text/html');
+        const items = doc.querySelectorAll('.notif-item');
+        items.forEach(item => {
+          const id = item.getAttribute('data-id');
+          if (id && !seenNotifIds.includes(id)) {
+            seenNotifIds.push(id);
+            const msg = item.querySelector('div').innerText;
+            const linkEl = item.querySelector('.mark-read-link');
+            const href = linkEl ? linkEl.getAttribute('href') : null;
+            showToast(msg, href, id);
+          }
+        });
+
         // Swap list content
         if (notifList) {
           notifList.innerHTML = data.html;
@@ -667,6 +769,8 @@
     }, 5000);
   }
 </script>
+
+<div id="toast-container"></div>
 
 {% block extra_js %}{% endblock %}
 </body>
