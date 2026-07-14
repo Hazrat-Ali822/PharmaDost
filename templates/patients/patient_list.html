@@ -15,7 +15,7 @@
   <table class="tbl">
     <thead>
       <tr>
-        <th>MRN</th><th>Name</th><th>Phone</th><th>Gender</th><th>Blood Group</th><th>Action</th>
+        <th>MRN</th><th>Name</th><th>Phone</th><th>Gender</th><th>Age</th><th>Action</th>
       </tr>
     </thead>
     <tbody>
@@ -25,7 +25,7 @@
         <td><a href="{% url 'patient_detail' patient.pk %}">{{ patient.full_name }}</a></td>
         <td>{{ patient.phone }}</td>
         <td>{{ patient.get_gender_display }}</td>
-        <td>{{ patient.blood_group }}</td>
+        <td>{% if patient.age_years %}{{ patient.age_years }} yrs{% else %}—{% endif %}</td>
         <td>
           <a class="btn sm" href="{% url 'patient_detail' patient.pk %}">History</a>
           <a class="btn sm alt" href="{% url 'patient_edit' patient.pk %}">Edit</a>
