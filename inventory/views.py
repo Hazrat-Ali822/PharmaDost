@@ -299,6 +299,7 @@ def preturn_detail(request, pk):
 @feature_required('inventory')
 def medicine_import_catalog(request):
     import datetime
+    from decimal import Decimal
     from django.db import IntegrityError
     from django.views.decorators.http import require_POST
     
