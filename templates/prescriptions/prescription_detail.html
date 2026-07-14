@@ -1,0 +1,154 @@
+{% extends 'partials/base.html' %}
+{% block title %}Prescription #{{ prescription.pk }} — {{ prescription.appointment.patient.full_name }}{% endblock %}
+{% block content %}
+<div class="no-print" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+  <div>
+    <h2 style="margin:0;">Prescription Details</h2>
+    <div class="muted">Patient: <a href="{% url 'patient_detail' prescription.appointment.patient.pk %}">{{ prescription.appointment.patient.full_name }}</a></div>
+  </div>
+  <div style="display: flex; gap: 8px;">
+    <button class="btn success" onclick="window.print();" style="display:inline-flex; align-items:center; gap:8px;">
+      🖨️ Print Prescription
+    </button>
+    <a class="btn" href="{% url 'prescription_edit' prescription.pk %}">✏️ Edit</a>
+    <a class="btn alt" href="{% url 'prescription_list' %}">Back to List</a>
+  </div>
+</div>
+
+<!-- Print Container (styled like a medical letterhead) -->
+<div class="prescription-sheet card" style="max-width: 800px; margin: 0 auto; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); background: white; font-family: 'Inter', sans-serif;">
+  
+  <!-- Header (Hospital & Doctor Info) -->
+  <div style="display: flex; justify-content: space-between; border-bottom: 2px solid var(--primary); padding-bottom: 20px; margin-bottom: 25px;">
+    <div>
+      <h1 style="color: var(--primary); margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px;">{{ request.user.hospital.name|default:"PharmaDost Hospital" }}</h1>
+      <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Complete Medical & Diagnostic Care</div>
+    </div>
+    <div style="text-align: right;">
+      <h3 style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600; color: var(--text);">Dr. {{ prescription.appointment.doctor.full_name }}</h3>
+      <div style="font-size: 12px; color: var(--text-muted);">
+        {{ prescription.appointment.doctor.specialty }}<br>
+        PMDC: {{ prescription.appointment.doctor.pmdc_no|default:"N/A" }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Patient Details bar -->
+  <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; background: var(--bg); border: 1px solid var(--border); padding: 15px; border-radius: 6px; font-size: 13px; margin-bottom: 30px;">
+    <div>
+      <strong style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 2px;">Patient Name</strong>
+      <span style="font-weight: 600; color: var(--text);">{{ prescription.appointment.patient.full_name }}</span>
+    </div>
+    <div>
+      <strong style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 2px;">Age / Gender</strong>
+      <span style="font-weight: 600; color: var(--text);">
+        {{ prescription.appointment.patient.age_years|default:"—" }} Yrs / 
+        {{ prescription.appointment.patient.get_gender_display|default:"—" }}
+      </span>
+    </div>
+    <div>
+      <strong style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 2px;">MRN</strong>
+      <span style="font-weight: 600; color: var(--text);">#{{ prescription.appointment.patient.mrn }}</span>
+    </div>
+    <div>
+      <strong style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 2px;">Date</strong>
+      <span style="font-weight: 600; color: var(--text);">{{ prescription.created_at|date:"Y-m-d h:i A" }}</span>
+    </div>
+  </div>
+
+  <!-- Prescription Contents (Rx symbol) -->
+  <div style="display: flex; gap: 30px; min-height: 400px;">
+    
+    <!-- Vitals & Complaints (Left side) -->
+    <div style="width: 25%; border-right: 1px solid var(--border); padding-right: 20px;">
+      <div style="margin-bottom: 20px;">
+        <h4 style="margin: 0 0 8px 0; color: var(--primary); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Complaints</h4>
+        <p style="margin: 0; font-size: 13px; line-height: 1.5; color: var(--text);">{{ prescription.complaint|default:"—"|linebreaksbr }}</p>
+      </div>
+      
+      <div style="margin-bottom: 20px;">
+        <h4 style="margin: 0 0 8px 0; color: var(--primary); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">Diagnosis</h4>
+        <p style="margin: 0; font-size: 13px; line-height: 1.5; color: var(--text); font-weight: 600;">{{ prescription.diagnosis|default:"—" }}</p>
+      </div>
+    </div>
+
+    <!-- Rx Details (Right side) -->
+    <div style="width: 75%; padding-left: 10px;">
+      <div style="font-size: 32px; font-weight: 700; color: var(--primary); font-family: 'Times New Roman', serif; margin-bottom: 20px; line-height: 1;">℞</div>
+      
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr style="border-bottom: 1px solid var(--border); text-align: left;">
+            <th style="padding: 8px 0; font-size: 12px; text-transform: uppercase; color: var(--text-muted); width: 45%;">Medicine Name</th>
+            <th style="padding: 8px 0; font-size: 12px; text-transform: uppercase; color: var(--text-muted); width: 20%;">Dosage</th>
+            <th style="padding: 8px 0; font-size: 12px; text-transform: uppercase; color: var(--text-muted); width: 15%;">Duration</th>
+            <th style="padding: 8px 0; font-size: 12px; text-transform: uppercase; color: var(--text-muted); width: 20%;">Instructions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in prescription.items.all %}
+          <tr style="border-bottom: 1px dashed var(--border);">
+            <td style="padding: 12px 0; font-size: 14px; font-weight: 600; color: var(--text);">
+              {{ item.medicine.name }} 
+              <span style="font-weight: 400; font-size: 12px; color: var(--text-muted);">({{ item.medicine.brand }})</span>
+            </td>
+            <td style="padding: 12px 0; font-size: 13px; color: var(--text);">{{ item.dosage|default:"—" }}</td>
+            <td style="padding: 12px 0; font-size: 13px; color: var(--text);">{{ item.duration_days|default:"1" }} Day(s)</td>
+            <td style="padding: 12px 0; font-size: 13px; color: var(--text); font-style: italic;">{{ item.instructions|default:"—" }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="4" style="padding: 20px 0; text-align: center; color: var(--text-muted); font-style: italic; font-size: 13px;">No medicines prescribed.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      {% if prescription.notes %}
+      <div style="margin-top: 40px; background: var(--bg); padding: 15px; border-radius: 6px; border-left: 3px solid var(--primary);">
+        <h4 style="margin: 0 0 6px 0; font-size: 12px; text-transform: uppercase; color: var(--primary);">Clinical Notes / Advice</h4>
+        <p style="margin: 0; font-size: 13px; line-height: 1.5; color: var(--text);">{{ prescription.notes|linebreaksbr }}</p>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+
+  <!-- Footer (Signature area) -->
+  <div style="margin-top: 60px; display: flex; justify-content: space-between; align-items: flex-end; font-size: 12px; color: var(--text-muted);">
+    <div>
+      <em>Powered by PharmaDost Healthcare Platform</em>
+    </div>
+    <div style="text-align: center; border-top: 1px solid var(--text-muted); width: 180px; padding-top: 8px;">
+      <strong>Dr. {{ prescription.appointment.doctor.full_name }}</strong><br>
+      Authorized Signature
+    </div>
+  </div>
+
+</div>
+
+<!-- CSS for Print view only -->
+<style>
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .sidebar, .topbar, .no-print, .btn, header, nav, #add-med {
+    display: none !important;
+  }
+  .main-content, .content, .prescription-sheet {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    background: transparent !important;
+  }
+  body, .main-content {
+    min-height: auto !important;
+  }
+}
+</style>
+{% endblock %}

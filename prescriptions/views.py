@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from accounts.decorators import feature_required
 from opd.models import Appointment
@@ -91,5 +92,57 @@ def _order_scans(scan_types, patient, user):
 
 @feature_required('prescriptions')
 def prescription_list(request):
-    prescriptions = Prescription.objects.select_related('appointment__patient').all()
-    return render(request, 'prescriptions/prescription_list.html', {'prescriptions': prescriptions})
+    q = request.GET.get('q', '').strip()
+    prescriptions = Prescription.objects.select_related('appointment__patient', 'appointment__doctor').order_by('-created_at')
+    
+    if q:
+        prescriptions = prescriptions.filter(
+            Q(appointment__patient__full_name__icontains=q) |
+            Q(appointment__patient__mrn__icontains=q) |
+            Q(appointment__doctor__full_name__icontains=q) |
+            Q(diagnosis__icontains=q)
+        )
+        
+    return render(request, 'prescriptions/prescription_list.html', {
+        'prescriptions': prescriptions,
+        'q': q
+    })
+
+
+@feature_required('prescriptions')
+def prescription_detail(request, pk):
+    prescription = get_object_or_404(
+        Prescription.objects.select_related('appointment__patient', 'appointment__doctor').prefetch_related('items__medicine'),
+        pk=pk
+    )
+    return render(request, 'prescriptions/prescription_detail.html', {'prescription': prescription})
+
+
+@feature_required('prescriptions')
+def prescription_edit(request, pk):
+    prescription = get_object_or_404(
+        Prescription.objects.select_related('appointment__patient', 'appointment__doctor'),
+        pk=pk
+    )
+    appointment = prescription.appointment
+    
+    if request.method == 'POST':
+        form = PrescriptionForm(request.POST, instance=prescription)
+        med_formset = PrescriptionItemFormSet(request.POST, instance=prescription, prefix='meds')
+        if form.is_valid() and med_formset.is_valid():
+            form.save()
+            med_formset.save()
+            messages.success(request, "Prescription updated successfully.")
+            return redirect('prescription_detail', pk=prescription.pk)
+    else:
+        form = PrescriptionForm(instance=prescription)
+        med_formset = PrescriptionItemFormSet(instance=prescription, prefix='meds')
+        
+    return render(request, 'prescriptions/prescription_form.html', {
+        'form': form,
+        'med_formset': med_formset,
+        'appointment': appointment,
+        'prescription': prescription,
+        'title': 'Edit Prescription',
+        'is_edit': True,
+    })
