@@ -34,10 +34,24 @@ class TestOrderCreateForm(forms.ModelForm):
         return order
 
 
+class TestResultForm(forms.ModelForm):
+    class Meta:
+        model = TestResult
+        fields = ["lab_test", "result_value", "normal_range", "unit", "remarks"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            if not self.instance.normal_range and self.instance.lab_test:
+                self.fields['normal_range'].initial = self.instance.lab_test.normal_range
+            if not self.instance.unit and self.instance.lab_test:
+                self.fields['unit'].initial = self.instance.lab_test.unit
+
+
 TestResultFormSet = inlineformset_factory(
     parent_model=TestOrder,
     model=TestResult,
-    fields=["lab_test", "result_value", "normal_range", "unit", "remarks"],
+    form=TestResultForm,
     extra=0,
     can_delete=False
 )
