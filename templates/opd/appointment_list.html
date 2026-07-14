@@ -13,6 +13,13 @@
   {% endif %}
 </div>
 
+{% if is_unlinked_doctor %}
+<div class="msg error" style="margin-bottom:20px; font-weight:600; padding:15px; border-radius:8px; border-left:4px solid #ef4444;">
+  ⚠️ <b>Doctor Profile Link Required</b>: Your login user account (<b>{{ request.user.email }}</b>) is not linked to any Doctor profile. 
+  Please ask the Admin to go to <b>OPD → Doctors</b>, edit the Doctor profile (e.g. <b>Dr. DR FAZLE ALEEM</b>), and select your user account in the <b>Linked User Account</b> dropdown to show your patient queue here.
+</div>
+{% endif %}
+
 <!-- Tabs for Status filtering -->
 <div style="display:flex; gap:8px; margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:10px;">
   <a class="btn {% if show == 'active' %}primary{% else %}alt{% endif %}" href="?show=active" style="padding:6px 16px; font-size:13px; text-decoration:none; border-radius:20px;">
