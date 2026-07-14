@@ -180,3 +180,20 @@ def bed_create(request):
         'form': form,
         'title': 'Add Bed'
     })
+
+@feature_required('ipd')
+def bed_edit(request, pk):
+    bed = get_object_or_404(Bed, pk=pk)
+    if request.method == 'POST':
+        form = BedForm(request.POST, instance=bed)
+        if form.is_valid():
+            bed = form.save()
+            messages.success(request, f"Bed '{bed.bed_number}' status updated.")
+            return redirect('ipd:ward_bed_list')
+    else:
+        form = BedForm(instance=bed)
+    return render(request, 'ipd/bed_form.html', {
+        'form': form,
+        'title': 'Edit Bed Details',
+        'bed': bed,
+    })
