@@ -6,8 +6,21 @@ from patients.models import Patient
 class DoctorForm(forms.ModelForm):
     class Meta:
         model = Doctor
-        fields = ['full_name', 'specialty', 'pmdc_no', 'opd_fee', 'followup_fee',
+        fields = ['user', 'full_name', 'specialty', 'pmdc_no', 'opd_fee', 'followup_fee',
                   'followup_valid_days', 'share_percent']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from accounts.models import User
+        from saas.utils import get_current_hospital
+        hospital = get_current_hospital()
+        user_qs = User.objects.filter(role='DOCTOR', is_active=True)
+        if hospital:
+            user_qs = user_qs.filter(hospital=hospital)
+        self.fields['user'].queryset = user_qs
+        self.fields['user'].required = False
+        self.fields['user'].label = "Linked User Account"
+        self.fields['user'].help_text = "Select the login user account for this doctor."
 
 
 class DoctorPayoutForm(forms.ModelForm):
