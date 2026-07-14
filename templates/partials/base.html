@@ -212,9 +212,14 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.4 12.4a2 2 0 0 0 2 1.6h8.2a2 2 0 0 0 2-1.6L23 7H6"/></svg>
           Create Bill
         </a>
-        <a href="{% url 'sale_list' %}" class="{% if request.path == '/sales/list/' %}active{% endif %}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
-          Bills
+        <a href="{% url 'sale_list' %}" class="{% if request.path == '/sales/list/' %}active{% endif %}" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+          <div style="display:flex; align-items:center; gap:12px; min-width:0;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Bills</span>
+          </div>
+          {% if pharmacy_badge_count > 0 %}
+            <span class="sidebar-badge" style="background:#ef4444; color:white; font-size:10px; font-weight:700; padding:2px 6px; border-radius:10px; line-height:1; flex-shrink:0; margin-left:6px;">{{ pharmacy_badge_count }}</span>
+          {% endif %}
         </a>
         <a href="{% url 'wholesale_order_list' %}" class="{% if '/sales/wholesale' in request.path %}active{% endif %}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7M12 11v10"/></svg>

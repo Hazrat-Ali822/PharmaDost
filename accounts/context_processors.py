@@ -43,7 +43,8 @@ def notifications_context(request):
             'lab_badge_count': 0,
             'imaging_badge_count': 0,
             'ipd_badge_count': 0,
-            'ot_badge_count': 0
+            'ot_badge_count': 0,
+            'pharmacy_badge_count': 0
         }
     from .models import Notification
     unread = Notification.objects.filter(user=user, is_read=False).order_by('-created_at')[:5]
@@ -54,6 +55,7 @@ def notifications_context(request):
     imaging_badge_count = 0
     ipd_badge_count = 0
     ot_badge_count = 0
+    pharmacy_badge_count = 0
     hospital = getattr(user, 'hospital', None)
 
     try:
@@ -100,6 +102,13 @@ def notifications_context(request):
         if hospital:
             ot_qs = ot_qs.filter(hospital=hospital)
         ot_badge_count = ot_qs.count()
+
+        # 6. Pharmacy Pending Prescription count
+        from prescriptions.models import Prescription
+        rx_qs = Prescription.objects.filter(status='PENDING')
+        if hospital:
+            rx_qs = rx_qs.filter(appointment__patient__hospital=hospital)
+        pharmacy_badge_count = rx_qs.count()
     except Exception:
         pass
 
@@ -110,5 +119,6 @@ def notifications_context(request):
         'lab_badge_count': lab_badge_count,
         'imaging_badge_count': imaging_badge_count,
         'ipd_badge_count': ipd_badge_count,
-        'ot_badge_count': ot_badge_count
+        'ot_badge_count': ot_badge_count,
+        'pharmacy_badge_count': pharmacy_badge_count
     }
