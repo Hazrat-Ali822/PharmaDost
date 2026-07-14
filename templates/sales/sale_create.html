@@ -4,6 +4,7 @@
 {% block content %}
 <h2>Create Bill</h2>
 <form method="post" id="bill-form">{% csrf_token %}
+  <input type="hidden" name="prescription_id" value="{{ prescription_id|default:'' }}">
   <div class="card" style="margin-bottom:12px">
     <div class="form-row">
       <label>Sale Type</label>
@@ -26,7 +27,7 @@
       <select name="patient_id">
         <option value="">-- link to patient --</option>
         {% for p in patients %}
-        <option value="{{ p.id }}">{{ p.full_name }} ({{ p.mrn }})</option>
+        <option value="{{ p.id }}" {% if p.id == preselected_patient_id %}selected{% endif %}>{{ p.full_name }} ({{ p.mrn }})</option>
         {% endfor %}
       </select>
     </div>
@@ -214,7 +215,8 @@
     {% for m in meds %}
       {id: {{ m.id }}, name: "{{ m.name|escapejs }}", brand: "{{ m.brand|escapejs }}",
        price: {{ m.price }}, wprice: {{ m.wholesale_price|default:0 }},
-       upp: {{ m.units_per_pack|default:1 }}, barcode: "{{ m.barcode|escapejs }}"},
+       upp: {{ m.units_per_pack|default:1 }}, barcode: "{{ m.barcode|escapejs }}",
+       qty: {{ m.quantity }} },
     {% endfor %}
   ];
   const byId = {}; meds.forEach(m => byId[m.id] = m);
@@ -255,17 +257,36 @@
       meds.map(m => `<option value="${m.id}" ${m.id==selectedId?'selected':''}>${m.name} (${m.brand})</option>`).join('');
   }
 
-  function renderRow(selectedId){
+  function renderRow(selectedId, customName = '', qtyIn = 1){
     const tr = document.createElement('tr');
+    let optionHtml = optionsHtml(selectedId);
+    let customWarning = '';
+    let medicineSelectHtml = `<td><select class="med-select" name="medicine_id[]">${optionHtml}</select></td>`;
+    
+    if (customName) {
+      medicineSelectHtml = `
+        <td>
+          <input type="hidden" name="medicine_id[]" value="">
+          <span style="font-weight:700; color:var(--text); font-size:14px; text-decoration: underline wavy #ef4444 1px;">${customName}</span>
+        </td>`;
+      customWarning = `<span class="badge red" style="margin-top:4px; display:inline-block; font-size:10px; padding:2px 6px;">⚠️ Not in Pharmacy Catalog</span>`;
+    } else if (selectedId) {
+      const m = byId[selectedId];
+      if (m && m.qty <= 0) {
+        customWarning = `<span class="badge red" style="margin-top:4px; display:inline-block; font-size:10px; padding:2px 6px;">🔴 Out of Stock (0 available)</span>`;
+      }
+    }
+    
     tr.innerHTML = `
-      <td><select class="med-select" name="medicine_id[]">${optionsHtml(selectedId)}</select></td>
+      ${medicineSelectHtml}
       <td>
         <select class="sellby">
           <option value="PACK">Pack</option>
-          <option value="UNIT">Unit</option>
+          <option value="UNIT" selected>Unit</option>
         </select>
+        ${customWarning}
       </td>
-      <td><input type="number" min="1" step="1" class="dispqty" value="1" style="width:80px"></td>
+      <td><input type="number" min="1" step="1" class="dispqty" value="${qtyIn}" style="width:80px"></td>
       <td><input type="number" step="0.01" min="0" class="dispprice" placeholder="Auto" style="width:110px"></td>
       <td><input type="number" step="0.01" min="0" name="line_discount[]" value="0" style="width:90px"></td>
       <td class="line-total">0</td>
@@ -506,8 +527,15 @@
     }
   });
 
+  const rxItems = {% if rx_items_json %}{{ rx_items_json|safe }}{% else %}[]{% endif %};
+  if (rxItems.length > 0) {
+    rxItems.forEach(item => {
+      renderRow(item.medicine_id, item.custom_medicine_name, item.quantity);
+    });
+  } else {
+    renderRow(); // start with one row
+  }
   addBtn.addEventListener('click', () => renderRow());
-  renderRow(); // start with one row
   updateWsHint();
 })();
 </script>

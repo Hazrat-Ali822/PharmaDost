@@ -56,6 +56,59 @@
   </a>
 </div>
 
+<div class="card" style="margin-top:20px; margin-bottom:20px;">
+  <h3 style="margin-top:0; font-weight:700; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px; display:flex; align-items:center; gap:8px;">
+    💊 Pending Prescriptions (Doctor Orders)
+  </h3>
+  <table class="tbl" style="margin:0;">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Patient</th>
+        <th>Prescribed By</th>
+        <th>Medicines</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for rx in pending_prescriptions %}
+      <tr>
+        <td>{{ rx.created_at|date:"Y-m-d H:i" }}</td>
+        <td><strong>{{ rx.appointment.patient.full_name }}</strong></td>
+        <td>Dr. {{ rx.appointment.doctor.get_full_name|default:rx.appointment.doctor.user.email }}</td>
+        <td>
+          <ul style="margin:0; padding-left:16px; font-size:12.5px;">
+            {% for item in rx.items.all %}
+              <li>
+                {% if item.medicine %}
+                  {{ item.medicine.name }}
+                  {% if item.medicine.quantity <= 0 %}
+                    <span class="badge red" style="font-size:10px; padding:1px 4px;">Out of Stock</span>
+                  {% endif %}
+                {% else %}
+                  {{ item.custom_medicine_name }}
+                  <span class="badge amber" style="font-size:10px; padding:1px 4px;">Not in Catalog</span>
+                {% endif %}
+                <small class="muted">({{ item.dosage }}{% if item.instructions %}, {{ item.instructions }}{% endif %})</small>
+              </li>
+            {% endfor %}
+          </ul>
+        </td>
+        <td><span class="badge amber">Pending Bill</span></td>
+        <td>
+          <a class="btn sm success" href="{% url 'sale_create' %}?prescription_id={{ rx.id }}">Process Bill (POS)</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="6" class="muted text-center" style="padding:20px;">No pending prescriptions from doctors. All caught up! 🎉</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
 <div class="card">
   <h3>Quick Links</h3>
   <p style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
