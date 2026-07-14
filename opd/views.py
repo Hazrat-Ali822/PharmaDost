@@ -151,7 +151,9 @@ def appointment_create(request):
             messages.success(request, 'Appointment booked successfully.')
             return redirect('appointment_list')
     else:
-        form = AppointmentForm()
+        from django.utils import timezone
+        now = timezone.localtime(timezone.now())
+        form = AppointmentForm(initial={'slot_time': now.time().strftime('%H:%M')})
     return render(request, 'opd/appointment_form.html', {'form': form, 'title': 'Book Appointment'})
 
 
