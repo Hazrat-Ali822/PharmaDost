@@ -53,7 +53,35 @@
 
 {% block extra_js %}
 <script>
-  (function() {
+  function updateAppointmentStatus(selectEl) {
+    const id = selectEl.getAttribute('data-id');
+    const status = selectEl.value;
+    const url = `/opd/appointments/${id}/status/?status=${status}`;
+    
+    selectEl.style.opacity = '0.5';
+    selectEl.disabled = true;
+    
+    fetch(url)
+    .then(res => {
+      if (res.ok) return res.json();
+      throw new Error('Error updating status');
+    })
+    .then(data => {
+      selectEl.style.opacity = '1';
+      selectEl.disabled = false;
+      selectEl.style.borderColor = '#10b981';
+      setTimeout(() => { selectEl.style.borderColor = 'var(--border-strong)'; }, 1000);
+    })
+    .catch(err => {
+      console.error(err);
+      alert("Failed to update status. Please try again.");
+      selectEl.style.opacity = '1';
+      selectEl.disabled = false;
+      selectEl.style.borderColor = '#ef4444';
+    });
+  }
+
+  (generatePoller = function() {
     // Poll the server for queue updates every 3 seconds
     setInterval(function() {
       // Re-use current parameters (e.g. active, completed, all tabs) and ask for ajax layout
@@ -66,6 +94,10 @@
       .then(html => {
         const body = document.getElementById('appointmentListBody');
         if (body) {
+          // Only overwrite if no select element is currently focused to avoid resetting user choice mid-select
+          if (document.activeElement && document.activeElement.classList.contains('status-select')) {
+             return;
+          }
           body.innerHTML = html;
         }
       })

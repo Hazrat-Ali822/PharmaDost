@@ -5,7 +5,11 @@
   </td>
   <td>
     <div style="font-weight:600; color:var(--text);">{{ appointment.patient.full_name }}</div>
-    <div class="muted" style="font-size:11px; margin-top:2px;">MRN: {{ appointment.patient.mrn }}</div>
+    <div style="font-size:11px; margin-top:2px; display:flex; gap:12px; flex-wrap:wrap; color:var(--muted);">
+      <span>MRN: {{ appointment.patient.mrn }}</span>
+      <span>📅 {{ appointment.appointment_date|date:"d-M-Y" }}</span>
+      {% if appointment.slot_time %}<span>🕒 {{ appointment.slot_time|time:"h:i A" }}</span>{% endif %}
+    </div>
   </td>
   <td>Dr. {{ appointment.doctor.full_name }}</td>
   <td>
@@ -18,15 +22,13 @@
     {% endif %}
   </td>
   <td>
-    {% if appointment.status == 'DONE' %}
-      <span class="badge" style="background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; font-weight:700;">✅ Completed</span>
-    {% elif appointment.status == 'CANCELLED' %}
-      <span class="badge" style="background:#f3f4f6; color:#9ca3af; border:1px solid #e5e7eb;">🚫 Cancelled</span>
-    {% elif appointment.status == 'ARRIVED' %}
-      <span class="badge" style="background:#fffbeb; color:#d97706; border:1px solid #fef3c7; font-weight:700;">🚶 Arrived</span>
-    {% else %}
-      <span class="badge" style="background:#faf5ff; color:#7c3aed; border:1px solid #e9d5ff;">📅 Booked</span>
-    {% endif %}
+    <select class="status-select" data-id="{{ appointment.id }}" style="padding:5px 10px; border-radius:12px; font-size:12px; font-weight:700; cursor:pointer; background:var(--surface); border:1px solid var(--border-strong); color:var(--text); transition: border-color .15s var(--ease);" onchange="updateAppointmentStatus(this)">
+      <option value="BOOKED" {% if appointment.status == 'BOOKED' %}selected{% endif %}>📅 Booked</option>
+      <option value="ARRIVED" {% if appointment.status == 'ARRIVED' %}selected{% endif %}>🚶 Arrived</option>
+      <option value="IN_CONSULT" {% if appointment.status == 'IN_CONSULT' %}selected{% endif %}>🩺 In Consult</option>
+      <option value="DONE" {% if appointment.status == 'DONE' %}selected{% endif %}>✅ Done</option>
+      <option value="CANCELLED" {% if appointment.status == 'CANCELLED' %}selected{% endif %}>🚫 Cancelled</option>
+    </select>
   </td>
   <td style="text-align:right;">
     {% if appointment.status == 'DONE' %}

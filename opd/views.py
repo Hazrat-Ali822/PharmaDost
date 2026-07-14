@@ -199,3 +199,16 @@ def payout_doctor(request, pk):
         'payouts': doctor.payouts.select_related('paid_by').all(),
     }
     return render(request, 'opd/payout_doctor.html', ctx)
+
+
+from django.http import JsonResponse
+
+@feature_required('opd')
+def appointment_update_status(request, pk):
+    appointment = get_object_or_404(Appointment, pk=pk)
+    status = request.GET.get('status')
+    if status in dict(Appointment.STATUS_CHOICES):
+        appointment.status = status
+        appointment.save()
+        return JsonResponse({'success': True, 'status': appointment.status})
+    return JsonResponse({'success': False, 'error': 'Invalid status'}, status=400)
