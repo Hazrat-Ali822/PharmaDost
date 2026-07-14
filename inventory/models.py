@@ -81,7 +81,7 @@ class Medicine(models.Model):
     all_objects = TenantAllMedicineManager()
 
     class Meta:
-        unique_together = ('name', 'brand')
+        unique_together = ('name', 'brand', 'hospital')
         ordering = ('name', 'brand')
 
     def __str__(self):
