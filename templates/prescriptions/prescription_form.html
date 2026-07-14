@@ -49,12 +49,13 @@
       <button type="button" class="btn sm" id="add-med">+ Add medicine</button></div>
     {{ med_formset.management_form }}
     <table class="tbl" id="med-table">
-      <thead><tr><th style="width:34%">Medicine</th><th>Dosage</th><th>Days</th><th>Instructions</th><th></th></tr></thead>
+      <thead><tr><th style="width:25%">Medicine (Catalog)</th><th style="width:25%">Or Custom Name (if not in list)</th><th>Dosage</th><th>Days</th><th>Instructions</th><th></th></tr></thead>
       <tbody id="med-body">
         {% for f in med_formset %}
         <tr class="med-row">
           {{ f.id }}
           <td>{{ f.medicine }}{{ f.medicine.errors }}</td>
+          <td>{{ f.custom_medicine_name }}{{ f.custom_medicine_name.errors }}</td>
           <td>{{ f.dosage }}</td>
           <td>{{ f.duration_days }}</td>
           <td>{{ f.instructions }}</td>
@@ -106,6 +107,7 @@
 <template id="med-empty">
   <tr class="med-row">
     <td>{{ med_formset.empty_form.medicine }}</td>
+    <td>{{ med_formset.empty_form.custom_medicine_name }}</td>
     <td>{{ med_formset.empty_form.dosage }}</td>
     <td>{{ med_formset.empty_form.duration_days }}</td>
     <td>{{ med_formset.empty_form.instructions }}</td>

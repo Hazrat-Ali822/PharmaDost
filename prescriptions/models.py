@@ -5,10 +5,15 @@ from inventory.models import Medicine
 
 
 class Prescription(models.Model):
+    STATUS_CHOICES = (
+        ('PENDING', 'Pending'),
+        ('DISPENSED', 'Dispensed'),
+    )
     appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, related_name='prescriptions')
     complaint = models.TextField(blank=True)
     diagnosis = models.TextField(blank=True)
     notes = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     created_at = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
@@ -17,13 +22,16 @@ class Prescription(models.Model):
 
 class PrescriptionItem(models.Model):
     prescription = models.ForeignKey(Prescription, related_name='items', on_delete=models.CASCADE)
-    medicine = models.ForeignKey(Medicine, on_delete=models.PROTECT)
+    medicine = models.ForeignKey(Medicine, on_delete=models.SET_NULL, null=True, blank=True)
+    custom_medicine_name = models.CharField(max_length=255, blank=True)
     dosage = models.CharField(max_length=50)
     duration_days = models.PositiveIntegerField(default=1)
     instructions = models.CharField(max_length=255, blank=True)
 
     def __str__(self):
-        return f"{self.medicine.name} - {self.dosage}"
+        if self.medicine:
+            return f"{self.medicine.name} - {self.dosage}"
+        return f"{self.custom_medicine_name} - {self.dosage}"
 
 
 class RxPreset(models.Model):

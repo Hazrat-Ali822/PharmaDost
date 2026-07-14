@@ -28,20 +28,34 @@ class PrescriptionForm(forms.ModelForm):
 
 
 class PrescriptionItemForm(forms.ModelForm):
-    """A medicine line. Only the medicine itself is required — dosage/days are optional
-    so a half-filled row never silently blocks the whole prescription from saving."""
     class Meta:
         model = PrescriptionItem
-        fields = ['medicine', 'dosage', 'duration_days', 'instructions']
+        fields = ['medicine', 'custom_medicine_name', 'dosage', 'duration_days', 'instructions']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['medicine'].required = False
+        self.fields['custom_medicine_name'].required = False
         self.fields['dosage'].required = False
         self.fields['duration_days'].required = False
         self.fields['instructions'].required = False
 
     def clean_duration_days(self):
         return self.cleaned_data.get('duration_days') or 1
+
+    def clean(self):
+        cleaned_data = super().clean()
+        med = cleaned_data.get('medicine')
+        custom = cleaned_data.get('custom_medicine_name')
+        
+        if not med and not custom:
+            # Check if any other detail is filled (to validate half-filled rows)
+            dosage = cleaned_data.get('dosage')
+            instructions = cleaned_data.get('instructions')
+            duration = cleaned_data.get('duration_days')
+            if dosage or instructions or (duration and duration > 1):
+                raise forms.ValidationError("Please select a medicine or enter a custom name.")
+        return cleaned_data
 
 
 # Many medicines per prescription (was a single form before).
