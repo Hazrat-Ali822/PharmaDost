@@ -40,6 +40,10 @@ class Bed(models.Model):
     def __str__(self):
         return f"Bed {self.bed_number} - {self.ward.name} ({self.status})"
 
+    @property
+    def active_admission(self):
+        return self.admissions.filter(status='Admitted').first()
+
 class Admission(models.Model):
     STATUS_CHOICES = [
         ('Admitted', 'Admitted'),

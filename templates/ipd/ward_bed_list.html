@@ -42,8 +42,8 @@
               </a>
               
             {% elif b.status == 'Occupied' %}
-              {% for adm in b.admissions.all %}
-                {% if adm.status == 'Admitted' %}
+              {% if b.active_admission %}
+                {% with adm=b.active_admission %}
                 <div class="bed-card occupied" onclick="showBedDetails('{{ adm.patient.full_name|escapejs }}', '{{ adm.patient.mrn|escapejs }}', 'Dr. {{ adm.attending_doctor.full_name|escapejs }}', '{{ adm.admission_date|date:'Y-m-d H:i' }}', '{% url 'ipd:admission_detail' adm.pk %}', '{% url 'ipd:admission_discharge' adm.pk %}', '{{ b.bed_number|escapejs }}', '{{ w.name|escapejs }}')" title="Occupied - Click for Details">
                   <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" style="width:28px; height:28px;">
                     <path d="M2 20V9a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v11M2 17h20M22 20v-5a2 2 0 0 0-2-2h-4v7"/>
@@ -52,8 +52,17 @@
                   <strong style="display:block; font-size:13.5px; color:var(--text)">Bed {{ b.bed_number }}</strong>
                   <span style="font-size:10px; font-weight:700; text-transform:uppercase; color:#ef4444; letter-spacing:0.3px;">Occupied</span>
                 </div>
-                {% endif %}
-              {% endfor %}
+                {% endwith %}
+              {% else %}
+                <div class="bed-card occupied" onclick="alert('Bed {{ b.bed_number }} is marked as occupied, but has no active patient registration.')" title="Occupied (No Active Patient)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" style="width:28px; height:28px;">
+                    <path d="M2 20V9a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v11M2 17h20M22 20v-5a2 2 0 0 0-2-2h-4v7"/>
+                    <circle cx="6" cy="11" r="1.5" fill="#ef4444"/>
+                  </svg>
+                  <strong style="display:block; font-size:13.5px; color:var(--text)">Bed {{ b.bed_number }}</strong>
+                  <span style="font-size:10px; font-weight:700; text-transform:uppercase; color:#ef4444; letter-spacing:0.3px;">Occupied</span>
+                </div>
+              {% endif %}
               
             {% else %}
               <div class="bed-card maintenance" title="Maintenance" onclick="alert('Bed {{ b.bed_number }} is currently under maintenance. Click the pencil icon on the top right to change status.')">
