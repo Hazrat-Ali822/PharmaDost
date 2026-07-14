@@ -101,7 +101,7 @@ def dashboard_router(request):
     elif ctx['role'] == 'DOCTOR':
         from opd.models import Appointment
         from billing.models import Invoice
-        appts = Appointment.objects.filter(doctor__user=request.user, appointment_date__range=[start_date, end_date]).exclude(status='CANCELLED')
+        appts = Appointment.objects.filter(doctor__user=request.user, appointment_date__range=[start_date, end_date], status='DONE')
         ctx['patient_count'] = appts.count()
         ctx['revenue_collected'] = Invoice.objects.filter(appointment__in=appts).aggregate(s=Sum('total'))['s'] or 0
     elif ctx['role'] == 'PHARMACIST':

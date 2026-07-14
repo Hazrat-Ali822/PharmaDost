@@ -47,15 +47,21 @@
         {% if o.payment_status == 'Paid' %}
           <span class="badge green">Paid (Rs. {{ o.payment_amount }})</span>
         {% else %}
-          <form action="{% url 'lab:collect_payment' o.id %}" method="post" style="display:inline">
-            {% csrf_token %}
-            <button class="btn sm success" type="submit" style="padding:4px 8px;font-size:11px;">Collect Rs. {{ o.total_price }}</button>
-          </form>
+          {% if request.user.role == 'LABTECH' or request.user.role == 'ADMIN' or request.user.is_superuser %}
+            <form action="{% url 'lab:collect_payment' o.id %}" method="post" style="display:inline">
+              {% csrf_token %}
+              <button class="btn sm success" type="submit" style="padding:4px 8px;font-size:11px;">Collect Rs. {{ o.total_price }}</button>
+            </form>
+          {% else %}
+            <span class="badge gray">Pending (Rs. {{ o.total_price }})</span>
+          {% endif %}
         {% endif %}
       </td>
       <td style="white-space:nowrap">
         <a class="btn sm alt" href="{% url 'lab:order_detail' o.id %}">View</a>
-        <a class="btn sm" href="{% url 'lab:order_results_edit' o.id %}">Results</a>
+        {% if request.user.role == 'LABTECH' or request.user.role == 'ADMIN' or request.user.is_superuser %}
+          <a class="btn sm" href="{% url 'lab:order_results_edit' o.id %}">Results</a>
+        {% endif %}
         {% if o.status == 'Completed' or o.status == 'Verified' or o.status == 'Delivered' %}
           <a class="btn sm alt" href="{% url 'lab:order_report' o.id %}" target="_blank">Print</a>
         {% endif %}
