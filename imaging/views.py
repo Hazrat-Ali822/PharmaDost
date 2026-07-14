@@ -29,6 +29,8 @@ def study_list(request):
     )
     if request.user.hospital:
         studies = studies.filter(patient__hospital=request.user.hospital)
+    if getattr(request.user, 'role', None) == 'DOCTOR':
+        studies = studies.filter(referred_by=request.user)
     modality = request.GET.get("modality", "").strip()
     if modality:
         studies = studies.filter(modality=modality)
