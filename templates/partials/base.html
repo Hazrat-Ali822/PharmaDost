@@ -180,15 +180,25 @@
         </a>
         {% endif %}
         {% if nav.ipd %}
-        <a href="{% url 'ipd:admission_list' %}" class="{% if '/ipd/' in request.path %}active{% endif %}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 22h20M5 22v-5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v5M8 6h8M12 2v8"/></svg>
-          Inpatient (IPD)
+        <a href="{% url 'ipd:admission_list' %}" class="{% if '/ipd/' in request.path %}active{% endif %}" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+          <div style="display:flex; align-items:center; gap:12px; min-width:0;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M2 22h20M5 22v-5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v5M8 6h8M12 2v8"/></svg>
+            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Inpatient (IPD)</span>
+          </div>
+          {% if ipd_badge_count > 0 %}
+            <span class="sidebar-badge" style="background:#ef4444; color:white; font-size:10px; font-weight:700; padding:2px 6px; border-radius:10px; line-height:1; flex-shrink:0; margin-left:6px;">{{ ipd_badge_count }}</span>
+          {% endif %}
         </a>
         {% endif %}
         {% if nav.ot %}
-        <a href="{% url 'ot:surgery_list' %}" class="{% if '/ot/' in request.path %}active{% endif %}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
-          Operation Theatre (OT)
+        <a href="{% url 'ot:surgery_list' %}" class="{% if '/ot/' in request.path %}active{% endif %}" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+          <div style="display:flex; align-items:center; gap:12px; min-width:0;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Operation Theatre (OT)</span>
+          </div>
+          {% if ot_badge_count > 0 %}
+            <span class="sidebar-badge" style="background:#ef4444; color:white; font-size:10px; font-weight:700; padding:2px 6px; border-radius:10px; line-height:1; flex-shrink:0; margin-left:6px;">{{ ot_badge_count }}</span>
+          {% endif %}
         </a>
         {% endif %}
       </div>
