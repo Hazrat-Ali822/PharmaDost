@@ -74,6 +74,8 @@ def notifications_context(request):
         lab_qs = TestOrder.objects.filter(status='Pending')
         if hospital:
             lab_qs = lab_qs.filter(patient__hospital=hospital)
+        if is_doctor:
+            lab_qs = lab_qs.filter(ordered_by=user)
         lab_badge_count = lab_qs.count()
 
         # 3. Imaging Pending count
@@ -81,6 +83,8 @@ def notifications_context(request):
         img_qs = ImagingStudy.objects.filter(status='Pending')
         if hospital:
             img_qs = img_qs.filter(patient__hospital=hospital)
+        if is_doctor:
+            img_qs = img_qs.filter(referred_by=user)
         imaging_badge_count = img_qs.count()
 
         # 4. IPD Active Admissions count
