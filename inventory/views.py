@@ -306,78 +306,265 @@ def medicine_import_catalog(request):
     if request.method != 'POST':
         return redirect('medicine_list')
 
-    # Essential medicine catalog based on 20+ years of pharmacist expertise
+    # Essential medicine catalog based on 20+ years of pharmacist expertise (A-Z Pakistani brands)
     STANDARD_MEDICINES = [
-        # Analgesics & Antipyretics
-        {"name": "Panadol 500mg", "generic_name": "Paracetamol", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
-        {"name": "Panadol Extra", "generic_name": "Paracetamol + Caffeine", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
-        {"name": "Brufen 400mg", "generic_name": "Ibuprofen", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
-        {"name": "Ponstan 250mg", "generic_name": "Mefenamic Acid", "brand": "Pfizer", "category": "TABLET", "manufacturer": "Pfizer Pakistan"},
-        {"name": "Disprin 300mg", "generic_name": "Aspirin", "brand": "Reckitt", "category": "TABLET", "manufacturer": "Reckitt Benckiser"},
-        {"name": "Tramal 50mg", "generic_name": "Tramadol Hydrochloride", "brand": "Searle", "category": "CAPSULE", "manufacturer": "Searle Pakistan"},
-        {"name": "Calpol Suspension", "generic_name": "Paracetamol", "brand": "GSK", "category": "SYRUP", "manufacturer": "GSK Pharma"},
-        
-        # Antibiotics & Antivirals
-        {"name": "Augmentin 625mg", "generic_name": "Co-amoxiclav", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
-        {"name": "Augmentin DS Suspension", "generic_name": "Co-amoxiclav", "brand": "GSK", "category": "SYRUP", "manufacturer": "GSK Pharma"},
+        # A
         {"name": "Amoxil 500mg", "generic_name": "Amoxicillin", "brand": "GSK", "category": "CAPSULE", "manufacturer": "GSK Pharma"},
+        {"name": "Augmentin 625mg", "generic_name": "Co-amoxiclav", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
+        {"name": "Augmentin 1g", "generic_name": "Co-amoxiclav", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
+        {"name": "Augmentin DS Susp", "generic_name": "Co-amoxiclav", "brand": "GSK", "category": "SYRUP", "manufacturer": "GSK Pharma"},
+        {"name": "Azomax 500mg", "generic_name": "Azithromycin", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
+        {"name": "Arinac", "generic_name": "Ibuprofen + Pseudoephedrine", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Arinac Forte", "generic_name": "Ibuprofen + Pseudoephedrine", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Avil", "generic_name": "Pheniramine Maleate", "brand": "Sanofi", "category": "TABLET", "manufacturer": "Sanofi-Aventis"},
+        {"name": "Angised 0.5mg", "generic_name": "Glyceryl Trinitrate", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
+        {"name": "Ascard 75mg", "generic_name": "Aspirin", "brand": "Atco", "category": "TABLET", "manufacturer": "Atco Laboratories"},
+        {"name": "Actifed", "generic_name": "Triprolidine + Pseudoephedrine", "brand": "GSK", "category": "SYRUP", "manufacturer": "GSK Pharma"},
+        {"name": "Aerius 5mg", "generic_name": "Desloratadine", "brand": "Organon", "category": "TABLET", "manufacturer": "Organon"},
+        {"name": "Atarax 25mg", "generic_name": "Hydroxyzine HCl", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
+        {"name": "Adalat 20mg Retard", "generic_name": "Nifedipine", "brand": "Bayer", "category": "TABLET", "manufacturer": "Bayer Pakistan"},
+
+        # B
+        {"name": "Brufen 400mg", "generic_name": "Ibuprofen", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Brufen 600mg", "generic_name": "Ibuprofen", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Brufen Syrup", "generic_name": "Ibuprofen", "brand": "Abbott", "category": "SYRUP", "manufacturer": "Abbott Laboratories"},
+        {"name": "Betnovate Cream", "generic_name": "Betamethasone", "brand": "GSK", "category": "CREAM", "manufacturer": "GSK Pharma"},
+        {"name": "Betnovate-N Cream", "generic_name": "Betamethasone Valerate + Neomycin", "brand": "GSK", "category": "CREAM", "manufacturer": "GSK Pharma"},
+        {"name": "Betnovate-C Cream", "generic_name": "Betamethasone Valerate + Clioquinol", "brand": "GSK", "category": "CREAM", "manufacturer": "GSK Pharma"},
+        {"name": "Buscopan 10mg", "generic_name": "Hyoscine Butylbromide", "brand": "Sanofi", "category": "TABLET", "manufacturer": "Sanofi-Aventis"},
+        {"name": "Buscopan Injection", "generic_name": "Hyoscine Butylbromide", "brand": "Sanofi", "category": "INJECTION", "manufacturer": "Sanofi-Aventis"},
+        {"name": "Biseptol", "generic_name": "Co-trimoxazole", "brand": "Polfa", "category": "TABLET", "manufacturer": "Polfa"},
+        {"name": "Bonjela Gel", "generic_name": "Choline Salicylate", "brand": "Reckitt", "category": "CREAM", "manufacturer": "Reckitt Benckiser"},
+
+        # C
+        {"name": "Calpol Suspension", "generic_name": "Paracetamol", "brand": "GSK", "category": "SYRUP", "manufacturer": "GSK Pharma"},
+        {"name": "Cac 1000 Plus", "generic_name": "Calcium + Vitamin C", "brand": "Sandoz", "category": "SACHET", "manufacturer": "Sandoz Pakistan"},
+        {"name": "Capoten 25mg", "generic_name": "Captopril", "brand": "Bristol-Myers", "category": "TABLET", "manufacturer": "Bristol-Myers Squibb"},
+        {"name": "Concor 2.5mg", "generic_name": "Bisoprolol Fumarate", "brand": "Merck", "category": "TABLET", "manufacturer": "Merck Pakistan"},
+        {"name": "Concor 5mg", "generic_name": "Bisoprolol Fumarate", "brand": "Merck", "category": "TABLET", "manufacturer": "Merck Pakistan"},
+        {"name": "Ciproxin 500mg", "generic_name": "Ciprofloxacin", "brand": "Bayer", "category": "TABLET", "manufacturer": "Bayer Pakistan"},
+        {"name": "Ceclor 250mg", "generic_name": "Cefaclor", "brand": "Eli Lilly", "category": "CAPSULE", "manufacturer": "Eli Lilly"},
+        {"name": "Colofac 135mg", "generic_name": "Mebeverine HCl", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Cranmax Sachet", "generic_name": "Cranberry Extract", "brand": "Herbion", "category": "SACHET", "manufacturer": "Herbion Pakistan"},
+        {"name": "Calpol 500mg", "generic_name": "Paracetamol", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
+        {"name": "Cefspan 400mg", "generic_name": "Cefixime", "brand": "Barrett Hodgson", "category": "CAPSULE", "manufacturer": "Barrett Hodgson"},
+        {"name": "Co-Diovan", "generic_name": "Valsartan + Hydrochlorothiazide", "brand": "Novartis", "category": "TABLET", "manufacturer": "Novartis Pakistan"},
+        {"name": "Combivair Inhaler", "generic_name": "Formoterol + Budesonide", "brand": "Getz", "category": "INHALER", "manufacturer": "Getz Pharma"},
+        {"name": "Cremaffin Syrup", "generic_name": "Liquid Paraffin + Milk of Magnesia", "brand": "Abbott", "category": "SYRUP", "manufacturer": "Abbott Laboratories"},
+
+        # D
+        {"name": "Disprin 300mg", "generic_name": "Aspirin", "brand": "Reckitt", "category": "TABLET", "manufacturer": "Reckitt Benckiser"},
+        {"name": "Decadron 4mg", "generic_name": "Dexamethasone", "brand": "Organon", "category": "TABLET", "manufacturer": "Organon"},
+        {"name": "Daktarin Cream", "generic_name": "Miconazole Nitrate", "brand": "Janssen", "category": "CREAM", "manufacturer": "Janssen Pharma"},
+        {"name": "Daktarin Oral Gel", "generic_name": "Miconazole Nitrate", "brand": "Janssen", "category": "CREAM", "manufacturer": "Janssen Pharma"},
+        {"name": "Duphaston 10mg", "generic_name": "Dydrogesterone", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Daonil 5mg", "generic_name": "Glibenclamide", "brand": "Sanofi", "category": "TABLET", "manufacturer": "Sanofi-Aventis"},
+        {"name": "Duspatalin 135mg", "generic_name": "Mebeverine HCl", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Diovan 80mg", "generic_name": "Valsartan", "brand": "Novartis", "category": "TABLET", "manufacturer": "Novartis Pakistan"},
+        {"name": "Detrol 2mg", "generic_name": "Tolterodine Tartrate", "brand": "Pfizer", "category": "TABLET", "manufacturer": "Pfizer Pakistan"},
+        {"name": "Dicloran 50mg", "generic_name": "Diclofenac Sodium", "brand": "Sami", "category": "TABLET", "manufacturer": "Sami Pharmaceuticals"},
+        {"name": "Dicloran Injection", "generic_name": "Diclofenac Sodium", "brand": "Sami", "category": "INJECTION", "manufacturer": "Sami Pharmaceuticals"},
+
+        # E
+        {"name": "Evion 400mg", "generic_name": "Vitamin E", "brand": "Merck", "category": "CAPSULE", "manufacturer": "Merck Pakistan"},
+        {"name": "Evion 600mg", "generic_name": "Vitamin E", "brand": "Merck", "category": "CAPSULE", "manufacturer": "Merck Pakistan"},
+        {"name": "Entamizole", "generic_name": "Diloxanide Furoate + Metronidazole", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Entamizole DS", "generic_name": "Diloxanide Furoate + Metronidazole", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Entamizole Suspension", "generic_name": "Diloxanide Furoate + Metronidazole", "brand": "Abbott", "category": "SYRUP", "manufacturer": "Abbott Laboratories"},
+        {"name": "Esoral 20mg", "generic_name": "Esomeprazole", "brand": "Getz", "category": "CAPSULE", "manufacturer": "Getz Pharma"},
+        {"name": "Erythrocin 250mg", "generic_name": "Erythromycin Stearate", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Epival 250mg", "generic_name": "Sodium Valproate", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Epival 500mg", "generic_name": "Sodium Valproate", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Eltroxin 50mcg", "generic_name": "Thyroxine Sodium", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
+        {"name": "Exforge", "generic_name": "Amlodipine + Valsartan", "brand": "Novartis", "category": "TABLET", "manufacturer": "Novartis Pakistan"},
+
+        # F
+        {"name": "Flagyl 200mg", "generic_name": "Metronidazole", "brand": "Sanofi", "category": "TABLET", "manufacturer": "Sanofi-Aventis"},
         {"name": "Flagyl 400mg", "generic_name": "Metronidazole", "brand": "Sanofi", "category": "TABLET", "manufacturer": "Sanofi-Aventis"},
         {"name": "Flagyl Suspension", "generic_name": "Metronidazole", "brand": "Sanofi", "category": "SYRUP", "manufacturer": "Sanofi-Aventis"},
-        {"name": "Ciproxin 500mg", "generic_name": "Ciprofloxacin", "brand": "Bayer", "category": "TABLET", "manufacturer": "Bayer Pakistan"},
-        {"name": "Klaricid 250mg", "generic_name": "Clarithromycin", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
-        {"name": "Azomax 500mg", "generic_name": "Azithromycin", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
-        {"name": "Ceclor 250mg", "generic_name": "Cefaclor", "brand": "Eli Lilly", "category": "CAPSULE", "manufacturer": "Eli Lilly"},
-        
-        # Gastrointestinal
-        {"name": "Risek 20mg", "generic_name": "Omeprazole", "brand": "Getz", "category": "CAPSULE", "manufacturer": "Getz Pharma"},
-        {"name": "Risek 40mg", "generic_name": "Omeprazole", "brand": "Getz", "category": "CAPSULE", "manufacturer": "Getz Pharma"},
-        {"name": "Zantac 150mg", "generic_name": "Ranitidine", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
-        {"name": "Gravinate 50mg", "generic_name": "Dimenhydrinate", "brand": "Searle", "category": "TABLET", "manufacturer": "Searle Pakistan"},
-        {"name": "Gaviscon Liquid", "generic_name": "Sodium Alginate + Potassium Bicarbonate", "brand": "Reckitt", "category": "SYRUP", "manufacturer": "Reckitt Benckiser"},
-        {"name": "Entamizole", "generic_name": "Diloxanide Furoate + Metronidazole", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
-        {"name": "Colofac 135mg", "generic_name": "Mebeverine HCl", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
-        {"name": "Heptalac Syrup", "generic_name": "Lactulose", "brand": "Searle", "category": "SYRUP", "manufacturer": "Searle Pakistan"},
+        {"name": "Fefol Vit", "generic_name": "Iron + Folic Acid + Vit C", "brand": "GSK", "category": "CAPSULE", "manufacturer": "GSK Pharma"},
+        {"name": "Famopsin 40mg", "generic_name": "Famotidine", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
+        {"name": "Fucidin Cream", "generic_name": "Fusidic Acid", "brand": "Leo", "category": "CREAM", "manufacturer": "Leo Pharma"},
+        {"name": "Flexin 250mg", "generic_name": "Naproxen", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
+        {"name": "Fastum Gel", "generic_name": "Ketoprofen", "brand": "Menarini", "category": "CREAM", "manufacturer": "Menarini Group"},
+        {"name": "Flixonase Spray", "generic_name": "Fluticasone Propionate", "brand": "GSK", "category": "DROPS", "manufacturer": "GSK Pharma"},
 
-        # Cardiovascular & Blood Pressure
-        {"name": "Loprin 75mg", "generic_name": "Aspirin", "brand": "Highnoon", "category": "TABLET", "manufacturer": "Highnoon Laboratories"},
-        {"name": "Capoten 25mg", "generic_name": "Captopril", "brand": "Bristol-Myers", "category": "TABLET", "manufacturer": "Bristol-Myers Squibb"},
-        {"name": "Concor 5mg", "generic_name": "Bisoprolol Fumarate", "brand": "Merck", "category": "TABLET", "manufacturer": "Merck Pakistan"},
-        {"name": "Norvasc 5mg", "generic_name": "Amlodipine Besylate", "brand": "Pfizer", "category": "TABLET", "manufacturer": "Pfizer Pakistan"},
-        {"name": "Lipiget 10mg", "generic_name": "Atorvastatin Calcium", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
-        {"name": "Angised 0.5mg", "generic_name": "Glyceryl Trinitrate", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
-
-        # Antidiabetic
+        # G
         {"name": "Glucophage 500mg", "generic_name": "Metformin HCl", "brand": "Merck", "category": "TABLET", "manufacturer": "Merck Pakistan"},
+        {"name": "Glucophage 850mg", "generic_name": "Metformin HCl", "brand": "Merck", "category": "TABLET", "manufacturer": "Merck Pakistan"},
+        {"name": "Glucophage 1000mg", "generic_name": "Metformin HCl", "brand": "Merck", "category": "TABLET", "manufacturer": "Merck Pakistan"},
+        {"name": "Getryl 1mg", "generic_name": "Glimepiride", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
         {"name": "Getryl 2mg", "generic_name": "Glimepiride", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
-        {"name": "Diamicron 60mg MR", "generic_name": "Gliclazide", "brand": "Servier", "category": "TABLET", "manufacturer": "Servier Research"},
+        {"name": "Getryl 3mg", "generic_name": "Glimepiride", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
+        {"name": "Getryl 4mg", "generic_name": "Glimepiride", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
+        {"name": "Gaviscon Liquid", "generic_name": "Sodium Alginate + Potassium Bicarbonate", "brand": "Reckitt", "category": "SYRUP", "manufacturer": "Reckitt Benckiser"},
+        {"name": "Gaviscon Advance", "generic_name": "Sodium Alginate + Potassium Bicarbonate", "brand": "Reckitt", "category": "SYRUP", "manufacturer": "Reckitt Benckiser"},
+        {"name": "Gravinate 50mg", "generic_name": "Dimenhydrinate", "brand": "Searle", "category": "TABLET", "manufacturer": "Searle Pakistan"},
+        {"name": "Gravinate Liquid", "generic_name": "Dimenhydrinate", "brand": "Searle", "category": "SYRUP", "manufacturer": "Searle Pakistan"},
+        {"name": "Garamycin Cream", "generic_name": "Gentamicin Sulfate", "brand": "Bayer", "category": "CREAM", "manufacturer": "Bayer Pakistan"},
 
-        # Respiratory & Allergy
-        {"name": "Panadol CF", "generic_name": "Paracetamol + Pseudoephedrine + Chlorpheniramine", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
-        {"name": "Arinac", "generic_name": "Ibuprofen + Pseudoephedrine", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        # H
+        {"name": "Heptalac Syrup", "generic_name": "Lactulose", "brand": "Searle", "category": "SYRUP", "manufacturer": "Searle Pakistan"},
+        {"name": "Hydryllin Syrup", "generic_name": "Aminophylline + Diphenhydramine + Ammonium Chloride", "brand": "Searle", "category": "SYRUP", "manufacturer": "Searle Pakistan"},
+        {"name": "Hydryllin Sugar Free", "generic_name": "Aminophylline + Diphenhydramine", "brand": "Searle", "category": "SYRUP", "manufacturer": "Searle Pakistan"},
+        {"name": "Hiltonphos Syrup", "generic_name": "Vitamin B-Complex", "brand": "Hilton", "category": "SYRUP", "manufacturer": "Hilton Pharma"},
+        {"name": "Herbesser 30mg", "generic_name": "Diltiazem HCl", "brand": "Searle", "category": "TABLET", "manufacturer": "Searle Pakistan"},
+
+        # I
+        {"name": "Imuran 50mg", "generic_name": "Azathioprine", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
+        {"name": "Inderal 10mg", "generic_name": "Propranolol HCl", "brand": "AstraZeneca", "category": "TABLET", "manufacturer": "AstraZeneca"},
+        {"name": "Inderal 40mg", "generic_name": "Propranolol HCl", "brand": "AstraZeneca", "category": "TABLET", "manufacturer": "AstraZeneca"},
+        {"name": "Ibra 20mg", "generic_name": "Rabaloc Esomeprazole", "brand": "Hilton", "category": "CAPSULE", "manufacturer": "Hilton Pharma"},
+        {"name": "Iberet Folic-500", "generic_name": "Iron + Vit C + B-Complex + Folic Acid", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+
+        # J
+        {"name": "Januvia 50mg", "generic_name": "Sitagliptin", "brand": "MSD", "category": "TABLET", "manufacturer": "Merck Sharp & Dohme"},
+        {"name": "Januvia 100mg", "generic_name": "Sitagliptin", "brand": "MSD", "category": "TABLET", "manufacturer": "Merck Sharp & Dohme"},
+        {"name": "Janumet 50/500mg", "generic_name": "Sitagliptin + Metformin", "brand": "MSD", "category": "TABLET", "manufacturer": "Merck Sharp & Dohme"},
+        {"name": "Janumet 50/1000mg", "generic_name": "Sitagliptin + Metformin", "brand": "MSD", "category": "TABLET", "manufacturer": "Merck Sharp & Dohme"},
+
+        # K
+        {"name": "Klaricid 250mg", "generic_name": "Clarithromycin", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Klaricid 500mg", "generic_name": "Clarithromycin", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Klaricid XL 500mg", "generic_name": "Clarithromycin", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Klaricid Syrup", "generic_name": "Clarithromycin", "brand": "Abbott", "category": "SYRUP", "manufacturer": "Abbott Laboratories"},
         {"name": "Kestine 10mg", "generic_name": "Ebastine", "brand": "Searle", "category": "TABLET", "manufacturer": "Searle Pakistan"},
-        {"name": "Zyrtec 10mg", "generic_name": "Cetirizine HCl", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
-        {"name": "Ventolin Inhaler", "generic_name": "Salbutamol", "brand": "GSK", "category": "INHALER", "manufacturer": "GSK Pharma"},
-        {"name": "Ventolin Syrup", "generic_name": "Salbutamol", "brand": "GSK", "category": "SYRUP", "manufacturer": "GSK Pharma"},
-        {"name": "Acefyl Syrup", "generic_name": "Acefylline Piperazine", "brand": "Herbion", "category": "SYRUP", "manufacturer": "Herbion Pakistan"},
-        {"name": "Rigix 10mg", "generic_name": "Cetirizine", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
-        {"name": "Montika 10mg", "generic_name": "Montelukast", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
+        {"name": "Kalvol 500mg", "generic_name": "Paracetamol", "brand": "Atco", "category": "TABLET", "manufacturer": "Atco Laboratories"},
+        {"name": "Ketof Drops", "generic_name": "Ketotifen Fumarate", "brand": "Novartis", "category": "DROPS", "manufacturer": "Novartis Pakistan"},
 
-        # Hormones / Steroids / Vitamins
-        {"name": "Decadron 4mg", "generic_name": "Dexamethasone", "brand": "Organon", "category": "TABLET", "manufacturer": "Organon"},
-        {"name": "Avil Tablet", "generic_name": "Pheniramine Maleate", "brand": "Sanofi", "category": "TABLET", "manufacturer": "Sanofi-Aventis"},
-        {"name": "Surbex-Z", "generic_name": "Zinc + Vitamin B-Complex + Vitamin C", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
-        {"name": "Cac 1000 Plus", "generic_name": "Calcium + Vitamin C", "brand": "Sandoz", "category": "SACHET", "manufacturer": "Sandoz Pakistan"},
-        {"name": "Evion 400mg", "generic_name": "Vitamin E", "brand": "Merck", "category": "CAPSULE", "manufacturer": "Merck Pakistan"},
-        {"name": "Sangobion Capsule", "generic_name": "Iron + Vitamin B12 + Folic Acid", "brand": "Merck", "category": "CAPSULE", "manufacturer": "Merck Pakistan"},
-        {"name": "Neurobion Tablet", "generic_name": "Vitamin B1, B6, B12", "brand": "Merck", "category": "TABLET", "manufacturer": "Merck Pakistan"},
+        # L
+        {"name": "Loprin 75mg", "generic_name": "Aspirin", "brand": "Highnoon", "category": "TABLET", "manufacturer": "Highnoon Laboratories"},
+        {"name": "Lipiget 10mg", "generic_name": "Atorvastatin Calcium", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
+        {"name": "Lipiget 20mg", "generic_name": "Atorvastatin Calcium", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
+        {"name": "Lipiget 40mg", "generic_name": "Atorvastatin Calcium", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
+        {"name": "Lasix 40mg", "generic_name": "Furosemide", "brand": "Sanofi", "category": "TABLET", "manufacturer": "Sanofi-Aventis"},
+        {"name": "Lasix Injection", "generic_name": "Furosemide", "brand": "Sanofi", "category": "INJECTION", "manufacturer": "Sanofi-Aventis"},
+        {"name": "Lowplat 75mg", "generic_name": "Clopidogrel Bisulfate", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
+        {"name": "Linospan 600mg", "generic_name": "Linezolid", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
+        {"name": "Lorin 10mg", "generic_name": "Loratadine", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
 
-        # Creams & Topical
+        # M
+        {"name": "Montika 5mg", "generic_name": "Montelukast Sodium", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
+        {"name": "Montika 10mg", "generic_name": "Montelukast Sodium", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
+        {"name": "Motilium 10mg", "generic_name": "Domperidone", "brand": "Janssen", "category": "TABLET", "manufacturer": "Janssen Pharma"},
+        {"name": "Motilium Suspension", "generic_name": "Domperidone", "brand": "Janssen", "category": "SYRUP", "manufacturer": "Janssen Pharma"},
+        {"name": "Mobic 15mg", "generic_name": "Meloxicam", "brand": "Boehringer", "category": "TABLET", "manufacturer": "Boehringer Ingelheim"},
+        {"name": "Maxolon 10mg", "generic_name": "Metoclopramide HCl", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
+        {"name": "Maxolon Syrup", "generic_name": "Metoclopramide HCl", "brand": "GSK", "category": "SYRUP", "manufacturer": "GSK Pharma"},
+        {"name": "Myteka 10mg", "generic_name": "Montelukast Sodium", "brand": "Hilton", "category": "TABLET", "manufacturer": "Hilton Pharma"},
+        {"name": "Mucaine Suspension", "generic_name": "Oxetacaine + Aluminium Hydroxide", "brand": "Wyeth", "category": "SYRUP", "manufacturer": "Wyeth Pakistan"},
+
+        # N
+        {"name": "Norvasc 5mg", "generic_name": "Amlodipine Besylate", "brand": "Pfizer", "category": "TABLET", "manufacturer": "Pfizer Pakistan"},
+        {"name": "Norvasc 10mg", "generic_name": "Amlodipine Besylate", "brand": "Pfizer", "category": "TABLET", "manufacturer": "Pfizer Pakistan"},
+        {"name": "Neurobion Tablet", "generic_name": "Vitamin B1 + B6 + B12", "brand": "Merck", "category": "TABLET", "manufacturer": "Merck Pakistan"},
+        {"name": "Neurobion Injection", "generic_name": "Vitamin B1 + B6 + B12", "brand": "Merck", "category": "INJECTION", "manufacturer": "Merck Pakistan"},
+        {"name": "Nimesulide 100mg", "generic_name": "Nimesulide", "brand": "Sami", "category": "TABLET", "manufacturer": "Sami Pharmaceuticals"},
+        {"name": "Nexum 20mg", "generic_name": "Esomeprazole Magnesium", "brand": "Getz", "category": "CAPSULE", "manufacturer": "Getz Pharma"},
+        {"name": "Nexum 40mg", "generic_name": "Esomeprazole Magnesium", "brand": "Getz", "category": "CAPSULE", "manufacturer": "Getz Pharma"},
+        {"name": "Nofec 50mg", "generic_name": "Diclofenac Potassium", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
+        {"name": "No-Spa 40mg", "generic_name": "Drotaverine HCl", "brand": "Sanofi", "category": "TABLET", "manufacturer": "Sanofi-Aventis"},
+
+        # O
+        {"name": "Optimax 100mg", "generic_name": "Sertraline HCl", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
+        {"name": "Osnate-D", "generic_name": "Calcium + Vitamin D", "brand": "Searle", "category": "TABLET", "manufacturer": "Searle Pakistan"},
+        {"name": "Osnate Suspension", "generic_name": "Calcium Carbonate", "brand": "Searle", "category": "SYRUP", "manufacturer": "Searle Pakistan"},
+        {"name": "Omeez 20mg", "generic_name": "Omeprazole", "brand": "Highnoon", "category": "CAPSULE", "manufacturer": "Highnoon Laboratories"},
+        {"name": "Orlistat 120mg", "generic_name": "Orlistat", "brand": "Getz", "category": "CAPSULE", "manufacturer": "Getz Pharma"},
+        {"name": "Otrivin Drops", "generic_name": "Xylometazoline HCl", "brand": "GSK", "category": "DROPS", "manufacturer": "GSK Pharma"},
+
+        # P
+        {"name": "Panadol 500mg", "generic_name": "Paracetamol", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
+        {"name": "Panadol Extra", "generic_name": "Paracetamol + Caffeine", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
+        {"name": "Panadol CF", "generic_name": "Paracetamol + Pseudoephedrine + Chlorpheniramine", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
+        {"name": "Ponstan 250mg", "generic_name": "Mefenamic Acid", "brand": "Pfizer", "category": "TABLET", "manufacturer": "Pfizer Pakistan"},
+        {"name": "Ponstan Forte 500mg", "generic_name": "Mefenamic Acid", "brand": "Pfizer", "category": "TABLET", "manufacturer": "Pfizer Pakistan"},
         {"name": "Polyfax Skin Ointment", "generic_name": "Polymyxin B + Bacitracin", "brand": "GSK", "category": "CREAM", "manufacturer": "GSK Pharma"},
         {"name": "Polyfax Eye Ointment", "generic_name": "Polymyxin B + Bacitracin", "brand": "GSK", "category": "CREAM", "manufacturer": "GSK Pharma"},
-        {"name": "Betnovate-N Cream", "generic_name": "Betamethasone Valerate + Neomycin", "brand": "GSK", "category": "CREAM", "manufacturer": "GSK Pharma"},
-        {"name": "Pyodine Solution", "generic_name": "Povidone-Iodine", "brand": "Brookes", "category": "DROPS", "manufacturer": "Brookes Pharma"},
-        {"name": "Betnovate-C Cream", "generic_name": "Betamethasone Valerate + Clioquinol", "brand": "GSK", "category": "CREAM", "manufacturer": "GSK Pharma"},
-        {"name": "Daktarin Cream", "generic_name": "Miconazole Nitrate", "brand": "Janssen", "category": "CREAM", "manufacturer": "Janssen Pharma"}
+        {"name": "Prothiaden 75mg", "generic_name": "Dosulepin HCl", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Plavix 75mg", "generic_name": "Clopidogrel", "brand": "Sanofi", "category": "TABLET", "manufacturer": "Sanofi-Aventis"},
+        {"name": "Pulmonol Syrup", "generic_name": "Cough formulation", "brand": "CCL", "category": "SYRUP", "manufacturer": "CCL Pharmaceuticals"},
+        {"name": "Pyodine Solution", "generic_name": "Povidone Iodine", "brand": "Brookes", "category": "DROPS", "manufacturer": "Brookes Pharma"},
+
+        # Q
+        {"name": "Quench Cream", "generic_name": "Silver Sulfadiazine", "brand": "Atco", "category": "CREAM", "manufacturer": "Atco Laboratories"},
+        {"name": "Qalsan-D", "generic_name": "Calcium + Vitamin D3", "brand": "Searle", "category": "TABLET", "manufacturer": "Searle Pakistan"},
+        {"name": "Qubol 100mg", "generic_name": "Coenzyme Q10", "brand": "Getz", "category": "CAPSULE", "manufacturer": "Getz Pharma"},
+
+        # R
+        {"name": "Risek 20mg", "generic_name": "Omeprazole", "brand": "Getz", "category": "CAPSULE", "manufacturer": "Getz Pharma"},
+        {"name": "Risek 40mg", "generic_name": "Omeprazole", "brand": "Getz", "category": "CAPSULE", "manufacturer": "Getz Pharma"},
+        {"name": "Risek Insta 20mg", "generic_name": "Omeprazole", "brand": "Getz", "category": "SACHET", "manufacturer": "Getz Pharma"},
+        {"name": "Rigix 10mg", "generic_name": "Cetirizine HCl", "brand": "Getz", "category": "TABLET", "manufacturer": "Getz Pharma"},
+        {"name": "Rigix Syrup", "generic_name": "Cetirizine HCl", "brand": "Getz", "category": "SYRUP", "manufacturer": "Getz Pharma"},
+        {"name": "Rivotril 0.5mg", "generic_name": "Clonazepam", "brand": "Roche", "category": "TABLET", "manufacturer": "Roche Pakistan"},
+        {"name": "Rivotril 2mg", "generic_name": "Clonazepam", "brand": "Roche", "category": "TABLET", "manufacturer": "Roche Pakistan"},
+        {"name": "Rocephin 1g", "generic_name": "Ceftriaxone Sodium", "brand": "Roche", "category": "INJECTION", "manufacturer": "Roche Pakistan"},
+        {"name": "Ritalin 10mg", "generic_name": "Methylphenidate HCl", "brand": "Novartis", "category": "TABLET", "manufacturer": "Novartis Pakistan"},
+
+        # S
+        {"name": "Surbex-Z", "generic_name": "Zinc + Vitamin B-Complex + Vitamin C", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Sangobion Capsule", "generic_name": "Iron + Vitamin B12 + Folic Acid", "brand": "Merck", "category": "CAPSULE", "manufacturer": "Merck Pakistan"},
+        {"name": "Solu-Medrol 40mg", "generic_name": "Methylprednisolone", "brand": "Pfizer", "category": "INJECTION", "manufacturer": "Pfizer Pakistan"},
+        {"name": "Solu-Medrol 500mg", "generic_name": "Methylprednisolone", "brand": "Pfizer", "category": "INJECTION", "manufacturer": "Pfizer Pakistan"},
+        {"name": "Synflex 250mg", "generic_name": "Naproxen Sodium", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Synflex 550mg", "generic_name": "Naproxen Sodium", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Secnid 1g", "generic_name": "Secnidazole", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Spasler Neo", "generic_name": "Alverine Citrate", "brand": "Highnoon", "category": "TABLET", "manufacturer": "Highnoon Laboratories"},
+        {"name": "Softin 10mg", "generic_name": "Loratadine", "brand": "Hilton", "category": "TABLET", "manufacturer": "Hilton Pharma"},
+        {"name": "Sancos Syrup", "generic_name": "Sancos Antitussive", "brand": "Sandoz", "category": "SYRUP", "manufacturer": "Sandoz Pakistan"},
+
+        # T
+        {"name": "Tramal 50mg", "generic_name": "Tramadol Hydrochloride", "brand": "Searle", "category": "CAPSULE", "manufacturer": "Searle Pakistan"},
+        {"name": "Tramal 100mg SR", "generic_name": "Tramadol Hydrochloride", "brand": "Searle", "category": "TABLET", "manufacturer": "Searle Pakistan"},
+        {"name": "Tegral 200mg", "generic_name": "Carbamazepine", "brand": "Searle", "category": "TABLET", "manufacturer": "Searle Pakistan"},
+        {"name": "Tenormin 50mg", "generic_name": "Atenolol", "brand": "AstraZeneca", "category": "TABLET", "manufacturer": "AstraZeneca"},
+        {"name": "Tenormin 100mg", "generic_name": "Atenolol", "brand": "AstraZeneca", "category": "TABLET", "manufacturer": "AstraZeneca"},
+        {"name": "T-Day 10mg", "generic_name": "Levocetirizine", "brand": "Hilton", "category": "TABLET", "manufacturer": "Hilton Pharma"},
+        {"name": "Timo Tablet", "generic_name": "Tiemonium Methylsulfate", "brand": "Sami", "category": "TABLET", "manufacturer": "Sami Pharmaceuticals"},
+        {"name": "Tres-Orix Syrup", "generic_name": "Lysine + Vitamin B-Complex + Cyproheptadine", "brand": "Brookes", "category": "SYRUP", "manufacturer": "Brookes Pharma"},
+
+        # U
+        {"name": "Ulsanic 1g", "generic_name": "Sucralfate", "brand": "Searle", "category": "TABLET", "manufacturer": "Searle Pakistan"},
+        {"name": "Urispas 200mg", "generic_name": "Flavoxate HCl", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Unasyn 375mg", "generic_name": "Sultamicillin Tosylate", "brand": "Pfizer", "category": "TABLET", "manufacturer": "Pfizer Pakistan"},
+
+        # V
+        {"name": "Ventolin Inhaler", "generic_name": "Salbutamol", "brand": "GSK", "category": "INHALER", "manufacturer": "GSK Pharma"},
+        {"name": "Ventolin Syrup", "generic_name": "Salbutamol", "brand": "GSK", "category": "SYRUP", "manufacturer": "GSK Pharma"},
+        {"name": "Ventolin Nebules", "generic_name": "Salbutamol", "brand": "GSK", "category": "DROPS", "manufacturer": "GSK Pharma"},
+        {"name": "Voren 50mg", "generic_name": "Diclofenac Sodium", "brand": "Abbott", "category": "TABLET", "manufacturer": "Abbott Laboratories"},
+        {"name": "Valium 5mg", "generic_name": "Diazepam", "brand": "Roche", "category": "TABLET", "manufacturer": "Roche Pakistan"},
+        {"name": "Valium 10mg", "generic_name": "Diazepam", "brand": "Roche", "category": "TABLET", "manufacturer": "Roche Pakistan"},
+        {"name": "Voltral 50mg", "generic_name": "Diclofenac Sodium", "brand": "Novartis", "category": "TABLET", "manufacturer": "Novartis Pakistan"},
+        {"name": "Voltral Emulgel", "generic_name": "Diclofenac Sodium", "brand": "Novartis", "category": "CREAM", "manufacturer": "Novartis Pakistan"},
+        {"name": "Vermox 100mg", "generic_name": "Mebendazole", "brand": "Janssen", "category": "TABLET", "manufacturer": "Janssen Pharma"},
+        {"name": "Vermox Suspension", "generic_name": "Mebendazole", "brand": "Janssen", "category": "SYRUP", "manufacturer": "Janssen Pharma"},
+
+        # W
+        {"name": "Wintogeno Cream", "generic_name": "Methyl Salicylate", "brand": "Reckitt", "category": "CREAM", "manufacturer": "Reckitt Benckiser"},
+        {"name": "Wymox 250mg", "generic_name": "Amoxicillin", "brand": "Wyeth", "category": "CAPSULE", "manufacturer": "Wyeth Pakistan"},
+        {"name": "Warfarin 5mg", "generic_name": "Warfarin Sodium", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
+
+        # X
+        {"name": "Xanax 0.25mg", "generic_name": "Alprazolam", "brand": "Pfizer", "category": "TABLET", "manufacturer": "Pfizer Pakistan"},
+        {"name": "Xanax 0.5mg", "generic_name": "Alprazolam", "brand": "Pfizer", "category": "TABLET", "manufacturer": "Pfizer Pakistan"},
+        {"name": "Xanax 1mg", "generic_name": "Alprazolam", "brand": "Pfizer", "category": "TABLET", "manufacturer": "Pfizer Pakistan"},
+        {"name": "Xola 20mg", "generic_name": "Esomeprazole Magnesium", "brand": "Searle", "category": "CAPSULE", "manufacturer": "Searle Pakistan"},
+        {"name": "Xalatan Eye Drops", "generic_name": "Latanoprost", "brand": "Pfizer", "category": "DROPS", "manufacturer": "Pfizer Pakistan"},
+
+        # Y
+        {"name": "Yasmin Tablet", "generic_name": "Drospirenone + Ethinyl Estradiol", "brand": "Bayer", "category": "TABLET", "manufacturer": "Bayer Pakistan"},
+        {"name": "Yomax 10mg", "generic_name": "Yohimbine", "brand": "Searle", "category": "TABLET", "manufacturer": "Searle Pakistan"},
+
+        # Z
+        {"name": "Zantac 150mg", "generic_name": "Ranitidine HCl", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
+        {"name": "Zantac 300mg", "generic_name": "Ranitidine HCl", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
+        {"name": "Zyrtec 10mg", "generic_name": "Cetirizine HCl", "brand": "GSK", "category": "TABLET", "manufacturer": "GSK Pharma"},
+        {"name": "Zyrtec Syrup", "generic_name": "Cetirizine HCl", "brand": "GSK", "category": "SYRUP", "manufacturer": "GSK Pharma"},
+        {"name": "Zibac 500mg", "generic_name": "Azithromycin", "brand": "Sami", "category": "TABLET", "manufacturer": "Sami Pharmaceuticals"},
+        {"name": "Zovirax Cream", "generic_name": "Acyclovir", "brand": "GSK", "category": "CREAM", "manufacturer": "GSK Pharma"},
+        {"name": "Zecuf Syrup", "generic_name": "Herbal cough formula", "brand": "JB", "category": "SYRUP", "manufacturer": "JB Chemicals"}
     ]
     
     count = 0
