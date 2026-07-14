@@ -30,3 +30,17 @@ def site_branding(request):
     except Exception:
         branding = None
     return {'branding': branding, 'site_defaults': SITE_DEFAULTS}
+
+
+def notifications_context(request):
+    """Fetch unread notifications for the logged-in user."""
+    user = getattr(request, 'user', None)
+    if not user or not user.is_authenticated:
+        return {'unread_notifications': [], 'unread_notifications_count': 0}
+    from .models import Notification
+    unread = Notification.objects.filter(user=user, is_read=False).order_by('-created_at')[:5]
+    unread_count = Notification.objects.filter(user=user, is_read=False).count()
+    return {
+        'unread_notifications': unread,
+        'unread_notifications_count': unread_count
+    }
