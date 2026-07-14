@@ -5,8 +5,8 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from accounts.decorators import feature_required
 from opd.models import Appointment
-from .forms import PrescriptionForm, PrescriptionItemFormSet
-from .models import Prescription
+from .forms import PrescriptionForm, PrescriptionItemFormSet, RxPresetForm, RxPresetItemFormSet
+from .models import Prescription, RxPreset, RxPresetItem
 
 
 @feature_required('prescriptions')
@@ -51,11 +51,37 @@ def prescription_create(request, appointment_id):
         form = PrescriptionForm()
         med_formset = PrescriptionItemFormSet(prefix='meds')
 
+    # Get presets
+    presets = RxPreset.objects.all()
+    if request.user.hospital:
+        presets = presets.filter(hospital=request.user.hospital)
+
+    import json
+    presets_data = []
+    for pr in presets.prefetch_related('items__medicine'):
+        items_list = []
+        for item in pr.items.all():
+            items_list.append({
+                'medicine_id': item.medicine.id,
+                'medicine_name': item.medicine.name,
+                'dosage': item.dosage,
+                'duration_days': item.duration_days,
+                'instructions': item.instructions,
+            })
+        presets_data.append({
+            'id': pr.id,
+            'name': pr.name,
+            'items': items_list
+        })
+    presets_json = json.dumps(presets_data)
+
     return render(request, 'prescriptions/prescription_form.html', {
         'form': form,
         'med_formset': med_formset,
         'appointment': appointment,
         'title': 'Create Prescription',
+        'presets': presets,
+        'presets_json': presets_json,
     })
 
 
@@ -162,6 +188,30 @@ def prescription_edit(request, pk):
         form = PrescriptionForm(instance=prescription)
         med_formset = PrescriptionItemFormSet(instance=prescription, prefix='meds')
         
+    # Get presets
+    presets = RxPreset.objects.all()
+    if request.user.hospital:
+        presets = presets.filter(hospital=request.user.hospital)
+
+    import json
+    presets_data = []
+    for pr in presets.prefetch_related('items__medicine'):
+        items_list = []
+        for item in pr.items.all():
+            items_list.append({
+                'medicine_id': item.medicine.id,
+                'medicine_name': item.medicine.name,
+                'dosage': item.dosage,
+                'duration_days': item.duration_days,
+                'instructions': item.instructions,
+            })
+        presets_data.append({
+            'id': pr.id,
+            'name': pr.name,
+            'items': items_list
+        })
+    presets_json = json.dumps(presets_data)
+
     return render(request, 'prescriptions/prescription_form.html', {
         'form': form,
         'med_formset': med_formset,
@@ -169,4 +219,76 @@ def prescription_edit(request, pk):
         'prescription': prescription,
         'title': 'Edit Prescription',
         'is_edit': True,
+        'presets': presets,
+        'presets_json': presets_json,
     })
+
+
+# --- Rx Presets Management ---
+
+@feature_required('prescriptions')
+def preset_list(request):
+    presets = RxPreset.objects.all()
+    if request.user.hospital:
+        presets = presets.filter(hospital=request.user.hospital)
+    return render(request, 'prescriptions/preset_list.html', {'presets': presets})
+
+
+@feature_required('prescriptions')
+def preset_create(request):
+    if request.method == 'POST':
+        form = RxPresetForm(request.POST)
+        formset = RxPresetItemFormSet(request.POST, prefix='items')
+        if form.is_valid() and formset.is_valid():
+            with transaction.atomic():
+                preset = form.save(commit=False)
+                if request.user.hospital:
+                    preset.hospital = request.user.hospital
+                else:
+                    from saas.models import Hospital
+                    preset.hospital = Hospital.objects.first()
+                preset.save()
+                formset.instance = preset
+                formset.save()
+            messages.success(request, "Rx Preset created successfully.")
+            return redirect('prescription_presets')
+    else:
+        form = RxPresetForm()
+        formset = RxPresetItemFormSet(prefix='items')
+    return render(request, 'prescriptions/preset_form.html', {
+        'form': form,
+        'formset': formset,
+        'title': 'Add Rx Preset'
+    })
+
+
+@feature_required('prescriptions')
+def preset_edit(request, pk):
+    preset = get_object_or_404(RxPreset, pk=pk)
+    if request.method == 'POST':
+        form = RxPresetForm(request.POST, instance=preset)
+        formset = RxPresetItemFormSet(request.POST, instance=preset, prefix='items')
+        if form.is_valid() and formset.is_valid():
+            form.save()
+            formset.save()
+            messages.success(request, f"Rx Preset '{preset.name}' updated.")
+            return redirect('prescription_presets')
+    else:
+        form = RxPresetForm(instance=preset)
+        formset = RxPresetItemFormSet(instance=preset, prefix='items')
+    return render(request, 'prescriptions/preset_form.html', {
+        'form': form,
+        'formset': formset,
+        'preset': preset,
+        'title': f'Edit {preset.name}'
+    })
+
+
+@feature_required('prescriptions')
+def preset_delete(request, pk):
+    preset = get_object_or_404(RxPreset, pk=pk)
+    if request.method == 'POST':
+        preset.delete()
+        messages.success(request, "Rx Preset deleted.")
+        return redirect('prescription_presets')
+    return render(request, 'prescriptions/preset_confirm_delete.html', {'preset': preset})

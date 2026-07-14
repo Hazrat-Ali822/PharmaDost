@@ -1,0 +1,162 @@
+{% extends 'partials/base.html' %}
+{% load static %}
+{% block title %}Visual Analytics — PharmaDost{% endblock %}
+{% block page_title %}Visual Analytics{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Visual Analytics Dashboard</h2>
+    <div class="muted">Live performance overview from <strong>{{ start_date|date:"d M Y" }}</strong> to <strong>{{ end_date|date:"d M Y" }}</strong></div>
+  </div>
+</div>
+
+<!-- Key Performance Indicators Row -->
+<div class="stat-grid" style="margin-bottom:24px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+  <div class="stat">
+    <div class="ic green" style="background:rgba(16,185,129,0.1); color:#10b981;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+    </div>
+    <div class="meta"><span class="value" style="font-size:18px; font-weight:800;">Rs {{ total_rev|floatformat:0 }}</span><span class="label">Total Month Revenue</span></div>
+  </div>
+  <div class="stat">
+    <div class="ic blue" style="background:rgba(59,130,246,0.1); color:#3b82f6;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.4 12.4a2 2 0 0 0 2 1.6h8.2a2 2 0 0 0 2-1.6L23 7H6"/></svg>
+    </div>
+    <div class="meta"><span class="value" style="font-size:16px; font-weight:800;">Rs {{ pharmacy_rev|floatformat:0 }}</span><span class="label">Pharmacy Sales</span></div>
+  </div>
+  <div class="stat">
+    <div class="ic amber" style="background:rgba(245,158,11,0.1); color:#f59e0b;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>
+    </div>
+    <div class="meta"><span class="value" style="font-size:16px; font-weight:800;">Rs {{ opd_rev|floatformat:0 }}</span><span class="label">OPD Consultations</span></div>
+  </div>
+  <div class="stat">
+    <div class="ic red" style="background:rgba(239,68,68,0.1); color:#ef4444;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3v6l-5 9a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3l-5-9V3"/><path d="M8 3h8"/></svg>
+    </div>
+    <div class="meta"><span class="value" style="font-size:16px; font-weight:800;">Rs {{ lab_rev|floatformat:0 }}</span><span class="label">Lab Orders</span></div>
+  </div>
+  <div class="stat">
+    <div class="ic purple" style="background:rgba(139,92,246,0.1); color:#8b5cf6;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="11" r="3"/></svg>
+    </div>
+    <div class="meta"><span class="value" style="font-size:16px; font-weight:800;">Rs {{ imaging_rev|floatformat:0 }}</span><span class="label">Imaging Scans</span></div>
+  </div>
+</div>
+
+<!-- Charts Layout Grid -->
+<div class="grid" style="grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+  <!-- Chart 1: Revenue Trend Line Chart -->
+  <div class="card" style="padding:24px; border-radius:12px; border:1px solid var(--border);">
+    <h3 style="margin-top:0; font-weight:700; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px; display:flex; align-items:center; gap:8px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px; height:20px; color:var(--primary);"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      Daily Revenue Growth Trend (Month)
+    </h3>
+    <canvas id="trendChart" style="max-height:280px; width:100%;"></canvas>
+  </div>
+
+  <!-- Chart 2: Department Share Donut Chart -->
+  <div class="card" style="padding:24px; border-radius:12px; border:1px solid var(--border);">
+    <h3 style="margin-top:0; font-weight:700; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px; display:flex; align-items:center; gap:8px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px; height:20px; color:#3b82f6;"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+      Department Revenue Share
+    </h3>
+    <div style="display:flex; justify-content:center; align-items:center; height:280px;">
+      <canvas id="deptChart" style="max-height:240px; max-width:240px;"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Full Width Chart 3: Doctor Workload -->
+<div class="card" style="padding:24px; border-radius:12px; border:1px solid var(--border); margin-bottom:24px;">
+  <h3 style="margin-top:0; font-weight:700; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px; display:flex; align-items:center; gap:8px;">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px; height:20px; color:#ef4444;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Doctor Patient Workload (Completed Visits This Month)
+  </h3>
+  <canvas id="docChart" style="max-height:260px; width:100%;"></canvas>
+</div>
+
+<script src="{% static 'js/chart.min.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Chart 1: Daily Revenue Line Chart
+  const trendLabels = JSON.parse('{{ trend_labels_json|escapejs }}');
+  const trendValues = JSON.parse('{{ trend_values_json|escapejs }}');
+  
+  new Chart(document.getElementById('trendChart').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: trendLabels,
+      datasets: [{
+        label: 'Daily Revenue (Rs)',
+        data: trendValues,
+        borderColor: '#10b981',
+        backgroundColor: 'rgba(16, 185, 129, 0.08)',
+        fill: true,
+        tension: 0.35,
+        borderWidth: 3,
+        pointRadius: 4,
+        pointBackgroundColor: '#10b981'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.03)' } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
+  // Chart 2: Department Share Donut Chart
+  const deptLabels = JSON.parse('{{ dept_labels_json|escapejs }}');
+  const deptValues = JSON.parse('{{ dept_values_json|escapejs }}');
+  
+  new Chart(document.getElementById('deptChart').getContext('2d'), {
+    type: 'doughnut',
+    data: {
+      labels: deptLabels,
+      datasets: [{
+        data: deptValues,
+        backgroundColor: ['#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#6b7280'],
+        borderWidth: 2,
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12 } }
+      }
+    }
+  });
+
+  // Chart 3: Doctor Workload Bar Chart
+  const docLabels = JSON.parse('{{ doc_labels_json|escapejs }}');
+  const docValues = JSON.parse('{{ doc_values_json|escapejs }}');
+  
+  new Chart(document.getElementById('docChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: docLabels,
+      datasets: [{
+        label: 'Completed OPD Visits',
+        data: docValues,
+        backgroundColor: '#4f46e5',
+        borderRadius: 6,
+        maxBarThickness: 40
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.03)' }, ticks: { stepSize: 1 } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+});
+</script>
+{% endblock %}

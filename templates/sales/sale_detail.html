@@ -3,8 +3,12 @@
 {% block content %}
 <div class="page-head noprint">
   <h2>Bill #{{ sale.id }} {% if sale.is_returned %}<span class="danger">(RETURNED)</span>{% endif %}</h2>
-  <div>
-    <button class="btn" onclick="window.print()">🖨 Print Bill</button>
+  <div style="display:inline-flex; align-items:center; gap:8px;">
+    <select id="receipt-size-select" style="padding:8px 12px; border-radius:8px; border:1px solid var(--border-strong); background:var(--surface); color:var(--text); font-weight:600;">
+      <option value="80mm">Standard 80mm Roll</option>
+      <option value="58mm">Small 58mm Roll</option>
+    </select>
+    <button class="btn" onclick="printReceipt()">🖨 Print Bill</button>
     {% if not sale.is_returned %}
     <form method="post" action="{% url 'sale_return' sale.id %}" style="display:inline"
           onsubmit="return confirm('Return this sale and restore stock?');">
@@ -15,6 +19,42 @@
     <a class="btn alt" href="{% url 'sale_list' %}">Back to List</a>
   </div>
 </div>
+
+<script>
+function printReceipt() {
+  const size = document.getElementById('receipt-size-select').value;
+  let styleEl = document.getElementById('print-page-style');
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = 'print-page-style';
+    document.head.appendChild(styleEl);
+  }
+  
+  if (size === '58mm') {
+    styleEl.innerHTML = `
+      @media print {
+        @page { size: 58mm auto; margin: 0; }
+        body { width: 58mm !important; padding: 2mm 2mm 4mm 2mm !important; font-size: 10px !important; }
+        #bill { width: 54mm !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; border: none !important; box-shadow: none !important; }
+        .receipt-tbl, .receipt-summary, .receipt-info { font-size: 10px !important; }
+        .receipt-header h1 { font-size: 15px !important; }
+        .receipt-header p { font-size: 9px !important; }
+        .receipt-tbl th, .receipt-tbl td { padding: 4px 1px !important; }
+        .receipt-summary-row.total { font-size: 13px !important; }
+      }
+    `;
+  } else {
+    styleEl.innerHTML = `
+      @media print {
+        @page { size: 80mm auto; margin: 0; }
+        body { width: 80mm !important; padding: 4mm 4mm 8mm 4mm !important; }
+        #bill { width: 72mm !important; max-width: 100% !important; padding: 0 !important; margin: 0 !important; border: none !important; box-shadow: none !important; }
+      }
+    `;
+  }
+  window.print();
+}
+</script>
 
 <div id="bill">
   <div class="receipt-header">

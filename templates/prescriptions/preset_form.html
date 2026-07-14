@@ -1,0 +1,103 @@
+{% extends 'partials/base.html' %}
+{% block title %}{{ title }} — PharmaDost{% endblock %}
+{% block content %}
+<div class="form-card" style="max-width:880px;">
+  <h2>{{ title }}</h2>
+  <form method="post">
+    {% csrf_token %}
+    
+    <p>
+      <label>Preset/Template Name</label>
+      {{ form.name }}
+      {{ form.name.errors }}
+      <small class="muted" style="display:block; margin-top:2px;">e.g. Typhoid Treatment Pack, Fever Relief Combo</small>
+    </p>
+    
+    <p>
+      <label>Description (optional)</label>
+      {{ form.description }}
+      {{ form.description.errors }}
+    </p>
+
+    <!-- Preset Items Inline Formset -->
+    <hr style="border:none; border-top:1px solid var(--border); margin:20px 0;">
+    <div class="page-head" style="margin-bottom:12px;">
+      <h3>💊 Preset Medicines</h3>
+      <button type="button" class="btn sm" id="add-preset-item">+ Add Medicine Row</button>
+    </div>
+    
+    {{ formset.management_form }}
+    <table class="tbl" id="preset-table">
+      <thead>
+        <tr>
+          <th style="width:36%">Medicine</th>
+          <th>Dosage</th>
+          <th>Days</th>
+          <th>Instructions</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="preset-body">
+        {% for f in formset %}
+        <tr class="item-row">
+          {{ f.id }}
+          <td>{{ f.medicine }}{{ f.medicine.errors }}</td>
+          <td>{{ f.dosage }}{{ f.dosage.errors }}</td>
+          <td>{{ f.duration_days }}{{ f.duration_days.errors }}</td>
+          <td>{{ f.instructions }}{{ f.instructions.errors }}</td>
+          <td class="del-cell">
+            {% if f.instance.pk %}
+              {{ f.DELETE }}
+            {% else %}
+              <button type="button" class="btn sm danger rm-row">✕</button>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div style="margin-top:24px; display:flex; gap:8px;">
+      <button class="btn" type="submit">Save Template</button>
+      <a class="btn alt" href="{% url 'prescription_presets' %}">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<!-- template row for cloning -->
+<template id="preset-item-empty">
+  <tr class="item-row">
+    <td>{{ formset.empty_form.medicine }}</td>
+    <td>{{ formset.empty_form.dosage }}</td>
+    <td>{{ formset.empty_form.duration_days }}</td>
+    <td>{{ formset.empty_form.instructions }}</td>
+    <td class="del-cell"><button type="button" class="btn sm danger rm-row">✕</button></td>
+  </tr>
+</template>
+
+<script>
+(function(){
+  document.getElementById('add-preset-item').addEventListener('click', function(){
+    const total = document.getElementById('id_items-TOTAL_FORMS');
+    const body = document.getElementById('preset-body');
+    const tmpl = document.getElementById('preset-item-empty').innerHTML;
+    const idx = parseInt(total.value, 10);
+    const html = tmpl.replace(/__prefix__/g, idx);
+    const tbody = document.createElement('tbody');
+    tbody.innerHTML = html.trim();
+    body.appendChild(tbody.firstChild);
+    total.value = idx + 1;
+  });
+
+  document.addEventListener('click', function(e){
+    if (e.target.classList.contains('rm-row')) {
+      const row = e.target.closest('tr');
+      row.querySelectorAll('input, select, textarea').forEach(el => {
+        if (el.type === 'checkbox') el.checked = false; else el.value = '';
+      });
+      row.style.display = 'none';
+    }
+  });
+})();
+</script>
+{% endblock %}
