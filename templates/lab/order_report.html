@@ -4,8 +4,7 @@
 
 {% block headmeta %}
   <b>Report #{{ order.id }}</b><br>
-  {{ order.order_date|date:"d M Y · g:i A" }}<br>
-  Status: {{ order.status }}
+  {{ order.order_date|date:"d M Y · g:i A" }}
 {% endblock %}
 
 {% block body %}
