@@ -26,7 +26,14 @@
     {% for s in studies %}
     <tr>
       <td>{{ s.id }}</td>
-      <td>{{ s.study_date|date:"Y-m-d H:i" }}</td>
+      <td>
+        {{ s.study_date|date:"Y-m-d H:i" }}<br>
+        {% if s.status == 'Delivered' or s.status == 'Reported' %}
+          <small class="muted" style="font-size:11px; font-weight:600; color:var(--success);">⏱️ {{ s.study_date|timesince }} ago</small>
+        {% else %}
+          <small class="muted" style="font-size:11px; font-weight:600; color:#ef4444;">⏱️ {{ s.study_date|timesince }} ago</small>
+        {% endif %}
+      </td>
       <td><a href="{% url 'patient_detail' s.patient.pk %}">{{ s.patient.full_name }}</a></td>
       <td><span class="badge">{{ s.get_modality_display }}</span></td>
       <td>{{ s.study_name }}</td>
