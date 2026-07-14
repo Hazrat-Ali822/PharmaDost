@@ -6,13 +6,29 @@
   <a class="btn primary" href="{% url 'lab:order_create' %}">+ New Order</a>
 </div>
 
+<!-- Tabs for Status filtering -->
+<div style="display:flex; gap:8px; margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:10px;">
+  <a class="btn {% if show == 'pending' %}primary{% else %}alt{% endif %}" href="?show=pending" style="padding:6px 16px; font-size:13px; text-decoration:none; border-radius:20px;">
+    ⏳ Pending Orders
+  </a>
+  <a class="btn {% if show == 'completed' %}primary{% else %}alt{% endif %}" href="?show=completed" style="padding:6px 16px; font-size:13px; text-decoration:none; border-radius:20px;">
+    ✅ Completed Orders
+  </a>
+  <a class="btn {% if show == 'all' %}primary{% else %}alt{% endif %}" href="?show=all" style="padding:6px 16px; font-size:13px; text-decoration:none; border-radius:20px;">
+    🌐 All Orders
+  </a>
+</div>
+
 <table class="tbl">
   <thead><tr><th>#</th><th>Date</th><th>Patient</th><th>Referred By</th><th>Tests</th><th>Status</th><th></th></tr></thead>
   <tbody>
     {% for o in orders %}
     <tr>
       <td>{{ o.id }}</td>
-      <td>{{ o.order_date|date:"Y-m-d H:i" }}</td>
+      <td>
+        {{ o.order_date|date:"Y-m-d H:i" }}<br>
+        <small class="muted" style="font-size:11px; font-weight:600; color:#ef4444;">⏱️ {{ o.order_date|timesince }} ago</small>
+      </td>
       <td><a href="{% url 'patient_detail' o.patient.pk %}">{{ o.patient.full_name }}</a></td>
       <td>Dr. {{ o.ordered_by.get_full_name|default:o.ordered_by.email|default:"External / Self" }}</td>
       <td>{{ o.results.count }} test{{ o.results.count|pluralize }}</td>

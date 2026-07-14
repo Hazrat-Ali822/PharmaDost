@@ -34,7 +34,14 @@ def order_list(request):
     )
     if request.user.hospital:
         orders = orders.filter(patient__hospital=request.user.hospital)
-    return render(request, "lab/order_list.html", {"orders": orders})
+        
+    show = request.GET.get('show', 'pending')
+    if show == 'pending':
+        orders = orders.filter(status='Pending')
+    elif show == 'completed':
+        orders = orders.exclude(status='Pending')
+        
+    return render(request, "lab/order_list.html", {"orders": orders, "show": show})
 
 
 @feature_required('lab')

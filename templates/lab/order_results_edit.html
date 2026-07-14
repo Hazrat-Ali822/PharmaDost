@@ -4,7 +4,7 @@
 <div class="page-head">
   <div>
     <h2>Enter Results — Order #{{ order.id }}</h2>
-    <div class="muted">{{ order.patient.full_name }} · MRN {{ order.patient.mrn }}</div>
+    <div class="muted">Patient: <b>{{ order.patient.full_name }}</b> (MRN {{ order.patient.mrn }}) · Ordered: <b>{{ order.order_date|date:"d M Y · g:i A" }}</b> (⏱️ {{ order.order_date|timesince }} ago)</div>
   </div>
   <a class="btn alt" href="{% url 'lab:order_detail' order.id %}">Back</a>
 </div>
