@@ -49,15 +49,23 @@
         {% if s.payment_status == 'Paid' %}
           <span class="badge green">Paid (Rs. {{ s.payment_amount }})</span>
         {% else %}
-          <form action="{% url 'imaging:collect_payment' s.id %}" method="post" style="display:inline">
-            {% csrf_token %}
-            <button class="btn sm success" type="submit" style="padding:4px 8px;font-size:11px;">Collect Rs. {{ s.price }}</button>
-          </form>
+          {% if request.user.role == 'SONOGRAPHER' or request.user.role == 'ADMIN' or request.user.is_superuser %}
+            <form action="{% url 'imaging:collect_payment' s.id %}" method="post" style="display:inline">
+              {% csrf_token %}
+              <button class="btn sm success" type="submit" style="padding:4px 8px;font-size:11px;">Collect Rs. {{ s.price }}</button>
+            </form>
+          {% else %}
+            <span class="badge gray">Pending (Rs. {{ s.price }})</span>
+          {% endif %}
         {% endif %}
       </td>
       <td style="white-space:nowrap">
         <a class="btn sm alt" href="{% url 'imaging:study_detail' s.id %}">View</a>
-        {% if not s.is_reported %}<a class="btn sm" href="{% url 'imaging:study_report_edit' s.id %}">Report</a>{% endif %}
+        {% if not s.is_reported %}
+          {% if request.user.role == 'SONOGRAPHER' or request.user.role == 'ADMIN' or request.user.is_superuser %}
+            <a class="btn sm" href="{% url 'imaging:study_report_edit' s.id %}">Report</a>
+          {% endif %}
+        {% endif %}
       </td>
     </tr>
     {% empty %}

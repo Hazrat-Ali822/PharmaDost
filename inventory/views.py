@@ -83,7 +83,8 @@ def dashboard(request):
         scaled_amt = amt * factor
         
         if desc == 'OPD Consultation':
-            opd_rev += scaled_amt
+            if item.invoice.appointment and item.invoice.appointment.status == 'DONE':
+                opd_rev += scaled_amt
         elif desc.startswith('Lab:'):
             lab_rev += scaled_amt
         elif any(desc.startswith(prefix) for prefix in ['Ultrasound:', 'X-Ray:', 'CT Scan:', 'MRI:', 'ECG:', 'Echocardiography:', 'Mammography:', 'ULTRASOUND:', 'XRAY:', 'CT:', 'MRI:', 'ECG:', 'ECHO:', 'MAMMO:']):
