@@ -16,6 +16,8 @@ PAYOUT_ROLES = ["ADMIN", "ACCOUNTANT"]
 @feature_required('doctors')
 def doctor_list(request):
     doctors = Doctor.objects.filter(is_active=True)
+    if request.user.hospital:
+        doctors = doctors.filter(user__hospital=request.user.hospital)
     return render(request, 'opd/doctor_list.html', {'doctors': doctors})
 
 
