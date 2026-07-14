@@ -3,7 +3,7 @@ from django.forms import inlineformset_factory
 
 from lab.models import LabTest
 from imaging.models import ScanType
-from .models import Prescription, PrescriptionItem
+from .models import Prescription, PrescriptionItem, RxPreset, RxPresetItem
 
 
 class PrescriptionForm(forms.ModelForm):
@@ -50,5 +50,35 @@ PrescriptionItemFormSet = inlineformset_factory(
     PrescriptionItem,
     form=PrescriptionItemForm,
     extra=1,
+    can_delete=True,
+)
+
+
+class RxPresetForm(forms.ModelForm):
+    class Meta:
+        model = RxPreset
+        fields = ['name', 'description']
+
+
+class RxPresetItemForm(forms.ModelForm):
+    class Meta:
+        model = RxPresetItem
+        fields = ['medicine', 'dosage', 'duration_days', 'instructions']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['dosage'].required = False
+        self.fields['duration_days'].required = False
+        self.fields['instructions'].required = False
+
+    def clean_duration_days(self):
+        return self.cleaned_data.get('duration_days') or 3
+
+
+RxPresetItemFormSet = inlineformset_factory(
+    RxPreset,
+    RxPresetItem,
+    form=RxPresetItemForm,
+    extra=2,
     can_delete=True,
 )

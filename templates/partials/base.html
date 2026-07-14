@@ -143,9 +143,13 @@
         </a>
         {% endif %}
         {% if nav.prescriptions %}
-        <a href="{% url 'prescription_list' %}" class="{% if '/prescriptions/' in request.path %}active{% endif %}">
+        <a href="{% url 'prescription_list' %}" class="{% if '/prescriptions/' in request.path and '/presets' not in request.path %}active{% endif %}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h9a4 4 0 0 1 0 8H6z"/><path d="M6 11l9 10"/></svg>
           Prescriptions
+        </a>
+        <a href="{% url 'prescription_presets' %}" class="{% if '/prescriptions/presets' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12h6M12 9v6"/></svg>
+          Rx Presets
         </a>
         {% endif %}
         {% if nav.lab %}
@@ -267,6 +271,10 @@
         </a>
         {% endif %}
         {% if nav.reports %}
+        <a href="{% url 'visual_analytics' %}" class="{% if '/reports/analytics/' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+          Visual Analytics
+        </a>
         <a href="{% url 'sales_report' %}" class="{% if '/reports/sales/' in request.path %}active{% endif %}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V4M20 20H4"/><path d="M8 16v-4M12 16V8M16 16v-6"/></svg>
           Sales Report

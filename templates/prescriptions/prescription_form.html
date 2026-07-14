@@ -29,6 +29,22 @@
 
     <!-- ---------------- Medicines (multiple) ---------------- -->
     <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
+    
+    {% if presets %}
+    <div style="margin-bottom:18px; display:flex; gap:12px; align-items:center; background:var(--bg); padding:10px 14px; border-radius:8px; border:1px solid var(--border-strong);">
+      <label style="font-weight:700; color:var(--text); font-size:13.5px; display:flex; align-items:center; gap:6px;">
+        ⚡ Quick Rx Template:
+      </label>
+      <select id="preset-select" style="padding:6px 12px; border-radius:8px; border:1px solid var(--border-strong); background:var(--surface); color:var(--text); font-weight:600; min-width:200px;">
+        <option value="">-- Select Template --</option>
+        {% for pr in presets %}
+          <option value="{{ pr.id }}">{{ pr.name }}</option>
+        {% endfor %}
+      </select>
+      <button type="button" class="btn sm alt" id="apply-preset-btn" style="padding:6px 14px;">Apply Template</button>
+    </div>
+    {% endif %}
+
     <div class="page-head"><h3>💊 Medicines</h3>
       <button type="button" class="btn sm" id="add-med">+ Add medicine</button></div>
     {{ med_formset.management_form }}
@@ -114,6 +130,56 @@
       row.style.display = 'none';
     }
   });
+
+  // Inject presets JSON and handle auto-filling
+  {% if presets_json %}
+  const presets = JSON.parse('{{ presets_json|escapejs }}');
+  
+  document.getElementById('apply-preset-btn')?.addEventListener('click', function() {
+    const select = document.getElementById('preset-select');
+    const presetId = parseInt(select.value, 10);
+    if (!presetId) return;
+    
+    const preset = presets.find(p => p.id === presetId);
+    if (!preset) return;
+    
+    preset.items.forEach(item => {
+      // Find the first blank row if available
+      let rows = document.querySelectorAll('#med-body tr.med-row');
+      let targetRow = null;
+      for (let r of rows) {
+        const medSelect = r.querySelector('select[id$="-medicine"]');
+        if (medSelect && !medSelect.value && r.style.display !== 'none') {
+          targetRow = r;
+          break;
+        }
+      }
+      
+      // If no blank row, add a new row
+      if (!targetRow) {
+        addRow('meds', 'med-body', 'med-empty');
+        rows = document.querySelectorAll('#med-body tr.med-row');
+        targetRow = rows[rows.length - 1];
+      }
+      
+      // Populate targetRow
+      if (targetRow) {
+        const medSelect = targetRow.querySelector('select[id$="-medicine"]');
+        const dosageInput = targetRow.querySelector('input[id$="-dosage"]');
+        const daysInput = targetRow.querySelector('input[id$="-duration_days"]');
+        const instInput = targetRow.querySelector('input[id$="-instructions"]');
+        
+        if (medSelect) medSelect.value = item.medicine_id;
+        if (dosageInput) dosageInput.value = item.dosage;
+        if (daysInput) daysInput.value = item.duration_days;
+        if (instInput) instInput.value = item.instructions;
+      }
+    });
+    
+    // Clear selector after applying
+    select.value = '';
+  });
+  {% endif %}
 })();
 </script>
 {% endblock %}

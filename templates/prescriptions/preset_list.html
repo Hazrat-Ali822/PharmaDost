@@ -1,0 +1,53 @@
+{% extends 'partials/base.html' %}
+{% block title %}Rx Presets — PharmaDost{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Rx Presets / Templates</h2>
+    <div class="muted">Manage multi-medicine shortcuts for quick prescription entries.</div>
+  </div>
+  <a class="btn" href="{% url 'preset_create' %}">➕ Add Rx Preset</a>
+</div>
+
+<div class="card">
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th>Preset Name</th>
+        <th>Description</th>
+        <th>Medicines In Template</th>
+        <th style="width:140px;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for pr in presets %}
+      <tr>
+        <td><strong>{{ pr.name }}</strong></td>
+        <td>{{ pr.description|default:"—" }}</td>
+        <td>
+          <div style="display:flex; flex-wrap:wrap; gap:6px;">
+            {% for it in pr.items.all %}
+              <span class="badge" style="background:var(--primary-50); color:var(--primary); font-size:11px; padding:3px 8px; border-radius:12px; font-weight:600;">
+                💊 {{ it.medicine.name }} ({{ it.dosage }})
+              </span>
+            {% empty %}
+              <span class="muted">No medicines.</span>
+            {% endfor %}
+          </div>
+        </td>
+        <td>
+          <a class="btn sm alt" href="{% url 'preset_edit' pr.pk %}">Edit</a>
+          <a class="btn sm danger" href="{% url 'preset_delete' pr.pk %}" style="background:#ef4444; color:white; border:none; padding:4px 8px; border-radius:6px; font-size:11px; text-decoration:none; margin-left:4px;">Delete</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="4" class="muted text-center" style="padding:40px 20px;">
+          No prescription presets defined yet. Click "Add Rx Preset" to create one.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
