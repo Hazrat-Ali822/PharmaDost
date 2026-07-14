@@ -46,7 +46,9 @@
       <td style="white-space:nowrap">
         <a class="btn sm alt" href="{% url 'lab:order_detail' o.id %}">View</a>
         <a class="btn sm" href="{% url 'lab:order_results_edit' o.id %}">Results</a>
-        <a class="btn sm alt" href="{% url 'lab:order_report' o.id %}" target="_blank">Print</a>
+        {% if o.status == 'Completed' or o.status == 'Verified' or o.status == 'Delivered' %}
+          <a class="btn sm alt" href="{% url 'lab:order_report' o.id %}" target="_blank">Print</a>
+        {% endif %}
       </td>
     </tr>
     {% empty %}
