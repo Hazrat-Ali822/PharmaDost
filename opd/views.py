@@ -98,9 +98,12 @@ def appointment_list(request):
         
     role = getattr(request.user, 'role', None)
     is_doctor = role == 'DOCTOR' and not request.user.is_superuser
+    is_unlinked_doctor = False
     
     if is_doctor:
         appointments = appointments.filter(doctor__user=request.user)
+        if not Doctor.objects.filter(user=request.user).exists():
+            is_unlinked_doctor = True
         
     show = request.GET.get('show', 'active')
     if show == 'active':
@@ -118,7 +121,8 @@ def appointment_list(request):
     return render(request, 'opd/appointment_list.html', {
         'appointments': appointments,
         'show': show,
-        'is_doctor': is_doctor
+        'is_doctor': is_doctor,
+        'is_unlinked_doctor': is_unlinked_doctor
     })
 
 
