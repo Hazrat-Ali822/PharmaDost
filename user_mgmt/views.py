@@ -163,7 +163,10 @@ def _user_form_ctx(request, form, user=None):
 
 @role_required(["ADMIN"])
 def user_list(request):
-    users = User.objects.order_by('email')
+    if request.user.is_superuser and not getattr(request.user, 'hospital', None):
+        users = User.objects.all().order_by('email')
+    else:
+        users = User.objects.filter(hospital=request.user.hospital).order_by('email')
     return render(request, 'user_mgmt/user_list.html', {'users': users})
 
 
@@ -178,6 +181,8 @@ def user_create(request):
             else:
                 user = form.save(commit=False)
                 user.set_password(pwd)
+                if not request.user.is_superuser or getattr(request.user, 'hospital', None):
+                    user.hospital = request.user.hospital
                 _apply_features(request, user)
                 user.save()
                 messages.success(request, f'User {user.email} created.')
@@ -191,7 +196,10 @@ def user_create(request):
 
 @role_required(["ADMIN"])
 def user_edit(request, pk):
-    user = get_object_or_404(User, pk=pk)
+    if request.user.is_superuser and not getattr(request.user, 'hospital', None):
+        user = get_object_or_404(User, pk=pk)
+    else:
+        user = get_object_or_404(User, pk=pk, hospital=request.user.hospital)
     if request.method == 'POST':
         form = UserForm(request.POST, instance=user)
         if form.is_valid():
