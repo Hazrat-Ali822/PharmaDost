@@ -110,6 +110,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "accounts.context_processors.nav_permissions",
                 "accounts.context_processors.site_branding",
+                "accounts.context_processors.notifications_context",
             ],
         },
     },

@@ -31,6 +31,7 @@ urlpatterns = [
     path('ipd/', include('ipd.urls')),
     path('ot/', include('ot.urls')),
     path('manage/audit/', include('audit.urls')),
+    path('accounts/', include('accounts.urls')),
     path('accounts/', include('django.contrib.auth.urls')),
     path('<slug:hospital_slug>/', hospital_login, name='hospital_login_landing'),
     path('<slug:hospital_slug>/login/', hospital_login, name='hospital_login'),

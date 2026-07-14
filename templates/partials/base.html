@@ -302,6 +302,42 @@
           <svg id="themeToggleMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
           <svg id="themeToggleSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;display:none;"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
         </button>
+
+        <!-- Notifications Bell dropdown -->
+        <div class="notif-wrapper" style="position: relative; display: inline-block; margin-right: 6px;">
+          <button class="kbd-btn" id="notifBtn" type="button" title="Notifications" style="position: relative;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+            {% if unread_notifications_count > 0 %}
+              <span class="notif-badge" id="notifBadge" style="position: absolute; top: -4px; right: -4px; background: #ef4444; color: white; border-radius: 50%; font-size: 9px; font-weight: 700; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; line-height: 1;">{{ unread_notifications_count }}</span>
+            {% endif %}
+          </button>
+          <div class="notif-dropdown" id="notifDropdown" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 8px; width: 320px; background: var(--bg-card, #ffffff); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; overflow: hidden; text-align: left;">
+            <div style="padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 14px; display: flex; justify-content: space-between; align-items: center; background: var(--bg);">
+              <span>Notifications</span>
+              {% if unread_notifications_count > 0 %}
+                <button type="button" id="markAllReadBtn" style="background: none; border: none; color: var(--primary); font-size: 11px; font-weight: 600; cursor: pointer; padding: 0;">Mark all read</button>
+              {% endif %}
+            </div>
+            <div style="max-height: 280px; overflow-y: auto;" id="notifList">
+              {% for n in unread_notifications %}
+                <div class="notif-item" style="padding: 12px 16px; border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='none'">
+                  <div style="font-size: 13px; line-height: 1.4; color: var(--text); margin-bottom: 4px;">{{ n.message }}</div>
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 10px; color: var(--text-muted);">{{ n.created_at|timesince }} ago</span>
+                    {% if n.link %}
+                      <a href="{{ n.link }}" class="mark-read-link" data-id="{{ n.pk }}" style="font-size: 11px; font-weight: 600; color: var(--primary); text-decoration: none;">View</a>
+                    {% else %}
+                      <button type="button" class="mark-single-read-btn" data-id="{{ n.pk }}" style="background: none; border: none; color: var(--primary); font-size: 11px; font-weight: 600; cursor: pointer; padding: 0;">Dismiss</button>
+                    {% endif %}
+                  </div>
+                </div>
+              {% empty %}
+                <div style="padding: 30px 16px; text-align: center; color: var(--text-muted); font-style: italic; font-size: 13px;">No new notifications.</div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
         <div class="user-chip">
           <div class="who"><b>{{ request.user.get_full_name|default:request.user.email }}</b><span>{{ request.user.get_role_display }}</span></div>
           <span class="avatar">{{ request.user.email|first|upper }}</span>
@@ -519,6 +555,86 @@
     }
     updateThemeIcons();
   });
+
+  // Notifications Dropdown Logic
+  const notifBtn = document.getElementById('notifBtn');
+  const notifDropdown = document.getElementById('notifDropdown');
+  const notifBadge = document.getElementById('notifBadge');
+  const markAllReadBtn = document.getElementById('markAllReadBtn');
+
+  if (notifBtn && notifDropdown) {
+    notifBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      notifDropdown.style.display = notifDropdown.style.display === 'none' ? 'block' : 'none';
+    });
+
+    document.addEventListener('click', function(e) {
+      if (!notifDropdown.contains(e.target) && e.target !== notifBtn) {
+        notifDropdown.style.display = 'none';
+      }
+    });
+
+    const csrfToken = '{{ csrf_token }}';
+
+    function markReadAjax(id, callback) {
+      const formData = new FormData();
+      if (id) formData.append('id', id);
+      fetch("{% url 'accounts:mark_notifications_read' %}", {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': csrfToken
+        },
+        body: formData
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (callback) callback(data);
+      })
+      .catch(err => console.error("Error marking notification read:", err));
+    }
+
+    if (markAllReadBtn) {
+      markAllReadBtn.addEventListener('click', function() {
+        markReadAjax(null, function() {
+          if (notifBadge) notifBadge.style.display = 'none';
+          if (markAllReadBtn) markAllReadBtn.style.display = 'none';
+          document.getElementById('notifList').innerHTML = '<div style="padding: 30px 16px; text-align: center; color: var(--text-muted); font-style: italic; font-size: 13px;">No new notifications.</div>';
+        });
+      });
+    }
+
+    document.querySelectorAll('.mark-single-read-btn').forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const id = this.getAttribute('data-id');
+        const item = this.closest('.notif-item');
+        markReadAjax(id, function() {
+          item.remove();
+          if (notifBadge) {
+            const count = parseInt(notifBadge.innerText, 10) - 1;
+            if (count > 0) {
+              notifBadge.innerText = count;
+            } else {
+              notifBadge.style.display = 'none';
+              if (markAllReadBtn) markAllReadBtn.style.display = 'none';
+              document.getElementById('notifList').innerHTML = '<div style="padding: 30px 16px; text-align: center; color: var(--text-muted); font-style: italic; font-size: 13px;">No new notifications.</div>';
+            }
+          }
+        });
+      });
+    });
+
+    document.querySelectorAll('.mark-read-link').forEach(link => {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const id = this.getAttribute('data-id');
+        const href = this.getAttribute('href');
+        markReadAjax(id, function() {
+          window.location.href = href;
+        });
+      });
+    });
+  }
 </script>
 
 {% block extra_js %}{% endblock %}

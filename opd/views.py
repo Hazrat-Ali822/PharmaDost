@@ -101,6 +101,14 @@ def appointment_create(request):
         form = AppointmentForm(request.POST)
         if form.is_valid():
             appt = form.save()
+            # Trigger notification for the doctor if they have a linked user account
+            if appt.doctor.user:
+                from accounts.models import Notification
+                Notification.objects.create(
+                    user=appt.doctor.user,
+                    message=f"New Patient assigned: '{appt.patient.full_name}' is in your queue (Token: {appt.token_no}).",
+                    link=f"/patients/{appt.patient.pk}/"
+                )
             # auto-bill the consultation fee (pending) so it lands on the patient's bill
             from billing.services import create_service_invoice
             fee = appt.doctor.followup_fee if appt.visit_type == 'FOLLOWUP' else appt.doctor.opd_fee
