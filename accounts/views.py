@@ -12,3 +12,21 @@ def mark_notifications_read(request):
     else:
         Notification.objects.filter(user=request.user).update(is_read=True)
     return JsonResponse({'status': 'ok'})
+
+
+@login_required
+def get_notifications_latest(request):
+    """AJAX endpoint to retrieve latest unread notifications."""
+    from django.template.loader import render_to_string
+    unread = Notification.objects.filter(user=request.user, is_read=False).order_by('-created_at')[:5]
+    unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
+    
+    html = render_to_string('partials/notifications_list.html', {
+        'unread_notifications': unread,
+        'unread_notifications_count': unread_count
+    }, request=request)
+    
+    return JsonResponse({
+        'count': unread_count,
+        'html': html
+    })

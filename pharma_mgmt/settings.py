@@ -128,7 +128,7 @@ DATABASES = {
 }
 
 # If DATABASE_URL is set in environment/env, use PostgreSQL (Supabase)
-db_env = dj_database_url.config(conn_max_age=600)
+db_env = dj_database_url.config(conn_max_age=0)
 if db_env:
     DATABASES["default"] = db_env
 

@@ -319,21 +319,7 @@
               {% endif %}
             </div>
             <div style="max-height: 280px; overflow-y: auto;" id="notifList">
-              {% for n in unread_notifications %}
-                <div class="notif-item" style="padding: 12px 16px; border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='none'">
-                  <div style="font-size: 13px; line-height: 1.4; color: var(--text); margin-bottom: 4px;">{{ n.message }}</div>
-                  <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 10px; color: var(--text-muted);">{{ n.created_at|timesince }} ago</span>
-                    {% if n.link %}
-                      <a href="{{ n.link }}" class="mark-read-link" data-id="{{ n.pk }}" style="font-size: 11px; font-weight: 600; color: var(--primary); text-decoration: none;">View</a>
-                    {% else %}
-                      <button type="button" class="mark-single-read-btn" data-id="{{ n.pk }}" style="background: none; border: none; color: var(--primary); font-size: 11px; font-weight: 600; cursor: pointer; padding: 0;">Dismiss</button>
-                    {% endif %}
-                  </div>
-                </div>
-              {% empty %}
-                <div style="padding: 30px 16px; text-align: center; color: var(--text-muted); font-style: italic; font-size: 13px;">No new notifications.</div>
-              {% endfor %}
+              {% include 'partials/notifications_list.html' %}
             </div>
           </div>
         </div>
@@ -593,47 +579,92 @@
       .catch(err => console.error("Error marking notification read:", err));
     }
 
+    function decrementBadge() {
+      const badge = document.getElementById('notifBadge');
+      if (badge) {
+        const count = parseInt(badge.innerText, 10) - 1;
+        if (count > 0) {
+          badge.innerText = count;
+          badge.style.display = 'flex';
+        } else {
+          badge.style.display = 'none';
+          if (markAllReadBtn) markAllReadBtn.style.display = 'none';
+          document.getElementById('notifList').innerHTML = '<div style="padding: 30px 16px; text-align: center; color: var(--text-muted); font-style: italic; font-size: 13px;">No new notifications.</div>';
+        }
+      }
+    }
+
     if (markAllReadBtn) {
       markAllReadBtn.addEventListener('click', function() {
         markReadAjax(null, function() {
-          if (notifBadge) notifBadge.style.display = 'none';
+          const badge = document.getElementById('notifBadge');
+          if (badge) badge.style.display = 'none';
           if (markAllReadBtn) markAllReadBtn.style.display = 'none';
           document.getElementById('notifList').innerHTML = '<div style="padding: 30px 16px; text-align: center; color: var(--text-muted); font-style: italic; font-size: 13px;">No new notifications.</div>';
         });
       });
     }
 
-    document.querySelectorAll('.mark-single-read-btn').forEach(btn => {
-      btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        const id = this.getAttribute('data-id');
-        const item = this.closest('.notif-item');
-        markReadAjax(id, function() {
-          item.remove();
-          if (notifBadge) {
-            const count = parseInt(notifBadge.innerText, 10) - 1;
-            if (count > 0) {
-              notifBadge.innerText = count;
-            } else {
-              notifBadge.style.display = 'none';
-              if (markAllReadBtn) markAllReadBtn.style.display = 'none';
-              document.getElementById('notifList').innerHTML = '<div style="padding: 30px 16px; text-align: center; color: var(--text-muted); font-style: italic; font-size: 13px;">No new notifications.</div>';
-            }
-          }
-        });
-      });
-    });
+    // Event delegation on notifications list
+    const notifList = document.getElementById('notifList');
+    if (notifList) {
+      notifList.addEventListener('click', function(e) {
+        const singleBtn = e.target.closest('.mark-single-read-btn');
+        if (singleBtn) {
+          e.preventDefault();
+          const id = singleBtn.getAttribute('data-id');
+          const item = singleBtn.closest('.notif-item');
+          markReadAjax(id, function() {
+            item.remove();
+            decrementBadge();
+          });
+          return;
+        }
 
-    document.querySelectorAll('.mark-read-link').forEach(link => {
-      link.addEventListener('click', function(e) {
-        e.preventDefault();
-        const id = this.getAttribute('data-id');
-        const href = this.getAttribute('href');
-        markReadAjax(id, function() {
-          window.location.href = href;
-        });
+        const viewLink = e.target.closest('.mark-read-link');
+        if (viewLink) {
+          e.preventDefault();
+          const id = viewLink.getAttribute('data-id');
+          const href = viewLink.getAttribute('href');
+          markReadAjax(id, function() {
+            window.location.href = href;
+          });
+          return;
+        }
       });
-    });
+    }
+
+    // Poll endpoint every 5 seconds for new notifications
+    setInterval(function() {
+      fetch("{% url 'accounts:get_notifications_latest' %}")
+      .then(res => res.json())
+      .then(data => {
+        const badge = document.getElementById('notifBadge');
+        if (data.count > 0) {
+          if (!badge) {
+            const span = document.createElement('span');
+            span.id = 'notifBadge';
+            span.className = 'notif-badge';
+            span.style = 'position: absolute; top: -4px; right: -4px; background: #ef4444; color: white; border-radius: 50%; font-size: 9px; font-weight: 700; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; line-height: 1;';
+            span.innerText = data.count;
+            document.getElementById('notifBtn').appendChild(span);
+          } else {
+            badge.innerText = data.count;
+            badge.style.display = 'flex';
+          }
+          if (markAllReadBtn) markAllReadBtn.style.display = 'block';
+        } else {
+          if (badge) badge.style.display = 'none';
+          if (markAllReadBtn) markAllReadBtn.style.display = 'none';
+        }
+        
+        // Swap list content
+        if (notifList) {
+          notifList.innerHTML = data.html;
+        }
+      })
+      .catch(err => console.error("Error polling notifications:", err));
+    }, 5000);
   }
 </script>
 
