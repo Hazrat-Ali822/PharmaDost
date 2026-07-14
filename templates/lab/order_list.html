@@ -20,7 +20,7 @@
 </div>
 
 <table class="tbl">
-  <thead><tr><th>#</th><th>Date</th><th>Patient</th><th>Referred By</th><th>Tests</th><th>Status</th><th></th></tr></thead>
+  <thead><tr><th>#</th><th>Date</th><th>Patient</th><th>Referred By</th><th>Tests</th><th>Status</th><th>Payment</th><th></th></tr></thead>
   <tbody>
     {% for o in orders %}
     <tr>
@@ -43,6 +43,16 @@
           <span class="badge gray">{{ o.status }}</span>
         {% endif %}
       </td>
+      <td>
+        {% if o.payment_status == 'Paid' %}
+          <span class="badge green">Paid (Rs. {{ o.payment_amount }})</span>
+        {% else %}
+          <form action="{% url 'lab:collect_payment' o.id %}" method="post" style="display:inline">
+            {% csrf_token %}
+            <button class="btn sm success" type="submit" style="padding:4px 8px;font-size:11px;">Collect Rs. {{ o.total_price }}</button>
+          </form>
+        {% endif %}
+      </td>
       <td style="white-space:nowrap">
         <a class="btn sm alt" href="{% url 'lab:order_detail' o.id %}">View</a>
         <a class="btn sm" href="{% url 'lab:order_results_edit' o.id %}">Results</a>
@@ -52,7 +62,7 @@
       </td>
     </tr>
     {% empty %}
-    <tr><td colspan="7" class="muted">No lab orders yet. Click “New Order”.</td></tr>
+    <tr><td colspan="8" class="muted">No lab orders yet. Click “New Order”.</td></tr>
     {% endfor %}
   </tbody>
 </table>

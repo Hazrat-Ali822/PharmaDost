@@ -96,11 +96,14 @@ def _order_lab_tests(patient, tests, user):
     order = TestOrder.objects.create(patient=patient, ordered_by=user)
     for t in tests:
         TestResult.objects.create(test_order=order, lab_test=t)
-    create_service_invoice(
+    inv = create_service_invoice(
         patient=patient,
         items=[(f"Lab: {t.name}", t.price) for t in tests],
         created_by=user,
     )
+    if inv:
+        order.invoice = inv
+        order.save()
     
     # Notify Lab Technicians
     Notification.send_to_role(
@@ -124,11 +127,14 @@ def _order_scans(scan_types, patient, user):
         study = ImagingStudy.objects.create(
             patient=patient, referred_by=user,
             modality=st.modality, study_name=st.name, price=st.price)
-        create_service_invoice(
+        inv = create_service_invoice(
             patient=patient,
             items=[(f"{study.get_modality_display()}: {study.study_name}", study.price)],
             created_by=user,
         )
+        if inv:
+            study.invoice = inv
+            study.save()
         
     # Notify Sonographers / Radiologists
     Notification.send_to_role(
