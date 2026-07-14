@@ -14,4 +14,5 @@ urlpatterns = [
     path('wards/new/', views.ward_create, name='ward_create'),
     path('beds/new/', views.bed_create, name='bed_create'),
     path('beds/<int:pk>/edit/', views.bed_edit, name='bed_edit'),
+    path('beds/<int:pk>/delete/', views.bed_delete, name='bed_delete'),
 ]

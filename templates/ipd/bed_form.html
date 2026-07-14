@@ -27,7 +27,10 @@
     {% endfor %}
 
     <div style="margin-top:30px; display:flex; gap:10px;">
-      <button class="btn" type="submit" style="flex:1;">Register Bed</button>
+      <button class="btn" type="submit" style="flex:1;">{% if bed %}Save Changes{% else %}Register Bed{% endif %}</button>
+      {% if bed %}
+      <a class="btn danger" href="{% url 'ipd:bed_delete' bed.pk %}" style="flex:1; text-align:center; background:#ef4444; color:white !important; border:none; display:flex; align-items:center; justify-content:center; text-decoration:none;">Delete Bed</a>
+      {% endif %}
       <a class="btn alt" href="{% url 'ipd:ward_bed_list' %}" style="flex:1; text-align:center;">Cancel</a>
     </div>
   </form>
