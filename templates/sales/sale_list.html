@@ -5,6 +5,43 @@
   <h2>Bills</h2>
   <a class="btn" href="{% url 'sale_create' %}">Create Bill</a>
 </div>
+
+{% if pending_prescriptions %}
+<div class="card" style="margin-bottom:20px; border-left:4px solid var(--primary); background:var(--bg);">
+  <h3 style="margin-top:0; font-size:15px; color:var(--text); display:flex; align-items:center; gap:8px;">
+    📥 Pending Doctor Prescriptions
+  </h3>
+  <table class="tbl" style="margin:10px 0 0 0; font-size:13px;">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Patient</th>
+        <th>Referred By</th>
+        <th>Medicines</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for rx in pending_prescriptions %}
+      <tr>
+        <td>{{ rx.created_at|date:"Y-m-d H:i" }}</td>
+        <td><strong>{{ rx.appointment.patient.full_name }}</strong></td>
+        <td>Dr. {{ rx.appointment.doctor.get_full_name|default:rx.appointment.doctor.user.email }}</td>
+        <td>
+          {% for item in rx.items.all %}
+            {{ item.medicine.name|default:item.custom_medicine_name }}{% if not forloop.last %}, {% endif %}
+          {% endfor %}
+        </td>
+        <td style="text-align:right;">
+          <a class="btn sm success" href="{% url 'sale_create' %}?prescription_id={{ rx.id }}">Process Bill (POS)</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
 <table class="tbl">
   <thead>
     <tr><th>#</th><th>Date/Time</th><th>Type</th><th>Customer</th><th>Total</th><th>Paid</th><th>Balance</th><th>Items</th><th></th></tr>

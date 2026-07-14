@@ -3,6 +3,23 @@
 {% block page_title %}Point of Sale{% endblock %}
 {% block content %}
 <h2>Create Bill</h2>
+
+{% if pending_prescriptions %}
+<div class="card" style="margin-bottom:15px; border-left:4px solid var(--primary); padding:12px;">
+  <span style="font-weight:700; color:var(--text); font-size:13.5px; display:block; margin-bottom:8px;">
+    📥 Load Pending Doctor Prescriptions:
+  </span>
+  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+    {% for rx in pending_prescriptions %}
+      <a href="?prescription_id={{ rx.id }}" class="btn sm alt" style="padding:5px 10px; font-size:12.5px; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:5px;">
+        ⚡ {{ rx.appointment.patient.full_name }}
+        <span class="muted" style="font-size:11px; font-weight:400;">(Dr. {{ rx.appointment.doctor.get_full_name|default:rx.appointment.doctor.user.username }})</span>
+      </a>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
 <form method="post" id="bill-form">{% csrf_token %}
   <input type="hidden" name="prescription_id" value="{{ prescription_id|default:'' }}">
   <div class="card" style="margin-bottom:12px">

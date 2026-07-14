@@ -81,10 +81,16 @@ def sale_create(request):
                 item["discount"] = ld
             items.append(item)
 
+        pending_rx = Prescription.objects.filter(status='PENDING').select_related('appointment__patient', 'appointment__doctor__user').prefetch_related('items__medicine')
+        if request.user.hospital:
+            pending_rx = pending_rx.filter(appointment__patient__hospital=request.user.hospital)
+        pending_prescriptions = pending_rx.order_by('-created_at')[:15]
+
         ctx = {
             'meds': meds, 'customers': customers, 'patients': patients,
             'prescription_id': prescription_id, 'rx_items_json': rx_items_json,
-            'preselected_patient_id': preselected_patient_id
+            'preselected_patient_id': preselected_patient_id,
+            'pending_prescriptions': pending_prescriptions
         }
         if not items:
             messages.error(request, 'Please add at least one line item.')
@@ -118,22 +124,37 @@ def sale_create(request):
             messages.error(request, str(e))
             return render(request, 'sales/sale_create.html', ctx)
 
+    pending_rx = Prescription.objects.filter(status='PENDING').select_related('appointment__patient', 'appointment__doctor__user').prefetch_related('items__medicine')
+    if request.user.hospital:
+        pending_rx = pending_rx.filter(appointment__patient__hospital=request.user.hospital)
+    pending_prescriptions = pending_rx.order_by('-created_at')[:15]
+
     return render(request, 'sales/sale_create.html', {
         'meds': meds, 'customers': customers, 'patients': patients,
         'prescription_id': prescription_id, 'rx_items_json': rx_items_json,
-        'preselected_patient_id': preselected_patient_id
+        'preselected_patient_id': preselected_patient_id,
+        'pending_prescriptions': pending_prescriptions
     })
 
 
 @feature_required('pos')
 def sale_list(request):
+    from prescriptions.models import Prescription
     sales = (
         Sale.objects
         .select_related('customer', 'cashier')
         .prefetch_related('items', 'items__medicine')
         .order_by('-created_at')[:200]
     )
-    return render(request, 'sales/sale_list.html', {'sales': sales})
+    pending_rx = Prescription.objects.filter(status='PENDING').select_related('appointment__patient', 'appointment__doctor__user').prefetch_related('items__medicine')
+    if request.user.hospital:
+        pending_rx = pending_rx.filter(appointment__patient__hospital=request.user.hospital)
+    pending_prescriptions = pending_rx.order_by('-created_at')[:15]
+    
+    return render(request, 'sales/sale_list.html', {
+        'sales': sales,
+        'pending_prescriptions': pending_prescriptions,
+    })
 
 
 @feature_required('pos')
