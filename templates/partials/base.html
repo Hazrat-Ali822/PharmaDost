@@ -179,7 +179,7 @@
           {% endif %}
         </a>
         {% endif %}
-        {% if nav.ipd %}
+        {% if nav.ipd and request.user.role != 'DOCTOR' %}
         <a href="{% url 'ipd:admission_list' %}" class="{% if '/ipd/' in request.path %}active{% endif %}" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
           <div style="display:flex; align-items:center; gap:12px; min-width:0;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M2 22h20M5 22v-5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v5M8 6h8M12 2v8"/></svg>
@@ -190,7 +190,7 @@
           {% endif %}
         </a>
         {% endif %}
-        {% if nav.ot %}
+        {% if nav.ot and request.user.role != 'DOCTOR' %}
         <a href="{% url 'ot:surgery_list' %}" class="{% if '/ot/' in request.path %}active{% endif %}" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
           <div style="display:flex; align-items:center; gap:12px; min-width:0;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
