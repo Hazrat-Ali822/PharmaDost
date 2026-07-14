@@ -27,7 +27,11 @@
       <td>{{ o.id }}</td>
       <td>
         {{ o.order_date|date:"Y-m-d H:i" }}<br>
-        <small class="muted" style="font-size:11px; font-weight:600; color:#ef4444;">⏱️ {{ o.order_date|timesince }} ago</small>
+        {% if o.status == 'Completed' or o.status == 'Verified' or o.status == 'Delivered' %}
+          <small class="muted" style="font-size:11px; font-weight:600; color:var(--success);">⏱️ {{ o.order_date|timesince }} ago</small>
+        {% else %}
+          <small class="muted" style="font-size:11px; font-weight:600; color:#ef4444;">⏱️ {{ o.order_date|timesince }} ago</small>
+        {% endif %}
       </td>
       <td><a href="{% url 'patient_detail' o.patient.pk %}">{{ o.patient.full_name }}</a></td>
       <td>Dr. {{ o.ordered_by.get_full_name|default:o.ordered_by.email|default:"External / Self" }}</td>
