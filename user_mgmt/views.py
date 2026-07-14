@@ -106,7 +106,7 @@ def dashboard_router(request):
         ctx['revenue_collected'] = Invoice.objects.filter(appointment__in=appts).aggregate(s=Sum('total'))['s'] or 0
     elif ctx['role'] == 'PHARMACIST':
         from sales.models import Sale
-        sales = Sale.objects.filter(created_by=request.user, created_at__date__range=[start_date, end_date], is_returned=False)
+        sales = Sale.objects.filter(cashier=request.user, created_at__date__range=[start_date, end_date], is_returned=False)
         ctx['sales_count'] = sales.count()
         ctx['revenue_collected'] = sales.aggregate(s=Sum('paid'))['s'] or 0
 
