@@ -88,11 +88,29 @@ def doctor_delete(request, pk):
 
 @feature_required('opd')
 def appointment_list(request):
-    appointments = Appointment.objects.select_related('patient', 'doctor')
-    # a doctor only sees their own queue
-    if getattr(request.user, 'role', None) == 'DOCTOR' and not request.user.is_superuser:
+    appointments = Appointment.objects.select_related('patient', 'doctor').order_by('appointment_date', 'token_no')
+    
+    # Filter by hospital
+    if request.user.hospital:
+        appointments = appointments.filter(patient__hospital=request.user.hospital)
+        
+    role = getattr(request.user, 'role', None)
+    is_doctor = role == 'DOCTOR' and not request.user.is_superuser
+    
+    if is_doctor:
         appointments = appointments.filter(doctor__user=request.user)
-    return render(request, 'opd/appointment_list.html', {'appointments': appointments})
+        
+    show = request.GET.get('show', 'active')
+    if show == 'active':
+        appointments = appointments.exclude(status__in=['DONE', 'CANCELLED'])
+    elif show == 'completed':
+        appointments = appointments.filter(status='DONE')
+        
+    return render(request, 'opd/appointment_list.html', {
+        'appointments': appointments,
+        'show': show,
+        'is_doctor': is_doctor
+    })
 
 
 @feature_required('appointments')
