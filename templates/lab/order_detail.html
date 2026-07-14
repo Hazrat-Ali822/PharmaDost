@@ -29,8 +29,8 @@
       <tr>
         <td>{{ r.lab_test.name }}</td>
         <td><strong>{{ r.result_value|default:"—" }}</strong></td>
-        <td>{{ r.lab_test.normal_range|default:"—" }}</td>
-        <td>{{ r.lab_test.unit|default:"" }}</td>
+        <td>{{ r.normal_range|default:"—" }}</td>
+        <td>{{ r.unit|default:"" }}</td>
         <td>{{ r.remarks|default:"" }}</td>
       </tr>
       {% endfor %}
