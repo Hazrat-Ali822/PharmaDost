@@ -197,3 +197,13 @@ def bed_edit(request, pk):
         'title': 'Edit Bed Details',
         'bed': bed,
     })
+
+@feature_required('ipd')
+def bed_delete(request, pk):
+    bed = get_object_or_404(Bed, pk=pk)
+    if request.method == 'POST':
+        bed_number = bed.bed_number
+        bed.delete()
+        messages.success(request, f"Bed '{bed_number}' has been deleted.")
+        return redirect('ipd:ward_bed_list')
+    return render(request, 'ipd/bed_confirm_delete.html', {'bed': bed})

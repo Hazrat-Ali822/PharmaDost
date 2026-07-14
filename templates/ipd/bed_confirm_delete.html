@@ -1,0 +1,15 @@
+{% extends 'partials/base.html' %}
+{% block title %}Delete Bed — PharmaDost{% endblock %}
+{% block content %}
+<div class="card" style="max-width:500px; margin: 50px auto; padding: 30px; text-align: center; border-radius: 12px; border: 1px solid var(--border);">
+  <h2 style="color:#ef4444; margin-top:0; font-weight:700;">Delete Bed?</h2>
+  <p style="font-size:15px; line-height:1.5; color:var(--text); margin-bottom:25px;">
+    Are you sure you want to delete Bed <strong>{{ bed.bed_number }}</strong> from Ward <strong>{{ bed.ward.name }}</strong>? This action cannot be undone.
+  </p>
+  <form method="post" style="display:flex; gap:10px; justify-content:center;">
+    {% csrf_token %}
+    <button class="btn danger" type="submit" style="background:#ef4444; border:none; color:white !important; padding:10px 24px; font-weight:600; cursor:pointer;">Yes, Delete Bed</button>
+    <a class="btn alt" href="{% url 'ipd:ward_bed_list' %}" style="padding:10px 24px; font-weight:600; text-decoration:none;">Cancel</a>
+  </form>
+</div>
+{% endblock %}
