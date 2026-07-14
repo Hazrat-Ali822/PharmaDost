@@ -8,6 +8,7 @@ path('', views.medicine_list, name='medicine_list'),
 path('add/', views.medicine_create, name='medicine_add'),
 path('<int:pk>/edit/', views.medicine_edit, name='medicine_edit'),
 path('<int:pk>/delete/', views.medicine_delete, name='medicine_delete'),
+path('import-catalog/', views.medicine_import_catalog, name='medicine_import_catalog'),
 # Purchase Orders (order stock FROM a supplier → print → receive into stock)
 path('purchase-orders/', po.po_list, name='po_list'),
 path('purchase-orders/new/', po.po_create, name='po_create'),
