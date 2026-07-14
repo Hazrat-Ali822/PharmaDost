@@ -17,18 +17,37 @@ from django.shortcuts import reverse
 @feature_required('inventory')
 def dashboard(request):
     import json
+    import datetime
     from datetime import timedelta
-    from django.db.models import Sum
-    from billing.models import Invoice, Expense
+    from django.db.models import Sum, Q
+    from billing.models import Invoice, InvoiceItem, Expense
     from sales.models import Sale
 
     low_stock = Medicine.objects.low_stock()
     expiring = Medicine.objects.expiring_soon(30)
     
-    # Financial Analytics (Last 7 Days)
     today = timezone.localdate()
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
+
+    try:
+        if start_date_str:
+            start_date = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        else:
+            start_date = today - datetime.timedelta(days=30)
+    except ValueError:
+        start_date = today - datetime.timedelta(days=30)
+
+    try:
+        if end_date_str:
+            end_date = datetime.datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        else:
+            end_date = today
+    except ValueError:
+        end_date = today
+
+    # 7-day line chart (using last 7 days from today)
     seven_days_ago = today - timedelta(days=6)
-    
     labels = []
     daily_income = []
     daily_expense = []
@@ -36,33 +55,76 @@ def dashboard(request):
     for i in range(7):
         day = seven_days_ago + timedelta(days=i)
         labels.append(day.strftime("%a %d"))
-        
-        # Calculate income
         day_inv = Invoice.objects.filter(created_at__date=day).aggregate(s=Sum('paid'))['s'] or 0
         day_sale = Sale.objects.filter(created_at__date=day, is_returned=False).aggregate(s=Sum('paid'))['s'] or 0
         daily_income.append(float(day_inv + day_sale))
-        
-        # Calculate expenses
         day_exp = Expense.objects.filter(date=day).aggregate(s=Sum('amount'))['s'] or 0
         daily_expense.append(float(day_exp))
         
-    # Calculate 30-day summaries
+    # Departmental Revenue & Activity Calculations for Selected Date Range
+    invs = Invoice.objects.filter(created_at__date__range=[start_date, end_date])
+    if request.user.hospital:
+        invs = invs.filter(patient__hospital=request.user.hospital)
+
+    items = InvoiceItem.objects.filter(invoice__in=invs).select_related('invoice')
+    
+    opd_rev = Decimal('0.00')
+    lab_rev = Decimal('0.00')
+    imaging_rev = Decimal('0.00')
+    other_rev = Decimal('0.00')
+    
+    for item in items:
+        desc = item.description
+        amt = item.amount
+        factor = Decimal('1.00')
+        if item.invoice.total > 0:
+            factor = Decimal(str(item.invoice.paid)) / Decimal(str(item.invoice.total))
+        scaled_amt = amt * factor
+        
+        if desc == 'OPD Consultation':
+            opd_rev += scaled_amt
+        elif desc.startswith('Lab:'):
+            lab_rev += scaled_amt
+        elif any(desc.startswith(prefix) for prefix in ['Ultrasound:', 'X-Ray:', 'CT Scan:', 'MRI:', 'ECG:', 'Echocardiography:', 'Mammography:', 'ULTRASOUND:', 'XRAY:', 'CT:', 'MRI:', 'ECG:', 'ECHO:', 'MAMMO:']):
+            imaging_rev += scaled_amt
+        else:
+            other_rev += scaled_amt
+
+    pharmacy_sales = Sale.objects.filter(created_at__date__range=[start_date, end_date], is_returned=False)
+    if request.user.hospital:
+        pharmacy_sales = pharmacy_sales.filter(patient__hospital=request.user.hospital)
+    pharmacy_rev = pharmacy_sales.aggregate(s=Sum('paid'))['s'] or Decimal('0.00')
+
+    # Total Income and Expense for the selected date range
+    total_income_range = float(opd_rev + lab_rev + imaging_rev + other_rev + pharmacy_rev)
+    total_expense_range = float(Expense.objects.filter(date__range=[start_date, end_date]).aggregate(s=Sum('amount'))['s'] or 0)
+
+    # Calculate 30-day summaries for comparison tiles
     thirty_days_ago = today - timedelta(days=29)
     tot_inv_30d = Invoice.objects.filter(created_at__date__gte=thirty_days_ago).aggregate(s=Sum('paid'))['s'] or 0
     tot_sale_30d = Sale.objects.filter(created_at__date__gte=thirty_days_ago, is_returned=False).aggregate(s=Sum('paid'))['s'] or 0
     total_income_30d = float(tot_inv_30d + tot_sale_30d)
-    
     total_expense_30d = float(Expense.objects.filter(date__gte=thirty_days_ago).aggregate(s=Sum('amount'))['s'] or 0)
     
     return render(request, 'dashboard.html', {
         'low_stock': low_stock,
         'expiring': expiring,
         'today': today,
+        'start_date': start_date.strftime('%Y-%m-%d'),
+        'end_date': end_date.strftime('%Y-%m-%d'),
         'finance_labels': json.dumps(labels),
         'finance_income': json.dumps(daily_income),
         'finance_expense': json.dumps(daily_expense),
         'total_income_30d': total_income_30d,
         'total_expense_30d': total_expense_30d,
+        # Departmental Breakdown
+        'opd_rev': opd_rev,
+        'lab_rev': lab_rev,
+        'imaging_rev': imaging_rev,
+        'pharmacy_rev': pharmacy_rev,
+        'other_rev': other_rev,
+        'total_income_range': total_income_range,
+        'total_expense_range': total_expense_range,
     })
 
 

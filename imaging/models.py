@@ -86,6 +86,12 @@ class ImagingStudy(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="Pending")
     price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
 
+    # Cash collection at point of service
+    payment_status = models.CharField(max_length=20, default='Pending', choices=[('Pending', 'Pending'), ('Paid', 'Paid')])
+    payment_collected_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='collected_imaging_studies')
+    payment_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    invoice = models.ForeignKey('billing.Invoice', on_delete=models.SET_NULL, null=True, blank=True, related_name='imaging_studies')
+
     # the report
     findings = models.TextField(blank=True)
     impression = models.TextField(blank=True)

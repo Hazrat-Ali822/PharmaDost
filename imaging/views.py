@@ -2,10 +2,12 @@ from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
 from accounts.decorators import role_required, feature_required
 from .forms import ImagingReportForm, ImagingStudyCreateForm
 from .models import ImagingStudy, ScanType
+from billing.models import PatientPayment
 
 
 def _dec(value):
@@ -50,6 +52,9 @@ def study_create(request):
                 patient=study.patient,
                 items=[(f"{study.get_modality_display()}: {study.study_name}", study.price)],
                 created_by=request.user)
+            if inv:
+                study.invoice = inv
+                study.save()
             # Sonographer/admin goes to the report screen; a doctor/receptionist who only
             # referred the scan gets a clean confirmation (not a 403 on a report-only page).
             can_report = request.user.is_superuser or getattr(request.user, "role", None) in REPORT_ROLES
@@ -144,3 +149,32 @@ def scan_catalog(request):
     return render(request, "imaging/scan_catalog.html",
                   {"scans": ScanType.objects.all(),
                    "modalities": ScanType.MODALITY_CHOICES})
+
+
+@feature_required('imaging')
+@require_POST
+def collect_payment(request, study_id):
+    study = get_object_or_404(ImagingStudy, pk=study_id)
+    if study.payment_status == 'Pending':
+        study.payment_status = 'Paid'
+        study.payment_collected_by = request.user
+        study.payment_amount = study.price
+        study.save()
+
+        if study.invoice:
+            invoice = study.invoice
+            invoice.paid = invoice.total
+            invoice.save()
+
+        PatientPayment.objects.create(
+            patient=study.patient,
+            amount=study.price,
+            payment_method='CASH',
+            note=f"Collected by Radiology counter for Study #{study.id}",
+            collected_by=request.user,
+            hospital=request.user.hospital
+        )
+        messages.success(request, f"Collected Rs. {study.price} successfully for Study #{study.id}!")
+    else:
+        messages.info(request, "Payment has already been collected.")
+    return redirect('imaging:study_list')

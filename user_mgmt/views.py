@@ -44,22 +44,72 @@ def dashboard_router(request):
         return redirect('saas:dashboard')
     if getattr(request.user, 'role', None) == 'ADMIN':
         return redirect('dashboard')
-    ctx = {'role': getattr(request.user, 'role', None)}
+        
+    import datetime
+    from django.utils import timezone
+    from django.db.models import Sum
+
+    today = timezone.localdate()
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
+
+    try:
+        if start_date_str:
+            start_date = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        else:
+            start_date = today - datetime.timedelta(days=30)
+    except ValueError:
+        start_date = today - datetime.timedelta(days=30)
+
+    try:
+        if end_date_str:
+            end_date = datetime.datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        else:
+            end_date = today
+    except ValueError:
+        end_date = today
+
+    ctx = {
+        'role': getattr(request.user, 'role', None),
+        'start_date': start_date.strftime('%Y-%m-%d'),
+        'end_date': end_date.strftime('%Y-%m-%d'),
+    }
+
+    hospital = getattr(request.user, 'hospital', None)
+
     if ctx['role'] == 'SONOGRAPHER':
         from imaging.models import ImagingStudy
-        studies = ImagingStudy.objects.select_related('patient')
+        studies = ImagingStudy.objects.all()
+        if hospital:
+            studies = studies.filter(patient__hospital=hospital)
         pending = studies.exclude(status__in=['Reported', 'Delivered'])
         ctx['pending_studies'] = pending.order_by('study_date')[:15]
         ctx['pending_count'] = pending.count()
-        ctx['reported_count'] = studies.filter(status__in=['Reported', 'Delivered']).count()
+        ctx['reported_count'] = studies.filter(status__in=['Reported', 'Delivered'], study_date__date__range=[start_date, end_date]).count()
+        ctx['revenue_collected'] = studies.filter(payment_collected_by=request.user, payment_status='Paid', study_date__date__range=[start_date, end_date]).aggregate(s=Sum('payment_amount'))['s'] or 0
     elif ctx['role'] == 'LABTECH':
         from lab.models import TestOrder
         orders = TestOrder.objects.select_related('patient').prefetch_related('results')
+        if hospital:
+            orders = orders.filter(patient__hospital=hospital)
         done = ['Completed', 'Verified', 'Delivered']
         pending = orders.exclude(status__in=done)
         ctx['pending_orders'] = pending.order_by('order_date')[:15]
         ctx['pending_count'] = pending.count()
-        ctx['completed_count'] = orders.filter(status__in=done).count()
+        ctx['completed_count'] = orders.filter(status__in=done, order_date__date__range=[start_date, end_date]).count()
+        ctx['revenue_collected'] = orders.filter(payment_collected_by=request.user, payment_status='Paid', order_date__date__range=[start_date, end_date]).aggregate(s=Sum('payment_amount'))['s'] or 0
+    elif ctx['role'] == 'DOCTOR':
+        from opd.models import Appointment
+        from billing.models import Invoice
+        appts = Appointment.objects.filter(doctor__user=request.user, appointment_date__range=[start_date, end_date]).exclude(status='CANCELLED')
+        ctx['patient_count'] = appts.count()
+        ctx['revenue_collected'] = Invoice.objects.filter(appointment__in=appts).aggregate(s=Sum('total'))['s'] or 0
+    elif ctx['role'] == 'PHARMACIST':
+        from sales.models import Sale
+        sales = Sale.objects.filter(created_by=request.user, created_at__date__range=[start_date, end_date], is_returned=False)
+        ctx['sales_count'] = sales.count()
+        ctx['revenue_collected'] = sales.aggregate(s=Sum('paid'))['s'] or 0
+
     return render(request, _template_for(request.user), ctx)
 
 

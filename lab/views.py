@@ -4,10 +4,12 @@ from decimal import Decimal, InvalidOperation
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.contrib import messages
+from django.views.decorators.http import require_POST
 
 from accounts.decorators import role_required, feature_required
 from .models import TestOrder, LabTest, TestCategory
 from .forms import TestOrderCreateForm, TestResultFormSet
+from billing.models import PatientPayment
 
 
 def _dec(value):
@@ -56,6 +58,9 @@ def order_create(request):
                      for r in order.results.select_related("lab_test")]
             inv = create_service_invoice(
                 patient=order.patient, items=items, created_by=request.user)
+            if inv:
+                order.invoice = inv
+                order.save()
             # Whoever can enter results (lab/admin) goes straight to the results screen;
             # a doctor/receptionist who only *ordered* the test gets a clean confirmation
             # instead of being bounced to a lab-only page (which would 403).
@@ -166,3 +171,33 @@ def test_catalog(request):
     groups = [(c, LabTest.objects.filter(category=c).order_by("name")) for c in categories]
     return render(request, "lab/test_catalog.html",
                   {"groups": groups, "categories": categories})
+
+
+@feature_required('lab')
+@require_POST
+def collect_payment(request, order_id):
+    order = get_object_or_404(TestOrder, pk=order_id)
+    if order.payment_status == 'Pending':
+        total_price = sum(t.price for t in order.tests.all())
+        order.payment_status = 'Paid'
+        order.payment_collected_by = request.user
+        order.payment_amount = total_price
+        order.save()
+
+        if order.invoice:
+            invoice = order.invoice
+            invoice.paid = invoice.total
+            invoice.save()
+
+        PatientPayment.objects.create(
+            patient=order.patient,
+            amount=total_price,
+            payment_method='CASH',
+            note=f"Collected by Lab counter for Order #{order.id}",
+            collected_by=request.user,
+            hospital=request.user.hospital
+        )
+        messages.success(request, f"Collected Rs. {total_price} successfully for Order #{order.id}!")
+    else:
+        messages.info(request, "Payment has already been collected.")
+    return redirect('lab:order_list')

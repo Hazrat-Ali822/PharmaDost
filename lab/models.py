@@ -44,6 +44,16 @@ class TestOrder(models.Model):
     tests = models.ManyToManyField('LabTest', through='TestResult')
     order_date = models.DateTimeField(default=timezone.now)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+    
+    # Cash collection at point of service
+    payment_status = models.CharField(max_length=20, default='Pending', choices=[('Pending', 'Pending'), ('Paid', 'Paid')])
+    payment_collected_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='collected_lab_orders')
+    payment_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    invoice = models.ForeignKey('billing.Invoice', on_delete=models.SET_NULL, null=True, blank=True, related_name='lab_orders')
+
+    @property
+    def total_price(self):
+        return sum(t.price for t in self.tests.all())
 
     def __str__(self):
         return f"Order #{self.id} - {self.patient.full_name}"
