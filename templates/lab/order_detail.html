@@ -12,9 +12,10 @@
   </div>
   <div style="display:flex;gap:8px">
     <a class="btn" href="{% url 'lab:order_results_edit' order.id %}">Edit Results</a>
-    <a class="btn success" href="{% url 'lab:order_report' order.id %}" target="_blank">Print Report</a>
-    {% if order.status != 'Completed' %}
-    <a class="btn alt" href="{% url 'lab:order_mark_completed' order.id %}">Mark Completed</a>
+    {% if order.status == 'Completed' or order.status == 'Verified' or order.status == 'Delivered' %}
+      <a class="btn success" href="{% url 'lab:order_report' order.id %}" target="_blank">Print Report</a>
+    {% else %}
+      <a class="btn alt" href="{% url 'lab:order_mark_completed' order.id %}">Mark Completed</a>
     {% endif %}
     <a class="btn alt" href="{% url 'lab:order_list' %}">Back</a>
   </div>

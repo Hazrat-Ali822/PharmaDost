@@ -13,9 +13,11 @@
   </div>
   <div style="display:flex;gap:8px">
     <a class="btn" href="{% url 'imaging:study_report_edit' study.id %}">Edit Report</a>
-    <a class="btn alt" href="{% url 'imaging:study_report' study.id %}" target="_blank">Print</a>
+    {% if study.status == 'Reported' or study.status == 'Delivered' %}
+      <a class="btn alt" href="{% url 'imaging:study_report' study.id %}" target="_blank">Print</a>
+    {% endif %}
     {% if study.status != 'Delivered' %}
-    <a class="btn success" href="{% url 'imaging:study_mark_delivered' study.id %}">Mark Delivered</a>
+      <a class="btn success" href="{% url 'imaging:study_mark_delivered' study.id %}">Mark Delivered</a>
     {% endif %}
     <a class="btn alt" href="{% url 'imaging:study_list' %}">Back</a>
   </div>
