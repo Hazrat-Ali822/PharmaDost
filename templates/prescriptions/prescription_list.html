@@ -1,24 +1,52 @@
 {% extends 'partials/base.html' %}
-{% block title %}Prescriptions{% endblock %}
+{% block title %}Prescriptions — PharmaDost{% endblock %}
 {% block content %}
 <div class="page-head">
   <h2>Prescriptions</h2>
+  
+  <!-- Search form -->
+  <form method="get" action="{% url 'prescription_list' %}" style="display:flex; gap:8px; align-items:center; width:360px;">
+    <input type="text" name="q" value="{{ q|default:'' }}" placeholder="Search patient, MRN, doctor, diagnosis..." style="margin:0; padding:10px 14px; border-radius:8px; border:1px solid var(--border); font-size:14px; width:100%;">
+    <button class="btn" type="submit" style="padding:10px 18px;">Search</button>
+    {% if q %}
+      <a class="btn alt" href="{% url 'prescription_list' %}" style="padding:10px 14px; text-decoration:none;">Clear</a>
+    {% endif %}
+  </form>
 </div>
+
 <div class="card">
   <table class="tbl">
     <thead>
-      <tr><th>#</th><th>Patient</th><th>Diagnosis</th><th>Date</th></tr>
+      <tr>
+        <th style="width:10%">Prescription #</th>
+        <th style="width:25%">Patient</th>
+        <th style="width:25%">Doctor</th>
+        <th style="width:25%">Diagnosis</th>
+        <th style="width:15%">Date</th>
+      </tr>
     </thead>
     <tbody>
       {% for prescription in prescriptions %}
-      <tr>
-        <td>{{ prescription.pk }}</td>
-        <td>{{ prescription.appointment.patient.full_name }}</td>
-        <td>{{ prescription.diagnosis }}</td>
-        <td>{{ prescription.created_at }}</td>
+      <tr style="cursor:pointer;" onclick="window.location='{% url 'prescription_detail' prescription.pk %}';">
+        <td><strong style="color:var(--primary);">#{{ prescription.pk }}</strong></td>
+        <td>
+          <div style="font-weight:600; color:var(--text);">{{ prescription.appointment.patient.full_name }}</div>
+          <div class="muted" style="font-size:11px; margin-top:2px;">MRN: {{ prescription.appointment.patient.mrn }}</div>
+        </td>
+        <td>Dr. {{ prescription.appointment.doctor.full_name }}</td>
+        <td>
+          {% if prescription.diagnosis %}
+            <span class="badge" style="background:var(--bg); border:1px solid var(--border); color:var(--text); font-weight:600;">{{ prescription.diagnosis }}</span>
+          {% else %}
+            <span class="muted">—</span>
+          {% endif %}
+        </td>
+        <td>{{ prescription.created_at|date:"Y-m-d h:i A" }}</td>
       </tr>
       {% empty %}
-      <tr><td colspan="4">No prescriptions yet.</td></tr>
+      <tr>
+        <td colspan="5" class="muted" style="text-align:center; padding:30px 0; font-style:italic;">No prescriptions found.</td>
+      </tr>
       {% endfor %}
     </tbody>
   </table>

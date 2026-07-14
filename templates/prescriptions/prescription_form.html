@@ -49,6 +49,7 @@
     </table>
     <p class="muted" style="font-size:12px">Leave a row blank if not needed — empty rows are ignored. A prescription with no medicine (tests only) is fine.</p>
 
+    {% if not is_edit %}
     <!-- ---------------- Lab tests ---------------- -->
     <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
     <h3>🧪 Lab Tests <span class="muted" style="font-weight:400;font-size:13px">(optional — tick to order)</span></h3>
@@ -70,6 +71,7 @@
       <p class="muted">No scans defined yet. Add them under <b>Settings → Scan Prices</b>.</p>
       {% endfor %}
     </div>
+    {% endif %}
 
     <div style="margin-top:18px;display:flex;gap:8px">
       <button class="btn" type="submit">Save Prescription</button>
