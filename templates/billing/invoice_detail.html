@@ -5,14 +5,27 @@
 <div class="page-head">
   <div>
     <h2>Invoice #{{ invoice.pk }}
-      {% if invoice.is_paid %}<span class="badge green">Paid</span>{% else %}<span class="badge amber">Unpaid</span>{% endif %}
+      {% if invoice.status == 'VOID' %}
+        <span class="badge red" style="background:#ef4444; color:white;">Voided / Cancelled</span>
+      {% elif invoice.is_paid %}
+        <span class="badge green">Paid</span>
+      {% else %}
+        <span class="badge amber">Unpaid</span>
+      {% endif %}
     </h2>
     <div class="muted">
       <a href="{% url 'patient_detail' invoice.patient.pk %}">{{ invoice.patient.full_name }}</a>
       · {{ invoice.created_at|date:"Y-m-d H:i" }} · by {{ invoice.created_by.get_full_name|default:invoice.created_by.email }}
     </div>
   </div>
-  <a class="btn alt" href="{% url 'invoice_list' %}">Back</a>
+  <div style="display:flex; gap:8px;">
+    {% if invoice.status != 'VOID' %}
+      {% if request.user.role == 'ADMIN' or request.user.is_superuser %}
+        <a class="btn danger" href="{% url 'invoice_void' invoice.pk %}" style="background:#ef4444; color:white !important; border:none; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; padding:10px 16px; border-radius:8px;">Void Invoice</a>
+      {% endif %}
+    {% endif %}
+    <a class="btn alt" href="{% url 'invoice_list' %}">Back</a>
+  </div>
 </div>
 
 <div class="card" style="max-width:640px">
@@ -34,7 +47,9 @@
     </tfoot>
   </table>
 
-  {% if not invoice.is_paid %}
+  {% if invoice.status == 'VOID' %}
+    <div class="msg error" style="margin-top:14px; background:#fef2f2; color:#ef4444; border:1px solid #fee2e2; padding:12px; border-radius:8px;">This invoice was cancelled and voided. No payments can be collected.</div>
+  {% elif not invoice.is_paid %}
   <form method="post" action="{% url 'invoice_mark_paid' invoice.pk %}" style="margin-top:14px;display:flex;gap:8px;align-items:center">
     {% csrf_token %}
     <label style="margin:0">Collect payment</label>

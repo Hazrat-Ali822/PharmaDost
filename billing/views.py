@@ -21,7 +21,7 @@ EXPENSE_ROLES = ["ADMIN", "ACCOUNTANT"]
 
 @feature_required('billing')
 def invoice_list(request):
-    invoices = (Invoice.objects
+    invoices = (Invoice.all_objects
                 .select_related('patient', 'appointment', 'created_by')
                 .prefetch_related('items')
                 .all())
@@ -105,7 +105,7 @@ def patient_bill_print(request, pk):
 @feature_required('billing')
 def invoice_detail(request, pk):
     invoice = get_object_or_404(
-        Invoice.objects.select_related('patient', 'appointment', 'created_by').prefetch_related('items'),
+        Invoice.all_objects.select_related('patient', 'appointment', 'created_by').prefetch_related('items'),
         pk=pk)
     return render(request, 'billing/invoice_detail.html', {'invoice': invoice})
 
@@ -121,6 +121,19 @@ def invoice_mark_paid(request, pk):
         invoice.save(update_fields=['paid', 'payment_method'])
         messages.success(request, f'Invoice #{invoice.id} marked paid (Rs {invoice.total}).')
     return redirect('invoice_detail', pk=invoice.pk)
+
+
+@feature_required('billing')
+@role_required(['ADMIN'])
+def invoice_void(request, pk):
+    """Mark an invoice as voided/cancelled."""
+    invoice = get_object_or_404(Invoice, pk=pk)
+    if request.method == 'POST':
+        invoice.status = 'VOID'
+        invoice.save(update_fields=['status'])
+        messages.success(request, f'Invoice #{invoice.pk} has been marked VOID.')
+        return redirect('invoice_detail', pk=invoice.pk)
+    return render(request, 'billing/invoice_confirm_void.html', {'invoice': invoice})
 
 
 # ----------------------------------------------------------------- expenses

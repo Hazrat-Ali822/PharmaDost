@@ -12,7 +12,7 @@ from .models import Patient
 def _visible_patients(user):
     """Doctors only see patients assigned to them (via appointments);
     everyone else (admin/reception/lab/etc.) sees all."""
-    qs = Patient.objects.all()
+    qs = Patient.objects.filter(is_active=True)
     role = getattr(user, 'role', None)
     if role == 'DOCTOR' and not user.is_superuser:
         qs = qs.filter(appointments__doctor__user=user).distinct()
@@ -60,7 +60,45 @@ def patient_edit(request, pk):
             return redirect('patient_list')
     else:
         form = PatientForm(instance=patient)
-    return render(request, 'patients/patient_form.html', {'form': form, 'title': 'Edit Patient'})
+    return render(request, 'patients/patient_form.html', {'form': form, 'title': 'Edit Patient', 'patient': patient})
+
+
+@feature_required('patients')
+@role_required(['ADMIN'])
+def patient_delete(request, pk):
+    patient = get_object_or_404(Patient, pk=pk)
+    
+    # Check if patient has any history
+    has_history = False
+    if patient.appointments.exists():
+        has_history = True
+    elif hasattr(patient, 'invoices') and patient.invoices.exists():
+        has_history = True
+    elif hasattr(patient, 'lab_orders') and patient.lab_orders.exists():
+        has_history = True
+    elif hasattr(patient, 'imaging_studies') and patient.imaging_studies.exists():
+        has_history = True
+    elif hasattr(patient, 'pharmacy_sales') and patient.pharmacy_sales.exists():
+        has_history = True
+        
+    if request.method == 'POST':
+        action = request.POST.get('action', 'archive')
+        if action == 'delete' and not has_history:
+            name = patient.full_name
+            patient.delete()
+            messages.success(request, f"Patient '{name}' was permanently deleted.")
+            return redirect('patient_list')
+        else:
+            # Soft delete
+            patient.is_active = False
+            patient.save()
+            messages.success(request, f"Patient '{patient.full_name}' has been archived.")
+            return redirect('patient_list')
+            
+    return render(request, 'patients/patient_confirm_delete.html', {
+        'patient': patient,
+        'has_history': has_history
+    })
 
 
 def _get_scoped_patient(request, pk):
@@ -74,6 +112,7 @@ def _get_scoped_patient(request, pk):
 @feature_required('patients')
 def patient_detail(request, pk):
     from prescriptions.models import Prescription
+    from billing.models import Invoice
     patient = _get_scoped_patient(request, pk)
 
     appointments = patient.appointments.select_related('doctor').order_by('-appointment_date', '-created_at')
@@ -89,8 +128,7 @@ def patient_detail(request, pk):
     imaging_studies = (patient.imaging_studies
                        .select_related('referred_by', 'performed_by')
                        .order_by('-study_date'))
-    invoices = (patient.invoices.prefetch_related('items').order_by('-created_at')
-                if hasattr(patient, 'invoices') else [])
+    invoices = Invoice.all_objects.filter(patient=patient).prefetch_related('items').order_by('-created_at')
     pharmacy_sales = (patient.pharmacy_sales
                       .prefetch_related('items', 'items__medicine')
                       .order_by('-created_at'))

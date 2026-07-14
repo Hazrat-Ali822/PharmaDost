@@ -22,6 +22,7 @@ class Patient(models.Model):
     allergies = models.TextField(blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
 
     objects = TenantManager()
 
