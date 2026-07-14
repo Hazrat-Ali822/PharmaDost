@@ -4,7 +4,9 @@
 {% block content %}
 <div class="page-head">
   <div><h2>Imaging Studies 🩻</h2><div class="muted">Ultrasound · X-Ray · CT · MRI · ECG</div></div>
-  <a class="btn primary" href="{% url 'imaging:study_create' %}">+ New Study</a>
+  {% if request.user.role == 'SONOGRAPHER' or request.user.role == 'ADMIN' or request.user.is_superuser %}
+    <a class="btn primary" href="{% url 'imaging:study_create' %}">+ New Study</a>
+  {% endif %}
 </div>
 
 <div class="card" style="margin-bottom:12px">
@@ -67,6 +69,9 @@
           {% if request.user.role == 'SONOGRAPHER' or request.user.role == 'ADMIN' or request.user.is_superuser %}
             <a class="btn sm" href="{% url 'imaging:study_report_edit' s.id %}">Report</a>
           {% endif %}
+        {% endif %}
+        {% if s.status == 'Reported' or s.status == 'Delivered' %}
+          <a class="btn sm alt" href="{% url 'imaging:study_report' s.id %}" target="_blank">Print</a>
         {% endif %}
       </td>
     </tr>
