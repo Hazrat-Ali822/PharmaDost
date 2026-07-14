@@ -106,6 +106,13 @@ def appointment_list(request):
     elif show == 'completed':
         appointments = appointments.filter(status='DONE')
         
+    if request.GET.get('ajax') == '1':
+        return render(request, 'opd/partials/appointment_list_rows.html', {
+            'appointments': appointments,
+            'show': show,
+            'is_doctor': is_doctor
+        })
+        
     return render(request, 'opd/appointment_list.html', {
         'appointments': appointments,
         'show': show,
