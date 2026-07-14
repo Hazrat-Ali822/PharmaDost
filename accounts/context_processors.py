@@ -41,7 +41,9 @@ def notifications_context(request):
             'unread_notifications_count': 0,
             'opd_badge_count': 0,
             'lab_badge_count': 0,
-            'imaging_badge_count': 0
+            'imaging_badge_count': 0,
+            'ipd_badge_count': 0,
+            'ot_badge_count': 0
         }
     from .models import Notification
     unread = Notification.objects.filter(user=user, is_read=False).order_by('-created_at')[:5]
@@ -50,6 +52,8 @@ def notifications_context(request):
     opd_badge_count = 0
     lab_badge_count = 0
     imaging_badge_count = 0
+    ipd_badge_count = 0
+    ot_badge_count = 0
     hospital = getattr(user, 'hospital', None)
 
     try:
@@ -78,6 +82,20 @@ def notifications_context(request):
         if hospital:
             img_qs = img_qs.filter(patient__hospital=hospital)
         imaging_badge_count = img_qs.count()
+
+        # 4. IPD Active Admissions count
+        from ipd.models import Admission
+        ipd_qs = Admission.objects.filter(status='Admitted')
+        if hospital:
+            ipd_qs = ipd_qs.filter(hospital=hospital)
+        ipd_badge_count = ipd_qs.count()
+
+        # 5. OT Surgeries in progress count
+        from ot.models import SurgeryRecord
+        ot_qs = SurgeryRecord.objects.filter(end_time__isnull=True)
+        if hospital:
+            ot_qs = ot_qs.filter(hospital=hospital)
+        ot_badge_count = ot_qs.count()
     except Exception:
         pass
 
@@ -86,5 +104,7 @@ def notifications_context(request):
         'unread_notifications_count': unread_count,
         'opd_badge_count': opd_badge_count,
         'lab_badge_count': lab_badge_count,
-        'imaging_badge_count': imaging_badge_count
+        'imaging_badge_count': imaging_badge_count,
+        'ipd_badge_count': ipd_badge_count,
+        'ot_badge_count': ot_badge_count
     }
