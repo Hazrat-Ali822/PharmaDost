@@ -19,6 +19,7 @@ def dashboard(request):
     import json
     import datetime
     from datetime import timedelta
+    from decimal import Decimal
     from django.db.models import Sum, Q
     from billing.models import Invoice, InvoiceItem, Expense
     from sales.models import Sale
