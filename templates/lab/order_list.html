@@ -3,7 +3,9 @@
 {% block content %}
 <div class="page-head">
   <div><h2>Lab Orders 🧪</h2><div class="muted">Pathology / laboratory tests</div></div>
-  <a class="btn primary" href="{% url 'lab:order_create' %}">+ New Order</a>
+  {% if request.user.role == 'LABTECH' or request.user.role == 'ADMIN' or request.user.is_superuser %}
+    <a class="btn primary" href="{% url 'lab:order_create' %}">+ New Order</a>
+  {% endif %}
 </div>
 
 <!-- Tabs for Status filtering -->
