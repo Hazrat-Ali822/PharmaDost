@@ -32,6 +32,8 @@ def order_list(request):
         .prefetch_related("results")
         .order_by("-order_date")
     )
+    if request.user.hospital:
+        orders = orders.filter(patient__hospital=request.user.hospital)
     return render(request, "lab/order_list.html", {"orders": orders})
 
 

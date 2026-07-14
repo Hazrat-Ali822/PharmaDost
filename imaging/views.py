@@ -25,6 +25,8 @@ def study_list(request):
         ImagingStudy.objects.select_related("patient", "referred_by", "performed_by")
         .order_by("-study_date")
     )
+    if request.user.hospital:
+        studies = studies.filter(patient__hospital=request.user.hospital)
     modality = request.GET.get("modality", "").strip()
     if modality:
         studies = studies.filter(modality=modality)
