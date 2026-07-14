@@ -11,11 +11,20 @@ from .models import Patient
 
 def _visible_patients(user):
     """Doctors only see patients assigned to them (via appointments);
-    everyone else (admin/reception/lab/etc.) sees all."""
+    Lab Techs only see patients with lab orders;
+    Sonographers only see patients with scan studies;
+    everyone else (admin/reception/etc.) sees all."""
     qs = Patient.objects.filter(is_active=True)
     role = getattr(user, 'role', None)
-    if role == 'DOCTOR' and not user.is_superuser:
+    if user.is_superuser:
+        return qs
+        
+    if role == 'DOCTOR':
         qs = qs.filter(appointments__doctor__user=user).distinct()
+    elif role == 'LABTECH':
+        qs = qs.filter(lab_orders__isnull=False).distinct()
+    elif role == 'SONOGRAPHER':
+        qs = qs.filter(imaging_studies__isnull=False).distinct()
     return qs
 
 
