@@ -36,6 +36,10 @@ def prescription_create(request, appointment_id):
                 scans = list(form.cleaned_data.get('scans') or [])
                 n_img = _order_scans(scans, patient, request.user)
 
+                # ---- Update appointment status to DONE ----
+                appointment.status = 'DONE'
+                appointment.save()
+
             parts = [f"{n_meds} medicine(s)"]
             if n_tests:
                 parts.append(f"{n_tests} lab test(s) sent to the lab")

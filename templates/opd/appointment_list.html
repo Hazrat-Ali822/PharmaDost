@@ -1,26 +1,96 @@
 {% extends 'partials/base.html' %}
-{% block title %}Appointments{% endblock %}
+{% block title %}Appointments Desk — PharmaDost{% endblock %}
 {% block content %}
-<div class="page-head">
-  <h2>Appointments</h2>
-  {% if nav.appointments %}<a class="btn" href="{% url 'appointment_add' %}">Book Appointment</a>{% endif %}
+<div class="page-head" style="margin-bottom:15px;">
+  <div>
+    <h2>Appointments Desk</h2>
+    <div class="muted">Manage OPD queues and patient statuses</div>
+  </div>
+  {% if nav.appointments %}
+    <a class="btn" href="{% url 'appointment_add' %}" style="display:inline-flex; align-items:center; gap:6px;">
+      ➕ Book Appointment
+    </a>
+  {% endif %}
 </div>
+
+<!-- Tabs for Status filtering -->
+<div style="display:flex; gap:8px; margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:10px;">
+  <a class="btn {% if show == 'active' %}primary{% else %}alt{% endif %}" href="?show=active" style="padding:6px 16px; font-size:13px; text-decoration:none; border-radius:20px;">
+    ⏳ Active Queue
+  </a>
+  <a class="btn {% if show == 'completed' %}primary{% else %}alt{% endif %}" href="?show=completed" style="padding:6px 16px; font-size:13px; text-decoration:none; border-radius:20px;">
+    ✅ Completed Patients
+  </a>
+  <a class="btn {% if show == 'all' %}primary{% else %}alt{% endif %}" href="?show=all" style="padding:6px 16px; font-size:13px; text-decoration:none; border-radius:20px;">
+    🌐 All Appointments
+  </a>
+</div>
+
 <div class="card">
   <table class="tbl">
     <thead>
-      <tr><th>Patient</th><th>Doctor</th><th>Date</th><th>Token</th><th>Status</th></tr>
+      <tr>
+        <th style="width:10%;">Token #</th>
+        <th style="width:25%;">Patient</th>
+        <th style="width:20%;">Doctor</th>
+        <th style="width:15%;">Visit Type</th>
+        <th style="width:15%;">Status</th>
+        <th style="width:15%; text-align:right;">Actions</th>
+      </tr>
     </thead>
     <tbody>
       {% for appointment in appointments %}
       <tr>
-        <td>{{ appointment.patient.full_name }}</td>
-        <td>{{ appointment.doctor.full_name }}</td>
-        <td>{{ appointment.appointment_date }}</td>
-        <td>{{ appointment.token_no }}</td>
-        <td>{{ appointment.status }} <a class="btn sm" href="{% url 'prescription_create' appointment.pk %}">Rx</a></td>
+        <td>
+          <span style="font-size:16px; font-weight:800; color:var(--primary);">#{{ appointment.token_no }}</span>
+        </td>
+        <td>
+          <div style="font-weight:600; color:var(--text);">{{ appointment.patient.full_name }}</div>
+          <div class="muted" style="font-size:11px; margin-top:2px;">MRN: {{ appointment.patient.mrn }}</div>
+        </td>
+        <td>Dr. {{ appointment.doctor.full_name }}</td>
+        <td>
+          {% if appointment.visit_type == 'EMERGENCY' %}
+            <span class="badge" style="background:#fef2f2; color:#ef4444; border:1px solid #fee2e2; font-weight:700;">🚨 Emergency</span>
+          {% elif appointment.visit_type == 'FOLLOWUP' %}
+            <span class="badge" style="background:#eff6ff; color:#3b82f6; border:1px solid #dbeafe;">🔄 Follow-up</span>
+          {% else %}
+            <span class="badge" style="background:var(--bg); border:1px solid var(--border); color:var(--text);">OPD</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if appointment.status == 'DONE' %}
+            <span class="badge" style="background:#f0fdf4; color:#16a34a; border:1px solid #bbf7d0; font-weight:700;">✅ Completed</span>
+          {% elif appointment.status == 'CANCELLED' %}
+            <span class="badge" style="background:#f3f4f6; color:#9ca3af; border:1px solid #e5e7eb;">🚫 Cancelled</span>
+          {% elif appointment.status == 'ARRIVED' %}
+            <span class="badge" style="background:#fffbeb; color:#d97706; border:1px solid #fef3c7; font-weight:700;">🚶 Arrived</span>
+          {% else %}
+            <span class="badge" style="background:#faf5ff; color:#7c3aed; border:1px solid #e9d5ff;">📅 Booked</span>
+          {% endif %}
+        </td>
+        <td style="text-align:right;">
+          {% if appointment.status == 'DONE' %}
+            <!-- If done, show link to view/print prescription -->
+            {% if appointment.prescriptions.exists %}
+              <a class="btn sm alt" href="{% url 'prescription_detail' appointment.prescriptions.first.pk %}" style="display:inline-flex; align-items:center; gap:4px; font-size:12px;">
+                📄 View Rx
+              </a>
+            {% else %}
+              <span class="muted" style="font-size:12px; font-style:italic;">No Rx saved</span>
+            {% endif %}
+          {% else %}
+            <!-- If not done, allow writing prescription -->
+            <a class="btn sm" href="{% url 'prescription_create' appointment.pk %}" style="display:inline-flex; align-items:center; gap:4px; font-size:12px;">
+              📝 Write Rx
+            </a>
+          {% endif %}
+        </td>
       </tr>
       {% empty %}
-      <tr><td colspan="5">No appointments yet.</td></tr>
+      <tr>
+        <td colspan="6" class="muted" style="text-align:center; padding:40px 0; font-style:italic;">No appointments found in this queue.</td>
+      </tr>
       {% endfor %}
     </tbody>
   </table>
