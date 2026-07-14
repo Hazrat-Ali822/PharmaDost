@@ -76,3 +76,15 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"Notification for {self.user.email}: {self.message[:30]}"
+
+    @classmethod
+    def send_to_role(cls, hospital, role, message, link=''):
+        if not hospital:
+            return
+        users = User.objects.filter(hospital=hospital, role=role, is_active=True)
+        for u in users:
+            cls.objects.create(
+                user=u,
+                message=message,
+                link=link
+            )

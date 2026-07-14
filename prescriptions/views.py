@@ -65,6 +65,8 @@ def _order_lab_tests(patient, tests, user):
         return 0
     from lab.models import TestOrder, TestResult
     from billing.services import create_service_invoice
+    from accounts.models import Notification
+    
     order = TestOrder.objects.create(patient=patient, ordered_by=user)
     for t in tests:
         TestResult.objects.create(test_order=order, lab_test=t)
@@ -72,6 +74,14 @@ def _order_lab_tests(patient, tests, user):
         patient=patient,
         items=[(f"Lab: {t.name}", t.price) for t in tests],
         created_by=user,
+    )
+    
+    # Notify Lab Technicians
+    Notification.send_to_role(
+        hospital=patient.hospital,
+        role='LABTECH',
+        message=f"🔬 New Lab Order: Patient '{patient.full_name}' has {len(tests)} test(s) pending.",
+        link="/lab/orders/"
     )
     return len(tests)
 
@@ -82,6 +92,8 @@ def _order_scans(scan_types, patient, user):
         return 0
     from imaging.models import ImagingStudy
     from billing.services import create_service_invoice
+    from accounts.models import Notification
+    
     for st in scan_types:
         study = ImagingStudy.objects.create(
             patient=patient, referred_by=user,
@@ -91,6 +103,14 @@ def _order_scans(scan_types, patient, user):
             items=[(f"{study.get_modality_display()}: {study.study_name}", study.price)],
             created_by=user,
         )
+        
+    # Notify Sonographers / Radiologists
+    Notification.send_to_role(
+        hospital=patient.hospital,
+        role='SONOGRAPHER',
+        message=f"🩻 New Scan Study: Patient '{patient.full_name}' has scan(s) ordered.",
+        link="/imaging/studies/"
+    )
     return len(scan_types)
 
 
