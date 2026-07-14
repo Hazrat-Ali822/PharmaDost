@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.contrib import messages
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from accounts.decorators import role_required, feature_required
 from reports.utils import resolve_range
@@ -17,7 +18,7 @@ PAYOUT_ROLES = ["ADMIN", "ACCOUNTANT"]
 def doctor_list(request):
     doctors = Doctor.objects.filter(is_active=True)
     if request.user.hospital:
-        doctors = doctors.filter(user__hospital=request.user.hospital)
+        doctors = doctors.filter(Q(user__hospital=request.user.hospital) | Q(user__isnull=True))
     return render(request, 'opd/doctor_list.html', {'doctors': doctors})
 
 
