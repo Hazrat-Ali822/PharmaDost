@@ -69,7 +69,10 @@
     <!-- ---------------- Lab tests ---------------- -->
     <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
     <h3>🧪 Lab Tests <span class="muted" style="font-weight:400;font-size:13px">(optional — tick to order)</span></h3>
-    <div style="columns:2;gap:18px;margin-top:8px">
+    <div style="margin-bottom:10px; max-width: 320px;">
+      <input type="text" id="presc-test-search" placeholder="🔍 Search lab tests..." style="width:100%; padding:6px 12px; border-radius:8px; border:1px solid var(--border-strong); background:var(--surface); color:var(--text); font-size:12.5px; font-weight:600;">
+    </div>
+    <div id="lab-tests-container" style="columns:2;gap:18px;margin-top:8px">
       {% for cb in form.tests %}
       <label style="display:flex;gap:8px;align-items:center;padding:4px 0;break-inside:avoid">{{ cb.tag }} <span>{{ cb.choice_label }}</span></label>
       {% empty %}
@@ -80,7 +83,10 @@
     <!-- ---------------- Imaging / Scans ---------------- -->
     <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
     <h3>🩻 Scans <span class="muted" style="font-weight:400;font-size:13px">(optional — ultrasound, x-ray, CT, MRI…)</span></h3>
-    <div style="columns:2;gap:18px;margin-top:8px">
+    <div style="margin-bottom:10px; max-width: 320px;">
+      <input type="text" id="presc-scan-search" placeholder="🔍 Search scans..." style="width:100%; padding:6px 12px; border-radius:8px; border:1px solid var(--border-strong); background:var(--surface); color:var(--text); font-size:12.5px; font-weight:600;">
+    </div>
+    <div id="scans-container" style="columns:2;gap:18px;margin-top:8px">
       {% for cb in form.scans %}
       <label style="display:flex;gap:8px;align-items:center;padding:4px 0;break-inside:avoid">{{ cb.tag }} <span>{{ cb.choice_label }}</span></label>
       {% empty %}
@@ -180,6 +186,34 @@
     select.value = '';
   });
   {% endif %}
+
+  // Lab tests filter
+  document.getElementById('presc-test-search')?.addEventListener('input', function() {
+    const query = this.value.toLowerCase().trim();
+    const labels = document.querySelectorAll('#lab-tests-container label');
+    labels.forEach(label => {
+      const text = label.innerText.toLowerCase();
+      if (text.includes(query)) {
+        label.style.display = 'flex';
+      } else {
+        label.style.display = 'none';
+      }
+    });
+  });
+
+  // Scans filter
+  document.getElementById('presc-scan-search')?.addEventListener('input', function() {
+    const query = this.value.toLowerCase().trim();
+    const labels = document.querySelectorAll('#scans-container label');
+    labels.forEach(label => {
+      const text = label.innerText.toLowerCase();
+      if (text.includes(query)) {
+        label.style.display = 'flex';
+      } else {
+        label.style.display = 'none';
+      }
+    });
+  });
 })();
 </script>
 {% endblock %}

@@ -17,6 +17,9 @@
   <div class="form-row" style="align-items:flex-start">
     <label>Tests</label>
     <div style="flex:1">
+      <div style="margin-bottom:10px;">
+        <input type="text" id="test-search" placeholder="🔍 Search tests (e.g. CBC, Sugar, LFT...)" style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid var(--border-strong); background:var(--surface); color:var(--text); font-size:13px; font-weight:600;">
+      </div>
       {{ form.tests }}
       <div class="muted" style="font-size:12px;margin-top:4px">{{ form.tests.help_text }}</div>
       {% for e in form.tests.errors %}<div class="danger" style="font-size:12px">{{ e }}</div>{% endfor %}
@@ -24,4 +27,25 @@
   </div>
   <button class="btn primary" type="submit">Create Order &amp; Enter Results →</button>
 </form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const searchInput = document.getElementById('test-search');
+  if (searchInput) {
+    searchInput.addEventListener('input', function() {
+      const query = this.value.toLowerCase().trim();
+      const labels = document.querySelectorAll('label[for^="id_tests_"]');
+      labels.forEach(label => {
+        const text = label.innerText.toLowerCase();
+        const container = label.closest('li') || label;
+        if (text.includes(query)) {
+          container.style.display = '';
+        } else {
+          container.style.display = 'none';
+        }
+      });
+    });
+  }
+});
+</script>
 {% endblock %}
