@@ -20,7 +20,7 @@
 </div>
 
 <table class="tbl">
-  <thead><tr><th>#</th><th>Date</th><th>Patient</th><th>Referred By</th><th>Tests</th><th>Status</th><th>Payment</th><th></th></tr></thead>
+  <thead><tr><th>#</th><th>Date</th><th>Patient</th><th>Referred By</th><th>Tests</th><th>Status</th>{% if request.user.role != 'DOCTOR' %}<th>Payment</th>{% endif %}<th></th></tr></thead>
   <tbody>
     {% for o in orders %}
     <tr>
@@ -43,6 +43,7 @@
           <span class="badge gray">{{ o.status }}</span>
         {% endif %}
       </td>
+      {% if request.user.role != 'DOCTOR' %}
       <td>
         {% if o.payment_status == 'Paid' %}
           <span class="badge green">Paid (Rs. {{ o.payment_amount }})</span>
@@ -57,6 +58,7 @@
           {% endif %}
         {% endif %}
       </td>
+      {% endif %}
       <td style="white-space:nowrap">
         <a class="btn sm alt" href="{% url 'lab:order_detail' o.id %}">View</a>
         {% if request.user.role == 'LABTECH' or request.user.role == 'ADMIN' or request.user.is_superuser %}

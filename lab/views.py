@@ -36,6 +36,8 @@ def order_list(request):
     )
     if request.user.hospital:
         orders = orders.filter(patient__hospital=request.user.hospital)
+    if getattr(request.user, 'role', None) == 'DOCTOR':
+        orders = orders.filter(ordered_by=request.user)
         
     show = request.GET.get('show', 'pending')
     if show == 'pending':
