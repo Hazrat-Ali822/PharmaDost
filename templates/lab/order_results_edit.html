@@ -12,12 +12,14 @@
 <form method="post" class="card">{% csrf_token %}
   {{ formset.management_form }}
   <table class="tbl">
-    <thead><tr><th>Test</th><th>Result Value</th><th>Remarks</th></tr></thead>
+    <thead><tr><th>Test</th><th>Result Value</th><th>Normal Range</th><th>Unit</th><th>Remarks</th></tr></thead>
     <tbody>
       {% for form in formset %}
       <tr>
         <td>{{ form.instance.lab_test.name }}{{ form.lab_test.as_hidden }}{{ form.id }}</td>
         <td>{{ form.result_value }}</td>
+        <td>{{ form.normal_range }}</td>
+        <td>{{ form.unit }}</td>
         <td>{{ form.remarks }}</td>
       </tr>
       {% endfor %}

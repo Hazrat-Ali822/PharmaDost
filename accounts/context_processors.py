@@ -33,14 +33,58 @@ def site_branding(request):
 
 
 def notifications_context(request):
-    """Fetch unread notifications for the logged-in user."""
+    """Fetch unread notifications for the logged-in user and pending task counters for the sidebar."""
     user = getattr(request, 'user', None)
     if not user or not user.is_authenticated:
-        return {'unread_notifications': [], 'unread_notifications_count': 0}
+        return {
+            'unread_notifications': [],
+            'unread_notifications_count': 0,
+            'opd_badge_count': 0,
+            'lab_badge_count': 0,
+            'imaging_badge_count': 0
+        }
     from .models import Notification
     unread = Notification.objects.filter(user=user, is_read=False).order_by('-created_at')[:5]
     unread_count = Notification.objects.filter(user=user, is_read=False).count()
+
+    opd_badge_count = 0
+    lab_badge_count = 0
+    imaging_badge_count = 0
+    hospital = getattr(user, 'hospital', None)
+
+    try:
+        # 1. OPD Queue count
+        from opd.models import Appointment
+        role = getattr(user, 'role', None)
+        is_doctor = role == 'DOCTOR' and not user.is_superuser
+        appt_qs = Appointment.objects.all()
+        if hospital:
+            appt_qs = appt_qs.filter(patient__hospital=hospital)
+        appt_qs = appt_qs.exclude(status__in=['DONE', 'CANCELLED'])
+        if is_doctor:
+            appt_qs = appt_qs.filter(doctor__user=user)
+        opd_badge_count = appt_qs.count()
+
+        # 2. Lab Pending count
+        from lab.models import TestOrder
+        lab_qs = TestOrder.objects.filter(status='Pending')
+        if hospital:
+            lab_qs = lab_qs.filter(patient__hospital=hospital)
+        lab_badge_count = lab_qs.count()
+
+        # 3. Imaging Pending count
+        from imaging.models import ImagingStudy
+        img_qs = ImagingStudy.objects.filter(status='Pending')
+        if hospital:
+            img_qs = img_qs.filter(patient__hospital=hospital)
+        imaging_badge_count = img_qs.count()
+    except Exception:
+        pass
+
     return {
         'unread_notifications': unread,
-        'unread_notifications_count': unread_count
+        'unread_notifications_count': unread_count,
+        'opd_badge_count': opd_badge_count,
+        'lab_badge_count': lab_badge_count,
+        'imaging_badge_count': imaging_badge_count
     }

@@ -37,7 +37,7 @@ class TestOrderCreateForm(forms.ModelForm):
 TestResultFormSet = inlineformset_factory(
     parent_model=TestOrder,
     model=TestResult,
-    fields=["lab_test", "result_value", "remarks"],
+    fields=["lab_test", "result_value", "normal_range", "unit", "remarks"],
     extra=0,
     can_delete=False
 )

@@ -53,7 +53,16 @@ class TestResult(models.Model):
     test_order = models.ForeignKey(TestOrder, on_delete=models.CASCADE, related_name='results')
     lab_test = models.ForeignKey(LabTest, on_delete=models.CASCADE)
     result_value = models.CharField(max_length=100, blank=True)
+    normal_range = models.CharField(max_length=100, blank=True)
+    unit = models.CharField(max_length=50, blank=True)
     remarks = models.TextField(blank=True)
+
+    def save(self, *args, **kwargs):
+        if not self.normal_range and self.lab_test:
+            self.normal_range = self.lab_test.normal_range
+        if not self.unit and self.lab_test:
+            self.unit = self.lab_test.unit
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.lab_test.name} result for {self.test_order.patient.full_name}"
