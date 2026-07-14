@@ -1,0 +1,15 @@
+{% for n in unread_notifications %}
+  <div class="notif-item" style="padding: 12px 16px; border-bottom: 1px solid var(--border); transition: background 0.2s;" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='none'">
+    <div style="font-size: 13px; line-height: 1.4; color: var(--text); margin-bottom: 4px;">{{ n.message }}</div>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <span style="font-size: 10px; color: var(--text-muted);">{{ n.created_at|timesince }} ago</span>
+      {% if n.link %}
+        <a href="{{ n.link }}" class="mark-read-link" data-id="{{ n.pk }}" style="font-size: 11px; font-weight: 600; color: var(--primary); text-decoration: none;">View</a>
+      {% else %}
+        <button type="button" class="mark-single-read-btn" data-id="{{ n.pk }}" style="background: none; border: none; color: var(--primary); font-size: 11px; font-weight: 600; cursor: pointer; padding: 0;">Dismiss</button>
+      {% endif %}
+    </div>
+  </div>
+{% empty %}
+  <div style="padding: 30px 16px; text-align: center; color: var(--text-muted); font-style: italic; font-size: 13px;">No new notifications.</div>
+{% endfor %}
