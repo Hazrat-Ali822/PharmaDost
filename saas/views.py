@@ -149,7 +149,12 @@ def hospital_login(request, hospital_slug):
     if not hospital.is_active or hospital.expiry_date < timezone.now().date():
         return render(request, 'saas/suspended.html', {'hospital': hospital})
 
-    branding, _ = SiteSettings.objects.get_or_create(hospital=hospital)
+    from saas.utils import set_current_hospital, clear_current_hospital
+    set_current_hospital(hospital)
+    try:
+        branding = SiteSettings.load()
+    finally:
+        clear_current_hospital()
 
     error_message = None
     if request.method == 'POST':

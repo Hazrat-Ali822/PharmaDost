@@ -89,7 +89,25 @@ class SiteSettings(models.Model):
         from saas.utils import get_current_hospital
         hospital = get_current_hospital()
         if hospital:
-            obj, _ = cls.objects.get_or_create(hospital=hospital)
+            obj = cls.objects.filter(hospital=hospital).first()
+            if not obj:
+                global_settings, _ = cls.objects.get_or_create(pk=1)
+                obj = cls.objects.create(
+                    hospital=hospital,
+                    brand_name=hospital.name,
+                    brand_tagline=global_settings.brand_tagline,
+                    logo_text=global_settings.logo_text,
+                    logo_image=global_settings.logo_image,
+                    primary_color=global_settings.primary_color,
+                    accent_color=global_settings.accent_color,
+                    address=global_settings.address,
+                    phone=global_settings.phone,
+                    email=global_settings.email,
+                    license_no=global_settings.license_no,
+                    receipt_footer=global_settings.receipt_footer,
+                    print_theme=global_settings.print_theme,
+                    enabled_modules=global_settings.enabled_modules,
+                )
             return obj
         obj, _ = cls.objects.get_or_create(pk=1)
         return obj
