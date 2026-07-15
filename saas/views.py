@@ -142,11 +142,14 @@ from django.contrib.auth import authenticate, login as auth_login
 from django.utils import timezone
 
 def hospital_login(request, hospital_slug):
+    from user_mgmt.models import SiteSettings
     hospital = get_object_or_404(Hospital, slug=hospital_slug)
     
     # Check if subscription is active
     if not hospital.is_active or hospital.expiry_date < timezone.now().date():
         return render(request, 'saas/suspended.html', {'hospital': hospital})
+
+    branding, _ = SiteSettings.objects.get_or_create(hospital=hospital)
 
     error_message = None
     if request.method == 'POST':
@@ -166,5 +169,6 @@ def hospital_login(request, hospital_slug):
 
     return render(request, 'saas/login.html', {
         'hospital': hospital,
+        'branding': branding,
         'error_message': error_message
     })
