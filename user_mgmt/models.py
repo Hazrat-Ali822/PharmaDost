@@ -59,6 +59,7 @@ class SiteSettings(models.Model):
     enabled_modules = models.JSONField(null=True, blank=True, default=None,
                                        help_text="List of enabled module keys (null = all)")
 
+    hospital = models.OneToOneField('saas.Hospital', on_delete=models.CASCADE, related_name='site_settings', null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -66,10 +67,13 @@ class SiteSettings(models.Model):
         verbose_name_plural = "Site settings"
 
     def __str__(self):
+        if self.hospital:
+            return f"Site settings ({self.brand_name} - {self.hospital.name})"
         return f"Site settings ({self.brand_name})"
 
     def save(self, *args, **kwargs):
-        self.pk = 1  # enforce singleton
+        if not self.hospital:
+            self.pk = 1  # enforce singleton only for global settings
         super().save(*args, **kwargs)
 
     def reset_to_defaults(self):
@@ -82,6 +86,11 @@ class SiteSettings(models.Model):
 
     @classmethod
     def load(cls):
+        from saas.utils import get_current_hospital
+        hospital = get_current_hospital()
+        if hospital:
+            obj, _ = cls.objects.get_or_create(hospital=hospital)
+            return obj
         obj, _ = cls.objects.get_or_create(pk=1)
         return obj
 
