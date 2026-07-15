@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=1.5">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=1.6">
   {% if branding.primary_color %}<style>:root{ --primary: {{ branding.primary_color }}; --accent: {{ branding.accent_color }}; }</style>{% endif %}
   <style>
     .login-wrap { min-height: 100vh; display: grid; grid-template-columns: 1.1fr 1fr; }
@@ -29,19 +29,17 @@
         radial-gradient(circle at 75% 70%, rgba(255,255,255,.12), transparent 40%);
       filter: blur(4px); }
 
-    /* floating pills & capsules */
     .float { position: absolute; opacity: .92; animation: floaty 6s ease-in-out infinite; will-change: transform; }
-    .capsule { width: 60px; height: 26px; border-radius: 40px; overflow: hidden;
-      box-shadow: 0 10px 24px rgba(0,0,0,.18); display:flex; transform: rotate(-18deg); }
-    .capsule i { flex:1; display:block; }
-    .capsule i:first-child { background: #fff; }
-    .capsule i:last-child { background: rgba(255,255,255,.45); }
-    .capsule::after { content:""; position:absolute; }
-    .pill { width: 30px; height: 30px; border-radius: 50%;
-      background: radial-gradient(circle at 30% 28%, #fff, rgba(255,255,255,.55));
-      box-shadow: 0 8px 20px rgba(0,0,0,.18); position: relative; }
-    .pill::before { content:""; position:absolute; left:50%; top:4px; bottom:4px; width:2px;
-      background: rgba(79,70,229,.35); transform: translateX(-50%); }
+    .med-item {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(4px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+      display: grid; place-items: center;
+      font-size: 24px;
+      user-select: none;
+    }
 
     .f1 { top: 8px; left: 6px; animation-delay: 0s; }
     .f2 { top: 70px; right: 40px; animation-delay: -1.2s; }
@@ -133,12 +131,12 @@
       <div class="scene" aria-hidden="true">
         <div class="glow"></div>
 
-        <!-- floating pills & capsules -->
-        <div class="float f1"><div class="capsule"><i></i><i></i></div></div>
-        <div class="float f2"><div class="pill"></div></div>
-        <div class="float f3"><div class="capsule"><i></i><i></i></div></div>
-        <div class="float f4"><div class="pill"></div></div>
-        <div class="float f5"><div class="capsule"><i></i><i></i></div></div>
+        <!-- floating hospital elements -->
+        <div class="float f1"><div class="med-item">🩺</div></div>
+        <div class="float f2"><div class="med-item">📋</div></div>
+        <div class="float f3"><div class="med-item">💉</div></div>
+        <div class="float f4"><div class="med-item">💊</div></div>
+        <div class="float f5"><div class="med-item">🩹</div></div>
 
         <!-- rotating/bobbing medical cross -->
         <div class="cross">
