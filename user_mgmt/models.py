@@ -91,22 +91,18 @@ class SiteSettings(models.Model):
         if hospital:
             obj = cls.objects.filter(hospital=hospital).first()
             if not obj:
-                global_settings, _ = cls.objects.get_or_create(pk=1)
                 obj = cls.objects.create(
                     hospital=hospital,
                     brand_name=hospital.name,
-                    brand_tagline=global_settings.brand_tagline,
-                    logo_text=global_settings.logo_text,
-                    logo_image=global_settings.logo_image,
-                    primary_color=global_settings.primary_color,
-                    accent_color=global_settings.accent_color,
-                    address=global_settings.address,
-                    phone=global_settings.phone,
-                    email=global_settings.email,
-                    license_no=global_settings.license_no,
-                    receipt_footer=global_settings.receipt_footer,
-                    print_theme=global_settings.print_theme,
-                    enabled_modules=global_settings.enabled_modules,
+                    brand_tagline=SITE_DEFAULTS["brand_tagline"],
+                    logo_text=SITE_DEFAULTS["logo_text"],
+                    primary_color=SITE_DEFAULTS["primary_color"],
+                    accent_color=SITE_DEFAULTS["accent_color"],
+                    address=SITE_DEFAULTS["address"],
+                    phone=SITE_DEFAULTS["phone"],
+                    email=SITE_DEFAULTS["email"],
+                    license_no=SITE_DEFAULTS["license_no"],
+                    receipt_footer=SITE_DEFAULTS["receipt_footer"],
                 )
             return obj
         obj, _ = cls.objects.get_or_create(pk=1)
