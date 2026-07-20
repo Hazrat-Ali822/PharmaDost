@@ -17,7 +17,7 @@ class SaleFlowTest(TestCase):
 		)
 
 	def test_sale_reduces_stock(self):
-		sale = create_sale('John', [{"medicine_id": self.med.id, "quantity": 5}])
+		sale = create_sale(items=[{"medicine_id": self.med.id, "quantity": 5}], customer_name='John')
 		self.med.refresh_from_db()
 		self.assertEqual(self.med.quantity, 45)
-		self.assertEqual(sale.total_amount, 500)
+		self.assertEqual(sale.total, 500)

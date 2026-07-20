@@ -93,7 +93,49 @@ class Medicine(models.Model):
 
     @property
     def is_low_stock(self):
-        return self.quantity < self.reorder_level
+        return self.sellable_quantity < self.reorder_level
+
+    @property
+    def batch_quantity(self):
+        """Sum of all batch quantities (on-hand across every batch, incl. expired)."""
+        return self.batches.aggregate(s=models.Sum('quantity'))['s'] or 0
+
+    @property
+    def sellable_quantity(self):
+        """On-hand stock that is SAFE to dispense = sum of non-expired batches.
+        Falls back to the aggregate for legacy medicines that have no batch rows
+        (0 if that aggregate stock is itself past the medicine's expiry date)."""
+        if not self.batches.exists():
+            return 0 if self.is_expired else self.quantity
+        today = timezone.localdate()
+        return self.batches.filter(expiry_date__gte=today).aggregate(s=models.Sum('quantity'))['s'] or 0
+
+    @property
+    def expired_quantity(self):
+        """On-hand stock sitting in already-expired batches (must not be sold)."""
+        if not self.batches.exists():
+            return self.quantity if self.is_expired else 0
+        today = timezone.localdate()
+        return self.batches.filter(expiry_date__lt=today).aggregate(s=models.Sum('quantity'))['s'] or 0
+
+    @property
+    def stock_drift(self):
+        """Aggregate Medicine.quantity minus the sum of its batches. Non-zero means
+        the denormalised aggregate and the batch ledger disagree (data integrity)."""
+        if not self.batches.exists():
+            return 0
+        return self.quantity - self.batch_quantity
+
+    def reconcile_quantity(self):
+        """Reset the aggregate Medicine.quantity to the true batch sum. No-op for
+        legacy medicines with no batch rows. Returns the drift that was corrected."""
+        if not self.batches.exists():
+            return 0
+        drift = self.quantity - self.batch_quantity
+        if drift:
+            self.quantity = self.batch_quantity
+            self.save(update_fields=['quantity'])
+        return drift
 
     def soft_delete(self):
         self.is_active = False
@@ -122,15 +164,24 @@ class Medicine(models.Model):
     def reduce_stock(self, qty):
         if qty < 0:
             raise ValueError('Quantity must be positive')
-        if qty > self.quantity:
-            raise ValueError('Not enough stock')
-        remaining = qty
-        batches = self.batches.filter(quantity__gt=0).order_by('expiry_date', 'received_at')
-        consumed = []
-        if not batches.exists():
+        today = timezone.localdate()
+
+        # Legacy path: an aggregate quantity with no batch rows at all.
+        if not self.batches.filter(quantity__gt=0).exists():
+            if self.is_expired:
+                raise ValueError(f'{self.name} is expired — cannot dispense.')
+            if qty > self.quantity:
+                raise ValueError('Not enough stock')
             self.quantity -= qty
             self.save(update_fields=['quantity'])
             return [{'batch_id': None, 'batch_number': '', 'quantity': qty, 'expiry_date': None}]
+
+        # FEFO over ONLY in-date batches — expired stock is never dispensed (patient safety).
+        remaining = qty
+        consumed = []
+        batches = (self.batches
+                   .filter(quantity__gt=0, expiry_date__gte=today)
+                   .order_by('expiry_date', 'received_at'))
         for b in batches:
             if remaining <= 0:
                 break
@@ -140,7 +191,7 @@ class Medicine(models.Model):
             consumed.append({'batch_id': b.id, 'batch_number': b.batch_number, 'quantity': take, 'expiry_date': b.expiry_date})
             remaining -= take
         if remaining > 0:
-            raise ValueError('Not enough batch stock available')
+            raise ValueError('Not enough in-date stock to dispense — remaining batches are expired.')
         self.quantity -= qty
         self.save(update_fields=['quantity'])
         return consumed

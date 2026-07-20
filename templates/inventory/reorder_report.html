@@ -1,0 +1,47 @@
+{% extends 'partials/base.html' %}
+{% block title %}Reorder Suggestions{% endblock %}
+{% block page_title %}Reorder Suggestions{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Reorder Suggestions</h2>
+  <form method="get" style="display:flex; gap:8px; align-items:center;">
+    <label class="muted" style="font-size:13px;">Based on last</label>
+    <select name="days" onchange="this.form.submit()" class="input">
+      <option value="14" {% if days == 14 %}selected{% endif %}>14 days</option>
+      <option value="30" {% if days == 30 %}selected{% endif %}>30 days</option>
+      <option value="60" {% if days == 60 %}selected{% endif %}>60 days</option>
+      <option value="90" {% if days == 90 %}selected{% endif %}>90 days</option>
+    </select>
+    <a class="btn alt" href="{% url 'po_create' %}">+ Purchase Order</a>
+  </form>
+</div>
+
+<p class="muted" style="font-size:13px; margin:0 0 12px;">
+  Suggested reorder point = avg daily sales × (lead time 7d + safety 5d). Order qty covers 30 days of demand.
+  <strong>{{ needs_count }}</strong> item(s) at or below their suggested point.
+</p>
+
+<table class="tbl">
+  <thead>
+    <tr>
+      <th>Medicine</th><th>In-date stock</th><th>Sold ({{ days }}d)</th>
+      <th>Avg/day</th><th>Static level</th><th>Suggested level</th><th>Suggested order</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr {% if r.needs %}style="background:var(--danger-bg);"{% endif %}>
+      <td>{{ r.medicine.name }} <span class="muted">{{ r.medicine.brand }}</span></td>
+      <td>{{ r.on_hand }}</td>
+      <td>{{ r.sold }}</td>
+      <td>{{ r.adu }}</td>
+      <td class="muted">{{ r.reorder_level }}</td>
+      <td><strong>{{ r.suggested_level }}</strong></td>
+      <td>{% if r.suggested_order %}<span class="badge warn">+{{ r.suggested_order }}</span>{% else %}—{% endif %}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="7" class="muted">No medicines to show.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

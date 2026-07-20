@@ -108,7 +108,10 @@ def profit_report_data(start, end):
     for sale in sales:
         sale_cost = Decimal('0.00')
         for it in sale.items.all():
-            cost = (it.batch.cost_price if it.batch_id else Decimal('0.00')) * it.quantity
+            # prefer the cost frozen on the line at sale time; fall back to the live
+            # batch cost for rows created before COGS was captured on the sale item
+            cost_each = it.cost_price if it.cost_price else (it.batch.cost_price if it.batch_id else Decimal('0.00'))
+            cost = cost_each * it.quantity
             sale_cost += cost
             line_rev = it.line_total
             key = it.medicine.name

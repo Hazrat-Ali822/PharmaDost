@@ -1,0 +1,86 @@
+{% extends 'partials/base.html' %}
+{% block title %}Expiry Report{% endblock %}
+{% block page_title %}Stock Expiry{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Stock Expiry</h2>
+  <form method="get" style="display:flex; gap:8px; align-items:center;">
+    <label class="muted" style="font-size:13px;">Horizon</label>
+    <select name="days" onchange="this.form.submit()" class="input">
+      <option value="30" {% if days == 30 %}selected{% endif %}>Next 30 days</option>
+      <option value="60" {% if days == 60 %}selected{% endif %}>Next 60 days</option>
+      <option value="90" {% if days == 90 %}selected{% endif %}>Next 90 days</option>
+      <option value="180" {% if days == 180 %}selected{% endif %}>Next 180 days</option>
+    </select>
+  </form>
+</div>
+
+<div style="display:flex; gap:16px; margin-bottom:16px; flex-wrap:wrap;">
+  <div class="card" style="padding:12px 16px;">
+    <div class="muted" style="font-size:12px;">Expired (on shelf)</div>
+    <div style="font-size:22px; font-weight:700; color:var(--danger);">{{ expired|length }} batch(es)</div>
+    <div class="muted" style="font-size:12px;">Cost value: Rs {{ expired_value }}</div>
+  </div>
+  <div class="card" style="padding:12px 16px;">
+    <div class="muted" style="font-size:12px;">Expiring within {{ days }} days</div>
+    <div style="font-size:22px; font-weight:700; color:var(--warn);">{{ soon|length }} batch(es)</div>
+    <div class="muted" style="font-size:12px;">Cost value: Rs {{ soon_value }}</div>
+  </div>
+</div>
+
+<form method="post" action="{% url 'expiry_return' %}">
+  {% csrf_token %}
+
+  <h3 style="margin:12px 0 6px; color:var(--danger);">⛔ Already expired</h3>
+  <table class="tbl">
+    <thead>
+      <tr><th></th><th>Medicine</th><th>Batch</th><th>Qty</th><th>Expiry</th><th>Supplier</th><th>Cost value</th></tr>
+    </thead>
+    <tbody>
+      {% for b in expired %}
+      <tr>
+        <td><input type="checkbox" name="batch_id[]" value="{{ b.id }}" checked></td>
+        <td>{{ b.medicine.name }} <span class="muted">{{ b.medicine.brand }}</span></td>
+        <td>{{ b.batch_number|default:b.id }}</td>
+        <td>{{ b.quantity }}</td>
+        <td><span class="badge danger">{{ b.expiry_date|date:"Y-m-d" }}</span></td>
+        <td>{{ b.supplier|default:"—" }}</td>
+        <td>Rs {{ b.value }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="muted">No expired stock on the shelf. 🎉</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h3 style="margin:18px 0 6px; color:var(--warn);">⏰ Expiring soon (within {{ days }} days)</h3>
+  <table class="tbl">
+    <thead>
+      <tr><th></th><th>Medicine</th><th>Batch</th><th>Qty</th><th>Expiry</th><th>Days left</th><th>Supplier</th><th>Cost value</th></tr>
+    </thead>
+    <tbody>
+      {% for b in soon %}
+      <tr>
+        <td><input type="checkbox" name="batch_id[]" value="{{ b.id }}"></td>
+        <td>{{ b.medicine.name }} <span class="muted">{{ b.medicine.brand }}</span></td>
+        <td>{{ b.batch_number|default:b.id }}</td>
+        <td>{{ b.quantity }}</td>
+        <td>{{ b.expiry_date|date:"Y-m-d" }}</td>
+        <td><span class="badge warn">{{ b.days_left }} day(s)</span></td>
+        <td>{{ b.supplier|default:"—" }}</td>
+        <td>Rs {{ b.value }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8" class="muted">Nothing expiring in this window.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div style="margin-top:14px;">
+    <button type="submit" class="btn" onclick="return confirm('Return the selected batches to their suppliers? This removes them from sellable stock.');">
+      ↩ Return selected to supplier
+    </button>
+    <span class="muted" style="font-size:12px;">Groups the ticked batches by supplier and raises one purchase return each.</span>
+  </div>
+</form>
+{% endblock %}

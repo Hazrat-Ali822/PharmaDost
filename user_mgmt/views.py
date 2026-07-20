@@ -113,7 +113,7 @@ def dashboard_router(request):
         sales = Sale.objects.filter(cashier=request.user, created_at__date__range=[start_date, end_date], is_returned=False)
         ctx['sales_count'] = sales.count()
         ctx['revenue_collected'] = sales.aggregate(s=Sum('paid'))['s'] or 0
-        pending_rx = Prescription.objects.filter(status='PENDING').select_related('appointment__patient', 'appointment__doctor__user').prefetch_related('items__medicine')
+        pending_rx = Prescription.objects.filter(status__in=['PENDING', 'PARTIAL']).select_related('appointment__patient', 'appointment__doctor__user').prefetch_related('items__medicine')
         if scope_by_hospital:
             pending_rx = pending_rx.filter(appointment__patient__hospital=hospital)
         ctx['pending_prescriptions'] = pending_rx.order_by('-created_at')[:20]

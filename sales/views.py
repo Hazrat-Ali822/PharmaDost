@@ -86,7 +86,7 @@ def sale_create(request):
                 item["discount"] = ld
             items.append(item)
 
-        pending_rx = Prescription.objects.filter(status='PENDING').select_related('appointment__patient', 'appointment__doctor__user').prefetch_related('items__medicine')
+        pending_rx = Prescription.objects.filter(status__in=['PENDING', 'PARTIAL']).select_related('appointment__patient', 'appointment__doctor__user').prefetch_related('items__medicine')
         if not request.user.is_superuser:
             pending_rx = pending_rx.filter(appointment__patient__hospital=request.user.hospital)
         pending_prescriptions = pending_rx.order_by('-created_at')[:15]
@@ -121,7 +121,14 @@ def sale_create(request):
                 cashier=request.user,
             )
             if prescription:
-                prescription.status = 'DISPENSED'
+                # Mark DISPENSED only if every prescribed (catalogued) medicine was
+                # actually sold; otherwise it's a partial fill and stays in the queue.
+                rx_med_ids = {i.medicine_id for i in prescription.items.all() if i.medicine_id}
+                sold_med_ids = {si.medicine_id for si in sale.items.all()}
+                if rx_med_ids and rx_med_ids.issubset(sold_med_ids):
+                    prescription.status = 'DISPENSED'
+                else:
+                    prescription.status = 'PARTIAL'
                 prescription.save(update_fields=['status'])
             messages.success(request, f'Sale #{sale.id} created!')
             return redirect('sale_detail', pk=sale.id)
@@ -129,8 +136,8 @@ def sale_create(request):
             messages.error(request, str(e))
             return render(request, 'sales/sale_create.html', ctx)
 
-    pending_rx = Prescription.objects.filter(status='PENDING').select_related('appointment__patient', 'appointment__doctor__user').prefetch_related('items__medicine')
-    if request.user.hospital:
+    pending_rx = Prescription.objects.filter(status__in=['PENDING', 'PARTIAL']).select_related('appointment__patient', 'appointment__doctor__user').prefetch_related('items__medicine')
+    if not request.user.is_superuser:
         pending_rx = pending_rx.filter(appointment__patient__hospital=request.user.hospital)
     pending_prescriptions = pending_rx.order_by('-created_at')[:15]
 
@@ -151,8 +158,8 @@ def sale_list(request):
         .prefetch_related('items', 'items__medicine')
         .order_by('-created_at')[:200]
     )
-    pending_rx = Prescription.objects.filter(status='PENDING').select_related('appointment__patient', 'appointment__doctor__user').prefetch_related('items__medicine')
-    if request.user.hospital:
+    pending_rx = Prescription.objects.filter(status__in=['PENDING', 'PARTIAL']).select_related('appointment__patient', 'appointment__doctor__user').prefetch_related('items__medicine')
+    if not request.user.is_superuser:
         pending_rx = pending_rx.filter(appointment__patient__hospital=request.user.hospital)
     pending_prescriptions = pending_rx.order_by('-created_at')[:15]
     
@@ -176,8 +183,12 @@ def sale_return(request, pk):
     sale = get_object_or_404(Sale, pk=pk)
     if request.method == 'POST':
         try:
-            return_sale(sale, by_user=request.user)
-            messages.success(request, f'Sale #{sale.id} returned. Stock restored.')
+            result = return_sale(sale, by_user=request.user)
+            q = getattr(result, 'quarantined_qty', 0)
+            msg = f'Sale #{sale.id} returned. Stock restored.'
+            if q:
+                msg += f' Note: {q} unit(s) came back expired and are quarantined (not resellable).'
+            messages.success(request, msg)
         except ValueError as e:
             messages.error(request, str(e))
         return redirect('sale_detail', pk=sale.id)

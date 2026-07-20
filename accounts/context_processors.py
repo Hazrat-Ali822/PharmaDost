@@ -108,7 +108,7 @@ def notifications_context(request):
 
         # 6. Pharmacy Pending Prescription count
         from prescriptions.models import Prescription
-        rx_qs = Prescription.objects.filter(status='PENDING')
+        rx_qs = Prescription.objects.filter(status__in=['PENDING', 'PARTIAL'])
         if scope_by_hospital:
             rx_qs = rx_qs.filter(appointment__patient__hospital=hospital)
         pharmacy_badge_count = rx_qs.count()

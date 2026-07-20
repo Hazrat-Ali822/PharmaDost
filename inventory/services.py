@@ -1,7 +1,49 @@
 from decimal import Decimal
+from datetime import timedelta
+
 from django.db import transaction
+from django.db.models import Sum
+from django.utils import timezone
 
 from .models import Medicine, StockBatch, StockAdjustment, PurchaseReturn, PurchaseReturnItem
+
+
+def sales_velocity(days=30):
+    """{medicine_id: units_sold} over the last `days` days (non-returned sales only)."""
+    since = timezone.now() - timedelta(days=days)
+    from sales.models import SaleItem
+    rows = (SaleItem.objects
+            .filter(sale__created_at__gte=since, sale__is_returned=False)
+            .values('medicine_id')
+            .annotate(qty=Sum('quantity')))
+    return {r['medicine_id']: (r['qty'] or 0) for r in rows}
+
+
+def reorder_suggestions(*, days=30, lead_days=7, safety_days=5, cover_days=30):
+    """Suggest a DYNAMIC reorder point + order quantity per active medicine from
+    recent sales velocity (vs the static reorder_level).
+
+        reorder point = avg daily usage x (lead time + safety days)
+        order qty      = avg daily usage x cover_days  -  in-date stock on hand
+
+    Rows that are at/below their reorder point (or already low) come first."""
+    vel = sales_velocity(days)
+    out = []
+    for med in Medicine.objects.all():
+        sold = vel.get(med.id, 0)
+        adu = sold / days if days else 0                     # average daily usage
+        suggested_level = int(round(adu * (lead_days + safety_days)))
+        on_hand = med.sellable_quantity
+        suggested_order = max(0, int(round(adu * cover_days)) - on_hand)
+        needs = on_hand <= suggested_level or med.is_low_stock
+        out.append({
+            'medicine': med, 'sold': sold, 'adu': round(adu, 2),
+            'on_hand': on_hand, 'reorder_level': med.reorder_level,
+            'suggested_level': suggested_level, 'suggested_order': suggested_order,
+            'needs': needs,
+        })
+    out.sort(key=lambda r: (not r['needs'], -r['suggested_order']))
+    return out
 
 
 @transaction.atomic
