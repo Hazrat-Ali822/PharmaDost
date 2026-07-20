@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from saas.utils import TenantManager
 
 class SurgeryCategory(models.Model):
@@ -46,3 +47,34 @@ class SurgeryRecord(models.Model):
 
     def __str__(self):
         return f"Surgery: {self.procedure.name} - {self.patient.full_name}"
+
+class SurgeryRequest(models.Model):
+    """A doctor's advice that a patient needs surgery. Lands in the OT / reception
+    queue; on scheduling it becomes a real SurgeryRecord (bill raised)."""
+    STATUS_CHOICES = [
+        ('Pending', 'Pending'),
+        ('Scheduled', 'Scheduled'),
+        ('Cancelled', 'Cancelled'),
+    ]
+    URGENCY_CHOICES = [
+        ('Elective', 'Elective (planned)'),
+        ('Urgent', 'Urgent'),
+        ('Emergency', 'Emergency'),
+    ]
+    patient = models.ForeignKey('patients.Patient', on_delete=models.CASCADE, related_name='surgery_requests')
+    advised_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='surgery_advices')
+    procedure = models.ForeignKey(SurgeryProcedure, on_delete=models.SET_NULL, null=True, blank=True)
+    reason = models.TextField(help_text='Indication / reason for surgery')
+    urgency = models.CharField(max_length=20, choices=URGENCY_CHOICES, default='Elective')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+    surgery = models.ForeignKey(SurgeryRecord, on_delete=models.SET_NULL, null=True, blank=True, related_name='from_request')
+    created_at = models.DateTimeField(default=timezone.now)
+    hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
+
+    objects = TenantManager()
+
+    class Meta:
+        ordering = ('-created_at',)
+
+    def __str__(self):
+        return f"Surgery advice: {self.patient.full_name} ({self.status})"

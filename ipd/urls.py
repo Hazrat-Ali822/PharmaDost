@@ -5,6 +5,9 @@ app_name = 'ipd'
 
 urlpatterns = [
     path('', views.admission_list, name='admission_list'),
+    path('requests/', views.admission_request_list, name='admission_request_list'),
+    path('requests/<int:pk>/cancel/', views.admission_request_cancel, name='admission_request_cancel'),
+    path('advise/<int:patient_id>/', views.admission_advise, name='admission_advise'),
     path('new/', views.admission_create, name='admission_create'),
     path('<int:pk>/', views.admission_detail, name='admission_detail'),
     path('<int:pk>/round/', views.doctor_round_add, name='doctor_round_add'),

@@ -1,0 +1,51 @@
+{% extends 'partials/base.html' %}
+{% block title %}Admission Requests{% endblock %}
+{% block page_title %}Admission Requests{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Admission Requests <span class="badge warn">{{ pending|length }} pending</span></h2>
+  <a class="btn alt" href="{% url 'ipd:admission_list' %}">Admissions Registry</a>
+</div>
+
+<table class="tbl">
+  <thead>
+    <tr><th>Advised</th><th>Patient</th><th>Reason</th><th>By</th><th>Preferred ward</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for r in pending %}
+    <tr>
+      <td>{{ r.created_at|date:"Y-m-d H:i" }}</td>
+      <td>{{ r.patient.full_name }} <span class="muted">{{ r.patient.mrn }}</span></td>
+      <td>{{ r.reason }}</td>
+      <td>Dr. {{ r.advised_by.first_name|default:r.advised_by.email }}</td>
+      <td>{{ r.preferred_ward|default:"—" }}</td>
+      <td style="white-space:nowrap;">
+        <a class="btn" href="{% url 'ipd:admission_create' %}?request_id={{ r.id }}">Admit &amp; allot bed</a>
+        <form method="post" action="{% url 'ipd:admission_request_cancel' r.id %}" style="display:inline;" onsubmit="return confirm('Cancel this admission request?');">
+          {% csrf_token %}<button class="btn alt" type="submit">Cancel</button>
+        </form>
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="6" class="muted">No pending admission requests. 🎉</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if recent %}
+<h3 style="margin:22px 0 8px;">Recently handled</h3>
+<table class="tbl">
+  <thead><tr><th>When</th><th>Patient</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+    {% for r in recent %}
+    <tr>
+      <td>{{ r.created_at|date:"Y-m-d H:i" }}</td>
+      <td>{{ r.patient.full_name }}</td>
+      <td><span class="badge {% if r.status == 'Admitted' %}success{% else %}gray{% endif %}">{{ r.status }}</span></td>
+      <td>{% if r.admission %}<a href="{% url 'ipd:admission_detail' r.admission.id %}">View admission</a>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

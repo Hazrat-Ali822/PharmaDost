@@ -1,0 +1,52 @@
+{% extends 'partials/base.html' %}
+{% block title %}Surgery Requests{% endblock %}
+{% block page_title %}Surgery Requests{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Surgery Requests <span class="badge warn">{{ pending|length }} pending</span></h2>
+  <a class="btn alt" href="{% url 'ot:surgery_list' %}">OT Portal</a>
+</div>
+
+<table class="tbl">
+  <thead>
+    <tr><th>Advised</th><th>Patient</th><th>Urgency</th><th>Procedure</th><th>Reason</th><th>By</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for r in pending %}
+    <tr>
+      <td>{{ r.created_at|date:"Y-m-d H:i" }}</td>
+      <td>{{ r.patient.full_name }} <span class="muted">{{ r.patient.mrn }}</span></td>
+      <td><span class="badge {% if r.urgency == 'Emergency' %}danger{% elif r.urgency == 'Urgent' %}warn{% else %}gray{% endif %}">{{ r.get_urgency_display }}</span></td>
+      <td>{{ r.procedure.name|default:"—" }}</td>
+      <td>{{ r.reason }}</td>
+      <td>Dr. {{ r.advised_by.first_name|default:r.advised_by.email }}</td>
+      <td style="white-space:nowrap;">
+        <a class="btn" href="{% url 'ot:surgery_create' %}?request_id={{ r.id }}">Schedule</a>
+        <form method="post" action="{% url 'ot:surgery_request_cancel' r.id %}" style="display:inline;" onsubmit="return confirm('Cancel this surgery request?');">
+          {% csrf_token %}<button class="btn alt" type="submit">Cancel</button>
+        </form>
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="7" class="muted">No pending surgery requests. 🎉</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if recent %}
+<h3 style="margin:22px 0 8px;">Recently handled</h3>
+<table class="tbl">
+  <thead><tr><th>When</th><th>Patient</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+    {% for r in recent %}
+    <tr>
+      <td>{{ r.created_at|date:"Y-m-d H:i" }}</td>
+      <td>{{ r.patient.full_name }}</td>
+      <td><span class="badge {% if r.status == 'Scheduled' %}success{% else %}gray{% endif %}">{{ r.status }}</span></td>
+      <td>{% if r.surgery %}<a href="{% url 'ot:surgery_detail' r.surgery.id %}">View surgery</a>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}
