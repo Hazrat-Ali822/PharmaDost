@@ -43,8 +43,14 @@ def dashboard_router(request):
     if request.user.is_superuser and not getattr(request.user, 'hospital', None):
         return redirect('saas:dashboard')
     if getattr(request.user, 'role', None) == 'ADMIN':
-        return redirect('dashboard')
-        
+        # Admins land on the pharmacy dashboard — but only if pharmacy is on and
+        # they actually have inventory access; otherwise show the admin shell
+        # directly (avoids a redirect loop with the "/" dashboard guard).
+        from accounts.permissions import user_has_feature, installed_features
+        if 'inventory' in installed_features() and user_has_feature(request.user, 'inventory'):
+            return redirect('dashboard')
+        return render(request, _template_for(request.user), {'role': 'ADMIN'})
+
     import datetime
     from django.utils import timezone
     from django.db.models import Sum

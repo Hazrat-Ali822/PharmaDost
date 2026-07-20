@@ -111,3 +111,19 @@ class LabelsRenderTest(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'Panadol')
         self.assertContains(resp, '1+0+1')
+
+
+class HomePageRoutingTest(TestCase):
+    """The home page ('/') must never 403 a logged-in user who lacks pharmacy
+    access — it should route them to their own role dashboard instead."""
+    def test_non_pharmacy_user_is_redirected_not_forbidden(self):
+        recep = User.objects.create_user(email='r@r.com', password='pw', role='RECEPTIONIST')
+        c = Client(); c.force_login(recep)
+        resp = c.get(reverse('dashboard'))
+        self.assertEqual(resp.status_code, 302)               # redirected, not 403
+        self.assertNotEqual(resp.status_code, 403)
+
+    def test_admin_sees_dashboard(self):
+        admin = User.objects.create_user(email='ad2@ad.com', password='pw', role='ADMIN')
+        c = Client(); c.force_login(admin)
+        self.assertEqual(c.get(reverse('dashboard')).status_code, 200)
