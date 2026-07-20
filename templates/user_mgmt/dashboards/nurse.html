@@ -1,0 +1,48 @@
+{% extends 'partials/base.html' %}
+{% block title %}Ward Dashboard{% endblock %}
+{% block page_title %}Ward / Nursing{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>Ward Desk 👩‍⚕️</h2><div class="muted">{{ request.user.get_full_name|default:request.user.email }}</div></div>
+  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+    <a class="btn alt" href="{% url 'ipd:ward_bed_list' %}">🛏️ Beds / Wards</a>
+    <a class="btn" href="{% url 'ipd:admission_list' %}">All Admissions</a>
+  </div>
+</div>
+
+<div class="stat-grid" style="margin-bottom:24px;">
+  <div class="stat">
+    <div class="ic green">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 22h20M5 22v-5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v5M8 6h8M12 2v8"/></svg>
+    </div>
+    <div class="meta"><span class="value">{{ admitted_count }}</span><span class="label">Currently Admitted</span></div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px">
+  <div class="page-head" style="margin-bottom:12px; padding:0; border:none;">
+    <h3>Admitted Patients</h3>
+    <a class="btn sm alt" href="{% url 'ipd:admission_list' %}">View All</a>
+  </div>
+  <table class="tbl">
+    <thead><tr><th>Patient</th><th>Ward</th><th>Bed</th><th>Doctor</th><th>Admitted</th><th></th></tr></thead>
+    <tbody>
+      {% for a in admissions %}
+      <tr>
+        <td><strong>{{ a.patient.full_name }}</strong></td>
+        <td>{{ a.bed.ward.name }}</td>
+        <td>{{ a.bed.bed_number }}</td>
+        <td>{{ a.attending_doctor.full_name }}</td>
+        <td>{{ a.admission_date|date:"Y-m-d H:i" }}</td>
+        <td style="white-space:nowrap;">
+          <a class="btn sm" href="{% url 'ipd:medication_log_add' a.pk %}">💊 Medication</a>
+          <a class="btn sm alt" href="{% url 'ipd:doctor_round_add' a.pk %}">🩺 Round</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="muted text-center">No admitted patients right now. 🎉</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

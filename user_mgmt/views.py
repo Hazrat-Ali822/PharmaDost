@@ -22,6 +22,7 @@ ROLE_TEMPLATES = {
     'ADMIN': 'user_mgmt/dashboards/admin.html',
     'RECEPTIONIST': 'user_mgmt/dashboards/receptionist.html',
     'DOCTOR': 'user_mgmt/dashboards/doctor.html',
+    'NURSE': 'user_mgmt/dashboards/nurse.html',
     'PHARMACIST': 'user_mgmt/dashboards/pharmacist.html',
     'WHOLESALE': 'user_mgmt/dashboards/wholesale.html',
     'LABTECH': 'user_mgmt/dashboards/labtech.html',
@@ -113,6 +114,13 @@ def dashboard_router(request):
         appts = Appointment.objects.filter(doctor__user=request.user, appointment_date__range=[start_date, end_date], status='DONE')
         ctx['patient_count'] = appts.count()
         ctx['revenue_collected'] = Invoice.objects.filter(appointment__in=appts).aggregate(s=Sum('total'))['s'] or 0
+    elif ctx['role'] == 'NURSE':
+        from ipd.models import Admission
+        admissions = Admission.objects.filter(status='Admitted').select_related('patient', 'bed__ward', 'attending_doctor')
+        if scope_by_hospital:
+            admissions = admissions.filter(patient__hospital=hospital)
+        ctx['admissions'] = admissions.order_by('bed__ward__name', 'bed__bed_number')
+        ctx['admitted_count'] = admissions.count()
     elif ctx['role'] == 'PHARMACIST':
         from sales.models import Sale
         from prescriptions.models import Prescription

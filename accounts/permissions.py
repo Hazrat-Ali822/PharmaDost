@@ -18,6 +18,9 @@ FEATURES = {
     'lab':           {'ADMIN', 'DOCTOR', 'LABTECH', 'RECEPTIONIST'},
     'imaging':       {'ADMIN', 'DOCTOR', 'SONOGRAPHER', 'RECEPTIONIST'},
     'ipd':           {'ADMIN', 'RECEPTIONIST', 'DOCTOR', 'ACCOUNTANT'},
+    # ward/nursing work inside IPD (medication logs, nursing rounds, bed status) —
+    # NOT admitting/discharging/billing. Given to nurses; admins have it too.
+    'ward':          {'ADMIN', 'NURSE'},
     'ot':            {'ADMIN', 'DOCTOR'},
     # Pharmacy
     'pos':           {'ADMIN', 'PHARMACIST', 'WHOLESALE'},
@@ -52,6 +55,7 @@ FEATURE_GROUPS = [
         ('lab', 'Lab'),
         ('imaging', 'Imaging / Radiology'),
         ('ipd', 'IPD / Patient Admission'),
+        ('ward', 'Ward / Nursing (medication & rounds)'),
         ('ot', 'OT / Surgery Management'),
     ]),
     ('Pharmacy', [
@@ -92,7 +96,7 @@ MODULES = [
     ('opd', 'OPD / Hospital', 'Patients, doctors, appointments & prescriptions',
      ['patients', 'opd', 'appointments', 'doctors', 'prescriptions']),
     ('ipd', 'Inpatient (IPD)', 'Ward, bed, patient admission and daily rounds management',
-     ['ipd']),
+     ['ipd', 'ward']),
     ('ot', 'Operation Theatre (OT)', 'Surgery booking, team scheduling and logs management',
      ['ot']),
     ('lab', 'Laboratory', 'Lab test orders & printed reports',

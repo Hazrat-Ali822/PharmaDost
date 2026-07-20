@@ -9,7 +9,7 @@ from patients.models import Patient
 from .models import Ward, Bed, Admission, DoctorRound, MedicationLog, AdmissionRequest
 from .forms import WardForm, BedForm, AdmissionForm, DoctorRoundForm, DischargeForm, MedicationLogForm
 
-@feature_required('ipd')
+@feature_required('ipd', 'ward')
 def admission_list(request):
     active_admissions = Admission.objects.filter(status='Admitted').select_related('patient', 'bed__ward', 'attending_doctor')
     past_admissions = Admission.objects.filter(status='Discharged').select_related('patient', 'bed__ward', 'attending_doctor').order_by('-discharge_date')[:50]
@@ -72,7 +72,7 @@ def admission_create(request):
         'adm_req': adm_req,
     })
 
-@feature_required('ipd')
+@feature_required('ipd', 'ward')
 def admission_detail(request, pk):
     admission = get_object_or_404(Admission.objects.select_related('patient', 'bed__ward', 'attending_doctor'), pk=pk)
     rounds = admission.rounds.all().order_by('-round_time')
@@ -83,7 +83,7 @@ def admission_detail(request, pk):
         'medication_logs': medication_logs,
     })
 
-@feature_required('ipd')
+@feature_required('ipd', 'ward')
 def medication_log_add(request, pk):
     admission = get_object_or_404(Admission, pk=pk)
     if request.method == 'POST':
@@ -102,7 +102,7 @@ def medication_log_add(request, pk):
         'admission': admission,
     })
 
-@feature_required('ipd')
+@feature_required('ipd', 'ward')
 def doctor_round_add(request, pk):
     admission = get_object_or_404(Admission, pk=pk)
     if request.method == 'POST':
@@ -178,7 +178,7 @@ def admission_discharge(request, pk):
         'est_bed_charges': est_bed_charges,
     })
 
-@feature_required('ipd')
+@feature_required('ipd', 'ward')
 def ward_bed_list(request):
     wards = Ward.objects.prefetch_related('beds').all()
     return render(request, 'ipd/ward_bed_list.html', {
