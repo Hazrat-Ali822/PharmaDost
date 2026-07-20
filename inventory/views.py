@@ -5,6 +5,7 @@ from django.utils import timezone
 from .models import Medicine
 from .forms import MedicineForm
 from accounts.decorators import role_required, feature_required
+from django.contrib.auth.decorators import login_required
 from .models import (
     PurchaseOrder, PurchaseItem, StockBatch, StockAdjustment, PurchaseReturn,
 )
@@ -14,8 +15,16 @@ from django.db import transaction
 from django.shortcuts import reverse
 
 
-@feature_required('inventory')
+@login_required
 def dashboard(request):
+    # The home page ("/") is the pharmacy dashboard. Users without pharmacy
+    # access (doctors, receptionists, lab/imaging staff, or installs with the
+    # pharmacy module turned off) are sent to their own role dashboard instead
+    # of getting a 403 "permission denied" page.
+    from accounts.permissions import user_has_feature, installed_features
+    if 'inventory' not in installed_features() or not user_has_feature(request.user, 'inventory'):
+        return redirect('user_mgmt:post_login_redirect')
+
     import json
     import datetime
     from datetime import timedelta
