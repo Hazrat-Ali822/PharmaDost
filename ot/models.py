@@ -45,4 +45,4 @@ class SurgeryRecord(models.Model):
     objects = TenantManager()
 
     def __str__(self):
-        return f"Surgery: {self.procedure.name} - {self.patient.name}"
+        return f"Surgery: {self.procedure.name} - {self.patient.full_name}"

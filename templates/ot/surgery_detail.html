@@ -18,7 +18,7 @@
     <div style="display:flex; flex-direction:column; gap:12px; font-size:14px;">
       <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Patient Name</span><strong style="font-size:16px;">{{ record.patient.full_name }}</strong></p>
       <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">MRN</span><strong>{{ record.patient.mrn }}</strong></p>
-      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Lead Surgeon</span><strong>Dr. {{ record.lead_surgeon.name }}</strong></p>
+      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Lead Surgeon</span><strong>Dr. {{ record.lead_surgeon.full_name }}</strong></p>
       <hr style="border:0; border-top:1px solid var(--border); margin:5px 0;" />
       <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Surgical Procedure</span><strong style="color:var(--primary); font-size:15px;">{{ record.procedure.name }}</strong></p>
       <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Procedure Fee</span><strong>Rs {{ record.procedure.standard_charge }}</strong></p>

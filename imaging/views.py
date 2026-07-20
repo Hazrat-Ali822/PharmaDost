@@ -21,6 +21,20 @@ ORDER_ROLES = ["ADMIN", "DOCTOR", "RECEPTIONIST", "SONOGRAPHER"]
 REPORT_ROLES = ["ADMIN", "SONOGRAPHER"]
 
 
+def _scoped_studies(request):
+    """ImagingStudy has no hospital column of its own — scope through the patient's
+    hospital, and restrict a doctor to the studies they referred. Mirrors study_list
+    so detail/report/payment can't be reached cross-tenant by guessing ids."""
+    qs = ImagingStudy.objects.all()
+    if not request.user.is_superuser:
+        # fail closed: a hospital-less non-superuser sees only hospital-less rows,
+        # never another tenant's studies
+        qs = qs.filter(patient__hospital=request.user.hospital)
+        if getattr(request.user, "role", None) == "DOCTOR":
+            qs = qs.filter(referred_by=request.user)
+    return qs
+
+
 @feature_required('imaging')
 def study_list(request):
     studies = (
@@ -79,7 +93,7 @@ def study_create(request):
 @feature_required('imaging')
 def study_detail(request, study_id):
     study = get_object_or_404(
-        ImagingStudy.objects.select_related("patient", "referred_by", "performed_by"),
+        _scoped_studies(request).select_related("patient", "referred_by", "performed_by"),
         pk=study_id,
     )
     return render(request, "imaging/study_detail.html", {"study": study})
@@ -87,7 +101,7 @@ def study_detail(request, study_id):
 
 @role_required(REPORT_ROLES)
 def study_report_edit(request, study_id):
-    study = get_object_or_404(ImagingStudy, pk=study_id)
+    study = get_object_or_404(_scoped_studies(request), pk=study_id)
     if request.method == "POST":
         form = ImagingReportForm(request.POST, request.FILES, instance=study, user=request.user)
         if form.is_valid():
@@ -101,7 +115,7 @@ def study_report_edit(request, study_id):
 
 @role_required(REPORT_ROLES)
 def study_mark_delivered(request, study_id):
-    study = get_object_or_404(ImagingStudy, pk=study_id)
+    study = get_object_or_404(_scoped_studies(request), pk=study_id)
     study.status = "Delivered"
     study.save(update_fields=["status"])
     messages.success(request, "Report marked as delivered.")
@@ -111,7 +125,7 @@ def study_mark_delivered(request, study_id):
 @feature_required('imaging')
 def study_report(request, study_id):
     study = get_object_or_404(
-        ImagingStudy.objects.select_related("patient", "referred_by", "performed_by"),
+        _scoped_studies(request).select_related("patient", "referred_by", "performed_by"),
         pk=study_id,
     )
     return render(request, "imaging/study_report.html", {"study": study})
@@ -156,7 +170,7 @@ def scan_catalog(request):
 @feature_required('imaging')
 @require_POST
 def collect_payment(request, study_id):
-    study = get_object_or_404(ImagingStudy, pk=study_id)
+    study = get_object_or_404(_scoped_studies(request), pk=study_id)
     if study.payment_status == 'Pending':
         study.payment_status = 'Paid'
         study.payment_collected_by = request.user

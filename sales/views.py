@@ -28,7 +28,12 @@ def sale_create(request):
     preselected_patient_id = None
     
     if prescription_id:
-        prescription = get_object_or_404(Prescription, pk=prescription_id)
+        # scope the prefill lookup so a pharmacist can't load another hospital's
+        # prescription into POS by editing the ?prescription_id= URL
+        rx_lookup = Prescription.objects.all()
+        if not request.user.is_superuser:
+            rx_lookup = rx_lookup.filter(appointment__patient__hospital=request.user.hospital)
+        prescription = get_object_or_404(rx_lookup, pk=prescription_id)
         preselected_patient_id = prescription.appointment.patient.id
         
         if request.method == 'GET':
@@ -82,7 +87,7 @@ def sale_create(request):
             items.append(item)
 
         pending_rx = Prescription.objects.filter(status='PENDING').select_related('appointment__patient', 'appointment__doctor__user').prefetch_related('items__medicine')
-        if request.user.hospital:
+        if not request.user.is_superuser:
             pending_rx = pending_rx.filter(appointment__patient__hospital=request.user.hospital)
         pending_prescriptions = pending_rx.order_by('-created_at')[:15]
 

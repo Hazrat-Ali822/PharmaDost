@@ -26,7 +26,7 @@
       <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Age</span><strong>{{ admission.patient.age_years }} Years</strong></p>
       <hr style="border:0; border-top:1px solid var(--border); margin:5px 0;" />
       <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Assigned Bed / Ward</span><strong style="color:var(--primary)">Bed {{ admission.bed.bed_number }}</strong> ({{ admission.bed.ward.name }})</p>
-      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Attending Doctor</span><strong>Dr. {{ admission.attending_doctor.name }}</strong></p>
+      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Attending Doctor</span><strong>Dr. {{ admission.attending_doctor.full_name }}</strong></p>
       <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Admission Date & Time</span><strong>{{ admission.admission_date|date:"Y-m-d H:i" }}</strong></p>
       <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Reason for Admission</span>{{ admission.admission_reason }}</p>
       

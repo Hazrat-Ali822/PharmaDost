@@ -57,6 +57,9 @@ def notifications_context(request):
     ot_badge_count = 0
     pharmacy_badge_count = 0
     hospital = getattr(user, 'hospital', None)
+    # Fail closed: every non-superuser's badge counts are scoped to their own
+    # hospital (None → only hospital-less rows), never another tenant's.
+    scope_by_hospital = not user.is_superuser
 
     try:
         # 1. OPD Queue count
@@ -64,7 +67,7 @@ def notifications_context(request):
         role = getattr(user, 'role', None)
         is_doctor = role == 'DOCTOR' and not user.is_superuser
         appt_qs = Appointment.objects.all()
-        if hospital:
+        if scope_by_hospital:
             appt_qs = appt_qs.filter(patient__hospital=hospital)
         appt_qs = appt_qs.exclude(status__in=['DONE', 'CANCELLED'])
         if is_doctor:
@@ -74,7 +77,7 @@ def notifications_context(request):
         # 2. Lab Pending count
         from lab.models import TestOrder
         lab_qs = TestOrder.objects.filter(status='Pending')
-        if hospital:
+        if scope_by_hospital:
             lab_qs = lab_qs.filter(patient__hospital=hospital)
         if is_doctor:
             lab_qs = lab_qs.filter(ordered_by=user)
@@ -83,7 +86,7 @@ def notifications_context(request):
         # 3. Imaging Pending count
         from imaging.models import ImagingStudy
         img_qs = ImagingStudy.objects.filter(status='Pending')
-        if hospital:
+        if scope_by_hospital:
             img_qs = img_qs.filter(patient__hospital=hospital)
         if is_doctor:
             img_qs = img_qs.filter(referred_by=user)
@@ -92,21 +95,21 @@ def notifications_context(request):
         # 4. IPD Active Admissions count
         from ipd.models import Admission
         ipd_qs = Admission.objects.filter(status='Admitted')
-        if hospital:
+        if scope_by_hospital:
             ipd_qs = ipd_qs.filter(hospital=hospital)
         ipd_badge_count = ipd_qs.count()
 
         # 5. OT Surgeries in progress count
         from ot.models import SurgeryRecord
         ot_qs = SurgeryRecord.objects.filter(end_time__isnull=True)
-        if hospital:
+        if scope_by_hospital:
             ot_qs = ot_qs.filter(hospital=hospital)
         ot_badge_count = ot_qs.count()
 
         # 6. Pharmacy Pending Prescription count
         from prescriptions.models import Prescription
         rx_qs = Prescription.objects.filter(status='PENDING')
-        if hospital:
+        if scope_by_hospital:
             rx_qs = rx_qs.filter(appointment__patient__hospital=hospital)
         pharmacy_badge_count = rx_qs.count()
     except Exception:

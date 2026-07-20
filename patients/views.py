@@ -60,7 +60,8 @@ def patient_create(request):
 
 @feature_required('patients')
 def patient_edit(request, pk):
-    patient = get_object_or_404(Patient, pk=pk)
+    # scope to the tenant + a doctor's own patients, same as patient_detail
+    patient = _get_scoped_patient(request, pk)
     if request.method == 'POST':
         form = PatientForm(request.POST, instance=patient)
         if form.is_valid():
@@ -150,12 +151,24 @@ def patient_detail(request, pk):
     for record in clinical:
         if record.temperature or record.bp or record.pulse:
             dt_str = record.date.strftime("%Y-%m-%d") if record.date else "—"
+            # temperature/pulse are free-text CharFields ("98.6°F", "80 bpm"),
+            # so parse defensively — a non-numeric entry must not 500 the EMR page.
+            temp_val = None
+            try:
+                temp_val = float(str(record.temperature).replace('°F', '').replace('F', '').strip())
+            except (ValueError, AttributeError):
+                pass
+            pulse_val = None
+            try:
+                pulse_val = int(float(str(record.pulse).replace('bpm', '').strip()))
+            except (ValueError, AttributeError):
+                pass
             vitals_history.append({
                 'source': 'OPD',
                 'date': dt_str,
-                'temp': float(record.temperature) if record.temperature else None,
+                'temp': temp_val,
                 'bp': record.bp or '',
-                'pulse': int(record.pulse) if record.pulse else None,
+                'pulse': pulse_val,
             })
             
     # 2. IPD Daily Rounds
