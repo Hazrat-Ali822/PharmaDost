@@ -10,6 +10,7 @@
     <button class="btn success" onclick="window.print();" style="display:inline-flex; align-items:center; gap:8px;">
       🖨️ Print Prescription
     </button>
+    <a class="btn alt" href="{% url 'prescription_labels' prescription.pk %}" target="_blank">🏷️ Print Labels</a>
     <a class="btn" href="{% url 'prescription_edit' prescription.pk %}">✏️ Edit</a>
     <a class="btn alt" href="{% url 'prescription_list' %}">Back to List</a>
   </div>

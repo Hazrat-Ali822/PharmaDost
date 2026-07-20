@@ -763,3 +763,61 @@ def reorder_report(request):
     needs = [r for r in rows if r['needs']]
     return render(request, 'inventory/reorder_report.html',
                   {'rows': rows, 'needs_count': len(needs), 'days': days})
+
+
+@feature_required('inventory')
+@role_required(['ADMIN', 'PHARMACIST'])
+def reorder_to_po(request):
+    """One-click: turn the current reorder suggestions into draft Purchase Orders,
+    grouped by each medicine's supplier. The pharmacist then reviews/sends them from
+    the PO desk."""
+    if request.method != 'POST':
+        return redirect('reorder_report')
+    from decimal import Decimal
+    from .services import reorder_suggestions
+    from .models import PurchaseRequest, PurchaseRequestItem
+    try:
+        days = int(request.POST.get('days', 30))
+    except (ValueError, TypeError):
+        days = 30
+    rows = [r for r in reorder_suggestions(days=max(7, min(days, 180)))
+            if r['needs'] and r['suggested_order'] > 0]
+    if not rows:
+        messages.info(request, 'Nothing needs reordering right now.')
+        return redirect('reorder_report')
+
+    by_supplier = {}
+    for r in rows:
+        by_supplier.setdefault(r['medicine'].supplier_id, []).append(r)
+
+    made = 0
+    for supplier_id, items in by_supplier.items():
+        pr = PurchaseRequest.objects.create(
+            supplier_id=supplier_id,
+            supplier_name='' if supplier_id else 'Unassigned supplier',
+            status=PurchaseRequest.DRAFT,
+            note='Auto-generated from reorder suggestions',
+            created_by=request.user)
+        for r in items:
+            med = r['medicine']
+            last_cost = (StockBatch.objects.filter(medicine=med).order_by('-received_at')
+                         .values_list('cost_price', flat=True).first()) or Decimal('0.00')
+            PurchaseRequestItem.objects.create(
+                request=pr, medicine=med, quantity=r['suggested_order'], cost_price=last_cost)
+        made += 1
+
+    messages.success(request, f"Created {made} draft purchase order(s) from reorder suggestions — review &amp; send from the PO desk.")
+    return redirect('po_list')
+
+
+@feature_required('inventory')
+def inventory_analytics(request):
+    """Dead stock, fast/slow movers and ABC classification."""
+    from .services import inventory_analytics as _analytics
+    try:
+        days = int(request.GET.get('days', 90))
+    except (ValueError, TypeError):
+        days = 90
+    days = max(30, min(days, 365))
+    data = _analytics(days=days)
+    return render(request, 'inventory/analytics.html', data)
