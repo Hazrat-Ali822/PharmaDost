@@ -13,7 +13,7 @@
     {% for rx in pending_prescriptions %}
       <a href="?prescription_id={{ rx.id }}" class="btn sm alt" style="padding:5px 10px; font-size:12.5px; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:5px;">
         ⚡ {{ rx.appointment.patient.full_name }}
-        <span class="muted" style="font-size:11px; font-weight:400;">(Dr. {{ rx.appointment.doctor.get_full_name|default:rx.appointment.doctor.user.username }})</span>
+        {% if branding.show_doctor_to_pharmacy %}<span class="muted" style="font-size:11px; font-weight:400;">(Dr. {{ rx.appointment.doctor.get_full_name|default:rx.appointment.doctor.user.username }})</span>{% endif %}
       </a>
     {% endfor %}
   </div>

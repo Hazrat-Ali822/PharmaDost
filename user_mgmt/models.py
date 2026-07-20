@@ -55,6 +55,11 @@ class SiteSettings(models.Model):
     print_theme = models.CharField(max_length=20, choices=PRINT_THEMES, default="classic",
                                    help_text="Design used for printed lab reports, bills & receipts")
 
+    # show the prescribing doctor's name to pharmacy/POS staff (on the pending-Rx loader)
+    show_doctor_to_pharmacy = models.BooleanField(
+        default=True,
+        help_text="Show the prescribing doctor's name to pharmacy staff on the POS pending-prescription list")
+
     # which business modules this install uses; null = all modules on
     enabled_modules = models.JSONField(null=True, blank=True, default=None,
                                        help_text="List of enabled module keys (null = all)")
