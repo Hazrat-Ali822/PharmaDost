@@ -49,6 +49,14 @@
       </div>
 
       <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
+      <h3>Pharmacy / Privacy</h3>
+      <label style="display:flex;gap:10px;align-items:flex-start;padding:9px 0">
+        {{ form.show_doctor_to_pharmacy }}
+        <span><b>Show doctor's name to pharmacy staff</b><br>
+          <span class="muted" style="font-size:13px">On the POS "pending prescriptions" list, show which doctor wrote each prescription. Turn OFF to hide the doctor's name from pharmacy/counter staff.</span></span>
+      </label>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
       <h3>Modules</h3>
       <p class="muted" style="font-size:13px;margin-bottom:10px">Turn modules on/off for your whole system. Off modules disappear from the sidebar for everyone.</p>
       {% for key, label, desc, feats in modules %}
