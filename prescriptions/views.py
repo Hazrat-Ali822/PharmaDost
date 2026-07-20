@@ -54,6 +54,10 @@ def prescription_create(request, appointment_id):
                 meds = med_formset.save()  # blank extra rows are skipped automatically
                 n_meds = len(meds)
 
+                # ---- clinical safety screening (allergy + duplicate salt) ----
+                from inventory.safety import screen_medicines
+                rx_warnings = screen_medicines(patient, [pi.medicine for pi in meds])
+
                 # ---- lab tests -> one order + a pending bill ----
                 tests = list(form.cleaned_data.get('tests') or [])
                 n_tests = _order_lab_tests(patient, tests, request.user)
@@ -72,6 +76,8 @@ def prescription_create(request, appointment_id):
             if n_img:
                 parts.append(f"{n_img} scan(s) sent to radiology")
             messages.success(request, "Prescription saved — " + ", ".join(parts) + ".")
+            for w in rx_warnings:
+                messages.warning(request, "⚠️ " + w)
             return redirect('patient_detail', pk=patient.pk)
     else:
         form = PrescriptionForm()
@@ -198,6 +204,18 @@ def prescription_detail(request, pk):
         pk=pk
     )
     return render(request, 'prescriptions/prescription_detail.html', {'prescription': prescription})
+
+
+@feature_required('prescriptions')
+def prescription_labels(request, pk):
+    """Printable dosage stickers — one label per prescribed medicine (name, dosage,
+    duration, instructions, patient) to stick on the dispensed pack."""
+    prescription = get_object_or_404(
+        _scoped_prescriptions(request)
+        .select_related('appointment__patient', 'appointment__doctor')
+        .prefetch_related('items__medicine'),
+        pk=pk)
+    return render(request, 'prescriptions/labels_print.html', {'prescription': prescription})
 
 
 @feature_required('prescriptions')

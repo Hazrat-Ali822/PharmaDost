@@ -46,6 +46,65 @@ def reorder_suggestions(*, days=30, lead_days=7, safety_days=5, cover_days=30):
     return out
 
 
+def inventory_analytics(days=90):
+    """Dead stock, fast/slow movers, and ABC classification over the last `days`.
+
+    ABC by revenue contribution: A = items making up the first 80% of revenue,
+    B = next 15%, C = the tail. Dead stock = on-hand but zero sales in the window."""
+    from django.db.models import F, Sum, DecimalField, ExpressionWrapper
+    since = timezone.now() - timedelta(days=days)
+    from sales.models import SaleItem
+
+    rev_expr = ExpressionWrapper(
+        F('unit_price') * F('quantity') - F('discount'),
+        output_field=DecimalField(max_digits=16, decimal_places=2))
+    agg = {r['medicine_id']: r for r in (
+        SaleItem.objects
+        .filter(sale__created_at__gte=since, sale__is_returned=False)
+        .values('medicine_id')
+        .annotate(units=Sum('quantity'), revenue=Sum(rev_expr)))}
+
+    rows = []
+    for med in Medicine.objects.all():
+        a = agg.get(med.id)
+        units = (a['units'] if a else 0) or 0
+        revenue = (a['revenue'] if a else Decimal('0.00')) or Decimal('0.00')
+        on_hand = med.sellable_quantity
+        rows.append({'medicine': med, 'units': units, 'revenue': revenue,
+                     'on_hand': on_hand, 'abc': 'C'})
+
+    # ABC by revenue
+    total_rev = sum((r['revenue'] for r in rows), Decimal('0.00'))
+    ranked = sorted(rows, key=lambda x: x['revenue'], reverse=True)
+    cumulative = Decimal('0.00')
+    for r in ranked:
+        if total_rev > 0:
+            cumulative += r['revenue']
+            pct = cumulative / total_rev
+            r['abc'] = 'A' if pct <= Decimal('0.80') else ('B' if pct <= Decimal('0.95') else 'C')
+        else:
+            r['abc'] = 'C'
+
+    dead_stock = sorted([r for r in rows if r['units'] == 0 and r['on_hand'] > 0],
+                        key=lambda x: x['on_hand'], reverse=True)
+    movers = sorted([r for r in rows if r['units'] > 0], key=lambda x: x['units'], reverse=True)
+    top_movers = movers[:15]
+    slow_movers = list(reversed(movers))[:15]
+    abc_counts = {'A': 0, 'B': 0, 'C': 0}
+    for r in rows:
+        abc_counts[r['abc']] += 1
+
+    return {
+        'days': days,
+        'total_revenue': total_rev,
+        'dead_stock': dead_stock,
+        'top_movers': top_movers,
+        'slow_movers': slow_movers,
+        'abc_counts': abc_counts,
+        'abc_rows': ranked,
+    }
+
+
 @transaction.atomic
 def apply_adjustment(*, batch, qty_change, reason, notes="", by_user=None):
     """

@@ -131,6 +131,11 @@ def sale_create(request):
                     prescription.status = 'PARTIAL'
                 prescription.save(update_fields=['status'])
             messages.success(request, f'Sale #{sale.id} created!')
+            # clinical safety: allergy / duplicate-salt warnings when a patient is attached
+            if patient:
+                from inventory.safety import screen_medicines
+                for w in screen_medicines(patient, [si.medicine for si in sale.items.select_related('medicine')]):
+                    messages.warning(request, "⚠️ " + w)
             return redirect('sale_detail', pk=sale.id)
         except Exception as e:
             messages.error(request, str(e))

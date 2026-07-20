@@ -44,12 +44,13 @@
       <select name="patient_id">
         <option value="">-- link to patient --</option>
         {% for p in patients %}
-        <option value="{{ p.id }}" {% if p.id == preselected_patient_id %}selected{% endif %}>{{ p.full_name }} ({{ p.mrn }})</option>
+        <option value="{{ p.id }}" data-allergies="{{ p.allergies|escapejs }}" {% if p.id == preselected_patient_id %}selected{% endif %}>{{ p.full_name }} ({{ p.mrn }})</option>
         {% endfor %}
       </select>
     </div>
     <div id="ws-hint" class="muted" style="font-size:12px;margin-top:2px"></div>
   </div>
+  <div id="safety-warn" role="alert" style="display:none; margin:10px 0; padding:10px 12px; border-radius:8px; background:#fef2f2; border:1px solid #ef4444; color:#991b1b; font-size:13px; font-weight:600;"></div>
   <style>
     .billing-summary-grid {
       display: grid;
@@ -231,12 +232,41 @@
   const meds = [
     {% for m in meds %}
       {id: {{ m.id }}, name: "{{ m.name|escapejs }}", brand: "{{ m.brand|escapejs }}",
+       generic: "{{ m.generic_name|escapejs }}",
        price: {{ m.price }}, wprice: {{ m.wholesale_price|default:0 }},
        upp: {{ m.units_per_pack|default:1 }}, barcode: "{{ m.barcode|escapejs }}",
        qty: {{ m.quantity }} },
     {% endfor %}
   ];
   const byId = {}; meds.forEach(m => byId[m.id] = m);
+
+  // ---- live clinical safety: allergy + duplicate-salt warning ----
+  function checkSafety(){
+    const banner = document.getElementById('safety-warn');
+    if(!banner) return;
+    const psel = document.querySelector('[name="patient_id"]');
+    const raw = (psel && psel.selectedOptions[0]) ? (psel.selectedOptions[0].dataset.allergies || '') : '';
+    const terms = raw.toLowerCase().replace(/[;/\n]/g, ',').split(',').map(s => s.trim()).filter(s => s.length >= 3);
+    const ids = [];
+    document.querySelectorAll('#items [name="medicine_id[]"]').forEach(el => { if (el.value) ids.push(parseInt(el.value)); });
+    const warns = [], seenSalt = {};
+    ids.forEach(id => {
+      const m = byId[id]; if (!m) return;
+      const hay = (m.name + ' ' + (m.generic || '') + ' ' + m.brand).toLowerCase();
+      terms.forEach(t => { if (hay.includes(t)) warns.push("ALLERGY: " + m.name + " may conflict with allergy to '" + t + "'"); });
+      const salt = (m.generic || '').toLowerCase().trim();
+      if (salt) { (seenSalt[salt] = seenSalt[salt] || []).push(m.name); }
+    });
+    Object.keys(seenSalt).forEach(s => { if (seenSalt[s].length > 1) warns.push("DUPLICATE salt (" + s + "): " + seenSalt[s].join(', ')); });
+    if (warns.length) { banner.style.display = 'block'; banner.innerHTML = warns.map(w => '<div>⚠️ ' + w + '</div>').join(''); }
+    else { banner.style.display = 'none'; banner.innerHTML = ''; }
+  }
+  document.addEventListener('change', function(e){
+    if (e.target && (e.target.name === 'patient_id' || e.target.name === 'medicine_id[]')) checkSafety();
+  });
+  const _itemsTable = document.getElementById('items');
+  if (_itemsTable) new MutationObserver(checkSafety).observe(_itemsTable, {childList: true, subtree: true});
+  setTimeout(checkSafety, 300);
 
   const tbody = document.querySelector('#items tbody');
   const addBtn = document.getElementById('add-row');

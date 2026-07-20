@@ -16,6 +16,16 @@
   </form>
 </div>
 
+{% if needs_count %}
+<form method="post" action="{% url 'reorder_to_po' %}" style="margin:0 0 14px;"
+      onsubmit="return confirm('Create draft purchase orders for all {{ needs_count }} item(s) needing reorder?');">
+  {% csrf_token %}
+  <input type="hidden" name="days" value="{{ days }}">
+  <button class="btn" type="submit">⚡ Auto-create draft PO(s) for {{ needs_count }} item(s)</button>
+  <span class="muted" style="font-size:12px;">Grouped by supplier — review &amp; send from the PO desk.</span>
+</form>
+{% endif %}
+
 <p class="muted" style="font-size:13px; margin:0 0 12px;">
   Suggested reorder point = avg daily sales × (lead time 7d + safety 5d). Order qty covers 30 days of demand.
   <strong>{{ needs_count }}</strong> item(s) at or below their suggested point.
