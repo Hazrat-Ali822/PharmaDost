@@ -668,3 +668,98 @@ def medicine_import_catalog(request):
         messages.info(request, "All standard medicines are already loaded in your inventory.")
         
     return redirect('medicine_list')
+
+# ---------------------------------------------------------------------------
+# Expiry management (near-expiry report + one-click return to supplier)
+# ---------------------------------------------------------------------------
+
+@feature_required('inventory')
+def expiry_report(request):
+    """Batches already expired or expiring within `days` (default 90) so the
+    pharmacist can pull them off the shelf and return them to the supplier."""
+    from datetime import timedelta
+    from decimal import Decimal
+    try:
+        days = int(request.GET.get('days', 90))
+    except (ValueError, TypeError):
+        days = 90
+    days = max(1, min(days, 365))
+    today = timezone.localdate()
+    horizon = today + timedelta(days=days)
+
+    batches = (StockBatch.objects
+               .filter(quantity__gt=0, expiry_date__lte=horizon)
+               .select_related('medicine', 'supplier')
+               .order_by('expiry_date'))
+
+    expired, soon = [], []
+    expired_value = Decimal('0.00')
+    soon_value = Decimal('0.00')
+    for b in batches:
+        b.is_exp = b.expiry_date < today
+        b.days_left = (b.expiry_date - today).days
+        b.value = b.cost_price * b.quantity
+        if b.is_exp:
+            expired.append(b)
+            expired_value += b.value
+        else:
+            soon.append(b)
+            soon_value += b.value
+
+    return render(request, 'inventory/expiry_report.html', {
+        'expired': expired, 'soon': soon, 'days': days,
+        'expired_value': expired_value, 'soon_value': soon_value,
+    })
+
+
+@feature_required('inventory')
+@role_required(["ADMIN", "PHARMACIST"])
+def expiry_return(request):
+    """One-click: return the selected batches to their suppliers. Groups the chosen
+    batches by supplier and raises one PurchaseReturn each — reducing stock and our
+    payable — and writes an EXPIRY stock-adjustment trail via the return."""
+    if request.method != 'POST':
+        return redirect('expiry_report')
+    batch_ids = request.POST.getlist('batch_id[]')
+    if not batch_ids:
+        messages.error(request, 'Select at least one batch to return.')
+        return redirect('expiry_report')
+
+    by_supplier = {}
+    for bid in batch_ids:
+        batch = StockBatch.objects.filter(pk=bid, quantity__gt=0).first()
+        if not batch:
+            continue
+        by_supplier.setdefault(batch.supplier_id, []).append(batch)
+
+    made = 0
+    for supplier_id, batches in by_supplier.items():
+        supplier = Supplier.objects.filter(pk=supplier_id).first() if supplier_id else None
+        items = [{"batch_id": b.id, "quantity": b.quantity, "cost_price": b.cost_price} for b in batches]
+        try:
+            create_purchase_return(
+                supplier=supplier, reason='EXPIRY',
+                notes='Auto-return of expired / near-expiry stock',
+                items=items, by_user=request.user)
+            made += 1
+        except ValueError as e:
+            messages.error(request, str(e))
+
+    if made:
+        messages.success(request, f'Created {made} purchase return(s) for the selected stock.')
+    return redirect('preturn_list')
+
+
+@feature_required('inventory')
+def reorder_report(request):
+    """Dynamic reorder suggestions from recent sales velocity (vs static reorder_level)."""
+    from .services import reorder_suggestions
+    try:
+        days = int(request.GET.get('days', 30))
+    except (ValueError, TypeError):
+        days = 30
+    days = max(7, min(days, 180))
+    rows = reorder_suggestions(days=days)
+    needs = [r for r in rows if r['needs']]
+    return render(request, 'inventory/reorder_report.html',
+                  {'rows': rows, 'needs_count': len(needs), 'days': days})

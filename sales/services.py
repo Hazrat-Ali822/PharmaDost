@@ -59,8 +59,11 @@ def create_sale(*, items, sale_type=Sale.RETAIL, customer=None, customer_name=""
             raise ValueError("Quantity must be at least 1.")
         if med.is_expired:
             raise ValueError(f"{med.name} is expired - cannot sell.")
-        if med.quantity < qty:
-            raise ValueError(f"Not enough stock for {med.name}.")
+        # only in-date (non-expired batch) stock is dispensable — never sell expired
+        if med.sellable_quantity < qty:
+            raise ValueError(
+                f"Not enough in-date stock for {med.name} (only {med.sellable_quantity} sellable)."
+            )
 
         if it.get("unit_price") not in (None, ""):
             unit_price = _dec(it["unit_price"])
@@ -79,6 +82,8 @@ def create_sale(*, items, sale_type=Sale.RETAIL, customer=None, customer_name=""
             if chunk.get("batch_id"):
                 batch = StockBatch.objects.get(id=chunk["batch_id"])
             chunk_qty = chunk["quantity"]
+            # capture the actual cost of the batch dispensed (0 for legacy no-batch stock)
+            chunk_cost = batch.cost_price if batch is not None else Decimal("0.00")
             # attach the whole line discount to the first chunk so line_total sums correctly
             item_disc = line_discount if first else Decimal("0.00")
             SaleItem.objects.create(
@@ -88,6 +93,7 @@ def create_sale(*, items, sale_type=Sale.RETAIL, customer=None, customer_name=""
                 unit_price=unit_price,
                 quantity=chunk_qty,
                 discount=item_disc,
+                cost_price=chunk_cost,
             )
             gross += unit_price * chunk_qty
             first = False
@@ -127,17 +133,30 @@ def create_sale(*, items, sale_type=Sale.RETAIL, customer=None, customer_name=""
 
 @transaction.atomic
 def return_sale(sale, by_user=None):
-    """Reverse a sale: return stock to its batches and undo any credit balance."""
+    """Reverse a sale: return stock to its batches and undo any credit balance.
+
+    Returned goods go back to their original batch. If that batch has since expired,
+    the units stay on-hand for the record but are NOT resellable — `reduce_stock`
+    only ever dispenses in-date batches, so expired returns are auto-quarantined.
+    Returns the sale; `sale.quarantined_qty` is set to the count that came back expired."""
+    from django.utils import timezone
     sale = Sale.objects.select_for_update().get(pk=sale.pk)
     if sale.is_returned:
         raise ValueError("Sale already returned.")
 
+    today = timezone.localdate()
+    quarantined = 0
     for item in sale.items.select_related("medicine", "batch"):
         med = Medicine.objects.select_for_update().get(pk=item.medicine_id)
         if item.batch_id:
             batch = StockBatch.objects.select_for_update().get(pk=item.batch_id)
             batch.quantity += item.quantity
             batch.save(update_fields=["quantity"])
+            if batch.expiry_date < today:
+                quarantined += item.quantity
+        else:
+            if med.is_expired:
+                quarantined += item.quantity
         med.quantity += item.quantity
         med.save(update_fields=["quantity"])
 
@@ -150,6 +169,7 @@ def return_sale(sale, by_user=None):
 
     sale.is_returned = True
     sale.save(update_fields=["is_returned"])
+    sale.quarantined_qty = quarantined  # transient, for the caller's message
     return sale
 
 

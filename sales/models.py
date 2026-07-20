@@ -68,6 +68,8 @@ class SaleItem(models.Model):
     unit_price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
     quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     discount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    # actual cost of the dispensed batch, captured at sale time for accurate margins
+    cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
 
     def __str__(self):
         return f"{self.medicine} x {self.quantity}"
@@ -75,6 +77,14 @@ class SaleItem(models.Model):
     @property
     def line_total(self):
         return self.unit_price * self.quantity - self.discount
+
+    @property
+    def line_cost(self):
+        return self.cost_price * self.quantity
+
+    @property
+    def line_profit(self):
+        return self.line_total - self.line_cost
 
 
 class WholesaleOrder(models.Model):

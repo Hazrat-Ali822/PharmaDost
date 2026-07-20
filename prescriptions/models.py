@@ -7,6 +7,7 @@ from inventory.models import Medicine
 class Prescription(models.Model):
     STATUS_CHOICES = (
         ('PENDING', 'Pending'),
+        ('PARTIAL', 'Partially Dispensed'),
         ('DISPENSED', 'Dispensed'),
     )
     appointment = models.ForeignKey(Appointment, on_delete=models.CASCADE, related_name='prescriptions')
