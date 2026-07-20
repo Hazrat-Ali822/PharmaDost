@@ -92,3 +92,28 @@ class MedicationLog(models.Model):
 
     def __str__(self):
         return f"{self.medicine_name} ({self.dosage}) to {self.admission.patient.full_name} by {self.administered_by.email}"
+
+class AdmissionRequest(models.Model):
+    """A doctor's advice that a patient should be admitted. Lands in the reception /
+    ward-desk queue; on confirmation it becomes a real Admission (bed allocated)."""
+    STATUS_CHOICES = [
+        ('Pending', 'Pending'),
+        ('Admitted', 'Admitted'),
+        ('Cancelled', 'Cancelled'),
+    ]
+    patient = models.ForeignKey('patients.Patient', on_delete=models.CASCADE, related_name='admission_requests')
+    advised_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='admission_advices')
+    reason = models.TextField(help_text='Why the patient needs admission')
+    preferred_ward = models.ForeignKey(Ward, on_delete=models.SET_NULL, null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+    admission = models.ForeignKey(Admission, on_delete=models.SET_NULL, null=True, blank=True, related_name='from_request')
+    created_at = models.DateTimeField(default=timezone.now)
+    hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
+
+    objects = TenantManager()
+
+    class Meta:
+        ordering = ('-created_at',)
+
+    def __str__(self):
+        return f"Admission advice: {self.patient.full_name} ({self.status})"

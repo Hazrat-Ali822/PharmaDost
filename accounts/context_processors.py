@@ -44,7 +44,9 @@ def notifications_context(request):
             'imaging_badge_count': 0,
             'ipd_badge_count': 0,
             'ot_badge_count': 0,
-            'pharmacy_badge_count': 0
+            'pharmacy_badge_count': 0,
+            'admission_request_count': 0,
+            'surgery_request_count': 0,
         }
     from .models import Notification
     unread = Notification.objects.filter(user=user, is_read=False).order_by('-created_at')[:5]
@@ -56,6 +58,8 @@ def notifications_context(request):
     ipd_badge_count = 0
     ot_badge_count = 0
     pharmacy_badge_count = 0
+    admission_request_count = 0
+    surgery_request_count = 0
     hospital = getattr(user, 'hospital', None)
     # Fail closed: every non-superuser's badge counts are scoped to their own
     # hospital (None → only hospital-less rows), never another tenant's.
@@ -112,6 +116,20 @@ def notifications_context(request):
         if scope_by_hospital:
             rx_qs = rx_qs.filter(appointment__patient__hospital=hospital)
         pharmacy_badge_count = rx_qs.count()
+
+        # 7. Pending admission requests (doctor -> reception queue)
+        from ipd.models import AdmissionRequest
+        ar_qs = AdmissionRequest.objects.filter(status='Pending')
+        if scope_by_hospital:
+            ar_qs = ar_qs.filter(hospital=hospital)
+        admission_request_count = ar_qs.count()
+
+        # 8. Pending surgery requests (doctor -> OT queue)
+        from ot.models import SurgeryRequest
+        sr_qs = SurgeryRequest.objects.filter(status='Pending')
+        if scope_by_hospital:
+            sr_qs = sr_qs.filter(hospital=hospital)
+        surgery_request_count = sr_qs.count()
     except Exception:
         pass
 
@@ -123,5 +141,7 @@ def notifications_context(request):
         'imaging_badge_count': imaging_badge_count,
         'ipd_badge_count': ipd_badge_count,
         'ot_badge_count': ot_badge_count,
-        'pharmacy_badge_count': pharmacy_badge_count
+        'pharmacy_badge_count': pharmacy_badge_count,
+        'admission_request_count': admission_request_count,
+        'surgery_request_count': surgery_request_count,
     }

@@ -8,9 +8,15 @@
 </div>
 
 <div class="card" style="max-width:600px; margin: 0 auto; padding: 30px;">
+  {% if adm_req %}
+  <div style="background:var(--primary-50,#eef2ff); border:1px solid var(--primary); border-radius:8px; padding:10px 12px; margin-bottom:18px; font-size:13px;">
+    🛏️ Confirming Dr. {{ adm_req.advised_by.first_name|default:adm_req.advised_by.email }}'s advice — <strong>{{ adm_req.reason }}</strong>
+  </div>
+  {% endif %}
   <form method="post" novalidate>
     {% csrf_token %}
-    
+    {% if request_id %}<input type="hidden" name="request_id" value="{{ request_id }}">{% endif %}
+
     {% for field in form %}
     <div class="form-group" style="margin-bottom:20px;">
       <label for="{{ field.id_for_label }}" style="display:block; font-weight:600; margin-bottom:6px; color:var(--text)">

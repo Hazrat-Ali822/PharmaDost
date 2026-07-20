@@ -13,6 +13,10 @@
     {% if nav.billing %}<a class="btn success" href="{% url 'patient_bill' patient.pk %}">💵 Bill / Collect Payment</a>{% endif %}
     {% if nav.lab %}<a class="btn alt" href="{% url 'lab:order_create' %}?patient={{ patient.pk }}">+ Order Lab Test</a>{% endif %}
     {% if nav.imaging %}<a class="btn alt" href="{% url 'imaging:study_create' %}?patient={{ patient.pk }}">+ Imaging Study</a>{% endif %}
+    {% if request.user.role == 'DOCTOR' or request.user.role == 'ADMIN' or request.user.is_superuser %}
+      {% if nav.ipd %}<a class="btn alt" href="{% url 'ipd:admission_advise' patient.pk %}">🛏️ Advise Admission</a>{% endif %}
+      {% if nav.ot %}<a class="btn alt" href="{% url 'ot:surgery_advise' patient.pk %}">🔪 Advise Surgery</a>{% endif %}
+    {% endif %}
     <a class="btn alt" href="{% url 'patient_edit' patient.pk %}">Edit</a>
     <a class="btn alt" href="{% url 'patient_list' %}">Back</a>
   </div>

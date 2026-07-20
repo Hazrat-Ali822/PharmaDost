@@ -1,0 +1,32 @@
+{% extends 'partials/base.html' %}
+{% block title %}Advise Admission{% endblock %}
+{% block page_title %}Advise Admission{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Advise Admission</h2>
+  <a class="btn alt" href="{% url 'patient_detail' patient.pk %}">Back to Patient</a>
+</div>
+
+<div class="card" style="max-width:600px; margin:0 auto; padding:28px;">
+  <p style="margin:0 0 18px; color:var(--muted); font-size:14px;">
+    Patient: <strong>{{ patient.full_name }}</strong> <span class="muted">({{ patient.mrn }})</span>
+  </p>
+  <form method="post">
+    {% csrf_token %}
+    <div style="margin-bottom:18px;">
+      <label style="display:block; font-weight:600; margin-bottom:6px;">Reason for admission *</label>
+      <textarea name="reason" rows="3" class="input" required placeholder="e.g. Severe dehydration, needs IV fluids &amp; observation"></textarea>
+    </div>
+    <div style="margin-bottom:22px;">
+      <label style="display:block; font-weight:600; margin-bottom:6px;">Preferred ward (optional)</label>
+      <select name="preferred_ward" class="input">
+        <option value="">— Reception will decide —</option>
+        {% for w in wards %}<option value="{{ w.id }}">{{ w }}</option>{% endfor %}
+      </select>
+    </div>
+    <button class="btn" type="submit">🛏️ Send to Reception</button>
+    <span class="muted" style="font-size:12px;">Reception/ward will allot a bed and confirm the admission.</span>
+  </form>
+</div>
+<style>.input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card-bg);color:var(--text);font-size:14px;}</style>
+{% endblock %}
