@@ -72,8 +72,13 @@ class SiteSettings(models.Model):
         return f"Site settings ({self.brand_name})"
 
     def save(self, *args, **kwargs):
-        if not self.hospital:
-            self.pk = 1  # enforce singleton only for global settings
+        # NOTE: we deliberately do NOT force pk=1 for the global row anymore.
+        # Inserting an explicit primary key on PostgreSQL leaves the id sequence
+        # behind, so the next hospital's settings row would collide on id=1
+        # ("duplicate key ... already exists"). Letting every row take its id from
+        # the sequence keeps the global singleton at whatever id it already has and
+        # never desyncs the sequence. `load()` guarantees there is only one global
+        # (hospital-less) row.
         super().save(*args, **kwargs)
 
     def reset_to_defaults(self):
@@ -105,7 +110,11 @@ class SiteSettings(models.Model):
                     receipt_footer=SITE_DEFAULTS["receipt_footer"],
                 )
             return obj
-        obj, _ = cls.objects.get_or_create(pk=1)
+        # global (hospital-less) singleton: reuse the existing hospital-less row
+        # (historically pk=1), else create one via the id sequence
+        obj = cls.objects.filter(hospital__isnull=True).order_by('id').first()
+        if obj is None:
+            obj = cls.objects.create()
         return obj
 
 
