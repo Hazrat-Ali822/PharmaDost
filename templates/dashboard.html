@@ -14,10 +14,10 @@
       <a class="btn alt" href="{% url 'user_mgmt:user_list' %}" style="border-color:#10b981; color:#10b981; display:inline-flex; align-items:center;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px; margin-right:4px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Users</a>
       <a class="btn alt" href="{% url 'user_mgmt:backup_download' %}" style="border-color:#f59e0b; color:#f59e0b; display:inline-flex; align-items:center;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px; margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Backup</a>
     {% endif %}
-    <a class="btn" href="{% url 'patient_add' %}">+ Patient</a>
-    <a class="btn alt" href="{% url 'appointment_add' %}">Book Appointment</a>
-    <a class="btn alt" href="{% url 'sale_create' %}">New Bill</a>
-    <a class="btn alt" href="{% url 'invoice_create' %}">Create Invoice</a>
+    {% if nav.patients %}<a class="btn" href="{% url 'patient_add' %}">+ Patient</a>{% endif %}
+    {% if nav.appointments %}<a class="btn alt" href="{% url 'appointment_add' %}">Book Appointment</a>{% endif %}
+    {% if nav.pos %}<a class="btn alt" href="{% url 'sale_create' %}">New Bill</a>{% endif %}
+    {% if nav.billing %}<a class="btn alt" href="{% url 'invoice_create' %}">Create Invoice</a>{% endif %}
   </div>
 </div>
 
@@ -43,29 +43,37 @@
   </h3>
   <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px;">
     
+    {% if nav.opd %}
     <div class="card" style="padding:15px; text-align:center; background:rgba(79, 70, 229, 0.05); border-color:rgba(79, 70, 229, 0.15);">
       <div style="font-size:24px; margin-bottom:8px;">🩺</div>
       <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">OPD Consultations</div>
       <div style="font-size:20px; font-weight:800; margin-top:5px; color:#4f46e5;">Rs. {{ opd_rev|floatformat:0 }}</div>
     </div>
+    {% endif %}
 
+    {% if nav.lab %}
     <div class="card" style="padding:15px; text-align:center; background:rgba(236, 72, 153, 0.05); border-color:rgba(236, 72, 153, 0.15);">
       <div style="font-size:24px; margin-bottom:8px;">🔬</div>
       <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Laboratory</div>
       <div style="font-size:20px; font-weight:800; margin-top:5px; color:#ec4899;">Rs. {{ lab_rev|floatformat:0 }}</div>
     </div>
+    {% endif %}
 
+    {% if nav.imaging %}
     <div class="card" style="padding:15px; text-align:center; background:rgba(59, 130, 246, 0.05); border-color:rgba(59, 130, 246, 0.15);">
       <div style="font-size:24px; margin-bottom:8px;">🩻</div>
       <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Radiology / Scans</div>
       <div style="font-size:20px; font-weight:800; margin-top:5px; color:#3b82f6;">Rs. {{ imaging_rev|floatformat:0 }}</div>
     </div>
+    {% endif %}
 
+    {% if nav.pos or nav.inventory %}
     <div class="card" style="padding:15px; text-align:center; background:rgba(16, 185, 129, 0.05); border-color:rgba(16, 185, 129, 0.15);">
       <div style="font-size:24px; margin-bottom:8px;">💊</div>
       <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Pharmacy Sales</div>
       <div style="font-size:20px; font-weight:800; margin-top:5px; color:#10b981;">Rs. {{ pharmacy_rev|floatformat:0 }}</div>
     </div>
+    {% endif %}
 
   </div>
 </div>
