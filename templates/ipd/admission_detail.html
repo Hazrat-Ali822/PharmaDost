@@ -9,7 +9,7 @@
     {% if admission.status == 'Admitted' %}
       <a class="btn success" href="{% url 'ipd:doctor_round_add' admission.pk %}" style="display:inline-flex; align-items:center; background:#22c55e; color:white;">Record Round</a>
       <a class="btn" href="{% url 'ipd:medication_log_add' admission.pk %}" style="display:inline-flex; align-items:center; background:var(--primary); color:white;">Record Medication</a>
-      <a class="btn danger" href="{% url 'ipd:admission_discharge' admission.pk %}" style="display:inline-flex; align-items:center; background:#ef4444; color:white;">Discharge Patient</a>
+      {% if nav.ipd %}<a class="btn danger" href="{% url 'ipd:admission_discharge' admission.pk %}" style="display:inline-flex; align-items:center; background:#ef4444; color:white;">Discharge Patient</a>{% endif %}
     {% endif %}
   </div>
 </div>

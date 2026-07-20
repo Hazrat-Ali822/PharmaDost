@@ -11,6 +11,7 @@ class User(AbstractUser):
         ('ADMIN', 'Admin'),
         ('RECEPTIONIST', 'Receptionist'),
         ('DOCTOR', 'Doctor'),
+        ('NURSE', 'Ward Staff / Nurse'),
         ('PHARMACIST', 'Pharmacist'),
         ('WHOLESALE', 'Wholesale Operator'),
         ('LABTECH', 'Lab Technician'),

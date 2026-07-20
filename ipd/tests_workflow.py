@@ -90,3 +90,43 @@ class HandoffWorkflowTest(TestCase):
         self.assertEqual(r.status_code, 302)
         ar.refresh_from_db()
         self.assertEqual(ar.status, 'Cancelled')
+
+
+class NurseRoleTest(TestCase):
+    """Ward Staff / Nurse: can do ward work (view admissions, log meds, rounds)
+    but NOT admit, discharge or manage ward structure (billing/setup)."""
+    def setUp(self):
+        self.h = Hospital.objects.create(name='H', slug='h', expiry_date=date.today() + timedelta(days=30))
+        self.nurse = User.objects.create_user(email='n@n.com', password='pw', role='NURSE', hospital=self.h)
+        self.doc_user = User.objects.create_user(email='d@d.com', password='pw', role='DOCTOR', hospital=self.h)
+        self.doctor = Doctor.objects.create(user=self.doc_user, full_name='Dr D', opd_fee=Decimal('100'))
+        self.patient = Patient.objects.create(full_name='P One', gender='M', hospital=self.h)
+        self.ward = Ward.objects.create(name='Gen', ward_type='General Male',
+                                        daily_rate=Decimal('1000'), hospital=self.h)
+        self.bed = Bed.objects.create(bed_number='B1', ward=self.ward, status='Occupied', hospital=self.h)
+        self.adm = Admission.objects.create(patient=self.patient, bed=self.bed,
+                                            admission_reason='obs', attending_doctor=self.doctor,
+                                            hospital=self.h)
+
+    def test_nurse_can_do_ward_work(self):
+        c = Client(); c.force_login(self.nurse)
+        self.assertEqual(c.get(reverse('ipd:admission_list')).status_code, 200)
+        self.assertEqual(c.get(reverse('ipd:admission_detail', args=[self.adm.pk])).status_code, 200)
+        self.assertEqual(c.get(reverse('ipd:medication_log_add', args=[self.adm.pk])).status_code, 200)
+        self.assertEqual(c.get(reverse('ipd:doctor_round_add', args=[self.adm.pk])).status_code, 200)
+        self.assertEqual(c.get(reverse('ipd:ward_bed_list')).status_code, 200)
+
+    def test_nurse_cannot_admit_or_discharge(self):
+        c = Client(); c.force_login(self.nurse)
+        self.assertEqual(c.get(reverse('ipd:admission_create')).status_code, 403)
+        self.assertEqual(c.get(reverse('ipd:admission_discharge', args=[self.adm.pk])).status_code, 403)
+        self.assertEqual(c.get(reverse('ipd:ward_create')).status_code, 403)
+        self.assertEqual(c.get(reverse('ipd:admission_request_list')).status_code, 403)
+
+    def test_nurse_dashboard_lists_admitted(self):
+        c = Client(); c.force_login(self.nurse)
+        resp = c.get(reverse('dashboard'))          # home routes NURSE to their dashboard
+        self.assertEqual(resp.status_code, 302)
+        resp2 = c.get(reverse('user_mgmt:post_login_redirect'))
+        self.assertEqual(resp2.status_code, 200)
+        self.assertContains(resp2, 'P One')
