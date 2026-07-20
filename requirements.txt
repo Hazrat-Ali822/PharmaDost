@@ -1,0 +1,22 @@
+# PharmaDost — runtime dependencies (web server + desktop app)
+# Install with:  pip install -r requirements.txt
+# Pins match the tested .venv. For desktop-app packaging deps see requirements-build.txt
+
+# Core framework
+Django==4.2.14
+asgiref==3.11.1
+sqlparse==0.5.5
+tzdata==2026.2
+typing_extensions==4.15.0
+
+# Configuration / database
+python-dotenv==1.0.1
+dj-database-url==3.1.2
+psycopg2-binary==2.9.12      # PostgreSQL (Supabase) in production; SQLite needs nothing
+
+# Static file serving (waitress desktop + PythonAnywhere)
+whitenoise==6.7.0
+waitress==3.0.0
+
+# Media / image handling (logos, scan images)
+pillow==12.3.0

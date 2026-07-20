@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.db import transaction
 from django.utils import timezone
 from django.db.models import Q
 from accounts.decorators import feature_required
@@ -29,20 +30,22 @@ def surgery_create(request):
     if request.method == 'POST':
         form = SurgeryRecordForm(request.POST)
         if form.is_valid():
-            record = form.save()
-            
-            # Create billing invoice for the surgery procedure
             from billing.services import create_service_invoice
-            items = [
-                (f"OT Surgery: {record.procedure.name} (Surgeon: Dr. {record.lead_surgeon.name})", record.procedure.standard_charge),
-            ]
-            create_service_invoice(
-                patient=record.patient,
-                items=items,
-                created_by=request.user,
-                paid=0,
-            )
-            
+            with transaction.atomic():
+                record = form.save()
+
+                # Create billing invoice for the surgery procedure (atomic with the
+                # record — never leave a surgery saved but unbilled, or vice-versa).
+                items = [
+                    (f"OT Surgery: {record.procedure.name} (Surgeon: Dr. {record.lead_surgeon.full_name})", record.procedure.standard_charge),
+                ]
+                create_service_invoice(
+                    patient=record.patient,
+                    items=items,
+                    created_by=request.user,
+                    paid=0,
+                )
+
             messages.success(request, f"Surgery for {record.patient.full_name} scheduled successfully. Surgery invoice generated.")
             return redirect('ot:surgery_detail', pk=record.pk)
     else:

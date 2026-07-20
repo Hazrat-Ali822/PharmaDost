@@ -26,6 +26,20 @@ RESULT_ROLES = ["ADMIN", "LABTECH"]
 VIEW_ROLES = ["ADMIN", "DOCTOR", "LABTECH", "RECEPTIONIST"]
 
 
+def _scoped_orders(request):
+    """TestOrder has no hospital column of its own — scope through the patient's
+    hospital, and restrict a doctor to the orders they placed. Mirrors order_list
+    so detail/report/results/payment can't be reached cross-tenant by guessing ids."""
+    qs = TestOrder.objects.all()
+    if not request.user.is_superuser:
+        # fail closed: a hospital-less non-superuser sees only hospital-less rows,
+        # never another tenant's orders
+        qs = qs.filter(patient__hospital=request.user.hospital)
+        if getattr(request.user, "role", None) == "DOCTOR":
+            qs = qs.filter(ordered_by=request.user)
+    return qs
+
+
 @feature_required('lab')
 def order_list(request):
     orders = (
@@ -86,7 +100,7 @@ def order_create(request):
 @feature_required('lab')
 def order_detail(request, order_id):
     order = get_object_or_404(
-        TestOrder.objects.select_related("patient", "ordered_by"),
+        _scoped_orders(request).select_related("patient", "ordered_by"),
         pk=order_id
     )
     return render(request, "lab/order_detail.html", {"order": order})
@@ -94,7 +108,7 @@ def order_detail(request, order_id):
 
 @role_required(RESULT_ROLES)
 def order_results_edit(request, order_id):
-    order = get_object_or_404(TestOrder, pk=order_id)
+    order = get_object_or_404(_scoped_orders(request), pk=order_id)
     if request.method == "POST":
         formset = TestResultFormSet(request.POST, instance=order)
         if formset.is_valid():
@@ -118,7 +132,7 @@ def order_results_edit(request, order_id):
 
 @role_required(RESULT_ROLES)
 def order_mark_completed(request, order_id):
-    order = get_object_or_404(TestOrder, pk=order_id)
+    order = get_object_or_404(_scoped_orders(request), pk=order_id)
     order.status = "Completed"
     order.save(update_fields=["status"])
     messages.success(request, "Order marked as Completed.")
@@ -128,7 +142,7 @@ def order_mark_completed(request, order_id):
 @feature_required('lab')
 def order_report(request, order_id):
     order = get_object_or_404(
-        TestOrder.objects.select_related("patient", "ordered_by"),
+        _scoped_orders(request).select_related("patient", "ordered_by"),
         pk=order_id
     )
     return render(request, "lab/order_report.html", {"order": order})
@@ -178,7 +192,7 @@ def test_catalog(request):
 @feature_required('lab')
 @require_POST
 def collect_payment(request, order_id):
-    order = get_object_or_404(TestOrder, pk=order_id)
+    order = get_object_or_404(_scoped_orders(request), pk=order_id)
     if order.payment_status == 'Pending':
         total_price = sum(t.price for t in order.tests.all())
         order.payment_status = 'Paid'

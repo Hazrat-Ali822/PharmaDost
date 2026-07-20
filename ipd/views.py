@@ -1,5 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.utils import timezone
 from accounts.decorators import feature_required
 from .models import Ward, Bed, Admission, DoctorRound, MedicationLog
@@ -20,12 +22,25 @@ def admission_create(request):
         form = AdmissionForm(request.POST)
         if form.is_valid():
             admission = form.save(commit=False)
-            bed = admission.bed
-            bed.status = 'Occupied'
-            bed.save()
-            admission.save()
-            messages.success(request, f"Patient {admission.patient.full_name} admitted successfully to Bed {bed.bed_number}.")
-            return redirect('ipd:admission_detail', pk=admission.pk)
+            try:
+                with transaction.atomic():
+                    # Lock the chosen bed and re-check it is still free, so two
+                    # receptionists can't admit two patients into the same bed.
+                    bed = Bed.objects.select_for_update().get(pk=admission.bed_id)
+                    if bed.status != 'Available':
+                        raise ValidationError(f"Bed {bed.bed_number} is no longer available.")
+                    # A patient can only occupy one bed at a time.
+                    if Admission.objects.filter(patient=admission.patient, status='Admitted').exists():
+                        raise ValidationError(f"{admission.patient.full_name} already has an active admission.")
+                    bed.status = 'Occupied'
+                    bed.save(update_fields=['status'])
+                    admission.save()
+                messages.success(request, f"Patient {admission.patient.full_name} admitted successfully to Bed {bed.bed_number}.")
+                return redirect('ipd:admission_detail', pk=admission.pk)
+            except Bed.DoesNotExist:
+                messages.error(request, "Selected bed was not found.")
+            except ValidationError as e:
+                messages.error(request, e.messages[0] if getattr(e, 'messages', None) else str(e))
     else:
         initial = {}
         bed_id = request.GET.get('bed_id')
@@ -99,41 +114,44 @@ def admission_discharge(request, pk):
     if request.method == 'POST':
         form = DischargeForm(request.POST, instance=admission)
         if form.is_valid():
-            adm = form.save(commit=False)
-            adm.status = 'Discharged'
-            adm.discharge_date = timezone.now()
-            adm.save()
-            
-            # Free the bed
-            bed = adm.bed
-            bed.status = 'Available'
-            bed.save()
-            
-            # Auto-calculate bed charges and create billing invoice
-            days = (timezone.now() - adm.admission_date).days
-            if days == 0:
-                days = 1
-            est_bed_charges = days * adm.bed.ward.daily_rate
-            
-            from billing.services import create_service_invoice
-            items = [
-                (f"IPD Bed Charges: Bed {adm.bed.bed_number} ({adm.bed.ward.name}) — {days} Day(s)", est_bed_charges),
-            ]
-            create_service_invoice(
-                patient=adm.patient,
-                items=items,
-                created_by=request.user,
-                paid=0,
-            )
-            
+            with transaction.atomic():
+                adm = form.save(commit=False)
+                adm.status = 'Discharged'
+                adm.discharge_date = timezone.now()
+                adm.save()
+
+                # Free the bed (locked so a concurrent admission can't clobber it)
+                bed = Bed.objects.select_for_update().get(pk=adm.bed_id)
+                bed.status = 'Available'
+                bed.save(update_fields=['status'])
+
+                # Bed charges = calendar days the bed was occupied, counting the
+                # admission day and the discharge day (inclusive), minimum one day —
+                # this is how hospital room bills are normally itemised.
+                days = (adm.discharge_date.date() - adm.admission_date.date()).days + 1
+                if days < 1:
+                    days = 1
+                est_bed_charges = days * adm.bed.ward.daily_rate
+
+                from billing.services import create_service_invoice
+                items = [
+                    (f"IPD Bed Charges: Bed {adm.bed.bed_number} ({adm.bed.ward.name}) — {days} Day(s)", est_bed_charges),
+                ]
+                create_service_invoice(
+                    patient=adm.patient,
+                    items=items,
+                    created_by=request.user,
+                    paid=0,
+                )
+
             messages.success(request, f"Patient {adm.patient.full_name} has been discharged. Bed charges invoice generated.")
             return redirect('ipd:admission_detail', pk=adm.pk)
     else:
         form = DischargeForm(instance=admission)
-        
-    # Calculate days stayed
-    days = (timezone.now() - admission.admission_date).days
-    if days == 0:
+
+    # Estimated days stayed (inclusive of admission + today), for the confirm screen
+    days = (timezone.localdate() - admission.admission_date.date()).days + 1
+    if days < 1:
         days = 1
     est_bed_charges = days * admission.bed.ward.daily_rate
     

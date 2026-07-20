@@ -1,0 +1,12 @@
+# PharmaDost — extra dependencies for building the local Windows desktop .exe
+# (PyInstaller). Not needed to run the server. Windows only.
+# Install with:  pip install -r requirements-build.txt
+
+-r requirements.txt
+
+pyinstaller==6.10.0
+pyinstaller-hooks-contrib==2026.6
+altgraph==0.17.5
+packaging==26.2
+pefile==2024.8.26
+pywin32-ctypes==0.2.3

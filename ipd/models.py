@@ -62,7 +62,7 @@ class Admission(models.Model):
     objects = TenantManager()
 
     def __str__(self):
-        return f"Admission: {self.patient.name} ({self.status})"
+        return f"Admission: {self.patient.full_name} ({self.status})"
 
 class DoctorRound(models.Model):
     admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name='rounds')
@@ -77,7 +77,7 @@ class DoctorRound(models.Model):
     objects = TenantManager()
 
     def __str__(self):
-        return f"Round: {self.admission.patient.name} at {self.round_time.strftime('%Y-%m-%d %H:%M')}"
+        return f"Round: {self.admission.patient.full_name} at {self.round_time.strftime('%Y-%m-%d %H:%M')}"
 
 class MedicationLog(models.Model):
     admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name='medication_logs')

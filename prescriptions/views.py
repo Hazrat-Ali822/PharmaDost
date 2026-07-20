@@ -9,9 +9,35 @@ from .forms import PrescriptionForm, PrescriptionItemFormSet, RxPresetForm, RxPr
 from .models import Prescription, RxPreset, RxPresetItem
 
 
+def _scoped_prescriptions(request):
+    """Prescription has no hospital column — scope through the appointment's patient
+    hospital, and restrict a doctor to their own patients' prescriptions.
+
+    Fail CLOSED: every non-superuser is filtered by their own hospital even when
+    that hospital is None (then they only see hospital-less rows, never another
+    tenant's). Only superusers see across hospitals."""
+    qs = Prescription.objects.all()
+    if not request.user.is_superuser:
+        qs = qs.filter(appointment__patient__hospital=request.user.hospital)
+        if getattr(request.user, "role", None) == "DOCTOR":
+            qs = qs.filter(appointment__doctor__user=request.user)
+    return qs
+
+
+def _scoped_appointments(request):
+    """Same tenant/doctor scoping for the appointment a prescription is written against,
+    so a user can't prescribe on another hospital's / another doctor's appointment."""
+    qs = Appointment.objects.all()
+    if not request.user.is_superuser:
+        qs = qs.filter(patient__hospital=request.user.hospital)
+        if getattr(request.user, "role", None) == "DOCTOR":
+            qs = qs.filter(doctor__user=request.user)
+    return qs
+
+
 @feature_required('prescriptions')
 def prescription_create(request, appointment_id):
-    appointment = get_object_or_404(Appointment, pk=appointment_id)
+    appointment = get_object_or_404(_scoped_appointments(request), pk=appointment_id)
     patient = appointment.patient
 
     if request.method == 'POST':
@@ -149,8 +175,8 @@ def _order_scans(scan_types, patient, user):
 @feature_required('prescriptions')
 def prescription_list(request):
     q = request.GET.get('q', '').strip()
-    prescriptions = Prescription.objects.select_related('appointment__patient', 'appointment__doctor').order_by('-created_at')
-    
+    prescriptions = _scoped_prescriptions(request).select_related('appointment__patient', 'appointment__doctor').order_by('-created_at')
+
     if q:
         prescriptions = prescriptions.filter(
             Q(appointment__patient__full_name__icontains=q) |
@@ -168,7 +194,7 @@ def prescription_list(request):
 @feature_required('prescriptions')
 def prescription_detail(request, pk):
     prescription = get_object_or_404(
-        Prescription.objects.select_related('appointment__patient', 'appointment__doctor').prefetch_related('items__medicine'),
+        _scoped_prescriptions(request).select_related('appointment__patient', 'appointment__doctor').prefetch_related('items__medicine'),
         pk=pk
     )
     return render(request, 'prescriptions/prescription_detail.html', {'prescription': prescription})
@@ -177,7 +203,7 @@ def prescription_detail(request, pk):
 @feature_required('prescriptions')
 def prescription_edit(request, pk):
     prescription = get_object_or_404(
-        Prescription.objects.select_related('appointment__patient', 'appointment__doctor'),
+        _scoped_prescriptions(request).select_related('appointment__patient', 'appointment__doctor'),
         pk=pk
     )
     appointment = prescription.appointment

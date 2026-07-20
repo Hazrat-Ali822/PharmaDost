@@ -10,7 +10,7 @@
 <div class="card" style="max-width:600px; margin: 0 auto; padding: 30px;">
   <div style="background:var(--bg); border: 1px solid var(--border); padding:15px; border-radius:8px; margin-bottom:25px;">
     <h4 style="margin:0 0 6px 0; font-weight:700;">{{ admission.patient.full_name }}</h4>
-    <p style="margin:0; font-size:13px; color:var(--muted)">Bed {{ admission.bed.bed_number }} ({{ admission.bed.ward.name }}) | Attending: Dr. {{ admission.attending_doctor.name }}</p>
+    <p style="margin:0; font-size:13px; color:var(--muted)">Bed {{ admission.bed.bed_number }} ({{ admission.bed.ward.name }}) | Attending: Dr. {{ admission.attending_doctor.full_name }}</p>
   </div>
 
   <form method="post" novalidate>

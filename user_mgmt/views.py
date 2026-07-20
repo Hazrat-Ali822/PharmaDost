@@ -76,11 +76,14 @@ def dashboard_router(request):
     }
 
     hospital = getattr(request.user, 'hospital', None)
+    # Fail closed: a non-superuser's dashboard is scoped to their own hospital
+    # (None → only hospital-less rows), never another tenant's.
+    scope_by_hospital = not request.user.is_superuser
 
     if ctx['role'] == 'SONOGRAPHER':
         from imaging.models import ImagingStudy
         studies = ImagingStudy.objects.all()
-        if hospital:
+        if scope_by_hospital:
             studies = studies.filter(patient__hospital=hospital)
         pending = studies.exclude(status__in=['Reported', 'Delivered'])
         ctx['pending_studies'] = pending.order_by('study_date')[:15]
@@ -90,7 +93,7 @@ def dashboard_router(request):
     elif ctx['role'] == 'LABTECH':
         from lab.models import TestOrder
         orders = TestOrder.objects.select_related('patient').prefetch_related('results')
-        if hospital:
+        if scope_by_hospital:
             orders = orders.filter(patient__hospital=hospital)
         done = ['Completed', 'Verified', 'Delivered']
         pending = orders.exclude(status__in=done)
@@ -111,7 +114,7 @@ def dashboard_router(request):
         ctx['sales_count'] = sales.count()
         ctx['revenue_collected'] = sales.aggregate(s=Sum('paid'))['s'] or 0
         pending_rx = Prescription.objects.filter(status='PENDING').select_related('appointment__patient', 'appointment__doctor__user').prefetch_related('items__medicine')
-        if hospital:
+        if scope_by_hospital:
             pending_rx = pending_rx.filter(appointment__patient__hospital=hospital)
         ctx['pending_prescriptions'] = pending_rx.order_by('-created_at')[:20]
 

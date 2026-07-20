@@ -29,7 +29,7 @@
         <td><strong>{{ s.patient.full_name }}</strong></td>
         <td><span style="color:var(--primary); font-weight:600;">{{ s.procedure.name }}</span></td>
         <td>{{ s.start_time|date:"Y-m-d H:i" }}</td>
-        <td>Dr. {{ s.lead_surgeon.name }}</td>
+        <td>Dr. {{ s.lead_surgeon.full_name }}</td>
         <td>
           {% if s.end_time %}
           <span class="badge success" style="background:#22c55e; color:white; padding:3px 8px; border-radius:6px; font-size:11px;">Scheduled</span>
@@ -69,7 +69,7 @@
         <td><strong>{{ s.patient.full_name }}</strong></td>
         <td>{{ s.procedure.name }}</td>
         <td>{{ s.start_time|date:"Y-m-d" }}</td>
-        <td>Dr. {{ s.lead_surgeon.name }}</td>
+        <td>Dr. {{ s.lead_surgeon.full_name }}</td>
         <td>{{ s.anesthesia_type }}</td>
         <td>
           {% if s.outcome == 'Successful' %}

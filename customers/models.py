@@ -2,6 +2,7 @@ from decimal import Decimal
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+from saas.utils import TenantManager
 
 
 class Customer(models.Model):
@@ -21,6 +22,9 @@ class Customer(models.Model):
     balance = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))  # outstanding owed by customer
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(default=timezone.now)
+    hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
+
+    objects = TenantManager()
 
     class Meta:
         ordering = ("name",)
@@ -50,7 +54,10 @@ class CustomerPayment(models.Model):
     linked_sale = models.ForeignKey(
         "sales.Sale", null=True, blank=True, on_delete=models.SET_NULL, related_name="customer_payments"
     )
+    hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
+
+    objects = TenantManager()
 
     class Meta:
         ordering = ("-date", "-created_at")

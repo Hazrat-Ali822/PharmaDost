@@ -26,7 +26,7 @@
         <span class="muted">Admitted On:</span> <strong>{{ adm.admission_date|date:"Y-m-d H:i" }}</strong>
       </p>
       <p style="margin-bottom:8px; font-size:13.5px;">
-        <span class="muted">Attending Doctor:</span> <strong>Dr. {{ adm.attending_doctor.name }}</strong>
+        <span class="muted">Attending Doctor:</span> <strong>Dr. {{ adm.attending_doctor.full_name }}</strong>
       </p>
       <p style="margin-bottom:15px; font-size:13.5px;">
         <span class="muted">Reason:</span> {{ adm.admission_reason|truncatechars:50 }}
@@ -64,7 +64,7 @@
         <td>{{ adm.bed.ward.name }} - Bed {{ adm.bed.bed_number }}</td>
         <td>{{ adm.admission_date|date:"Y-m-d" }}</td>
         <td>{{ adm.discharge_date|date:"Y-m-d" }}</td>
-        <td>Dr. {{ adm.attending_doctor.name }}</td>
+        <td>Dr. {{ adm.attending_doctor.full_name }}</td>
         <td>
           <a class="btn sm alt" href="{% url 'ipd:admission_detail' adm.pk %}">Discharge Summary</a>
         </td>
