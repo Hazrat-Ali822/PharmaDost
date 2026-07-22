@@ -4,6 +4,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from accounts.decorators import feature_required, role_required
 from accounts.models import Notification
@@ -13,10 +14,34 @@ from patients.models import Patient
 from .models import Ward, Bed, Admission, DoctorRound, MedicationLog, AdmissionRequest
 from .forms import WardForm, BedForm, AdmissionForm, DoctorRoundForm, DischargeForm, MedicationLogForm
 
+def _scoped_admissions(request):
+    """Admissions this user is allowed to see.
+
+    `Admission` carries a hospital FK, so `TenantManager` already keeps tenants
+    apart. This adds the *clinical* narrowing on top: a doctor sees only their
+    own inpatients — the ones they are attending, plus the ones they advised for
+    admission (reception may allot a different attending doctor, but the doctor
+    who asked for the bed still owns that patient). Mirrors `_scoped_orders` in
+    lab and `_scoped_studies` in imaging, so a doctor cannot reach a colleague's
+    ward chart by guessing an admission id.
+
+    Everyone else with `ipd`/`ward` (admin, reception, nurse) needs the whole
+    ward to do their job, so they are not narrowed.
+    """
+    qs = Admission.objects.all()
+    if getattr(request.user, 'role', None) == 'DOCTOR' and not request.user.is_superuser:
+        qs = qs.filter(
+            Q(attending_doctor__user=request.user)
+            | Q(from_request__advised_by=request.user)
+        ).distinct()
+    return qs
+
+
 @feature_required('ipd', 'ward')
 def admission_list(request):
-    active_admissions = Admission.objects.filter(status='Admitted').select_related('patient', 'bed__ward', 'attending_doctor')
-    past_admissions = Admission.objects.filter(status='Discharged').select_related('patient', 'bed__ward', 'attending_doctor').order_by('-discharge_date')[:50]
+    scoped = _scoped_admissions(request)
+    active_admissions = scoped.filter(status='Admitted').select_related('patient', 'bed__ward', 'attending_doctor')
+    past_admissions = scoped.filter(status='Discharged').select_related('patient', 'bed__ward', 'attending_doctor').order_by('-discharge_date')[:50]
     return render(request, 'ipd/admission_list.html', {
         'active_admissions': active_admissions,
         'past_admissions': past_admissions,
@@ -78,7 +103,8 @@ def admission_create(request):
 
 @feature_required('ipd', 'ward')
 def admission_detail(request, pk):
-    admission = get_object_or_404(Admission.objects.select_related('patient', 'bed__ward', 'attending_doctor'), pk=pk)
+    admission = get_object_or_404(
+        _scoped_admissions(request).select_related('patient', 'bed__ward', 'attending_doctor'), pk=pk)
     rounds = admission.rounds.all().order_by('-round_time')
     medication_logs = (admission.medication_logs.all()
                        .select_related('administered_by', 'medicine')
@@ -118,7 +144,7 @@ def admission_detail(request, pk):
 
 @feature_required('ipd', 'ward')
 def medication_log_add(request, pk):
-    admission = get_object_or_404(Admission, pk=pk)
+    admission = get_object_or_404(_scoped_admissions(request), pk=pk)
     if request.method == 'POST':
         form = MedicationLogForm(request.POST)
         if form.is_valid():
@@ -190,7 +216,7 @@ def _pharmacy_medicines():
 
 @feature_required('ipd', 'ward')
 def doctor_round_add(request, pk):
-    admission = get_object_or_404(Admission, pk=pk)
+    admission = get_object_or_404(_scoped_admissions(request), pk=pk)
     if request.method == 'POST':
         form = DoctorRoundForm(request.POST)
         if form.is_valid():
@@ -208,7 +234,7 @@ def doctor_round_add(request, pk):
 
 @feature_required('ipd')
 def admission_discharge(request, pk):
-    admission = get_object_or_404(Admission, pk=pk)
+    admission = get_object_or_404(_scoped_admissions(request), pk=pk)
     if admission.status == 'Discharged':
         messages.error(request, "Patient is already discharged.")
         return redirect('ipd:admission_detail', pk=admission.pk)
@@ -386,11 +412,17 @@ def admission_advise(request, patient_id):
 
 @feature_required('ipd')
 def admission_request_list(request):
-    """Reception / ward queue of pending admission advices to act on."""
-    pending = (AdmissionRequest.objects.filter(status='Pending')
+    """Reception / ward queue of pending admission advices to act on.
+
+    Reception and admin act on the whole queue; a doctor only follows up the
+    advices they raised themselves."""
+    qs = AdmissionRequest.objects.all()
+    if getattr(request.user, 'role', None) == 'DOCTOR' and not request.user.is_superuser:
+        qs = qs.filter(advised_by=request.user)
+    pending = (qs.filter(status='Pending')
                .select_related('patient', 'advised_by', 'preferred_ward')
                .order_by('created_at'))
-    recent = (AdmissionRequest.objects.exclude(status='Pending')
+    recent = (qs.exclude(status='Pending')
               .select_related('patient', 'admission')
               .order_by('-created_at')[:20])
     return render(request, 'ipd/admission_request_list.html', {'pending': pending, 'recent': recent})

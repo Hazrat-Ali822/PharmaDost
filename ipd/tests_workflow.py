@@ -281,3 +281,92 @@ class WardMedicationStockAndBillingTest(TestCase):
         messages = [str(m) for m in resp.wsgi_request._messages]
         self.assertTrue(any('ALLERGY' in m.upper() for m in messages),
                         f"no allergy warning raised: {messages}")
+
+
+class DoctorSeesOnlyOwnInpatientsTest(TestCase):
+    """A doctor follows their own admitted patients — the full ward chart for
+    those, and nothing at all for a colleague's patient."""
+
+    def setUp(self):
+        self.h = Hospital.objects.create(name='H', slug='h',
+                                         expiry_date=date.today() + timedelta(days=30))
+        self.mine_user = User.objects.create_user(email='mine@d.com', password='pw',
+                                                  role='DOCTOR', hospital=self.h)
+        self.mine = Doctor.objects.create(user=self.mine_user, full_name='Dr Mine',
+                                          opd_fee=Decimal('100'))
+        self.other_user = User.objects.create_user(email='other@d.com', password='pw',
+                                                   role='DOCTOR', hospital=self.h)
+        self.other = Doctor.objects.create(user=self.other_user, full_name='Dr Other',
+                                           opd_fee=Decimal('100'))
+        self.admin = User.objects.create_user(email='a@a.com', password='pw',
+                                              role='ADMIN', hospital=self.h)
+
+        self.ward = Ward.objects.create(name='Gen', ward_type='General Male',
+                                        daily_rate=Decimal('1000'), hospital=self.h)
+        bed1 = Bed.objects.create(bed_number='B1', ward=self.ward, status='Occupied', hospital=self.h)
+        bed2 = Bed.objects.create(bed_number='B2', ward=self.ward, status='Occupied', hospital=self.h)
+
+        self.my_patient = Patient.objects.create(full_name='My Patient', gender='M',
+                                                 mrn='MRN-MINE', hospital=self.h)
+        self.their_patient = Patient.objects.create(full_name='Their Patient', gender='F',
+                                                    mrn='MRN-OTHER', hospital=self.h)
+        self.my_adm = Admission.objects.create(patient=self.my_patient, bed=bed1,
+                                               admission_reason='obs',
+                                               attending_doctor=self.mine, hospital=self.h)
+        self.their_adm = Admission.objects.create(patient=self.their_patient, bed=bed2,
+                                                  admission_reason='obs',
+                                                  attending_doctor=self.other, hospital=self.h)
+
+    def test_list_shows_only_the_doctors_own_admissions(self):
+        c = Client(); c.force_login(self.mine_user)
+        body = c.get(reverse('ipd:admission_list')).content.decode()
+        self.assertIn('My Patient', body)
+        self.assertNotIn('Their Patient', body)
+
+    def test_doctor_cannot_open_another_doctors_admission(self):
+        c = Client(); c.force_login(self.mine_user)
+        self.assertEqual(c.get(reverse('ipd:admission_detail', args=[self.my_adm.pk])).status_code, 200)
+        self.assertEqual(c.get(reverse('ipd:admission_detail', args=[self.their_adm.pk])).status_code, 404)
+        # and none of the write paths hanging off it either
+        self.assertEqual(c.get(reverse('ipd:medication_log_add', args=[self.their_adm.pk])).status_code, 404)
+        self.assertEqual(c.get(reverse('ipd:doctor_round_add', args=[self.their_adm.pk])).status_code, 404)
+        self.assertEqual(c.get(reverse('ipd:admission_discharge', args=[self.their_adm.pk])).status_code, 404)
+
+    def test_doctor_sees_the_medication_chart_of_their_own_patient(self):
+        MedicationLog.objects.create(admission=self.my_adm, medicine_name='Panadol 500mg',
+                                     dosage='1 tab', quantity=1,
+                                     administered_by=self.admin, hospital=self.h)
+        c = Client(); c.force_login(self.mine_user)
+        body = c.get(reverse('ipd:admission_detail', args=[self.my_adm.pk])).content.decode()
+        self.assertIn('Panadol 500mg', body)
+
+    def test_doctor_keeps_the_patient_they_advised_even_under_another_attending(self):
+        """Reception may allot a different attending doctor; the doctor who asked
+        for the bed still follows that patient."""
+        AdmissionRequest.objects.create(patient=self.their_patient, advised_by=self.mine_user,
+                                        reason='needs a bed', status='Admitted',
+                                        admission=self.their_adm, hospital=self.h)
+        c = Client(); c.force_login(self.mine_user)
+        self.assertEqual(c.get(reverse('ipd:admission_detail', args=[self.their_adm.pk])).status_code, 200)
+
+    def test_admin_and_nurse_still_see_the_whole_ward(self):
+        c = Client(); c.force_login(self.admin)
+        body = c.get(reverse('ipd:admission_list')).content.decode()
+        self.assertIn('My Patient', body)
+        self.assertIn('Their Patient', body)
+
+    def test_doctor_request_queue_shows_only_their_own_advices(self):
+        AdmissionRequest.objects.create(patient=self.my_patient, advised_by=self.mine_user,
+                                        reason='mine', hospital=self.h)
+        AdmissionRequest.objects.create(patient=self.their_patient, advised_by=self.other_user,
+                                        reason='theirs', hospital=self.h)
+        c = Client(); c.force_login(self.mine_user)
+        body = c.get(reverse('ipd:admission_request_list')).content.decode()
+        self.assertIn('My Patient', body)
+        self.assertNotIn('Their Patient', body)
+
+    def test_doctor_has_the_inpatient_link_in_the_sidebar(self):
+        c = Client(); c.force_login(self.mine_user)
+        body = c.get(reverse('ipd:admission_list')).content.decode()
+        sidebar = body.split('<aside', 1)[-1].split('</aside>', 1)[0]
+        self.assertIn('My Inpatients', sidebar)

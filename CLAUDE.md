@@ -145,7 +145,14 @@ if request.user.hospital:
     qs = qs.filter(patient__hospital=request.user.hospital)
 ```
 
-Apps follow this with module-local helpers: `_scoped_prescriptions` / `_scoped_appointments` (prescriptions), `_scoped_orders` (lab), `_scoped_studies` (imaging), `_get_scoped_patient` (patients). Reuse them rather than re-rolling the filter. The sidebar badge counts in `accounts/context_processors.py` use the same `scope_by_hospital = not user.is_superuser` flag.
+Apps follow this with module-local helpers: `_scoped_prescriptions` / `_scoped_appointments` (prescriptions), `_scoped_orders` (lab), `_scoped_studies` (imaging), `_scoped_admissions` (ipd), `_get_scoped_patient` (patients). Reuse them rather than re-rolling the filter. The sidebar badge counts in `accounts/context_processors.py` use the same `scope_by_hospital = not user.is_superuser` flag.
+
+On top of tenant scoping, a **doctor is narrowed to their own patients**: lab orders they
+placed, imaging they referred, and admissions where they are the `attending_doctor` **or**
+raised the `AdmissionRequest` (reception may allot a different attending doctor, but the
+doctor who asked for the bed keeps the patient). Admin, reception and nurses are not
+narrowed — they need the whole ward to work. `Admission` has a `hospital` FK and
+`TenantManager`, so `_scoped_admissions` adds only the clinical narrowing.
 
 ### Permissions: modules × features × roles
 
@@ -169,6 +176,12 @@ The `ward` feature (nurses) is deliberately narrower than `ipd`: ward views take
 `ipd`-only. `lab.order_create` and `imaging.study_create` also accept `ward` so the ward
 can raise an order for an admitted patient — entering results or writing reports remains
 role-gated to lab/radiology.
+
+Doctors hold `ipd`, so the IPD sidebar link is shown to them as **"My Inpatients"** and
+lands on the same `admission_list`, narrowed by `_scoped_admissions`. Buttons that need
+the full `ipd` feature (Admit Patient, Discharge) are gated on `nav.ipd` in
+`templates/ipd/admission_list.html` so a nurse never gets a link into a 403; "Admit
+Patient" is additionally hidden from doctors, who advise instead of admitting.
 
 ### Landing / dashboards
 
