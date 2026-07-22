@@ -56,7 +56,10 @@ def study_list(request):
     )
 
 
-@feature_required('imaging')
+# Ward staff can refer an admitted patient for a scan (on the doctor's
+# instruction) without getting the rest of the imaging module — writing REPORTS
+# stays restricted to radiology/admin below.
+@feature_required('imaging', 'ward')
 def study_create(request):
     if request.method == "POST":
         form = ImagingStudyCreateForm(request.POST, user=request.user)

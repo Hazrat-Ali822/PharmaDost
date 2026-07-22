@@ -164,6 +164,12 @@ Access is granted only when the feature is **both** installed for the tenant **a
 
 Roles: `ADMIN`, `RECEPTIONIST`, `DOCTOR`, `NURSE` (Ward Staff), `PHARMACIST`, `WHOLESALE`, `LABTECH`, `SONOGRAPHER`, `ACCOUNTANT`.
 
+The `ward` feature (nurses) is deliberately narrower than `ipd`: ward views take
+`feature_required('ipd', 'ward')`, while admitting, discharging and ward setup stay
+`ipd`-only. `lab.order_create` and `imaging.study_create` also accept `ward` so the ward
+can raise an order for an admitted patient — entering results or writing reports remains
+role-gated to lab/radiology.
+
 ### Landing / dashboards
 
 `LOGIN_REDIRECT_URL` → `user_mgmt:post_login_redirect` → `user_mgmt.views.dashboard_router`, which sends superusers to the SaaS portal, ADMINs to `/`, and everyone else to a role template from `ROLE_TEMPLATES`.
@@ -176,6 +182,7 @@ These handoffs are the backbone of the app; each creates a record, notifies a ro
 
 - **Prescription → POS**: doctor writes an Rx (`status` `PENDING`); pharmacy opens POS with `?prescription_id=` to pre-load the cart. Selling all Rx medicines marks it `DISPENSED`, a subset marks it `PARTIAL`. Pending queues filter on `status__in=['PENDING', 'PARTIAL']`.
 - **Doctor advises admission / surgery**: `AdmissionRequest` / `SurgeryRequest` (status `Pending`) → reception/OT queue → confirming with `?request_id=` creates the `Admission` / `SurgeryRecord` and closes the request.
+- **Ward medication → stock + discharge bill**: logging a `MedicationLog` against a catalogue `Medicine` reduces stock FEFO (locked row, inside `transaction.atomic()`) and freezes `unit_price` at that moment. Discharge then bills bed charges **plus every such dose**. Leaving `medicine` empty records an off-catalogue drug with no stock movement and no charge — a ward genuinely needs that, so do not make the field required. `MedicationLog.charge` is derived (`unit_price × quantity`), never stored, so a later catalogue price change cannot rewrite an old bill.
 - **Lab / imaging → billing**: ordering a test or scan auto-creates a pending `Invoice` via `billing.services.create_service_invoice`.
 - **Reorder → purchase order**: `inventory.services.reorder_suggestions()` (sales velocity based) feeds `reorder_to_po`, which creates draft `PurchaseRequest`s grouped by supplier.
 
