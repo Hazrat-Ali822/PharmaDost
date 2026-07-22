@@ -64,6 +64,17 @@ class SiteSettings(models.Model):
     enabled_modules = models.JSONField(null=True, blank=True, default=None,
                                        help_text="List of enabled module keys (null = all)")
 
+    # Patient MRN numbering. The counter lives here because this row is already
+    # the per-hospital singleton with a hospital-less fallback, so one lock covers
+    # both a SaaS tenant and a single-site desktop install.
+    mrn_prefix = models.CharField(
+        max_length=6, blank=True, default="",
+        help_text="Letters in front of the patient number, e.g. SGH in SGH-000001. "
+                  "Leave blank to derive it from the brand name.")
+    mrn_last_number = models.PositiveIntegerField(
+        default=0, help_text="Last patient number issued. Raise it to skip ahead; "
+                             "lowering it risks colliding with existing MRNs.")
+
     hospital = models.OneToOneField('saas.Hospital', on_delete=models.CASCADE, related_name='site_settings', null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
