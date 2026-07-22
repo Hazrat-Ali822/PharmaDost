@@ -13,9 +13,17 @@
     <p style="margin:0; font-size:13px; color:var(--muted)">Bed {{ admission.bed.bed_number }} ({{ admission.bed.ward.name }}) | Attending: Dr. {{ admission.attending_doctor.full_name }}</p>
   </div>
 
+  {# Medicine search options for the "Medicine Name" field. The browser filters
+     these natively as the nurse types — no extra request per keystroke. #}
+  <datalist id="pharmacy-medicines">
+    {% for m in pharmacy_medicines %}
+      <option value="{{ m.name }}{% if m.brand %} ({{ m.brand }}){% endif %}"></option>
+    {% endfor %}
+  </datalist>
+
   <form method="post" novalidate>
     {% csrf_token %}
-    
+
     {% for field in form %}
     <div class="form-group" style="margin-bottom:20px;">
       <label for="{{ field.id_for_label }}" style="display:block; font-weight:600; margin-bottom:6px; color:var(--text)">
