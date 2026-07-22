@@ -1,0 +1,18 @@
+# PharmaDost — testing & quality tooling (NOT needed to run the app)
+# Install with:  pip install -r requirements-dev.txt
+#
+# Runtime deps live in requirements.txt; desktop-packaging deps in requirements-build.txt.
+
+# Coverage measurement for the Django test suite
+coverage==7.6.1
+
+# End-to-end browser testing (see e2e/). After installing, download the browser once:
+#   playwright install chromium
+playwright==1.47.0
+
+# Load / performance testing (see loadtest/locustfile.py) — run against a live server
+locust==2.31.6
+
+# Security scanning
+bandit==1.7.9        # static analysis for common Python security issues
+pip-audit==2.7.3     # flags dependencies with known CVEs

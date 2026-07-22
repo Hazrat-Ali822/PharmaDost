@@ -17,3 +17,10 @@ staticfiles/
 *.spec
 dist/
 build/
+
+# testing artefacts
+.coverage
+.coverage.*
+htmlcov/
+test-results/
+e2e-artifacts/

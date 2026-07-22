@@ -48,21 +48,28 @@ class HospitalSubscriptionMiddleware:
         return self.get_response(request)
 
 
-from .utils import set_current_hospital, clear_current_hospital
+from .utils import set_current_hospital, set_tenant_strict, clear_current_hospital
 
 class TenantMiddleware:
+    """Binds the request's hospital to the thread for `TenantManager` to filter on.
+
+    Also sets the "strict" flag for every authenticated non-superuser, so that a
+    user with no hospital sees only hospital-less rows instead of every tenant's
+    data. Superusers (and anonymous requests, which get bounced to login anyway)
+    stay unrestricted so the SaaS portal can work across tenants.
+    """
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
-        if request.user.is_authenticated and getattr(request.user, 'hospital', None):
-            set_current_hospital(request.user.hospital)
-        else:
-            set_current_hospital(None)
-        
+        user = request.user
+        authenticated = user.is_authenticated
+        set_current_hospital(getattr(user, 'hospital', None) if authenticated else None)
+        set_tenant_strict(authenticated and not user.is_superuser)
+
         try:
             response = self.get_response(request)
         finally:
             clear_current_hospital()
-            
+
         return response
