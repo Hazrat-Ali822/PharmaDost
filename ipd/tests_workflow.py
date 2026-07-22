@@ -9,7 +9,7 @@ from accounts.models import User, Notification
 from saas.models import Hospital
 from patients.models import Patient
 from opd.models import Doctor
-from ipd.models import Ward, Bed, AdmissionRequest, Admission
+from ipd.models import Ward, Bed, AdmissionRequest, Admission, MedicationLog
 from ot.models import SurgeryCategory, SurgeryProcedure, SurgeryRequest, SurgeryRecord
 
 
@@ -143,6 +143,24 @@ class NurseRoleTest(TestCase):
         self.assertContains(resp, 'Panadol (GSK)')
         self.assertNotContains(resp, 'RivalMed')          # other tenant's stock
 
+    def test_nurse_can_order_lab_and_imaging_for_the_patient(self):
+        """Ward staff raise the order; entering results stays with lab/radiology."""
+        c = Client(); c.force_login(self.nurse)
+        self.assertEqual(c.get(reverse('lab:order_create')).status_code, 200)
+        self.assertEqual(c.get(reverse('imaging:study_create')).status_code, 200)
+        # but NOT the rest of those modules
+        self.assertEqual(c.get(reverse('lab:order_list')).status_code, 403)
+        self.assertEqual(c.get(reverse('imaging:study_list')).status_code, 403)
+
+    def test_admission_page_shows_allergies_and_orders(self):
+        self.patient.allergies = 'Penicillin'
+        self.patient.save()
+        c = Client(); c.force_login(self.nurse)
+        resp = c.get(reverse('ipd:admission_detail', args=[self.adm.pk]))
+        self.assertContains(resp, 'Penicillin')
+        self.assertContains(resp, 'Clinical Orders')
+        self.assertContains(resp, 'Order Lab Test')
+
     def test_nurse_dashboard_lists_admitted(self):
         c = Client(); c.force_login(self.nurse)
         resp = c.get(reverse('dashboard'))          # home routes NURSE to their dashboard
@@ -150,3 +168,116 @@ class NurseRoleTest(TestCase):
         resp2 = c.get(reverse('user_mgmt:post_login_redirect'))
         self.assertEqual(resp2.status_code, 200)
         self.assertContains(resp2, 'P One')
+
+
+class WardMedicationStockAndBillingTest(TestCase):
+    """Giving a drug on the ward must move stock and reach the discharge bill.
+
+    Before this, the discharge invoice was bed charges only — every dose
+    administered during a stay was given away free and never left inventory.
+    """
+    def setUp(self):
+        from decimal import Decimal as D
+        self.h = Hospital.objects.create(name='H', slug='h',
+                                         expiry_date=date.today() + timedelta(days=30))
+        self.admin = User.objects.create_user(email='a@a.com', password='pw',
+                                              role='ADMIN', hospital=self.h)
+        docuser = User.objects.create_user(email='d@d.com', password='pw',
+                                           role='DOCTOR', hospital=self.h)
+        self.doctor = Doctor.objects.create(user=docuser, full_name='Dr D',
+                                            opd_fee=D('100'))
+        self.patient = Patient.objects.create(full_name='Ward Patient', gender='M',
+                                              mrn='WARD-1', hospital=self.h)
+        self.ward = Ward.objects.create(name='Gen', ward_type='General Male',
+                                        daily_rate=D('1000'), hospital=self.h)
+        self.bed = Bed.objects.create(bed_number='B1', ward=self.ward,
+                                      status='Occupied', hospital=self.h)
+        self.adm = Admission.objects.create(patient=self.patient, bed=self.bed,
+                                            admission_reason='obs',
+                                            attending_doctor=self.doctor,
+                                            hospital=self.h)
+        from inventory.models import Medicine
+        self.med = Medicine.objects.create(name='Panadol', brand='GSK', price=D('20'),
+                                           expiry_date=date.today() + timedelta(days=365),
+                                           hospital=self.h)
+        self.med.add_stock(50, expiry_date=date.today() + timedelta(days=365),
+                           cost_price=D('12'))
+
+    def _give(self, client, qty=2, medicine_id=None):
+        return client.post(reverse('ipd:medication_log_add', args=[self.adm.pk]), {
+            'medicine': self.med.id if medicine_id is None else medicine_id,
+            'medicine_name': 'Panadol (GSK)', 'dosage': '1 tablet',
+            'quantity': qty, 'administered_at': '2026-07-22T10:00', 'notes': '',
+        })
+
+    def test_administering_reduces_pharmacy_stock(self):
+        c = Client(); c.force_login(self.admin)
+        before = self.med.sellable_quantity
+        resp = self._give(c, qty=2)
+        self.assertEqual(resp.status_code, 302)
+        self.med.refresh_from_db()
+        self.assertEqual(self.med.sellable_quantity, before - 2)
+
+    def test_administering_freezes_the_price_of_the_day(self):
+        from decimal import Decimal as D
+        c = Client(); c.force_login(self.admin)
+        self._give(c, qty=2)
+        log = MedicationLog.objects.get()
+        self.assertEqual(log.unit_price, D('20'))
+        self.assertEqual(log.charge, D('40'))
+        # a later catalogue price change must not rewrite what was billed
+        self.med.price = D('99')
+        self.med.save()
+        log.refresh_from_db()
+        self.assertEqual(log.charge, D('40'))
+
+    def test_off_catalogue_drug_is_recorded_without_stock_or_charge(self):
+        from decimal import Decimal as D
+        c = Client(); c.force_login(self.admin)
+        before = self.med.sellable_quantity
+        resp = c.post(reverse('ipd:medication_log_add', args=[self.adm.pk]), {
+            'medicine': '', 'medicine_name': 'Something from outside',
+            'dosage': '1 amp', 'quantity': 1,
+            'administered_at': '2026-07-22T10:00', 'notes': '',
+        })
+        self.assertEqual(resp.status_code, 302)
+        log = MedicationLog.objects.get()
+        self.assertIsNone(log.medicine)
+        self.assertEqual(log.charge, D('0.00'))
+        self.med.refresh_from_db()
+        self.assertEqual(self.med.sellable_quantity, before)
+
+    def test_cannot_give_more_than_is_in_stock(self):
+        c = Client(); c.force_login(self.admin)
+        resp = self._give(c, qty=999)
+        self.assertEqual(resp.status_code, 200)          # form re-rendered
+        self.assertEqual(MedicationLog.objects.count(), 0)
+        self.med.refresh_from_db()
+        self.assertEqual(self.med.sellable_quantity, 50)
+
+    def test_discharge_bill_includes_medicines_not_just_the_bed(self):
+        from decimal import Decimal as D
+        from billing.models import Invoice
+        c = Client(); c.force_login(self.admin)
+        self._give(c, qty=2)                              # Rs 40 of medicine
+
+        resp = c.post(reverse('ipd:admission_discharge', args=[self.adm.pk]),
+                      {'discharge_notes': 'recovered'})
+        self.assertEqual(resp.status_code, 302)
+
+        invoice = Invoice.objects.get()
+        descriptions = [i.description for i in invoice.items.all()]
+        self.assertTrue(any('Bed Charges' in d for d in descriptions))
+        self.assertTrue(any('Panadol' in d for d in descriptions),
+                        f"medicines missing from the discharge bill: {descriptions}")
+        # one day's bed (1000) + medicine (40)
+        self.assertEqual(invoice.total, D('1040'))
+
+    def test_allergy_warning_is_raised_after_administering(self):
+        self.patient.allergies = 'Paracetamol, Panadol'
+        self.patient.save()
+        c = Client(); c.force_login(self.admin)
+        resp = self._give(c, qty=1)
+        messages = [str(m) for m in resp.wsgi_request._messages]
+        self.assertTrue(any('ALLERGY' in m.upper() for m in messages),
+                        f"no allergy warning raised: {messages}")

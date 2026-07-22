@@ -8,28 +8,50 @@
 </div>
 
 <div class="card" style="max-width:600px; margin: 0 auto; padding: 30px;">
-  <div style="background:var(--bg); border: 1px solid var(--border); padding:15px; border-radius:8px; margin-bottom:25px;">
+  <div style="background:var(--bg); border: 1px solid var(--border); padding:15px; border-radius:8px; margin-bottom:15px;">
     <h4 style="margin:0 0 6px 0; font-weight:700;">{{ admission.patient.full_name }}</h4>
     <p style="margin:0; font-size:13px; color:var(--muted)">Bed {{ admission.bed.bed_number }} ({{ admission.bed.ward.name }}) | Attending: Dr. {{ admission.attending_doctor.full_name }}</p>
   </div>
 
-  {# Medicine search options for the "Medicine Name" field. The browser filters
-     these natively as the nurse types — no extra request per keystroke. #}
+  {# The nurse is about to put a drug into this patient — allergies belong here, #}
+  {# not buried on the patient record. #}
+  {% if admission.patient.allergies %}
+  <div style="background:#fef2f2; border:1px solid #fecaca; border-left:4px solid #ef4444; padding:12px 15px; border-radius:8px; margin-bottom:25px;">
+    <div style="font-weight:800; color:#b91c1c; font-size:12px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">⚠️ Known allergies</div>
+    <div style="color:#7f1d1d; font-size:14px; font-weight:600;">{{ admission.patient.allergies }}</div>
+  </div>
+  {% endif %}
+
+  {# Medicine search options. The browser filters these natively as the nurse #}
+  {# types — no request per keystroke. #}
   <datalist id="pharmacy-medicines">
     {% for m in pharmacy_medicines %}
-      <option value="{{ m.name }}{% if m.brand %} ({{ m.brand }}){% endif %}"></option>
+      <option value="{{ m.name }}{% if m.brand %} ({{ m.brand }}){% endif %}"
+              data-id="{{ m.id }}"
+              data-price="{{ m.price }}"
+              data-stock="{{ m.sellable_quantity }}"></option>
     {% endfor %}
   </datalist>
 
   <form method="post" novalidate>
     {% csrf_token %}
+    {% for field in form.hidden_fields %}{{ field }}{% endfor %}
 
-    {% for field in form %}
+    {% if form.non_field_errors %}
+    <div style="background:#fef2f2; border:1px solid #fecaca; color:#b91c1c; padding:12px 15px; border-radius:8px; margin-bottom:20px; font-size:14px; font-weight:600;">
+      {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+    </div>
+    {% endif %}
+
+    {% for field in form.visible_fields %}
     <div class="form-group" style="margin-bottom:20px;">
       <label for="{{ field.id_for_label }}" style="display:block; font-weight:600; margin-bottom:6px; color:var(--text)">
         {{ field.label }}
       </label>
       {{ field }}
+      {% if field.name == 'medicine_name' %}
+        <small id="med-info" style="display:none; margin-top:6px; font-size:12.5px; font-weight:600;"></small>
+      {% endif %}
       {% if field.help_text %}
       <small style="display:block; color:var(--muted); margin-top:4px;">{{ field.help_text }}</small>
       {% endif %}
@@ -45,6 +67,50 @@
     </div>
   </form>
 </div>
+
+<script>
+// Resolve the typed medicine name to a catalogue id so the server can move stock
+// and bill it. Leaving it unmatched is allowed — that records an off-catalogue
+// drug with no stock movement, which a ward legitimately needs.
+(function () {
+  const nameInput = document.getElementById('id_medicine_name');
+  const hiddenId = document.getElementById('id_medicine');
+  const info = document.getElementById('med-info');
+  const list = document.getElementById('pharmacy-medicines');
+  if (!nameInput || !hiddenId || !list) return;
+
+  const byValue = {};
+  list.querySelectorAll('option').forEach(function (opt) {
+    byValue[opt.value.toLowerCase()] = {
+      id: opt.dataset.id,
+      price: opt.dataset.price,
+      stock: parseInt(opt.dataset.stock || '0', 10)
+    };
+  });
+
+  function sync() {
+    const match = byValue[nameInput.value.trim().toLowerCase()];
+    if (match) {
+      hiddenId.value = match.id;
+      const short = match.stock <= 0;
+      info.style.display = 'block';
+      info.style.color = short ? '#b91c1c' : '#15803d';
+      info.textContent = short
+        ? `Out of stock in the pharmacy (0 available) — recording this will fail.`
+        : `In stock: ${match.stock} · Rs ${match.price} each · will be billed at discharge`;
+    } else {
+      hiddenId.value = '';
+      info.style.display = nameInput.value.trim() ? 'block' : 'none';
+      info.style.color = 'var(--muted)';
+      info.textContent = 'Not a pharmacy item — recorded on the chart only, no stock or charge.';
+    }
+  }
+
+  nameInput.addEventListener('input', sync);
+  nameInput.addEventListener('change', sync);
+  sync();
+})();
+</script>
 
 <style>
   .form-group input, .form-group select, .form-group textarea {

@@ -9,10 +9,20 @@
     {% if admission.status == 'Admitted' %}
       <a class="btn success" href="{% url 'ipd:doctor_round_add' admission.pk %}" style="display:inline-flex; align-items:center; background:#22c55e; color:white;">Record Round</a>
       <a class="btn" href="{% url 'ipd:medication_log_add' admission.pk %}" style="display:inline-flex; align-items:center; background:var(--primary); color:white;">Record Medication</a>
+      <a class="btn alt" href="{% url 'lab:order_create' %}?patient={{ admission.patient.pk }}">🧪 Order Lab Test</a>
+      <a class="btn alt" href="{% url 'imaging:study_create' %}?patient={{ admission.patient.pk }}">🩻 Order Scan / X-Ray</a>
       {% if nav.ipd %}<a class="btn danger" href="{% url 'ipd:admission_discharge' admission.pk %}" style="display:inline-flex; align-items:center; background:#ef4444; color:white;">Discharge Patient</a>{% endif %}
     {% endif %}
   </div>
 </div>
+
+{# The ward gives the drugs, so allergies belong at the top of this page. #}
+{% if admission.patient.allergies %}
+<div style="background:#fef2f2; border:1px solid #fecaca; border-left:4px solid #ef4444; padding:12px 16px; border-radius:8px; margin-bottom:20px;">
+  <span style="font-weight:800; color:#b91c1c; font-size:12px; text-transform:uppercase; letter-spacing:0.5px;">⚠️ Known allergies —</span>
+  <span style="color:#7f1d1d; font-size:14px; font-weight:600;">{{ admission.patient.allergies }}</span>
+</div>
+{% endif %}
 
 <div class="grid" style="grid-template-columns: 1fr 2fr; gap: 20px; align-items: start;">
   <!-- Left Side: Patient & Ward Profile Info -->
@@ -81,19 +91,74 @@
       </div>
     </div>
 
+    {# What the doctor ordered, and what came back — the ward needs this to know #}
+    {# why the patient is here and what to give. #}
     <div class="card" style="padding:25px; border-radius:12px; border:1px solid var(--border);">
-      <h3 style="margin-top:0; font-weight:700; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:20px;">Medication Administration Log (Nursing Chart)</h3>
-      
+      <h3 style="margin-top:0; font-weight:700; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:18px;">Clinical Orders &amp; History</h3>
+
+      <h4 style="margin:0 0 10px 0; font-size:13px; text-transform:uppercase; letter-spacing:0.5px; color:var(--primary);">Prescriptions</h4>
+      {% for rx in prescriptions %}
+      <div style="border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <strong style="font-size:14px;">{{ rx.diagnosis|default:"—" }}</strong>
+          <span class="muted" style="font-size:12px;">{{ rx.created_at|date:"Y-m-d" }} · Dr. {{ rx.appointment.doctor.full_name }}</span>
+        </div>
+        <ul style="margin:0; padding-left:18px; font-size:13px; color:var(--text);">
+          {% for item in rx.items.all %}
+          <li>{{ item.medicine.name }} — {{ item.dosage|default:"—" }}{% if item.duration_days %} for {{ item.duration_days }} day(s){% endif %}</li>
+          {% empty %}
+          <li class="muted">No medicines listed.</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% empty %}
+      <p class="muted" style="margin:0 0 14px 0; font-size:13px;">No prescriptions on record for this patient.</p>
+      {% endfor %}
+
+      <h4 style="margin:18px 0 10px 0; font-size:13px; text-transform:uppercase; letter-spacing:0.5px; color:var(--primary);">Lab Tests</h4>
+      {% for order in lab_orders %}
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px dashed var(--border); font-size:13px;">
+        <span>{% for r in order.results.all %}{{ r.lab_test.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</span>
+        <span><span class="badge gray">{{ order.status }}</span> <span class="muted" style="font-size:12px;">{{ order.order_date|date:"Y-m-d" }}</span></span>
+      </div>
+      {% empty %}
+      <p class="muted" style="margin:0; font-size:13px;">No lab tests ordered.</p>
+      {% endfor %}
+
+      <h4 style="margin:18px 0 10px 0; font-size:13px; text-transform:uppercase; letter-spacing:0.5px; color:var(--primary);">Imaging / Scans</h4>
+      {% for study in imaging_studies %}
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px dashed var(--border); font-size:13px;">
+        <span>{{ study.get_modality_display }}: {{ study.study_name }}</span>
+        <span><span class="badge gray">{{ study.status }}</span> <span class="muted" style="font-size:12px;">{{ study.study_date|date:"Y-m-d" }}</span></span>
+      </div>
+      {% empty %}
+      <p class="muted" style="margin:0; font-size:13px;">No scans ordered.</p>
+      {% endfor %}
+    </div>
+
+    <div class="card" style="padding:25px; border-radius:12px; border:1px solid var(--border);">
+      <h3 style="margin-top:0; font-weight:700; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <span>Medication Administration Log (Nursing Chart)</span>
+        {% if medicine_total %}
+        <span style="font-size:14px; font-weight:700; color:#15803d;">Medicines so far: Rs {{ medicine_total|floatformat:0 }}</span>
+        {% endif %}
+      </h3>
+
       <div style="display:flex; flex-direction:column; gap:15px;">
         {% for log in medication_logs %}
         <div style="border-left: 3px solid #22c55e; padding-left:15px; position:relative; margin-bottom:5px;">
           <div style="width:11px; height:11px; border-radius:50%; background:#22c55e; position:absolute; left:-7px; top:4px;"></div>
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-            <strong style="font-size:14.5px; color:var(--primary);">{{ log.medicine_name }}</strong>
+            <strong style="font-size:14.5px; color:var(--primary);">{{ log.medicine_name }}{% if log.quantity > 1 %} <span class="muted" style="font-weight:400;">x{{ log.quantity }}</span>{% endif %}</strong>
             <span class="muted" style="font-size:12px;">{{ log.administered_at|date:"Y-m-d H:i" }}</span>
           </div>
           <p style="margin:0 0 4px 0; font-size:13.5px;"><span class="muted">Dosage:</span> <strong>{{ log.dosage }}</strong></p>
           <p style="margin:0 0 4px 0; font-size:13px; color:var(--text);"><span class="muted">Administered by:</span> {{ log.administered_by.email }}</p>
+          {% if log.charge %}
+          <p style="margin:0 0 4px 0; font-size:13px;"><span class="muted">Billed:</span> <strong style="color:#15803d;">Rs {{ log.charge|floatformat:0 }}</strong> <span class="muted">(from pharmacy stock)</span></p>
+          {% else %}
+          <p style="margin:0 0 4px 0; font-size:12.5px;" class="muted">Not a pharmacy item — no stock movement or charge.</p>
+          {% endif %}
           {% if log.notes %}
           <p style="margin:0; font-size:13px; font-style:italic; color:var(--muted);"><span class="muted">Notes:</span> "{{ log.notes }}"</p>
           {% endif %}

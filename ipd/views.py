@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -5,6 +7,8 @@ from django.db import transaction
 from django.utils import timezone
 from accounts.decorators import feature_required, role_required
 from accounts.models import Notification
+from inventory.models import Medicine
+from inventory.safety import screen_medicines
 from patients.models import Patient
 from .models import Ward, Bed, Admission, DoctorRound, MedicationLog, AdmissionRequest
 from .forms import WardForm, BedForm, AdmissionForm, DoctorRoundForm, DischargeForm, MedicationLogForm
@@ -76,11 +80,40 @@ def admission_create(request):
 def admission_detail(request, pk):
     admission = get_object_or_404(Admission.objects.select_related('patient', 'bed__ward', 'attending_doctor'), pk=pk)
     rounds = admission.rounds.all().order_by('-round_time')
-    medication_logs = admission.medication_logs.all().select_related('administered_by').order_by('-administered_at')
+    medication_logs = (admission.medication_logs.all()
+                       .select_related('administered_by', 'medicine')
+                       .order_by('-administered_at'))
+
+    # The ward is where drugs are physically given, so it needs the clinical
+    # picture the doctor already has: what was prescribed, what was ordered, and
+    # what came back. Scoped to THIS admission's patient, who is already
+    # tenant-checked by fetching the admission above.
+    patient = admission.patient
+    from prescriptions.models import Prescription
+    from lab.models import TestOrder
+    from imaging.models import ImagingStudy
+
+    prescriptions = (Prescription.objects
+                     .filter(appointment__patient=patient)
+                     .select_related('appointment__doctor')
+                     .prefetch_related('items__medicine')
+                     .order_by('-created_at')[:5])
+    lab_orders = (TestOrder.objects.filter(patient=patient)
+                  .prefetch_related('results__lab_test')
+                  .order_by('-order_date')[:5])
+    imaging_studies = (ImagingStudy.objects.filter(patient=patient)
+                       .order_by('-study_date')[:5])
+
+    medicine_total = sum((log.charge for log in medication_logs), Decimal('0.00'))
+
     return render(request, 'ipd/admission_detail.html', {
         'admission': admission,
         'rounds': rounds,
         'medication_logs': medication_logs,
+        'medicine_total': medicine_total,
+        'prescriptions': prescriptions,
+        'lab_orders': lab_orders,
+        'imaging_studies': imaging_studies,
     })
 
 @feature_required('ipd', 'ward')
@@ -92,27 +125,67 @@ def medication_log_add(request, pk):
             log = form.save(commit=False)
             log.admission = admission
             log.administered_by = request.user
-            log.save()
-            messages.success(request, f"Medication '{log.medicine_name}' logged successfully.")
+            medicine = form.cleaned_data.get('medicine')
+
+            if medicine is None:
+                # Off-catalogue drug: recorded on the chart, but nothing to take
+                # from stock and nothing to bill.
+                log.unit_price = Decimal('0.00')
+                log.save()
+            else:
+                # Stock and money move together, on a locked row (see CLAUDE.md).
+                try:
+                    with transaction.atomic():
+                        med = Medicine.objects.select_for_update().get(pk=medicine.pk)
+                        med.reduce_stock(log.quantity)
+                        log.medicine = med
+                        # Freeze the price of the day — the catalogue may change
+                        # before this patient is discharged and billed.
+                        log.unit_price = med.price or Decimal('0.00')
+                        if not log.medicine_name:
+                            log.medicine_name = f"{med.name} ({med.brand})" if med.brand else med.name
+                        log.save()
+                except ValueError as exc:
+                    form.add_error(None, str(exc))
+                    return render(request, 'ipd/medication_form.html',
+                                  _medication_ctx(form, admission))
+
+            # Allergy check happens AFTER recording: the dose is already given, so
+            # the chart must reflect reality — the warning is for the staff to act on.
+            if medicine is not None:
+                for warning in screen_medicines(admission.patient, [medicine]):
+                    messages.warning(request, warning)
+
+            if log.charge:
+                messages.success(
+                    request,
+                    f"{log.medicine_name} x{log.quantity} recorded — stock reduced, "
+                    f"Rs {log.charge} added to the discharge bill."
+                )
+            else:
+                messages.success(request, f"Medication '{log.medicine_name}' logged successfully.")
             return redirect('ipd:admission_detail', pk=admission.pk)
     else:
         form = MedicationLogForm()
-    return render(request, 'ipd/medication_form.html', {
+    return render(request, 'ipd/medication_form.html', _medication_ctx(form, admission))
+
+
+def _medication_ctx(form, admission):
+    return {
         'form': form,
         'admission': admission,
-        'pharmacy_medicines': _pharmacy_medicine_names(),
-    })
+        'pharmacy_medicines': _pharmacy_medicines(),
+    }
 
 
-def _pharmacy_medicine_names():
-    """Names for the medicine-search datalist on the ward medication form.
+def _pharmacy_medicines():
+    """Catalogue rows for the medicine-search box on the ward medication form.
 
-    Tenant-scoped by `Medicine`'s manager. Only the two columns the datalist needs
-    are loaded — this list can run to hundreds of rows and is rendered inline.
+    Tenant-scoped by `Medicine`'s manager. `batches` is prefetched because the
+    template shows sellable stock per row, which reads them (see CLAUDE.md).
     """
-    from inventory.models import Medicine
     return (Medicine.objects.filter(is_active=True)
-            .only('name', 'brand')
+            .prefetch_related('batches')
             .order_by('name', 'brand'))
 
 @feature_required('ipd', 'ward')
@@ -166,6 +239,19 @@ def admission_discharge(request, pk):
                 items = [
                     (f"IPD Bed Charges: Bed {adm.bed.bed_number} ({adm.bed.ward.name}) — {days} Day(s)", est_bed_charges),
                 ]
+
+                # Everything the ward gave this patient from pharmacy stock. Without
+                # this the discharge bill was bed charges only, so every dose
+                # administered during the stay was given away free.
+                med_total = Decimal('0.00')
+                for log in adm.medication_logs.select_related('medicine').all():
+                    if log.charge:
+                        items.append((
+                            f"Medicine: {log.medicine_name} x{log.quantity}",
+                            log.charge,
+                        ))
+                        med_total += log.charge
+
                 create_service_invoice(
                     patient=adm.patient,
                     items=items,
@@ -173,7 +259,14 @@ def admission_discharge(request, pk):
                     paid=0,
                 )
 
-            messages.success(request, f"Patient {adm.patient.full_name} has been discharged. Bed charges invoice generated.")
+            if med_total:
+                messages.success(
+                    request,
+                    f"Patient {adm.patient.full_name} discharged. Invoice generated: "
+                    f"bed charges Rs {est_bed_charges} + medicines Rs {med_total}."
+                )
+            else:
+                messages.success(request, f"Patient {adm.patient.full_name} has been discharged. Bed charges invoice generated.")
             return redirect('ipd:admission_detail', pk=adm.pk)
     else:
         form = DischargeForm(instance=admission)

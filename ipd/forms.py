@@ -53,10 +53,16 @@ class DischargeForm(forms.ModelForm):
         }
 
 class MedicationLogForm(forms.ModelForm):
+    """`medicine` is filled in by the search box (hidden field) when the nurse picks
+    a catalogue item; leaving it empty records an off-catalogue drug with no stock
+    movement and no charge."""
+
     class Meta:
         model = MedicationLog
-        fields = ['medicine_name', 'dosage', 'administered_at', 'notes']
+        fields = ['medicine', 'medicine_name', 'dosage', 'quantity',
+                  'administered_at', 'notes']
         widgets = {
+            'medicine': forms.HiddenInput(),
             # Backed by a <datalist> of the pharmacy's catalogue (see the template)
             # so ward staff can search instead of typing a drug name from memory.
             # Deliberately still free text: a ward may administer something the
@@ -66,6 +72,22 @@ class MedicationLogForm(forms.ModelForm):
                 'autocomplete': 'off',
                 'placeholder': 'Start typing to search the pharmacy…',
             }),
+            'quantity': forms.NumberInput(attrs={'min': 1, 'step': 1}),
             'administered_at': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
             'notes': forms.TextInput(attrs={'placeholder': 'e.g. given after lunch, patient tolerated well'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from inventory.models import Medicine
+        # Tenant-scoped by Medicine's manager; also validates the posted id really
+        # belongs to this hospital.
+        self.fields['medicine'].queryset = Medicine.objects.filter(is_active=True)
+        self.fields['medicine'].required = False
+        self.fields['quantity'].label = 'Quantity given (from stock)'
+
+    def clean_quantity(self):
+        qty = self.cleaned_data.get('quantity') or 1
+        if qty < 1:
+            raise forms.ValidationError('Quantity must be at least 1.')
+        return qty

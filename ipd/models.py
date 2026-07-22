@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db import models
 from django.utils import timezone
 from saas.utils import TenantManager
@@ -80,15 +82,36 @@ class DoctorRound(models.Model):
         return f"Round: {self.admission.patient.full_name} at {self.round_time.strftime('%Y-%m-%d %H:%M')}"
 
 class MedicationLog(models.Model):
+    """One administered dose on the nursing chart.
+
+    When the drug comes from the pharmacy catalogue (`medicine` set), giving it
+    also moves stock and accrues a charge that lands on the discharge bill — so
+    ward medication is neither invisible to inventory nor free to the patient.
+    `medicine_name` stays authoritative for what was actually given: a ward may
+    administer something off-catalogue, and that must remain recordable.
+    """
     admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name='medication_logs')
+    medicine = models.ForeignKey('inventory.Medicine', on_delete=models.SET_NULL,
+                                 null=True, blank=True, related_name='ward_administrations',
+                                 help_text="Pharmacy catalogue item, when the drug came from stock")
     medicine_name = models.CharField(max_length=150, verbose_name="Medicine Name")
     dosage = models.CharField(max_length=100, help_text="e.g. 500mg, 1 tablet, 2 puffs")
+    quantity = models.PositiveIntegerField(default=1,
+                                           help_text="Units taken from stock (tablets, vials, bottles)")
+    # Frozen at administration: the catalogue price may change before discharge,
+    # and the patient must be billed what it cost on the day it was given.
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     administered_at = models.DateTimeField(default=timezone.now, verbose_name="Administered Date & Time")
     administered_by = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='medications_administered')
     notes = models.CharField(max_length=255, blank=True)
     hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
 
     objects = TenantManager()
+
+    @property
+    def charge(self):
+        """What this dose adds to the patient's bill."""
+        return (self.unit_price or Decimal('0.00')) * self.quantity
 
     def __str__(self):
         return f"{self.medicine_name} ({self.dosage}) to {self.admission.patient.full_name} by {self.administered_by.email}"

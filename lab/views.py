@@ -62,7 +62,10 @@ def order_list(request):
     return render(request, "lab/order_list.html", {"orders": orders, "show": show})
 
 
-@feature_required('lab')
+# Ward staff can raise an order for an admitted patient (on the doctor's
+# instruction) without getting the rest of the lab module — entering RESULTS stays
+# restricted to lab/admin below.
+@feature_required('lab', 'ward')
 def order_create(request):
     if request.method == "POST":
         form = TestOrderCreateForm(request.POST, user=request.user)
