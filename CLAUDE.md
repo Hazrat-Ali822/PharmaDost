@@ -64,8 +64,9 @@ job and the security scans on every push and pull request.
 
 Two traps when adding tests:
 
-- `Patient.mrn` is globally unique, not per hospital — fixtures must use distinct MRNs
-  even across different tenants.
+- `Patient.mrn` is auto-allocated when left blank, so fixtures normally omit it. Passing
+  one explicitly is still fine (`seed_demo` does, to find its own rows again) and does not
+  consume a number from the sequence.
 - `LiveServerTestCase` (so all of `e2e/`) extends `TransactionTestCase`, which does **not**
   run `setUpTestData`. Build fixtures in `setUp`, or the tests hit the first-run setup
   wizard instead of the app.
@@ -216,6 +217,31 @@ Stock lives in `StockBatch` rows; `Medicine.quantity` is an aggregate that can d
 - `SaleItem.cost_price` freezes the batch COGS at sale time; the profit report depends on it.
 
 `inventory/safety.py::screen_medicines()` produces allergy and duplicate-salt warnings (substring matching — advisory only, not a real drug-interaction database). It is wired into both `prescription_create` and the POS.
+
+### Patient numbering (MRN)
+
+`Patient.mrn` is **unique within a hospital, not globally** — every tenant numbers its own
+patients from 1, so `SGH-000001` at one hospital and `GUL-000001` at another are both
+number 1 and must not collide. Two `UniqueConstraint`s enforce it; the second one exists
+because SQL treats `NULL` hospitals as distinct, which would otherwise leave a single-site
+install unconstrained.
+
+`patients/services.py` allocates: `next_mrn(hospital)` locks that hospital's
+`SiteSettings` row, bumps `mrn_last_number` and formats `PREFIX-000001`. The counter lives
+on `SiteSettings` because that row is already the per-hospital singleton **with a
+hospital-less fallback**, so one lock serves both a SaaS tenant and the desktop build.
+The prefix comes from `SiteSettings.mrn_prefix`, or is derived from the brand name
+(`derive_prefix`: initials for a multi-word name, leading letters for one word).
+
+Allocation happens in `Patient.save()`, not the form, so `seed_demo`, imports and fixtures
+all produce numbered patients. **`saas.signals.auto_assign_hospital` is a `pre_save`
+receiver and therefore fires inside `super().save()` — too late.** `Patient.save()` resolves
+the hospital itself before allocating; remove that and every web registration is numbered
+off the global counter instead of the tenant's.
+
+An explicitly supplied MRN is always kept as-is and does not consume a sequence number, so
+a hospital can carry its paper register across. Changing the prefix never rewrites MRNs
+already issued.
 
 ### Branding & print
 
