@@ -57,6 +57,15 @@ class MedicationLogForm(forms.ModelForm):
         model = MedicationLog
         fields = ['medicine_name', 'dosage', 'administered_at', 'notes']
         widgets = {
+            # Backed by a <datalist> of the pharmacy's catalogue (see the template)
+            # so ward staff can search instead of typing a drug name from memory.
+            # Deliberately still free text: a ward may administer something the
+            # pharmacy does not stock, and that must remain recordable.
+            'medicine_name': forms.TextInput(attrs={
+                'list': 'pharmacy-medicines',
+                'autocomplete': 'off',
+                'placeholder': 'Start typing to search the pharmacy…',
+            }),
             'administered_at': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
             'notes': forms.TextInput(attrs={'placeholder': 'e.g. given after lunch, patient tolerated well'}),
         }

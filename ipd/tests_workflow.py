@@ -123,6 +123,26 @@ class NurseRoleTest(TestCase):
         self.assertEqual(c.get(reverse('ipd:ward_create')).status_code, 403)
         self.assertEqual(c.get(reverse('ipd:admission_request_list')).status_code, 403)
 
+    def test_medication_form_offers_pharmacy_medicines(self):
+        """Ward staff search the pharmacy catalogue instead of typing from memory."""
+        from decimal import Decimal as D
+        from inventory.models import Medicine
+        from saas.models import Hospital as H
+        Medicine.objects.create(name='Panadol', brand='GSK', price=D('10'),
+                                expiry_date=date.today() + timedelta(days=365),
+                                hospital=self.h)
+        other = H.objects.create(name='Other', slug='other',
+                                 expiry_date=date.today() + timedelta(days=30))
+        Medicine.objects.create(name='RivalMed', brand='X', price=D('10'),
+                                expiry_date=date.today() + timedelta(days=365),
+                                hospital=other)
+
+        c = Client(); c.force_login(self.nurse)
+        resp = c.get(reverse('ipd:medication_log_add', args=[self.adm.pk]))
+        self.assertContains(resp, 'id="pharmacy-medicines"')
+        self.assertContains(resp, 'Panadol (GSK)')
+        self.assertNotContains(resp, 'RivalMed')          # other tenant's stock
+
     def test_nurse_dashboard_lists_admitted(self):
         c = Client(); c.force_login(self.nurse)
         resp = c.get(reverse('dashboard'))          # home routes NURSE to their dashboard

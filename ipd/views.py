@@ -100,7 +100,20 @@ def medication_log_add(request, pk):
     return render(request, 'ipd/medication_form.html', {
         'form': form,
         'admission': admission,
+        'pharmacy_medicines': _pharmacy_medicine_names(),
     })
+
+
+def _pharmacy_medicine_names():
+    """Names for the medicine-search datalist on the ward medication form.
+
+    Tenant-scoped by `Medicine`'s manager. Only the two columns the datalist needs
+    are loaded — this list can run to hundreds of rows and is rendered inline.
+    """
+    from inventory.models import Medicine
+    return (Medicine.objects.filter(is_active=True)
+            .only('name', 'brand')
+            .order_by('name', 'brand'))
 
 @feature_required('ipd', 'ward')
 def doctor_round_add(request, pk):
