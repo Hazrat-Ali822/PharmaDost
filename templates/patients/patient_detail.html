@@ -6,7 +6,7 @@
 <div class="page-head">
   <div>
     <h2>{{ patient.full_name }}</h2>
-    <div class="muted">MRN {{ patient.mrn }} · {{ patient.get_gender_display }}{% if patient.age_years %} · {{ patient.age_years }} yrs{% endif %}{% if patient.phone %} · {{ patient.phone }}{% endif %}</div>
+    <div class="muted">MRN {{ patient.mrn }} · {{ patient.get_gender_display }}{% if patient.current_age %} · {{ patient.current_age }} yrs{% endif %}{% if patient.phone %} · {{ patient.phone }}{% endif %}</div>
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
     <a class="btn" href="{% url 'patient_record_add' patient.pk %}">+ Add Clinical Record</a>

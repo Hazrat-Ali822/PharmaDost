@@ -12,7 +12,7 @@
 <div class="who">
   <div>
     <b>Patient:</b> {{ study.patient.full_name }}<br>
-    <b>MRN:</b> {{ study.patient.mrn }} · <b>Gender:</b> {{ study.patient.get_gender_display }}{% if study.patient.age_years %} · {{ study.patient.age_years }} yrs{% endif %}
+    <b>MRN:</b> {{ study.patient.mrn }} · <b>Gender:</b> {{ study.patient.get_gender_display }}{% if study.patient.current_age %} · {{ study.patient.current_age }} yrs{% endif %}
   </div>
   <div style="text-align:right">
     <b>Study:</b> {{ study.study_name }}<br>

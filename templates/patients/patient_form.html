@@ -13,4 +13,63 @@
     <a class="btn alt" href="{% url 'patient_list' %}">Cancel</a>
   </form>
 </div>
+
+<script>
+// Date of birth and age fill each other in, so reception can enter whichever the
+// patient actually knows — most walk-ins know their age, not the date.
+//
+// The date of birth stays the source of truth: typing one always recomputes the
+// age. Going the other way is a SUGGESTION the user can see and correct before
+// saving, which is why the server never derives a date of birth on its own.
+(function () {
+  const dob = document.getElementById('id_dob');
+  const age = document.getElementById('id_age_years');
+  if (!dob || !age) return;
+
+  const note = document.createElement('small');
+  note.style.cssText = 'display:none; color:var(--muted); font-size:12.5px; margin-top:4px;';
+  (dob.parentNode || dob).appendChild(note);
+
+  function today() { return new Date(); }
+
+  function ageFromDob(value) {
+    const d = new Date(value + 'T00:00:00');
+    if (isNaN(d)) return null;
+    const now = today();
+    let years = now.getFullYear() - d.getFullYear();
+    const beforeBirthday =
+      now.getMonth() < d.getMonth() ||
+      (now.getMonth() === d.getMonth() && now.getDate() < d.getDate());
+    if (beforeBirthday) years -= 1;
+    if (years < 0 || years > 130) return null;
+    return years;
+  }
+
+  function dobFromAge(years) {
+    const now = today();
+    const d = new Date(now.getFullYear() - years, now.getMonth(), now.getDate());
+    const pad = function (n) { return String(n).padStart(2, '0'); };
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+
+  dob.addEventListener('change', function () {
+    if (!dob.value) { note.style.display = 'none'; return; }
+    const years = ageFromDob(dob.value);
+    if (years === null) return;
+    age.value = years;
+    note.style.display = 'none';
+  });
+
+  age.addEventListener('change', function () {
+    const years = parseInt(age.value, 10);
+    if (isNaN(years) || years < 0 || years > 130) return;
+    // Never overwrite a real date of birth with one worked back from an age.
+    if (dob.value && ageFromDob(dob.value) === years) return;
+    if (dob.value) return;
+    dob.value = dobFromAge(years);
+    note.textContent = 'Approximate — worked back from the age. Correct it if the exact date is known.';
+    note.style.display = 'block';
+  });
+})();
+</script>
 {% endblock %}
