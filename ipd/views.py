@@ -152,9 +152,15 @@ def medication_log_add(request, pk):
             log.admission = admission
             log.administered_by = request.user
             medicine = form.cleaned_data.get('medicine')
+            log.medicine = medicine
+            if medicine is not None and not log.medicine_name:
+                log.medicine_name = (f"{medicine.name} ({medicine.brand})"
+                                     if medicine.brand else medicine.name)
 
-            if medicine is None:
-                # Off-catalogue drug: recorded on the chart, but nothing to take
+            stock_short = None
+            if medicine is None or log.source != 'PHARMACY':
+                # Off-catalogue, or a supply the patient already had: recorded on
+                # the chart, but the pharmacy never issued it — nothing to take
                 # from stock and nothing to bill.
                 log.unit_price = Decimal('0.00')
                 log.save()
@@ -164,17 +170,21 @@ def medication_log_add(request, pk):
                     with transaction.atomic():
                         med = Medicine.objects.select_for_update().get(pk=medicine.pk)
                         med.reduce_stock(log.quantity)
-                        log.medicine = med
                         # Freeze the price of the day — the catalogue may change
                         # before this patient is discharged and billed.
                         log.unit_price = med.price or Decimal('0.00')
-                        if not log.medicine_name:
-                            log.medicine_name = f"{med.name} ({med.brand})" if med.brand else med.name
                         log.save()
                 except ValueError as exc:
-                    form.add_error(None, str(exc))
-                    return render(request, 'ipd/medication_form.html',
-                                  _medication_ctx(form, admission))
+                    # The dose has already gone into the patient. Refusing to save
+                    # would leave the chart lying about what was given, so record
+                    # it anyway — just without touching stock or the bill, since
+                    # the pharmacy has no record of issuing it. The ward reconciles
+                    # afterwards; a nurse is not blocked at the bedside.
+                    stock_short = str(exc)
+                    log.unit_price = Decimal('0.00')
+                    marker = ' [not deducted — pharmacy stock short]'
+                    log.notes = (log.notes + marker)[:255] if log.notes else marker.strip()
+                    log.save()
 
             # Allergy check happens AFTER recording: the dose is already given, so
             # the chart must reflect reality — the warning is for the staff to act on.
@@ -182,11 +192,24 @@ def medication_log_add(request, pk):
                 for warning in screen_medicines(admission.patient, [medicine]):
                     messages.warning(request, warning)
 
-            if log.charge:
+            if stock_short:
+                messages.warning(
+                    request,
+                    f"{log.medicine_name} x{log.quantity} recorded on the chart. "
+                    f"{stock_short} — nothing was deducted from stock or added to the "
+                    f"bill. Ask the pharmacy to reconcile."
+                )
+            elif log.charge:
                 messages.success(
                     request,
                     f"{log.medicine_name} x{log.quantity} recorded — stock reduced, "
                     f"Rs {log.charge} added to the discharge bill."
+                )
+            elif log.source != 'PHARMACY':
+                messages.success(
+                    request,
+                    f"{log.medicine_name} x{log.quantity} recorded from the patient's own "
+                    f"supply — no stock movement, nothing billed."
                 )
             else:
                 messages.success(request, f"Medication '{log.medicine_name}' logged successfully.")
@@ -200,12 +223,54 @@ def _medication_ctx(form, admission):
     return {
         'form': form,
         'admission': admission,
+        'prescribed_medicines': _prescribed_medicines(admission.patient),
         'pharmacy_medicines': _pharmacy_medicines(),
     }
 
 
+def _prescribed_medicines(patient):
+    """What the doctor actually ordered for this patient, newest first.
+
+    This — not the whole catalogue — is the ward's working list: a nurse gives
+    what was prescribed, and making them find it among every drug in the building
+    is how the wrong row gets picked at 3am. Off-catalogue items the doctor wrote
+    by hand are included too, with no id, so they record without stock or charge.
+    """
+    from prescriptions.models import PrescriptionItem
+
+    items = (PrescriptionItem.objects
+             .filter(prescription__appointment__patient=patient)
+             .select_related('medicine', 'prescription')
+             .prefetch_related('medicine__batches')
+             .order_by('-prescription__created_at'))
+
+    seen, out = set(), []
+    for item in items:
+        med = item.medicine
+        label = (f"{med.name} ({med.brand})" if med and med.brand
+                 else med.name if med else item.custom_medicine_name)
+        if not label:
+            continue
+        key = label.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append({
+            'label': label,
+            'medicine_id': med.id if med else '',
+            'price': med.price if med else '',
+            # advisory only — a short stock level no longer blocks the nurse
+            'stock': med.sellable_quantity if med else '',
+            'dosage': item.dosage,
+            'instructions': item.instructions,
+            'prescribed_on': item.prescription.created_at,
+        })
+    return out
+
+
 def _pharmacy_medicines():
-    """Catalogue rows for the medicine-search box on the ward medication form.
+    """Full catalogue, behind a toggle on the ward medication form, for when the
+    doctor's order was written on paper or during a round.
 
     Tenant-scoped by `Medicine`'s manager. `batches` is prefetched because the
     template shows sellable stock per row, which reads them (see CLAUDE.md).

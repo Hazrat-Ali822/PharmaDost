@@ -55,24 +55,30 @@ class DischargeForm(forms.ModelForm):
 class MedicationLogForm(forms.ModelForm):
     """`medicine` is filled in by the search box (hidden field) when the nurse picks
     a catalogue item; leaving it empty records an off-catalogue drug with no stock
-    movement and no charge."""
+    movement and no charge.
+
+    The search box is backed by the DOCTOR'S ORDERS for this patient, not the whole
+    pharmacy catalogue — the ward gives what was prescribed, and a list of every
+    drug in the building is noise a nurse has to filter at the bedside. The full
+    catalogue stays one toggle away for the case where the order was written on
+    paper or during a round."""
 
     class Meta:
         model = MedicationLog
-        fields = ['medicine', 'medicine_name', 'dosage', 'quantity',
+        fields = ['medicine', 'medicine_name', 'dosage', 'quantity', 'source',
                   'administered_at', 'notes']
         widgets = {
             'medicine': forms.HiddenInput(),
-            # Backed by a <datalist> of the pharmacy's catalogue (see the template)
-            # so ward staff can search instead of typing a drug name from memory.
-            # Deliberately still free text: a ward may administer something the
-            # pharmacy does not stock, and that must remain recordable.
+            # Backed by a <datalist> of this patient's prescribed drugs (see the
+            # template). Deliberately still free text: a ward may administer
+            # something the pharmacy does not stock, and that must remain recordable.
             'medicine_name': forms.TextInput(attrs={
-                'list': 'pharmacy-medicines',
+                'list': 'prescribed-medicines',
                 'autocomplete': 'off',
-                'placeholder': 'Start typing to search the pharmacy…',
+                'placeholder': "Pick from the doctor's orders, or type a name…",
             }),
             'quantity': forms.NumberInput(attrs={'min': 1, 'step': 1}),
+            'source': forms.RadioSelect(),
             'administered_at': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
             'notes': forms.TextInput(attrs={'placeholder': 'e.g. given after lunch, patient tolerated well'}),
         }
@@ -84,7 +90,11 @@ class MedicationLogForm(forms.ModelForm):
         # belongs to this hospital.
         self.fields['medicine'].queryset = Medicine.objects.filter(is_active=True)
         self.fields['medicine'].required = False
-        self.fields['quantity'].label = 'Quantity given (from stock)'
+        self.fields['quantity'].label = 'Quantity given'
+        self.fields['source'].help_text = (
+            "Only pharmacy stock is deducted and billed. A supply the patient "
+            "already had is recorded on the chart only."
+        )
 
     def clean_quantity(self):
         qty = self.cleaned_data.get('quantity') or 1

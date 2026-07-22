@@ -22,8 +22,44 @@
   </div>
   {% endif %}
 
-  {# Medicine search options. The browser filters these natively as the nurse #}
-  {# types — no request per keystroke. #}
+  {# The doctor's orders for THIS patient — one tap fills the form. This is what #}
+  {# the ward actually works from; the full catalogue is a fallback below. #}
+  {% if prescribed_medicines %}
+  <div style="border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:22px; background:var(--bg);">
+    <div style="font-weight:800; font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:10px;">
+      🩺 Prescribed for this patient — tap to fill
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:8px;">
+      {% for p in prescribed_medicines %}
+      <button type="button" class="rx-pick btn alt sm"
+              data-name="{{ p.label }}"
+              data-id="{{ p.medicine_id }}"
+              data-dosage="{{ p.dosage }}"
+              style="text-align:left; line-height:1.35;">
+        <strong>{{ p.label }}</strong>
+        {% if p.dosage %}<span style="color:var(--muted); font-size:12px;"> · {{ p.dosage }}</span>{% endif %}
+      </button>
+      {% endfor %}
+    </div>
+  </div>
+  {% else %}
+  <div style="border:1px dashed var(--border); border-radius:10px; padding:12px 16px; margin-bottom:22px; color:var(--muted); font-size:13px;">
+    No prescription on file for this patient yet — type the medicine name below, or
+    switch on the full pharmacy list.
+  </div>
+  {% endif %}
+
+  {# Search options. The browser filters these natively as the nurse types — no #}
+  {# request per keystroke. The prescribed list is the default; the catalogue is #}
+  {# swapped in only when the nurse asks for it. #}
+  <datalist id="prescribed-medicines">
+    {% for p in prescribed_medicines %}
+      <option value="{{ p.label }}"
+              data-id="{{ p.medicine_id }}"
+              data-price="{{ p.price }}"
+              data-stock="{{ p.stock }}"></option>
+    {% endfor %}
+  </datalist>
   <datalist id="pharmacy-medicines">
     {% for m in pharmacy_medicines %}
       <option value="{{ m.name }}{% if m.brand %} ({{ m.brand }}){% endif %}"
@@ -51,6 +87,10 @@
       {{ field }}
       {% if field.name == 'medicine_name' %}
         <small id="med-info" style="display:none; margin-top:6px; font-size:12.5px; font-weight:600;"></small>
+        <label style="display:flex; align-items:center; gap:7px; margin-top:8px; font-size:12.5px; color:var(--muted); font-weight:500; cursor:pointer;">
+          <input type="checkbox" id="use-full-catalogue" style="width:auto; margin:0;">
+          Search the full pharmacy catalogue instead
+        </label>
       {% endif %}
       {% if field.help_text %}
       <small style="display:block; color:var(--muted); margin-top:4px;">{{ field.help_text }}</small>
@@ -72,42 +112,92 @@
 // Resolve the typed medicine name to a catalogue id so the server can move stock
 // and bill it. Leaving it unmatched is allowed — that records an off-catalogue
 // drug with no stock movement, which a ward legitimately needs.
+//
+// Stock is shown as INFORMATION, never as a block: the dose is being given at the
+// bedside either way, and the chart has to be able to say so.
 (function () {
   const nameInput = document.getElementById('id_medicine_name');
   const hiddenId = document.getElementById('id_medicine');
   const info = document.getElementById('med-info');
-  const list = document.getElementById('pharmacy-medicines');
-  if (!nameInput || !hiddenId || !list) return;
+  const rxList = document.getElementById('prescribed-medicines');
+  const fullList = document.getElementById('pharmacy-medicines');
+  const fullToggle = document.getElementById('use-full-catalogue');
+  if (!nameInput || !hiddenId) return;
 
-  const byValue = {};
-  list.querySelectorAll('option').forEach(function (opt) {
-    byValue[opt.value.toLowerCase()] = {
-      id: opt.dataset.id,
-      price: opt.dataset.price,
-      stock: parseInt(opt.dataset.stock || '0', 10)
-    };
-  });
+  function index(list) {
+    const map = {};
+    if (!list) return map;
+    list.querySelectorAll('option').forEach(function (opt) {
+      map[opt.value.trim().toLowerCase()] = {
+        id: opt.dataset.id || '',
+        price: opt.dataset.price || '',
+        stock: parseInt(opt.dataset.stock || '0', 10)
+      };
+    });
+    return map;
+  }
+  // Look in both lists regardless of which one is attached, so a prescribed drug
+  // still resolves to its catalogue id after the nurse widens the search.
+  const byValue = Object.assign({}, index(fullList), index(rxList));
+
+  function fromPharmacy() {
+    const picked = document.querySelector('input[name="source"]:checked');
+    return !picked || picked.value === 'PHARMACY';
+  }
 
   function sync() {
     const match = byValue[nameInput.value.trim().toLowerCase()];
-    if (match) {
-      hiddenId.value = match.id;
-      const short = match.stock <= 0;
-      info.style.display = 'block';
-      info.style.color = short ? '#b91c1c' : '#15803d';
-      info.textContent = short
-        ? `Out of stock in the pharmacy (0 available) — recording this will fail.`
-        : `In stock: ${match.stock} · Rs ${match.price} each · will be billed at discharge`;
-    } else {
-      hiddenId.value = '';
-      info.style.display = nameInput.value.trim() ? 'block' : 'none';
+    hiddenId.value = match ? match.id : '';
+    if (!nameInput.value.trim()) { info.style.display = 'none'; return; }
+    info.style.display = 'block';
+
+    if (!match || !match.id) {
       info.style.color = 'var(--muted)';
       info.textContent = 'Not a pharmacy item — recorded on the chart only, no stock or charge.';
+      return;
     }
+    if (!fromPharmacy()) {
+      info.style.color = 'var(--muted)';
+      info.textContent = "Patient's own supply — recorded on the chart only, no stock or charge.";
+      return;
+    }
+    if (match.stock <= 0) {
+      info.style.color = '#b45309';
+      info.textContent = 'Pharmacy shows 0 in stock. You can still record this — '
+        + 'it just will not be deducted or billed.';
+      return;
+    }
+    info.style.color = '#15803d';
+    info.textContent = `In stock: ${match.stock} · Rs ${match.price} each · will be billed at discharge`;
   }
 
   nameInput.addEventListener('input', sync);
   nameInput.addEventListener('change', sync);
+  document.querySelectorAll('input[name="source"]').forEach(function (radio) {
+    radio.addEventListener('change', sync);
+  });
+
+  // One tap on a prescribed drug fills the name, the id and the doctor's dosage.
+  document.querySelectorAll('.rx-pick').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      nameInput.value = btn.dataset.name || '';
+      const dosage = document.getElementById('id_dosage');
+      if (dosage && btn.dataset.dosage) dosage.value = btn.dataset.dosage;
+      sync();
+      nameInput.focus();
+    });
+  });
+
+  if (fullToggle) {
+    fullToggle.addEventListener('change', function () {
+      nameInput.setAttribute('list', fullToggle.checked ? 'pharmacy-medicines' : 'prescribed-medicines');
+      nameInput.placeholder = fullToggle.checked
+        ? 'Search the whole pharmacy…'
+        : "Pick from the doctor's orders, or type a name…";
+      nameInput.focus();
+    });
+  }
+
   sync();
 })();
 </script>
@@ -126,6 +216,18 @@
   }
   .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
     border-color: var(--primary);
+  }
+  /* The 100% width above is for text inputs; radios and checkboxes must stay small. */
+  .form-group input[type="radio"], .form-group input[type="checkbox"] {
+    width: auto;
+    padding: 0;
+    margin: 0;
+  }
+  .form-group ul { list-style: none; margin: 0; padding: 0; }
+  .form-group ul li { margin-bottom: 6px; }
+  .form-group ul li label {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 14px; font-weight: 500; cursor: pointer;
   }
 </style>
 {% endblock %}
