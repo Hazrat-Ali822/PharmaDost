@@ -43,7 +43,7 @@
     <div>
       <strong style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 2px;">Age / Gender</strong>
       <span style="font-weight: 600; color: var(--text);">
-        {{ prescription.appointment.patient.age_years|default:"—" }} Yrs / 
+        {{ prescription.appointment.patient.current_age|default:"—" }} Yrs /
         {{ prescription.appointment.patient.get_gender_display|default:"—" }}
       </span>
     </div>

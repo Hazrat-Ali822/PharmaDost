@@ -243,6 +243,19 @@ An explicitly supplied MRN is always kept as-is and does not consume a sequence 
 a hospital can carry its paper register across. Changing the prefix never rewrites MRNs
 already issued.
 
+**Age vs date of birth.** Reception may know either one, so `templates/patients/patient_form.html`
+fills each from the other in the browser. The rule they follow is not symmetric:
+
+- `dob` is fact. `Patient.save()` always recomputes `age_years` from it, so a typed age
+  that disagrees is overwritten.
+- An age does **not** produce a stored `dob`. The form suggests one (visibly marked
+  approximate, and only into an empty field) for the user to accept or correct; the server
+  never fabricates one, because a made-up date reads as fact on a medical record.
+
+Display age with **`patient.current_age`**, not `age_years` — the stored column is only
+true on the day it was entered, so a patient registered at 30 still reads 30 five years
+later. `current_age` computes from `dob` when there is one and falls back to `age_years`.
+
 ### Branding & print
 
 `user_mgmt.SiteSettings` is a per-hospital singleton (`OneToOneField` to `Hospital`, nullable) holding brand name, logo, colours, receipt header/footer, print theme, enabled modules, and `show_doctor_to_pharmacy`. `SiteSettings.load()` resolves it from `get_current_hospital()`, creating the row on first access; with no hospital it reuses the single hospital-less row.

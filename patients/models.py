@@ -43,6 +43,24 @@ class Patient(models.Model):
                              name='uniq_mrn_without_hospital'),
         ]
 
+    @staticmethod
+    def age_on(dob, on=None):
+        """Completed years between `dob` and `on` (today by default)."""
+        if not dob:
+            return None
+        on = on or timezone.localdate()
+        years = on.year - dob.year
+        if (on.month, on.day) < (dob.month, dob.day):
+            years -= 1
+        return max(years, 0)
+
+    @property
+    def current_age(self):
+        """Age to display. Computed live from the date of birth when we have one,
+        because `age_years` is only true on the day it was entered — a patient
+        registered at 30 is still shown as 30 five years later otherwise."""
+        return self.age_on(self.dob) if self.dob else self.age_years
+
     def save(self, *args, **kwargs):
         """Allocate an MRN on first save when one wasn't typed in.
 
@@ -60,6 +78,14 @@ class Patient(models.Model):
             if not self.hospital:
                 self.hospital = get_current_hospital()
             self.mrn = next_mrn(self.hospital)
+
+        # A date of birth is fact; a typed age is a snapshot that goes stale. When
+        # we have the date, it decides. We deliberately do NOT invent a date of
+        # birth from an age here — that would put a precise-looking but made-up
+        # date on a medical record. The form offers one the user can see and edit.
+        if self.dob:
+            self.age_years = self.age_on(self.dob)
+
         super().save(*args, **kwargs)
 
     def __str__(self):
