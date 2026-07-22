@@ -89,7 +89,17 @@ class MedicationLog(models.Model):
     ward medication is neither invisible to inventory nor free to the patient.
     `medicine_name` stays authoritative for what was actually given: a ward may
     administer something off-catalogue, and that must remain recordable.
+
+    `source` decides whether money and stock move at all. A patient often has
+    their own supply at the bedside — bought outside, or brought from home — and
+    the nurse is simply administering it. That dose belongs on the chart, but the
+    pharmacy never issued it, so it must not reduce stock or reach the bill.
     """
+    SOURCE_CHOICES = [
+        ('PHARMACY', 'Hospital pharmacy stock'),
+        ('PATIENT', "Patient's own supply (brought from outside)"),
+    ]
+
     admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name='medication_logs')
     medicine = models.ForeignKey('inventory.Medicine', on_delete=models.SET_NULL,
                                  null=True, blank=True, related_name='ward_administrations',
@@ -97,7 +107,9 @@ class MedicationLog(models.Model):
     medicine_name = models.CharField(max_length=150, verbose_name="Medicine Name")
     dosage = models.CharField(max_length=100, help_text="e.g. 500mg, 1 tablet, 2 puffs")
     quantity = models.PositiveIntegerField(default=1,
-                                           help_text="Units taken from stock (tablets, vials, bottles)")
+                                           help_text="Units given (tablets, vials, bottles)")
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default='PHARMACY',
+                              verbose_name="Where the medicine came from")
     # Frozen at administration: the catalogue price may change before discharge,
     # and the patient must be billed what it cost on the day it was given.
     unit_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))

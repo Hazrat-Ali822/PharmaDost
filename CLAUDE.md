@@ -195,7 +195,14 @@ These handoffs are the backbone of the app; each creates a record, notifies a ro
 
 - **Prescription → POS**: doctor writes an Rx (`status` `PENDING`); pharmacy opens POS with `?prescription_id=` to pre-load the cart. Selling all Rx medicines marks it `DISPENSED`, a subset marks it `PARTIAL`. Pending queues filter on `status__in=['PENDING', 'PARTIAL']`.
 - **Doctor advises admission / surgery**: `AdmissionRequest` / `SurgeryRequest` (status `Pending`) → reception/OT queue → confirming with `?request_id=` creates the `Admission` / `SurgeryRecord` and closes the request.
-- **Ward medication → stock + discharge bill**: logging a `MedicationLog` against a catalogue `Medicine` reduces stock FEFO (locked row, inside `transaction.atomic()`) and freezes `unit_price` at that moment. Discharge then bills bed charges **plus every such dose**. Leaving `medicine` empty records an off-catalogue drug with no stock movement and no charge — a ward genuinely needs that, so do not make the field required. `MedicationLog.charge` is derived (`unit_price × quantity`), never stored, so a later catalogue price change cannot rewrite an old bill.
+- **Ward medication → stock + discharge bill**: logging a `MedicationLog` against a catalogue `Medicine` with `source='PHARMACY'` reduces stock FEFO (locked row, inside `transaction.atomic()`) and freezes `unit_price` at that moment. Discharge then bills bed charges **plus every such dose**. `MedicationLog.charge` is derived (`unit_price × quantity`), never stored, so a later catalogue price change cannot rewrite an old bill.
+
+  Three cases record with **no stock movement and no charge**, and none of them may be blocked — the dose is already inside the patient, so refusing to save would leave the chart lying about what was given:
+  - `medicine` empty — an off-catalogue drug. Do not make the field required.
+  - `source='PATIENT'` — the patient's own supply, bought outside or brought from home. The ward is only administering it; the pharmacy never issued it.
+  - `source='PHARMACY'` but stock is short — the dose is still recorded, `unit_price` stays 0, ` [not deducted — pharmacy stock short]` is appended to `notes`, and the nurse gets a warning to have the pharmacy reconcile. **Do not turn this back into a `form.add_error`.**
+
+  The medicine search box on `ipd/medication_form.html` is backed by **this patient's prescribed drugs** (`_prescribed_medicines`, from `PrescriptionItem` via `prescription__appointment__patient`), not the whole catalogue — a nurse gives what was prescribed. The full catalogue is behind the `#use-full-catalogue` checkbox for orders written on paper or during a round. Stock levels are shown as information only, never as a blocker.
 - **Lab / imaging → billing**: ordering a test or scan auto-creates a pending `Invoice` via `billing.services.create_service_invoice`.
 - **Reorder → purchase order**: `inventory.services.reorder_suggestions()` (sales velocity based) feeds `reorder_to_po`, which creates draft `PurchaseRequest`s grouped by supplier.
 

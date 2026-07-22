@@ -156,8 +156,10 @@
           <p style="margin:0 0 4px 0; font-size:13px; color:var(--text);"><span class="muted">Administered by:</span> {{ log.administered_by.email }}</p>
           {% if log.charge %}
           <p style="margin:0 0 4px 0; font-size:13px;"><span class="muted">Billed:</span> <strong style="color:#15803d;">Rs {{ log.charge|floatformat:0 }}</strong> <span class="muted">(from pharmacy stock)</span></p>
+          {% elif log.source == 'PATIENT' %}
+          <p style="margin:0 0 4px 0; font-size:12.5px;" class="muted">Patient's own supply — no stock movement or charge.</p>
           {% else %}
-          <p style="margin:0 0 4px 0; font-size:12.5px;" class="muted">Not a pharmacy item — no stock movement or charge.</p>
+          <p style="margin:0 0 4px 0; font-size:12.5px;" class="muted">Not issued by the pharmacy — no stock movement or charge.</p>
           {% endif %}
           {% if log.notes %}
           <p style="margin:0; font-size:13px; font-style:italic; color:var(--muted);"><span class="muted">Notes:</span> "{{ log.notes }}"</p>
