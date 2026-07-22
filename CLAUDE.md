@@ -76,9 +76,21 @@ Tenancy is **opt-in per model** and enforced in three cooperating places:
 
 A model is only isolated if it has **both** a `hospital` FK **and** `objects = TenantManager()`. Several apps still lack this; check before assuming a queryset is scoped.
 
-**`TenantManager` is fail-open**: when no hospital is bound to the thread (a hospital-less non-superuser, a management command, a cron run), it returns the queryset *unfiltered*. This has caused real cross-tenant leaks.
+`TenantManager` resolves in three steps: a bound hospital filters to it; otherwise, if the
+thread is **strict** (`TenantMiddleware` sets this for every authenticated non-superuser) it
+filters to `hospital IS NULL`; otherwise it returns the queryset unfiltered. That last case
+is deliberate — management commands, cron jobs and the superuser SaaS portal operate across
+all tenants.
 
-So views must scope **fail-closed** explicitly — key on superuser, never on "does this user have a hospital":
+The strict flag exists because the manager used to be fail-**open**: a logged-in user whose
+`hospital` was `None` fell through the filter and read *every* tenant's patient records.
+Do not "simplify" `TenantManager` or `TenantMiddleware` back to a bare `if hospital:` —
+`tests/test_security.py::FailClosedTest` guards this.
+
+Models without a `hospital` column (`Doctor`, `Appointment`, `Prescription`, `TestOrder`,
+`ImagingStudy`, and line-item models) get no protection from the manager at all. They are
+scoped **only** by the view-level helpers, so those helpers are load-bearing. Scope
+fail-closed — key on superuser, never on "does this user have a hospital":
 
 ```python
 # correct — a hospital-less non-superuser matches only hospital-less rows

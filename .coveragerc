@@ -1,0 +1,35 @@
+# Coverage settings for the Django test suite.
+#   coverage run --source=. manage.py test --settings=pharma_mgmt.test_settings
+#   coverage report -m
+#   coverage html          # then open htmlcov/index.html
+
+[run]
+source = .
+branch = True
+omit =
+    */.venv/*
+    */venv/*
+    */migrations/*
+    */tests*.py
+    */e2e/*
+    */loadtest/*
+    manage.py
+    desktop/*
+    pharma_mgmt/wsgi.py
+    pharma_mgmt/asgi.py
+    pharma_mgmt/test_settings.py
+    staticfiles/*
+
+[report]
+show_missing = True
+skip_covered = False
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    def __str__
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+
+[html]
+directory = htmlcov
