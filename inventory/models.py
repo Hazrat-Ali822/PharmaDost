@@ -95,9 +95,26 @@ class Medicine(models.Model):
     def is_low_stock(self):
         return self.sellable_quantity < self.reorder_level
 
+    def _prefetched_batches(self):
+        """Batches already loaded by `prefetch_related('batches')`, else None.
+
+        These stock properties are read once per row in list templates (via
+        `is_low_stock`), and each one otherwise costs its own queries — a medicine
+        list of any real size turns into hundreds of round trips. Callers that
+        render many medicines should prefetch; this lets the properties then work
+        off that cache instead of hitting the database per row.
+        """
+        cache = getattr(self, '_prefetched_objects_cache', None)
+        if cache and 'batches' in cache:
+            return list(cache['batches'])
+        return None
+
     @property
     def batch_quantity(self):
         """Sum of all batch quantities (on-hand across every batch, incl. expired)."""
+        batches = self._prefetched_batches()
+        if batches is not None:
+            return sum(b.quantity for b in batches)
         return self.batches.aggregate(s=models.Sum('quantity'))['s'] or 0
 
     @property
@@ -105,17 +122,27 @@ class Medicine(models.Model):
         """On-hand stock that is SAFE to dispense = sum of non-expired batches.
         Falls back to the aggregate for legacy medicines that have no batch rows
         (0 if that aggregate stock is itself past the medicine's expiry date)."""
+        today = timezone.localdate()
+        batches = self._prefetched_batches()
+        if batches is not None:
+            if not batches:
+                return 0 if self.is_expired else self.quantity
+            return sum(b.quantity for b in batches if b.expiry_date >= today)
         if not self.batches.exists():
             return 0 if self.is_expired else self.quantity
-        today = timezone.localdate()
         return self.batches.filter(expiry_date__gte=today).aggregate(s=models.Sum('quantity'))['s'] or 0
 
     @property
     def expired_quantity(self):
         """On-hand stock sitting in already-expired batches (must not be sold)."""
+        today = timezone.localdate()
+        batches = self._prefetched_batches()
+        if batches is not None:
+            if not batches:
+                return self.quantity if self.is_expired else 0
+            return sum(b.quantity for b in batches if b.expiry_date < today)
         if not self.batches.exists():
             return self.quantity if self.is_expired else 0
-        today = timezone.localdate()
         return self.batches.filter(expiry_date__lt=today).aggregate(s=models.Sum('quantity'))['s'] or 0
 
     @property

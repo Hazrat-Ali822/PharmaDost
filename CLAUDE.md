@@ -37,6 +37,7 @@ Test tooling lives in `requirements-dev.txt` (`pip install -r requirements-dev.t
 | Smoke | `tests/test_smoke.py` | opens 60+ pages as an admin; fastest way to catch a broken template or `{% url %}` |
 | Security | `tests/test_security.py` | auth, tenant isolation, fail-closed, authorisation, CSRF, credentials |
 | End-to-end | `e2e/test_e2e.py` | real Chromium via Playwright; **skips itself** when Playwright or its browser is absent |
+| Performance | `tests/test_performance.py` | query-count ceilings on hot paths; catches N+1s |
 | Load / performance | `loadtest/locustfile.py` | Locust, run manually against a disposable instance |
 
 ```bash
@@ -220,6 +221,30 @@ Routine work does **not** belong here: bug fixes with no architectural consequen
 tweaks, styling, or a list of files that is easy to discover by looking. When something
 here turns out to be wrong, correct it rather than appending a contradiction — this file
 should never contain two answers to the same question.
+
+## Performance
+
+The app is deployed on a small shared host, so per-request cost is the difference
+between usable and sluggish. Four things carry that weight; keep them intact.
+
+- **`DEBUG` defaults to `False` when `BASE_DIR` is under `/home/`** (i.e. on the server).
+  With `DEBUG=True` Django retains every SQL query in memory for the process's life and
+  serves stack traces to users. Never override this to `True` on a deployment.
+- **Sidebar badge counts** (`accounts/context_processors.py`) run on *every* page render.
+  They are computed only for modules the user can actually see, and cached per user for
+  `BADGE_CACHE_SECONDS`. Adding an ungated count puts a query on every page in the app.
+- **The notification endpoint** (`accounts/views.get_notifications_latest`) is polled by
+  every open browser on a timer. It renders **without** `request=request` on purpose —
+  passing the request builds a RequestContext and drags in every context processor,
+  taking it from ~2 queries to ~15 per poll.
+- **Stock properties** (`Medicine.sellable_quantity` / `batch_quantity` /
+  `expired_quantity`) read the medicine's batches. Templates call them once per row via
+  `is_low_stock`, so any view listing many medicines must
+  `prefetch_related('batches')` — the properties use that cache when present. Without it
+  a 500-item catalogue is 1000+ queries per page.
+
+`tests/test_performance.py` puts query-count ceilings on the hot paths. A failure there
+almost always means a query moved inside a loop; find that before raising the number.
 
 ## Conventions
 

@@ -62,14 +62,26 @@ def dashboard(request):
     daily_income = []
     daily_expense = []
     
+    # Aggregate the whole week per model in one grouped query each. Querying inside
+    # the day loop instead cost 7 x 3 = 21 round trips to build one small chart,
+    # which dominated the dashboard's load time on a small host.
+    def _totals_by_day(queryset, date_expr, value_field):
+        rows = (queryset.filter(**{f'{date_expr}__gte': seven_days_ago,
+                                   f'{date_expr}__lte': today})
+                .values(date_expr)
+                .annotate(s=Sum(value_field)))
+        return {row[date_expr]: row['s'] or 0 for row in rows}
+
+    inv_by_day = _totals_by_day(Invoice.objects.all(), 'created_at__date', 'paid')
+    sale_by_day = _totals_by_day(Sale.objects.filter(is_returned=False),
+                                 'created_at__date', 'paid')
+    exp_by_day = _totals_by_day(Expense.objects.all(), 'date', 'amount')
+
     for i in range(7):
         day = seven_days_ago + timedelta(days=i)
         labels.append(day.strftime("%a %d"))
-        day_inv = Invoice.objects.filter(created_at__date=day).aggregate(s=Sum('paid'))['s'] or 0
-        day_sale = Sale.objects.filter(created_at__date=day, is_returned=False).aggregate(s=Sum('paid'))['s'] or 0
-        daily_income.append(float(day_inv + day_sale))
-        day_exp = Expense.objects.filter(date=day).aggregate(s=Sum('amount'))['s'] or 0
-        daily_expense.append(float(day_exp))
+        daily_income.append(float(inv_by_day.get(day, 0) + sale_by_day.get(day, 0)))
+        daily_expense.append(float(exp_by_day.get(day, 0)))
         
     # Departmental Revenue & Activity Calculations for Selected Date Range
     invs = Invoice.objects.filter(created_at__date__range=[start_date, end_date])
@@ -142,7 +154,10 @@ def dashboard(request):
 @feature_required('inventory')
 def medicine_list(request):
     q = request.GET.get('q', '').strip()
-    meds = Medicine.objects.all()
+    # The template asks every row for is_low_stock -> sellable_quantity, which
+    # reads the medicine's batches. Prefetch them so that costs one query for the
+    # page instead of two per medicine.
+    meds = Medicine.objects.prefetch_related('batches')
     if q:
         meds = meds.filter(
             Q(name__icontains=q) | Q(generic_name__icontains=q) |
