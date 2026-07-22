@@ -146,6 +146,27 @@ Two things here are load-bearing:
 
 `base.html` injects tenant colours as CSS variables over `app.css`. When editing `static/css/app.css`, bump the `?v=X.X` cache-busting query string in every template that links it.
 
+## Keeping this file current
+
+**This file is maintained alongside the code, in the same commit as the change.** It is the
+one document an agent or a new developer reads to understand the project, so a stale line
+here is worse than no line. Do not defer it to "later" or a separate cleanup commit.
+
+Update it whenever a change touches any of:
+
+- a new role, feature key, or module, or a change to who can reach what
+- a new cross-module pipeline or handoff, or a change to an existing one
+- anything about tenancy scoping, the fail-open/fail-closed rule, or `TenantManager`
+- the database setup, deploy procedure, cron commands, or how tests are run
+- a new management command, or a changed/removed one
+- a convention or gotcha worth warning the next agent about (a crash cause, a field-name
+  trap, an ordering requirement)
+
+Routine work does **not** belong here: bug fixes with no architectural consequence, copy
+tweaks, styling, or a list of files that is easy to discover by looking. When something
+here turns out to be wrong, correct it rather than appending a contradiction — this file
+should never contain two answers to the same question.
+
 ## Conventions
 
 - Patients and doctors use **`full_name`**, not `name`. `patient.name` / `lead_surgeon.name` raise `AttributeError` at runtime and have shipped as crash bugs before.
