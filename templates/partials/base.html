@@ -774,7 +774,9 @@
       }, 7000);
     }
 
-    // Poll endpoint every 5 seconds for new notifications
+    // Poll for new notifications. 30s, not 5s: every logged-in browser hits this
+    // on a timer all day, and on a small/shared host that background traffic is
+    // what makes the whole app feel slow. Handoffs are not that time-critical.
     setInterval(function() {
       fetch("{% url 'accounts:get_notifications_latest' %}")
       .then(res => res.json())
@@ -819,7 +821,7 @@
         }
       })
       .catch(err => console.error("Error polling notifications:", err));
-    }, 5000);
+    }, 30000);
   }
 </script>
 

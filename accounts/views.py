@@ -16,17 +16,27 @@ def mark_notifications_read(request):
 
 @login_required
 def get_notifications_latest(request):
-    """AJAX endpoint to retrieve latest unread notifications."""
+    """AJAX endpoint to retrieve latest unread notifications.
+
+    Every logged-in browser polls this on a timer, so it must stay cheap. It is
+    rendered WITHOUT `request=request` on purpose: passing the request builds a
+    RequestContext, which runs every context processor — including the sidebar
+    badge counts — turning a 2-query endpoint into a 15-query one on every poll.
+    `partials/notifications_list.html` needs nothing but `unread_notifications`.
+    """
     from django.template.loader import render_to_string
-    unread = Notification.objects.filter(user=request.user, is_read=False).order_by('-created_at')[:5]
+    unread = list(
+        Notification.objects.filter(user=request.user, is_read=False)
+        .order_by('-created_at')[:5]
+    )
     unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
-    
+
     html = render_to_string('partials/notifications_list.html', {
         'unread_notifications': unread,
-        'unread_notifications_count': unread_count
-    }, request=request)
-    
+        'unread_notifications_count': unread_count,
+    })
+
     return JsonResponse({
         'count': unread_count,
-        'html': html
+        'html': html,
     })

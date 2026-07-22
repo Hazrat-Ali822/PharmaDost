@@ -24,7 +24,15 @@ load_dotenv(BASE_DIR / ".env")
 load_dotenv(DATA_DIR / ".env", override=True)
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-secret-key-change-me")
-DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() == "true"
+
+# DEBUG defaults True for local development, but NOT on a server. On PythonAnywhere
+# the project lives under /home/<user>/ and there is no .env setting this, so the old
+# unconditional "True" default meant production ran with DEBUG on: stack traces
+# containing source and settings were served to real users, and Django retained every
+# SQL query in memory for the life of the process (a steady slowdown). Set
+# DJANGO_DEBUG explicitly to override either way.
+_looks_like_a_server = str(BASE_DIR).startswith("/home/")
+DEBUG = os.getenv("DJANGO_DEBUG", "False" if _looks_like_a_server else "True").lower() == "true"
 ALLOWED_HOSTS = [h.strip() for h in os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",") if h]
 
 # Render Cloud Platform integration
