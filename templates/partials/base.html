@@ -180,11 +180,11 @@
           {% endif %}
         </a>
         {% endif %}
-        {% if nav.ipd or nav.ward %}{% if request.user.role != 'DOCTOR' %}
+        {% if nav.ipd or nav.ward %}
         <a href="{% url 'ipd:admission_list' %}" class="{% if '/ipd/' in request.path %}active{% endif %}" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
           <div style="display:flex; align-items:center; gap:12px; min-width:0;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><path d="M2 22h20M5 22v-5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v5M8 6h8M12 2v8"/></svg>
-            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{% if nav.ipd %}Inpatient (IPD){% else %}Ward{% endif %}</span>
+            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{% if request.user.role == 'DOCTOR' %}My Inpatients{% elif nav.ipd %}Inpatient (IPD){% else %}Ward{% endif %}</span>
           </div>
           {% if ipd_badge_count > 0 %}
             <span class="sidebar-badge" style="background:#ef4444; color:white; font-size:10px; font-weight:700; padding:2px 6px; border-radius:10px; line-height:1; flex-shrink:0; margin-left:6px;">{{ ipd_badge_count }}</span>
@@ -198,7 +198,7 @@
           {% endif %}
         </a>
         {% endif %}
-        {% endif %}{% endif %}
+        {% endif %}
         {% if nav.ot and request.user.role != 'DOCTOR' %}
         <a href="{% url 'ot:surgery_list' %}" class="{% if '/ot/' in request.path %}active{% endif %}" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
           <div style="display:flex; align-items:center; gap:12px; min-width:0;">

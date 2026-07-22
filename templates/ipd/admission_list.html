@@ -3,12 +3,22 @@
 {% block page_title %}Inpatient (IPD) Admissions{% endblock %}
 {% block content %}
 <div class="page-head">
-  <h2>Inpatient Department (IPD)</h2>
+  <h2>{% if request.user.role == 'DOCTOR' %}My Inpatients{% else %}Inpatient Department (IPD){% endif %}</h2>
   <div style="display:flex; gap:10px;">
-    <a class="btn alt" href="{% url 'ipd:ward_bed_list' %}">Manage Wards & Beds</a>
+    <a class="btn alt" href="{% url 'ipd:ward_bed_list' %}">Manage Wards &amp; Beds</a>
+    {# Admitting is reception's job — a doctor advises instead, and a nurse has no `ipd`
+       at all, so showing them this button would link straight into a 403. #}
+    {% if nav.ipd and request.user.role != 'DOCTOR' %}
     <a class="btn" href="{% url 'ipd:admission_create' %}">Admit Patient</a>
+    {% endif %}
   </div>
 </div>
+
+{% if request.user.role == 'DOCTOR' %}
+<p class="muted" style="margin:-6px 0 16px; font-size:13px;">
+  Showing only the patients you are attending or advised for admission.
+</p>
+{% endif %}
 
 <h3 style="margin-bottom:12px; font-weight:700;">Active Admissions</h3>
 <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:20px; margin-bottom:40px;">
@@ -34,12 +44,14 @@
     </div>
     <div style="display:flex; gap:10px; border-top:1px solid var(--border); padding-top:15px; margin-top:auto;">
       <a href="{% url 'ipd:admission_detail' adm.pk %}" class="btn alt sm" style="flex:1; text-align:center;">View Logs</a>
+      {% if nav.ipd %}
       <a href="{% url 'ipd:admission_discharge' adm.pk %}" class="btn sm danger" style="flex:1; text-align:center; background:#ef4444; color:#fff; border:none;">Discharge</a>
+      {% endif %}
     </div>
   </div>
   {% empty %}
   <div class="card" style="grid-column: 1 / -1; text-align:center; padding:40px; color:var(--muted)">
-    No active inpatients currently admitted.
+    {% if request.user.role == 'DOCTOR' %}You have no admitted patients right now.{% else %}No active inpatients currently admitted.{% endif %}
   </div>
   {% endfor %}
 </div>
