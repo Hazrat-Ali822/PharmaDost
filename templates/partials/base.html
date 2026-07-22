@@ -122,7 +122,7 @@
       </a>
       {% endif %}
 
-      {% if nav.patients or nav.opd or nav.prescriptions or nav.lab or nav.imaging %}
+      {% if nav.patients or nav.opd or nav.prescriptions or nav.lab or nav.imaging or nav.ipd or nav.ward or nav.ot %}
       <div class="nav-group">
         <div class="nav-group-title">Clinical</div>
         {% if nav.patients and request.user.role != 'LABTECH' and request.user.role != 'SONOGRAPHER' %}
