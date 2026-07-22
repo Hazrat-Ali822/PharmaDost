@@ -27,6 +27,48 @@ python manage.py migrate
 
 There is no linter or formatter configured in this repo.
 
+### Testing
+
+Test tooling lives in `requirements-dev.txt` (`pip install -r requirements-dev.txt`).
+
+| Layer | Where | Notes |
+|---|---|---|
+| Unit / integration / functional | each app's `tests*.py` | Django `TestCase` + test client |
+| Smoke | `tests/test_smoke.py` | opens 60+ pages as an admin; fastest way to catch a broken template or `{% url %}` |
+| Security | `tests/test_security.py` | auth, tenant isolation, fail-closed, authorisation, CSRF, credentials |
+| End-to-end | `e2e/test_e2e.py` | real Chromium via Playwright; **skips itself** when Playwright or its browser is absent |
+| Load / performance | `loadtest/locustfile.py` | Locust, run manually against a disposable instance |
+
+```bash
+# coverage (config in .coveragerc; ~63% at last measure)
+coverage run manage.py test <apps...> --settings=pharma_mgmt.test_settings
+coverage report -m
+coverage html                                    # open htmlcov/index.html
+
+# end-to-end, one-time browser download
+playwright install chromium
+python manage.py test e2e --settings=pharma_mgmt.test_settings
+
+# load test — NEVER against production; the counter task posts real sales
+locust -f loadtest/locustfile.py --host http://localhost:8000 --headless -u 50 -r 5 -t 2m
+
+# security scans (also run in CI)
+python manage.py check --deploy
+bandit -r . -x ./.venv,./e2e,./loadtest,./tests,./staticfiles,./desktop -ll
+pip-audit --requirement requirements.txt
+```
+
+`.github/workflows/ci.yml` runs the suite, a missing-migration check, coverage, the E2E
+job and the security scans on every push and pull request.
+
+Two traps when adding tests:
+
+- `Patient.mrn` is globally unique, not per hospital — fixtures must use distinct MRNs
+  even across different tenants.
+- `LiveServerTestCase` (so all of `e2e/`) extends `TransactionTestCase`, which does **not**
+  run `setUpTestData`. Build fixtures in `setUp`, or the tests hit the first-run setup
+  wizard instead of the app.
+
 ### Management commands
 
 | Command | Purpose |
