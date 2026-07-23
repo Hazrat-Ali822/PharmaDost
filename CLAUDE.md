@@ -309,6 +309,10 @@ zero parts dropped. Years alone is useless in paediatrics, and `age_years` is on
 the day it was typed (a patient registered at 30 otherwise still reads 30 five years on).
 `current_age` remains the whole-year integer for logic and `{% if %}`.
 
+Patient fields are laid out once in `templates/patients/_fields.html` and included by both
+the registration page and the reception visit screen — the CNIC/age script lives there, so
+rendering the form with `as_p` anywhere else silently loses it.
+
 `Patient.age_parts_on()` counts whole months first, then measures leftover days from that
 month-anniversary. Do not "simplify" it into subtracting the calendar fields and borrowing
 a fixed number of days — 31 Jan to 1 Mar borrows 28 from February and yields a negative day
@@ -376,4 +380,10 @@ almost always means a query moved inside a loop; find that before raising the nu
 - Patients and doctors use **`full_name`**, not `name`. `patient.name` / `lead_surgeon.name` raise `AttributeError` at runtime and have shipped as crash bugs before.
 - Vitals fields (temperature, pulse) are free-text `CharField`s — wrap any `float()`/`int()` parsing in `try/except`.
 - Money-and-stock operations (sale, discharge + bill, surgery + invoice, PO receive) belong in `transaction.atomic()` with `select_for_update()` on the contended row.
+- `{# … #}` is a **single-line** comment in Django templates. Spanning one across several
+  lines does not comment them out — it prints them, and evaluates any `{{ }}` or `{% %}`
+  inside. Use `{% comment %}…{% endcomment %}` for anything multi-line.
+- Dates the staff type use **DD/MM/YYYY**, not a native `<input type="date">` — that renders
+  in the *browser's* locale, so the same record reads `29/01/2002` at one desk and
+  `01/29/2002` at another.
 - Do not commit `.claude/settings.local.json`. `desktop/build.bat` and `desktop/launcher.py` have repeatedly shown as deleted in the working tree without being touched — restore them before committing.

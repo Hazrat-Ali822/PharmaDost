@@ -1,0 +1,267 @@
+{% comment %}
+Patient details, laid out once and included by both the registration page and the
+reception visit screen. It used to be rendered with as_p in two places, and the
+script below only existed on one of them — so CNIC dashes and the age boxes
+quietly did nothing at the front desk.
+
+Note the tag: `{# #}` is SINGLE-LINE in Django. Spanning one over several lines
+does not comment them out, it prints them — and evaluates any template tag
+inside, which is exactly how this file rendered the whole form twice.
+{% endcomment %}
+
+{% if form.non_field_errors %}
+<div style="background:#fef2f2; border:1px solid #fecaca; color:#b91c1c; padding:11px 14px; border-radius:8px; margin-bottom:16px; font-size:14px; font-weight:600;">
+  {% for e in form.non_field_errors %}{{ e }}{% endfor %}
+</div>
+{% endif %}
+
+<div class="pf-grid">
+  <div class="pf-field pf-span2">
+    <label for="{{ form.mrn.id_for_label }}">{{ form.mrn.label }}</label>
+    {{ form.mrn }}
+    {% if form.mrn.help_text %}<small>{{ form.mrn.help_text }}</small>{% endif %}
+  </div>
+
+  <div class="pf-field">
+    <label for="{{ form.full_name.id_for_label }}">Full name</label>
+    {{ form.full_name }}
+    {% for e in form.full_name.errors %}<div class="pf-err">{{ e }}</div>{% endfor %}
+  </div>
+  <div class="pf-field">
+    <label for="{{ form.guardian_name.id_for_label }}">Guardian / father's name</label>
+    {{ form.guardian_name }}
+  </div>
+
+  <div class="pf-field">
+    <label for="{{ form.cnic.id_for_label }}">CNIC</label>
+    {{ form.cnic }}
+    {% for e in form.cnic.errors %}<div class="pf-err">{{ e }}</div>{% endfor %}
+  </div>
+  <div class="pf-field">
+    <label for="{{ form.phone.id_for_label }}">Mobile number</label>
+    {{ form.phone }}
+  </div>
+
+  {# Date of birth and the age boxes fill each other in, so they sit side by #}
+  {# side — reception enters whichever the patient actually knows. #}
+  <div class="pf-field pf-span2">
+    <label for="{{ form.dob.id_for_label }}">{{ form.dob.label }}</label>
+    <div class="dob-row">
+      <div class="dob-wrap">
+        {{ form.dob }}
+        <button type="button" id="dob-pick-btn" class="dob-btn" title="Pick from a calendar"
+                aria-label="Pick date of birth from a calendar">📅</button>
+        <input type="date" id="dob-picker" class="dob-native" tabindex="-1" aria-hidden="true">
+      </div>
+      <div class="age-box">
+        <span>{{ form.age_years.label }}</span>
+        {{ form.age_years }}
+      </div>
+      <div class="age-box">
+        <span>{{ form.age_months.label }}</span>
+        {{ form.age_months }}
+      </div>
+      <div class="age-box">
+        <span>{{ form.age_days.label }}</span>
+        {{ form.age_days }}
+      </div>
+    </div>
+    <small id="dob-note" style="display:none;"></small>
+    {% for e in form.dob.errors %}<div class="pf-err">{{ e }}</div>{% endfor %}
+    {% for e in form.age_years.errors %}<div class="pf-err">Years: {{ e }}</div>{% endfor %}
+    {% for e in form.age_months.errors %}<div class="pf-err">Months: {{ e }}</div>{% endfor %}
+    {% for e in form.age_days.errors %}<div class="pf-err">Days: {{ e }}</div>{% endfor %}
+  </div>
+
+  <div class="pf-field">
+    <label for="{{ form.gender.id_for_label }}">Gender</label>
+    {{ form.gender }}
+  </div>
+  <div class="pf-field">
+    <label for="{{ form.blood_group.id_for_label }}">Blood group</label>
+    {{ form.blood_group }}
+  </div>
+
+  <div class="pf-field pf-span2">
+    <label for="{{ form.address.id_for_label }}">Address</label>
+    {{ form.address }}
+  </div>
+  <div class="pf-field pf-span2">
+    <label for="{{ form.allergies.id_for_label }}">Allergies</label>
+    {{ form.allergies }}
+    <small>Shown as a red banner wherever a drug is about to be given.</small>
+  </div>
+</div>
+
+<style>
+  .pf-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px; }
+  .pf-span2 { grid-column:1 / -1; }
+  .pf-field label { display:block; font-weight:600; margin-bottom:6px; color:var(--text); font-size:14px; }
+  .pf-field small { display:block; color:var(--muted); margin-top:4px; font-size:12.5px; }
+  .pf-err { color:#ef4444; font-size:12.5px; margin-top:4px; }
+  .pf-grid input[type=text], .pf-grid input[type=number], .pf-grid input[type=email],
+  .pf-grid select, .pf-grid textarea {
+    width:100%; padding:10px 12px; border:1px solid var(--border);
+    border-radius:8px; background:var(--card-bg); color:var(--text); font-size:14px;
+    outline:none; transition:border-color .2s;
+  }
+  .pf-grid input:focus, .pf-grid select:focus, .pf-grid textarea:focus { border-color:var(--primary); }
+  .pf-grid input[readonly], .pf-grid input:disabled { background:var(--bg); color:var(--muted); cursor:not-allowed; }
+
+  .dob-row { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+  .dob-wrap { position:relative; flex:1 1 170px; min-width:150px; }
+  .dob-wrap input.dob-input { padding-right:40px; }
+  .dob-btn {
+    position:absolute; right:4px; top:50%; transform:translateY(-50%);
+    border:none; background:transparent; cursor:pointer; font-size:17px;
+    line-height:1; padding:4px 6px; border-radius:6px;
+  }
+  .dob-btn:hover { background:var(--bg); }
+  /* Kept in the layout (showPicker needs a rendered element) but invisible. */
+  .dob-native { position:absolute; right:6px; bottom:0; width:1px; height:1px; opacity:0; pointer-events:none; }
+  .age-box { flex:0 0 78px; }
+  .age-box span { display:block; font-size:12px; color:var(--muted); margin-bottom:5px; }
+</style>
+
+<script>
+(function () {
+  const dob = document.querySelector('input.dob-input');
+  const age = document.getElementById('id_age_years');
+  const months = document.getElementById('id_age_months');
+  const days = document.getElementById('id_age_days');
+  const note = document.getElementById('dob-note');
+  const picker = document.getElementById('dob-picker');
+  const pickBtn = document.getElementById('dob-pick-btn');
+
+  // --- CNIC: type 13 digits, get 35202-1234567-1 -------------------------
+  const cnic = document.getElementById('id_cnic');
+  if (cnic) {
+    const fmt = function (value) {
+      const d = (value || '').replace(/\D/g, '').slice(0, 13);
+      if (d.length <= 5) return d;
+      if (d.length <= 12) return d.slice(0, 5) + '-' + d.slice(5);
+      return d.slice(0, 5) + '-' + d.slice(5, 12) + '-' + d.slice(12);
+    };
+    cnic.addEventListener('input', function () {
+      const atEnd = cnic.selectionStart === cnic.value.length;
+      const out = fmt(cnic.value);
+      if (out === cnic.value) return;
+      cnic.value = out;
+      if (!atEnd) cnic.setSelectionRange(out.length, out.length);
+    });
+    cnic.value = fmt(cnic.value);
+  }
+
+  if (!dob || !age) return;
+
+  function today() { return new Date(); }
+  function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  // The box always reads DD/MM/YYYY; the native picker always speaks ISO.
+  function parseDMY(value) {
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec((value || '').trim());
+    if (!m) return null;
+    const day = +m[1], month = +m[2], year = +m[3];
+    const d = new Date(year, month - 1, day);
+    // Rejects 31/02/2002 — the Date would roll it into March.
+    if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day) return null;
+    return d;
+  }
+  function toDMY(d) { return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear(); }
+  function toISO(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+
+  // --- typing: slashes appear as you go ----------------------------------
+  dob.addEventListener('input', function () {
+    const atEnd = dob.selectionStart === dob.value.length;
+    const d = (dob.value || '').replace(/\D/g, '').slice(0, 8);
+    let out = d;
+    if (d.length > 4) out = d.slice(0, 2) + '/' + d.slice(2, 4) + '/' + d.slice(4);
+    else if (d.length > 2) out = d.slice(0, 2) + '/' + d.slice(2);
+    if (out !== dob.value) {
+      dob.value = out;
+      if (!atEnd) dob.setSelectionRange(out.length, out.length);
+    }
+  });
+
+  // --- calendar button ---------------------------------------------------
+  if (picker && pickBtn) {
+    pickBtn.addEventListener('click', function () {
+      const current = parseDMY(dob.value);
+      if (current) picker.value = toISO(current);
+      if (typeof picker.showPicker === 'function') picker.showPicker();
+      else { picker.style.pointerEvents = 'auto'; picker.focus(); picker.click(); }
+    });
+    picker.addEventListener('change', function () {
+      if (!picker.value) return;
+      const parts = picker.value.split('-');
+      dob.value = pad(+parts[2]) + '/' + pad(+parts[1]) + '/' + parts[0];
+      dob.dispatchEvent(new Event('change'));
+    });
+  }
+
+  // --- date of birth <-> age --------------------------------------------
+  // Count whole months first, then the leftover days from that month-anniversary.
+  // Mirrors Patient.age_parts_on(); subtracting fields and borrowing a fixed
+  // number of days lands on a negative day count (31 Jan to 1 Mar).
+  function partsFromDob(born) {
+    const now = startOfDay(today());
+    if (now <= born) return { years: 0, months: 0, days: 0 };
+    let total = (now.getFullYear() - born.getFullYear()) * 12
+              + (now.getMonth() - born.getMonth());
+    if (now.getDate() < born.getDate()) total -= 1;
+    const anniversary = new Date(born.getFullYear(), born.getMonth() + total, 1);
+    const lastDay = new Date(anniversary.getFullYear(), anniversary.getMonth() + 1, 0).getDate();
+    anniversary.setDate(Math.min(born.getDate(), lastDay));
+    const years = Math.floor(total / 12);
+    if (years < 0 || years > 130) return null;
+    return { years: years, months: total % 12,
+             days: Math.round((now - anniversary) / 86400000) };
+  }
+
+  function dobFromParts(y, m, d) {
+    const now = startOfDay(today());
+    const target = new Date(now.getFullYear(), now.getMonth() - (y * 12 + m), 1);
+    const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+    target.setDate(Math.min(now.getDate(), lastDay));
+    target.setDate(target.getDate() - d);
+    return target;
+  }
+
+  function say(text) {
+    if (!note) return;
+    note.textContent = text || '';
+    note.style.display = text ? 'block' : 'none';
+  }
+
+  dob.addEventListener('change', function () {
+    const born = parseDMY(dob.value);
+    if (!born) { say(dob.value ? 'Enter the date as DD/MM/YYYY.' : ''); return; }
+    const p = partsFromDob(born);
+    if (!p) { say('That date of birth does not look right.'); return; }
+    age.value = p.years;
+    if (months) months.value = p.months;
+    if (days) days.value = p.days;
+    say('');
+  });
+
+  function syncFromAge() {
+    const y = parseInt(age.value, 10) || 0;
+    const m = months ? (parseInt(months.value, 10) || 0) : 0;
+    const d = days ? (parseInt(days.value, 10) || 0) : 0;
+    if ((!y && !m && !d) || y > 130) return;
+    // Never overwrite a real date of birth with one worked back from an age.
+    if (parseDMY(dob.value)) return;
+    dob.value = toDMY(dobFromParts(y, m, d));
+    // Months and days pin the date to the day; years alone is a guess, and the
+    // note has to say which one the user is looking at.
+    say((m || d)
+      ? 'Worked back from the age you entered. Correct it if the exact date is known.'
+      : 'Approximate — only the year is known. Correct it if the exact date is known.');
+  }
+
+  [age, months, days].forEach(function (f) {
+    if (f) f.addEventListener('change', syncFromAge);
+  });
+})();
+</script>

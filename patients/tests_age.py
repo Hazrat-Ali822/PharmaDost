@@ -103,6 +103,61 @@ class AgeFormTest(TestCase):
         self.assertContains(resp, "id_age_months")
         self.assertContains(resp, "id_age_days")
 
+    def test_the_date_of_birth_is_entered_as_day_month_year(self):
+        """A native date box renders in the browser's locale, so the same record
+        would read 29/01/2002 at one desk and 01/29/2002 at another."""
+        resp = self.client.get(reverse('patient_add'))
+        self.assertContains(resp, 'DD/MM/YYYY')
+        self.assertContains(resp, 'dob-pick-btn')      # calendar still available
+
+    def test_a_day_month_year_date_is_accepted(self):
+        resp = self.client.post(reverse('patient_add'), {
+            'mrn': '', 'full_name': 'Typed Date', 'gender': 'M',
+            'dob': '29/01/2002',
+        })
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(Patient.objects.get(full_name='Typed Date').dob,
+                         date(2002, 1, 29))
+
+    def test_an_iso_date_from_the_calendar_still_parses(self):
+        resp = self.client.post(reverse('patient_add'), {
+            'mrn': '', 'full_name': 'Picked Date', 'gender': 'F',
+            'dob': '2002-01-29',
+        })
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(Patient.objects.get(full_name='Picked Date').dob,
+                         date(2002, 1, 29))
+
+    def test_an_existing_date_is_shown_back_as_day_month_year(self):
+        p = Patient.objects.create(full_name='Editable', dob=date(2002, 1, 29),
+                                   hospital=self.h)
+        resp = self.client.get(reverse('patient_edit', args=[p.pk]))
+        self.assertContains(resp, '29/01/2002')
+
+    def test_the_form_is_rendered_exactly_once(self):
+        """A multi-line `{# #}` is not a comment in Django — it prints, and runs
+        any tag inside it. One holding `{{ form.as_p }}` rendered the whole form a
+        second time, above the real one."""
+        body = self.client.get(reverse('patient_add')).content.decode()
+        for field in ('full_name', 'cnic', 'age_months'):
+            self.assertEqual(body.count(f'name="{field}"'), 1,
+                             f'{field} appears more than once — the form is rendered twice')
+
+    def test_the_age_boxes_sit_next_to_the_date_not_at_the_bottom(self):
+        """Declared form fields land after the model's unless ordered, which put
+        Months and Days below Allergies."""
+        body = self.client.get(reverse('patient_add')).content.decode()
+        self.assertLess(body.index('id_age_months'), body.index('id_allergies'))
+        self.assertLess(body.index('id_age_days'), body.index('id_allergies'))
+
+    def test_the_reception_visit_screen_gets_the_same_fields_and_script(self):
+        """The visit screen used to render this form with `as_p` and no script,
+        so CNIC dashes and the age boxes did nothing at the front desk."""
+        resp = self.client.get(reverse('visit_create'))
+        self.assertContains(resp, 'id_age_months')
+        self.assertContains(resp, 'DD/MM/YYYY')
+        self.assertContains(resp, 'dob-pick-btn')
+
     def test_months_and_days_become_a_real_date_of_birth(self):
         """A months/days entry is day-precise, so deriving the date is arithmetic
         on what reception said — not a guess."""
