@@ -89,3 +89,14 @@ class Notification(models.Model):
                 message=message,
                 link=link
             )
+
+    @classmethod
+    def notify_admins(cls, hospital, message, link=''):
+        """Tell the owner about something they cannot find out any other way.
+
+        Kept for the *exceptional* — stock written off, a bill voided, someone
+        guessing at a password. Routine traffic (every sale, every appointment)
+        belongs on the admin overview instead: an inbox that fills up with normal
+        activity is an inbox nobody reads, which costs more than it gives.
+        """
+        cls.send_to_role(hospital, 'ADMIN', message, link)

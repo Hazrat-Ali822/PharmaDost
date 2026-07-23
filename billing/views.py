@@ -131,6 +131,14 @@ def invoice_void(request, pk):
     if request.method == 'POST':
         invoice.status = 'VOID'
         invoice.save(update_fields=['status'])
+        # Money erased from the books. With more than one admin on the account,
+        # the others have no other way of learning it happened.
+        from accounts.models import Notification
+        Notification.notify_admins(
+            hospital=request.user.hospital,
+            message=(f"🧾 Invoice #{invoice.pk} (Rs {invoice.total}) voided by "
+                     f"{request.user.email} — {invoice.patient.full_name}."),
+            link=f'/billing/invoices/{invoice.pk}/')
         messages.success(request, f'Invoice #{invoice.pk} has been marked VOID.')
         return redirect('invoice_detail', pk=invoice.pk)
     return render(request, 'billing/invoice_confirm_void.html', {'invoice': invoice})

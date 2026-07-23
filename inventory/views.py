@@ -304,6 +304,17 @@ def adjustment_create(request):
                 notes=request.POST.get('notes', '').strip(),
                 by_user=request.user,
             )
+            if qty_change < 0:
+                # Stock leaving without a sale behind it. Nobody else reports
+                # this, and it is the shape shrinkage takes.
+                from accounts.models import Notification
+                reason = dict(StockAdjustment.REASON_CHOICES).get(
+                    request.POST.get('reason', 'OTHER'), 'Other')
+                Notification.notify_admins(
+                    hospital=request.user.hospital,
+                    message=(f"📦 Stock written off: {abs(qty_change)} × "
+                             f"{batch.medicine.name} ({reason}) by {request.user.email}."),
+                    link='/medicines/adjustments/')
             messages.success(request, 'Stock adjustment recorded.')
             return redirect('adjustment_list')
         except (StockBatch.DoesNotExist, ValueError) as e:
