@@ -11,7 +11,7 @@
 <div class="who">
   <div>
     <b>Patient:</b> {{ order.patient.full_name }}<br>
-    <b>MRN:</b> {{ order.patient.mrn }} · <b>Gender:</b> {{ order.patient.get_gender_display }}{% if order.patient.current_age %} · {{ order.patient.current_age }} yrs{% endif %}
+    <b>MRN:</b> {{ order.patient.mrn }} · <b>Gender:</b> {{ order.patient.get_gender_display }}{% if order.patient.age_display %} · {{ order.patient.age_display }}{% endif %}
   </div>
   <div style="text-align:right">
     <b>Phone:</b> {{ order.patient.phone|default:'—' }}<br>

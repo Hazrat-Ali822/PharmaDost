@@ -21,7 +21,7 @@
         <h3 style="margin:0 0 4px 0; font-weight:800;">{{ patient.full_name }}</h3>
         <div class="muted" style="font-size:13.5px;">
           MRN <strong>{{ patient.mrn }}</strong>
-          {% if patient.current_age %} · {{ patient.current_age }} yrs{% endif %}
+          {% if patient.age_display %} · {{ patient.age_display }}{% endif %}
           {% if patient.get_gender_display %} · {{ patient.get_gender_display }}{% endif %}
           {% if patient.phone %} · {{ patient.phone }}{% endif %}
           {% if patient.cnic %} · CNIC {{ patient.cnic }}{% endif %}

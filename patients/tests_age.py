@@ -100,3 +100,87 @@ class AgeFormTest(TestCase):
         resp = self.client.get(reverse('patient_add'))
         self.assertContains(resp, "id_age_years")
         self.assertContains(resp, "id_dob")
+        self.assertContains(resp, "id_age_months")
+        self.assertContains(resp, "id_age_days")
+
+    def test_months_and_days_become_a_real_date_of_birth(self):
+        """A months/days entry is day-precise, so deriving the date is arithmetic
+        on what reception said — not a guess."""
+        resp = self.client.post(reverse('patient_add'), {
+            'mrn': '', 'full_name': 'Baby Ali', 'gender': 'M',
+            'age_years': '0', 'age_months': '7', 'age_days': '3',
+        })
+        self.assertEqual(resp.status_code, 302)
+        baby = Patient.objects.get(full_name='Baby Ali')
+        self.assertIsNotNone(baby.dob)
+        self.assertEqual(baby.age_parts, (0, 7, 3))
+        self.assertEqual(baby.age_display, '7m 3d')
+
+    def test_years_alone_still_leaves_the_date_of_birth_blank(self):
+        resp = self.client.post(reverse('patient_add'), {
+            'mrn': '', 'full_name': 'Rounded', 'gender': 'M', 'age_years': '35',
+        })
+        self.assertEqual(resp.status_code, 302)
+        p = Patient.objects.get(full_name='Rounded')
+        self.assertIsNone(p.dob)
+        self.assertEqual(p.age_display, '35y')
+
+    def test_a_real_date_of_birth_beats_typed_months_and_days(self):
+        born = timezone.localdate() - timedelta(days=365 * 22 + 6)
+        self.client.post(reverse('patient_add'), {
+            'mrn': '', 'full_name': 'Has A Date', 'gender': 'F',
+            'dob': born.isoformat(),
+            'age_years': '0', 'age_months': '3', 'age_days': '9',
+        })
+        p = Patient.objects.get(full_name='Has A Date')
+        self.assertEqual(p.dob, born)
+        self.assertEqual(p.age_parts[0], 22)
+
+
+class AgeDisplayTest(TestCase):
+    def setUp(self):
+        self.h = Hospital.objects.create(name='Shaheen General Hospital', slug='sgh',
+                                         expiry_date=date.today() + timedelta(days=30))
+
+    def tearDown(self):
+        clear_current_hospital()
+
+    def _born(self, years=0, months=0, days=0):
+        """A patient whose age today is exactly the parts given."""
+        import calendar as cal
+        today = timezone.localdate()
+        total = years * 12 + months
+        year, month = divmod(today.month - 1 - total, 12)
+        year, month = today.year + year, month + 1
+        day = min(today.day, cal.monthrange(year, month)[1])
+        born = date(year, month, day) - timedelta(days=days)
+        return Patient.objects.create(full_name='X', dob=born, hospital=self.h)
+
+    def test_zero_parts_are_dropped(self):
+        self.assertEqual(self._born(years=34, months=5, days=12).age_display, '34y 5m 12d')
+        self.assertEqual(self._born(years=34).age_display, '34y')
+        self.assertEqual(self._born(months=7, days=3).age_display, '7m 3d')
+        self.assertEqual(self._born(days=4).age_display, '4d')
+
+    def test_a_baby_born_today_reads_as_a_newborn(self):
+        p = Patient.objects.create(full_name='Today', dob=timezone.localdate(),
+                                   hospital=self.h)
+        self.assertEqual(p.age_display, 'Newborn')
+
+    def test_a_typed_age_with_no_date_shows_years_only(self):
+        p = Patient.objects.create(full_name='Typed', age_years=42, hospital=self.h)
+        self.assertEqual(p.age_display, '42y')
+
+    def test_nothing_on_file_shows_nothing(self):
+        p = Patient.objects.create(full_name='Unknown', hospital=self.h)
+        self.assertEqual(p.age_display, '')
+
+    def test_days_borrow_from_the_month_that_actually_precedes_today(self):
+        """A flat 30-day borrow makes a baby read a day older than it is in the
+        months that follow a short one."""
+        parts = Patient.age_parts_on(date(2026, 1, 31), on=date(2026, 3, 1))
+        self.assertEqual(parts, (0, 1, 1))       # 31 Jan -> 28 Feb is one month
+
+    def test_a_future_date_of_birth_never_goes_negative(self):
+        future = timezone.localdate() + timedelta(days=30)
+        self.assertEqual(Patient.age_parts_on(future), (0, 0, 0))
