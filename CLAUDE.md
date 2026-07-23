@@ -296,13 +296,24 @@ fills each from the other in the browser. The rule they follow is not symmetric:
 
 - `dob` is fact. `Patient.save()` always recomputes `age_years` from it, so a typed age
   that disagrees is overwritten.
-- An age does **not** produce a stored `dob`. The form suggests one (visibly marked
-  approximate, and only into an empty field) for the user to accept or correct; the server
-  never fabricates one, because a made-up date reads as fact on a medical record.
+- **Years alone** does not produce a stored `dob`. The form suggests one (visibly marked
+  approximate, only into an empty field) for the user to accept or correct; the server
+  never writes it, because a made-up day reads as fact on a medical record.
+- **Years + months/days** does. `PatientForm` carries form-only `age_months` / `age_days`
+  and `clean()` folds them into `dob` — that entry is day-precise, so deriving the date is
+  arithmetic on what reception said, not a guess. They are form-only on purpose: storing
+  three numbers next to `dob` would give two answers to the same question.
 
-Display age with **`patient.current_age`**, not `age_years` — the stored column is only
-true on the day it was entered, so a patient registered at 30 still reads 30 five years
-later. `current_age` computes from `dob` when there is one and falls back to `age_years`.
+Display age with **`patient.age_display`** — `'34y 5m 12d'`, `'7m 3d'`, `'4d'`, `'Newborn'`,
+zero parts dropped. Years alone is useless in paediatrics, and `age_years` is only true on
+the day it was typed (a patient registered at 30 otherwise still reads 30 five years on).
+`current_age` remains the whole-year integer for logic and `{% if %}`.
+
+`Patient.age_parts_on()` counts whole months first, then measures leftover days from that
+month-anniversary. Do not "simplify" it into subtracting the calendar fields and borrowing
+a fixed number of days — 31 Jan to 1 Mar borrows 28 from February and yields a negative day
+count. `templates/patients/patient_form.html` mirrors the same algorithm in JS; the two
+must agree.
 
 ### Branding & print
 

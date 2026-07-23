@@ -1,3 +1,5 @@
+import calendar
+
 from django.db import models
 from django.db.models import Q, UniqueConstraint
 from django.utils import timezone
@@ -54,12 +56,63 @@ class Patient(models.Model):
             years -= 1
         return max(years, 0)
 
+    @staticmethod
+    def _add_months(start, count):
+        """`start` shifted by `count` months, clamped to the target month's length
+        so 31 Jan + 1 month is 28 Feb rather than rolling into March."""
+        year, month = divmod(start.month - 1 + count, 12)
+        year, month = start.year + year, month + 1
+        return start.replace(year=year, month=month,
+                             day=min(start.day, calendar.monthrange(year, month)[1]))
+
+    @staticmethod
+    def age_parts_on(dob, on=None):
+        """(years, months, days) between `dob` and `on`.
+
+        Counts whole months first, then measures the leftover days from that
+        month-anniversary. Subtracting the calendar fields and borrowing a fixed
+        number of days does not work — 31 Jan to 1 Mar borrows 28 from February
+        and lands on a negative day count.
+        """
+        if not dob:
+            return None
+        on = on or timezone.localdate()
+        if on <= dob:
+            return (0, 0, 0)
+        total_months = (on.year - dob.year) * 12 + (on.month - dob.month)
+        if on.day < dob.day:
+            total_months -= 1
+        anniversary = Patient._add_months(dob, total_months)
+        years, months = divmod(total_months, 12)
+        return (years, months, (on - anniversary).days)
+
+    @property
+    def age_parts(self):
+        return self.age_parts_on(self.dob)
+
     @property
     def current_age(self):
-        """Age to display. Computed live from the date of birth when we have one,
-        because `age_years` is only true on the day it was entered — a patient
-        registered at 30 is still shown as 30 five years later otherwise."""
+        """Age in whole years — for logic and `{% if %}`. Computed live from the
+        date of birth when we have one, because `age_years` is only true on the
+        day it was entered: a patient registered at 30 otherwise reads 30 five
+        years later."""
         return self.age_on(self.dob) if self.dob else self.age_years
+
+    @property
+    def age_display(self):
+        """What to print: '34y 5m 12d', '7m 3d', '4d'.
+
+        Zero parts are dropped, which is the whole point — a six-month-old shown
+        as '0 yrs' tells a paediatrician nothing, and a 34-year-old does not need
+        their days spelled out unless they happen to be non-zero.
+        """
+        parts = self.age_parts
+        if parts is None:
+            # Only a typed age on file, so years is all we can honestly say.
+            return f"{self.age_years}y" if self.age_years else ''
+        years, months, days = parts
+        chunks = [f"{n}{unit}" for n, unit in ((years, 'y'), (months, 'm'), (days, 'd')) if n]
+        return ' '.join(chunks) if chunks else 'Newborn'
 
     def save(self, *args, **kwargs):
         """Allocate an MRN on first save when one wasn't typed in.

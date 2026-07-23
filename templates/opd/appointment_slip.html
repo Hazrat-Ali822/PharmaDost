@@ -38,7 +38,7 @@
     {% endif %}
     <tr>
       <td>Age / Gender</td>
-      <th>{% if appointment.patient.current_age %}{{ appointment.patient.current_age }} yrs{% else %}—{% endif %}
+      <th>{{ appointment.patient.age_display|default:"—" }}
         / {{ appointment.patient.get_gender_display|default:"—" }}</th>
     </tr>
     {% if appointment.patient.phone %}

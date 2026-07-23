@@ -51,7 +51,7 @@
       <tr>
         <td><strong>{{ p.mrn }}</strong></td>
         <td>{{ p.full_name }}{% if p.guardian_name %}<br><span class="muted" style="font-size:12px;">s/o {{ p.guardian_name }}</span>{% endif %}</td>
-        <td>{% if p.current_age %}{{ p.current_age }} yrs{% else %}—{% endif %}</td>
+        <td>{{ p.age_display|default:"—" }}</td>
         <td>{{ p.phone|default:"—" }}</td>
         <td>{% with last=p.appointments.first %}{% if last %}{{ last.appointment_date|date:"d M Y" }}{% else %}<span class="muted">—</span>{% endif %}{% endwith %}</td>
         <td style="white-space:nowrap;">
