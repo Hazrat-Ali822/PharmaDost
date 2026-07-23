@@ -3,136 +3,16 @@
 {% block content %}
 <div class="form-card">
   <h2>{{ title }}</h2>
-  <form method="post">
+  <form method="post" novalidate>
     {% csrf_token %}
-    {{ form.as_p }}
-    <button class="btn" type="submit">Save</button>
-    {% if patient %}
-      <a class="btn danger" href="{% url 'patient_delete' patient.pk %}" style="background:#ef4444; color:white !important; border:none; padding:10px 16px; border-radius:8px; text-decoration:none; display:inline-flex; align-items:center;">Delete Patient</a>
-    {% endif %}
-    <a class="btn alt" href="{% url 'patient_list' %}">Cancel</a>
+    {% include 'patients/_fields.html' with form=form %}
+    <div style="margin-top:24px; display:flex; gap:10px; flex-wrap:wrap;">
+      <button class="btn" type="submit">Save</button>
+      {% if patient %}
+        <a class="btn danger" href="{% url 'patient_delete' patient.pk %}" style="background:#ef4444; color:white !important; border:none; padding:10px 16px; border-radius:8px; text-decoration:none; display:inline-flex; align-items:center;">Delete Patient</a>
+      {% endif %}
+      <a class="btn alt" href="{% url 'patient_list' %}">Cancel</a>
+    </div>
   </form>
 </div>
-
-<script>
-// Date of birth and age fill each other in, so reception can enter whichever the
-// patient actually knows — most walk-ins know their age, not the date.
-//
-// The date of birth stays the source of truth: typing one always recomputes the
-// age. Going the other way is a SUGGESTION the user can see and correct before
-// saving, which is why the server never derives a date of birth on its own.
-(function () {
-  const dob = document.getElementById('id_dob');
-  const age = document.getElementById('id_age_years');
-  if (!dob || !age) return;
-
-  const note = document.createElement('small');
-  note.style.cssText = 'display:none; color:var(--muted); font-size:12.5px; margin-top:4px;';
-  (dob.parentNode || dob).appendChild(note);
-
-  function today() { return new Date(); }
-
-  // Years, months and days — a baby's age is months and days, and "0 yrs" tells
-  // a paediatrician nothing.
-  const months = document.getElementById('id_age_months');
-  const days = document.getElementById('id_age_days');
-
-  function startOfDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
-
-  // Count whole months first, then the leftover days from that month-anniversary.
-  // Mirrors Patient.age_parts_on(); subtracting fields and borrowing a fixed
-  // number of days lands on a negative day count (31 Jan to 1 Mar).
-  function partsFromDob(value) {
-    const born = new Date(value + 'T00:00:00');
-    if (isNaN(born)) return null;
-    const now = startOfDay(today());
-    if (now <= born) return { years: 0, months: 0, days: 0 };
-
-    let total = (now.getFullYear() - born.getFullYear()) * 12
-              + (now.getMonth() - born.getMonth());
-    if (now.getDate() < born.getDate()) total -= 1;
-
-    const anniversary = new Date(born.getFullYear(), born.getMonth() + total, 1);
-    const lastDay = new Date(anniversary.getFullYear(), anniversary.getMonth() + 1, 0).getDate();
-    anniversary.setDate(Math.min(born.getDate(), lastDay));
-
-    const years = Math.floor(total / 12);
-    if (years < 0 || years > 130) return null;
-    return {
-      years: years,
-      months: total % 12,
-      days: Math.round((now - anniversary) / 86400000),
-    };
-  }
-
-  function ageFromDob(value) {
-    const p = partsFromDob(value);
-    return p ? p.years : null;
-  }
-
-  function dobFromParts(y, m, d) {
-    const now = today();
-    // Day 0 of the next month is the last day of this one — clamps 31 Mar → 28 Feb.
-    const target = new Date(now.getFullYear(), now.getMonth() - (y * 12 + m), 1);
-    const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
-    target.setDate(Math.min(now.getDate(), lastDay));
-    target.setDate(target.getDate() - d);
-    const pad = function (n) { return String(n).padStart(2, '0'); };
-    return target.getFullYear() + '-' + pad(target.getMonth() + 1) + '-' + pad(target.getDate());
-  }
-
-  dob.addEventListener('change', function () {
-    if (!dob.value) { note.style.display = 'none'; return; }
-    const p = partsFromDob(dob.value);
-    if (!p) return;
-    age.value = p.years;
-    if (months) months.value = p.months;
-    if (days) days.value = p.days;
-    note.style.display = 'none';
-  });
-
-  // CNIC: type 13 digits, get 35202-1234567-1. Dashes are inserted as you go and
-  // anything past 13 digits is dropped, so the stored shape is always the same.
-  const cnic = document.getElementById('id_cnic');
-  if (cnic) {
-    const format = function (value) {
-      const d = (value || '').replace(/\D/g, '').slice(0, 13);
-      if (d.length <= 5) return d;
-      if (d.length <= 12) return d.slice(0, 5) + '-' + d.slice(5);
-      return d.slice(0, 5) + '-' + d.slice(5, 12) + '-' + d.slice(12);
-    };
-    cnic.addEventListener('input', function () {
-      // Retyping mid-string would jump the caret to the end, so only rewrite
-      // when the user is typing at the end — the normal case.
-      const atEnd = cnic.selectionStart === cnic.value.length;
-      const formatted = format(cnic.value);
-      if (formatted === cnic.value) return;
-      cnic.value = formatted;
-      if (!atEnd) cnic.setSelectionRange(formatted.length, formatted.length);
-    });
-    cnic.value = format(cnic.value);
-  }
-
-  function syncFromAge() {
-    const y = parseInt(age.value, 10) || 0;
-    const m = months ? (parseInt(months.value, 10) || 0) : 0;
-    const d = days ? (parseInt(days.value, 10) || 0) : 0;
-    if (!y && !m && !d) return;
-    if (y > 130) return;
-    // Never overwrite a real date of birth with one worked back from an age.
-    if (dob.value) return;
-    dob.value = dobFromParts(y, m, d);
-    // Months and days pin the date to the day; years alone is a guess, and the
-    // note has to say which one the user is looking at.
-    note.textContent = (m || d)
-      ? 'Worked back from the age you entered. Correct it if the exact date is known.'
-      : 'Approximate — only the year is known. Correct it if the exact date is known.';
-    note.style.display = 'block';
-  }
-
-  [age, months, days].forEach(function (field) {
-    if (field) field.addEventListener('change', syncFromAge);
-  });
-})();
-</script>
 {% endblock %}

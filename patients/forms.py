@@ -22,8 +22,26 @@ class PatientForm(forms.ModelForm):
             'mrn', 'full_name', 'guardian_name', 'cnic', 'phone',
             'dob', 'age_years', 'gender', 'address', 'blood_group', 'allergies'
         ]
+        # Declared fields (age_months/age_days) otherwise land at the very bottom
+        # of the form, far from the Years box they belong with.
+        field_order = [
+            'mrn', 'full_name', 'guardian_name', 'cnic', 'phone',
+            'dob', 'age_years', 'age_months', 'age_days',
+            'gender', 'blood_group', 'address', 'allergies',
+        ]
         widgets = {
-            'dob': forms.DateInput(attrs={'type': 'date'}),
+            # Typed as DD/MM/YYYY rather than a native <input type="date">: that
+            # renders in the BROWSER's locale, so the same record reads
+            # 29/01/2002 on one desk and 01/29/2002 on another. A date of birth
+            # that can be misread by half the staff is not worth the free picker
+            # — the calendar button next to it gives that back.
+            'dob': forms.DateInput(format='%d/%m/%Y', attrs={
+                'placeholder': 'DD/MM/YYYY',
+                'inputmode': 'numeric',
+                'maxlength': '10',
+                'autocomplete': 'off',
+                'class': 'dob-input',
+            }),
             'address': forms.Textarea(attrs={'rows': 3}),
             'allergies': forms.Textarea(attrs={'rows': 2}),
             # 13 digits + 2 dashes. inputmode gets a phone's numeric keypad up;
@@ -39,6 +57,10 @@ class PatientForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['age_years'].label = 'Years'
+        self.fields['dob'].label = 'Date of birth'
+        # Accept what the box shows first, but keep the ISO form working so the
+        # calendar picker, an import or an API caller all parse.
+        self.fields['dob'].input_formats = ['%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d']
         for name in ('age_years', 'age_months', 'age_days'):
             self.fields[name].widget.attrs.setdefault('min', 0)
         if self.instance.pk and self.instance.dob:
