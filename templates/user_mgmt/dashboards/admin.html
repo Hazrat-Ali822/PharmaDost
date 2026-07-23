@@ -10,6 +10,97 @@
     <a class="btn alt" href="{% url 'user_mgmt:backup_download' %}">💾 Backup</a>
   </div>
 </div>
+{% comment %}
+Everything below the header answers "what happened / what needs me", which the
+link menu never did. Built in user_mgmt/overview.py; every queryset there is
+tenant-scoped by its own manager.
+{% endcomment %}
+
+{% if attention %}
+<div class="card" style="border-left:4px solid #f59e0b; margin-bottom:20px;">
+  <h3 style="margin-top:0;">Needs your attention</h3>
+  <div style="display:flex; flex-wrap:wrap; gap:9px;">
+    {% for item in attention %}
+    <a href="{{ item.link }}" class="att"
+       style="{% if item.tone == 'bad' %}border-color:#fecaca; background:#fef2f2;{% endif %}">
+      <strong style="{% if item.tone == 'bad' %}color:#b91c1c{% else %}color:#b45309{% endif %}">{{ item.count }}</strong>
+      <span>{{ item.label }}</span>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% else %}
+<div class="card" style="border-left:4px solid #22c55e; margin-bottom:20px;">
+  <strong style="color:#15803d;">Nothing needs attention.</strong>
+  <span class="muted" style="font-size:13px;"> No unpaid bills, low stock, waiting queues or failed logins.</span>
+</div>
+{% endif %}
+
+<div class="card" style="margin-bottom:20px;">
+  <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px;">
+    <h3 style="margin:0;">Today</h3>
+    <span class="muted" style="font-size:12.5px;">as of {{ as_of|date:"d M Y, g:i A" }}</span>
+  </div>
+  <div class="tiles">
+    <div class="tile"><span class="n">{{ today.patients_registered }}</span><span class="l">Patients registered</span></div>
+    <div class="tile"><span class="n">{{ today.appointments }}</span><span class="l">Appointments</span></div>
+    <div class="tile"><span class="n">{{ today.admissions }}</span><span class="l">Admissions</span></div>
+    <div class="tile"><span class="n">{{ today.discharges }}</span><span class="l">Discharges</span></div>
+    {% if nav.pos %}
+    <div class="tile"><span class="n">Rs {{ today.sales_total|floatformat:0 }}</span><span class="l">Pharmacy sales ({{ today.sales_count }})</span></div>
+    {% endif %}
+    {% if nav.billing %}
+    <div class="tile"><span class="n">Rs {{ today.invoices_paid|floatformat:0 }}</span><span class="l">Collected ({{ today.invoices_count }} bills)</span></div>
+    <div class="tile"><span class="n" style="color:#b45309;">Rs {{ today.invoices_due|floatformat:0 }}</span><span class="l">Billed but unpaid</span></div>
+    {% endif %}
+  </div>
+</div>
+
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:20px; margin-bottom:20px;">
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:baseline;">
+      <h3 style="margin:0;">Who is in OPD</h3>
+      <a class="muted" style="font-size:12.5px;" href="{% url 'doctor_availability_board' %}">Board →</a>
+    </div>
+    <div style="margin-top:12px;">
+      {% for doctor, state in board.sitting %}
+      <div class="row"><span style="color:#15803d;">●</span>
+        <strong>Dr. {{ doctor.full_name }}</strong>
+        <span class="muted">{{ doctor.department.name|default:"—" }} · {{ state.label }}</span>
+      </div>
+      {% empty %}
+      <p class="muted" style="margin:0;">No doctor is sitting right now.</p>
+      {% endfor %}
+      {% for doctor, state in board.away %}
+      <div class="row" style="opacity:.7;"><span style="color:#b45309;">○</span>
+        <strong>Dr. {{ doctor.full_name }}</strong>
+        <span class="muted">{{ state.label }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% if nav.audit %}
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:baseline;">
+      <h3 style="margin:0;">Recent activity</h3>
+      <a class="muted" style="font-size:12.5px;" href="{% url 'audit_log' %}">Full log →</a>
+    </div>
+    <div style="margin-top:12px;">
+      {% for entry in activity %}
+      <div class="row">
+        <span class="muted" style="font-size:12px; min-width:52px;">{{ entry.timestamp|date:"H:i" }}</span>
+        <strong style="font-size:13px;">{{ entry.user.email|default:"system" }}</strong>
+        <span class="muted" style="font-size:12.5px;">{{ entry.action|lower }} {{ entry.model_name }} — {{ entry.object_repr|truncatechars:40 }}</span>
+      </div>
+      {% empty %}
+      <p class="muted" style="margin:0;">Nothing recorded yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
 <div class="stat-grid">
   {% if nav.overview %}
   <a class="stat" href="{% url 'dashboard' %}" style="text-decoration:none;color:inherit">
@@ -54,4 +145,20 @@
     {% if nav.reports %}<a class="btn alt" href="{% url 'inventory_report' %}">Inventory Report</a>{% endif %}
   </p>
 </div>
+
+<style>
+  .att {
+    display:inline-flex; align-items:baseline; gap:6px; text-decoration:none;
+    border:1px solid var(--border); background:var(--bg);
+    border-radius:999px; padding:7px 14px; font-size:13px; color:var(--text);
+  }
+  .att:hover { border-color:var(--primary); }
+  .att strong { font-size:15px; font-weight:800; }
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:14px; margin-top:14px; }
+  .tile { border:1px solid var(--border); border-radius:10px; padding:13px 15px; background:var(--bg); }
+  .tile .n { display:block; font-size:21px; font-weight:800; line-height:1.2; }
+  .tile .l { display:block; font-size:12px; color:var(--muted); margin-top:3px; }
+  .row { display:flex; align-items:baseline; gap:8px; padding:6px 0; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+  .row:last-child { border-bottom:none; }
+</style>
 {% endblock %}

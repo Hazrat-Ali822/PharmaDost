@@ -36,6 +36,7 @@ Test tooling lives in `requirements-dev.txt` (`pip install -r requirements-dev.t
 | Unit / integration / functional | each app's `tests*.py` | Django `TestCase` + test client |
 | Smoke | `tests/test_smoke.py` | opens 60+ pages as an admin; fastest way to catch a broken template or `{% url %}` |
 | Security | `tests/test_security.py` | auth, tenant isolation, fail-closed, authorisation, CSRF, credentials |
+| Admin visibility | `tests/test_admin_awareness.py` | audit-log tenant isolation, overview counters, what the owner is notified about |
 | End-to-end | `e2e/test_e2e.py` | real Chromium via Playwright; **skips itself** when Playwright or its browser is absent |
 | Performance | `tests/test_performance.py` | query-count ceilings on hot paths; catches N+1s |
 | Load / performance | `loadtest/locustfile.py` | Locust, run manually against a disposable instance |
@@ -183,6 +184,32 @@ lands on the same `admission_list`, narrowed by `_scoped_admissions`. Buttons th
 the full `ipd` feature (Admit Patient, Discharge) are gated on `nav.ipd` in
 `templates/ipd/admission_list.html` so a nurse never gets a link into a 403; "Admit
 Patient" is additionally hidden from doctors, who advise instead of admitting.
+
+### What the admin is told
+
+Two channels, deliberately separated — mixing them makes the inbox unreadable:
+
+- **`user_mgmt/overview.py`** builds the admin dashboard: today's counters, an
+  "attention" list (unpaid bills, low/expired stock, waiting queues, failed logins), who is
+  in OPD, and the recent audit feed. Routine traffic lives here. Zero counts are dropped
+  rather than shown, so the list stays short enough to read.
+- **`Notification.notify_admins()`** is for the *exceptional* only — currently stock written
+  off (`inventory.adjustment_create`, negative adjustments only), an invoice voided
+  (`billing.invoice_void`), and a run of failed sign-ins. Do not add routine events here:
+  an inbox that fills with normal activity is one nobody reads.
+
+Repeated failed sign-ins fire once, on the attempt that crosses `FAILED_LOGIN_BURST` within
+`FAILED_LOGIN_WINDOW_MINUTES` (`audit/signals.py`) — not on every attempt after it.
+
+**`AuditLog` is tenant-scoped** (`hospital` FK + `TenantManager`, with `all_objects` for the
+superuser portal and commands). It was not, and one hospital's admin could read every other
+tenant's trail — patient names, sales, staff sign-ins — from `/audit/`. Entries are filed
+under the hospital the *affected object* belongs to, not the actor's, so a superuser editing
+a tenant's record still shows up for that tenant's admin. Failed sign-ins are filed by
+looking the attempted address up; without that they land under no hospital and the admin
+whose staff account is being guessed at never sees them. The filter dropdowns are built
+from the scoped queryset too — a list naming another tenant's staff leaks just as surely as
+the rows. Guarded by `tests/test_admin_awareness.py::AuditLogIsolationTest`.
 
 ### Landing / dashboards
 

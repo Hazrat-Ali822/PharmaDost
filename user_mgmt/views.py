@@ -50,7 +50,10 @@ def dashboard_router(request):
         from accounts.permissions import user_has_feature, installed_features
         if 'inventory' in installed_features() and user_has_feature(request.user, 'inventory'):
             return redirect('dashboard')
-        return render(request, _template_for(request.user), {'role': 'ADMIN'})
+        from . import overview
+        ctx = overview.build(request.user)
+        ctx['role'] = 'ADMIN'
+        return render(request, _template_for(request.user), ctx)
 
     import datetime
     from django.utils import timezone
@@ -138,7 +141,8 @@ def dashboard_router(request):
 # Kept so existing {% url 'user_mgmt:...' %} references and direct links still resolve.
 @login_required
 def admin_dashboard(request):
-    return render(request, ROLE_TEMPLATES['ADMIN'])
+    from . import overview
+    return render(request, ROLE_TEMPLATES['ADMIN'], overview.build(request.user))
 
 
 @login_required
