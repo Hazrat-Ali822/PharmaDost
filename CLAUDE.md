@@ -105,6 +105,18 @@ cd ~/PharmaDost && git pull
 # then: Web tab → Reload (required; nothing takes effect without it)
 ```
 
+**`DJANGO_SECRET_KEY` must be in `.env` on the host.** Anything under `/home/` refuses to
+start on the built-in default — that key signs session cookies, so a server using the
+published one can be logged into as any user by anyone. Set it once:
+
+```bash
+cd ~/PharmaDost
+python -c "import secrets; print('DJANGO_SECRET_KEY=' + secrets.token_urlsafe(64))" >> .env
+```
+
+Changing it signs everyone out once. Do **not** gate this on `DJANGO_ENV` — nothing sets
+that variable on the host, which is why the old check never fired.
+
 **Always use the full path `~/PharmaDost/.venv/bin/python`.** A bare `python` resolves to the system Python 3.13, which lacks `dj_database_url` and fails with `ModuleNotFoundError`.
 
 The free tier allows only **one** scheduled task, so the cron commands are chained into a single daily line in the Tasks tab.
