@@ -6,11 +6,58 @@
   <form method="post">
     {% csrf_token %}
     {{ form.as_p }}
-    <button class="btn" type="submit">Save</button>
-    {% if doctor %}
-      <a class="btn danger" href="{% url 'doctor_delete' doctor.pk %}" style="background:#ef4444; color:white !important; border:none; padding:10px 16px; border-radius:8px; text-decoration:none; display:inline-flex; align-items:center;">Delete Doctor</a>
-    {% endif %}
-    <a class="btn alt" href="{% url 'doctor_list' %}">Cancel</a>
+
+    <hr style="border:none; border-top:1px solid var(--border); margin:22px 0 16px;">
+    <h3 style="margin:0 0 4px 0;">OPD Timings</h3>
+    <p class="muted" style="font-size:13px; margin:0 0 14px 0;">
+      When this doctor sits in OPD. Reception is only offered doctors whose timings cover
+      the moment they are booking, so a doctor with no rows here never shows as available.
+      Add two rows for a day with a morning and an evening OPD.
+    </p>
+
+    {{ formset.management_form }}
+    {% for e in formset.non_form_errors %}
+    <div style="color:#ef4444; font-size:13px; margin-bottom:10px;">{{ e }}</div>
+    {% endfor %}
+
+    <table class="tbl schedule-tbl">
+      <thead><tr><th>Day</th><th>From</th><th>To</th><th style="width:70px;">Remove</th></tr></thead>
+      <tbody>
+        {% for sform in formset %}
+        <tr>
+          {% for hidden in sform.hidden_fields %}{{ hidden }}{% endfor %}
+          <td>{{ sform.weekday }}</td>
+          <td>{{ sform.start_time }}</td>
+          <td>{{ sform.end_time }}</td>
+          <td style="text-align:center;">
+            {% if sform.instance.pk %}{{ sform.DELETE }}{% else %}<span class="muted">—</span>{% endif %}
+          </td>
+          {% if sform.errors %}
+          <td colspan="4" style="color:#ef4444; font-size:12px;">
+            {% for field, errs in sform.errors.items %}{{ errs|join:" " }} {% endfor %}
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div style="margin-top:20px; display:flex; gap:10px; flex-wrap:wrap;">
+      <button class="btn" type="submit">Save</button>
+      {% if doctor %}
+        <a class="btn danger" href="{% url 'doctor_delete' doctor.pk %}" style="background:#ef4444; color:white !important; border:none; padding:10px 16px; border-radius:8px; text-decoration:none; display:inline-flex; align-items:center;">Delete Doctor</a>
+      {% endif %}
+      <a class="btn alt" href="{% url 'doctor_list' %}">Cancel</a>
+    </div>
   </form>
 </div>
+
+<style>
+  .schedule-tbl td { padding:6px 8px; }
+  .schedule-tbl input[type=time], .schedule-tbl select {
+    width:100%; padding:8px 10px; border:1px solid var(--border);
+    border-radius:8px; background:var(--card-bg); color:var(--text); font-size:14px;
+  }
+  .schedule-tbl input[type=checkbox] { width:auto; }
+</style>
 {% endblock %}

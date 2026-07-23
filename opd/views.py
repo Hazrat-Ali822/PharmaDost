@@ -1,12 +1,17 @@
 from decimal import Decimal
 
 from django.contrib import messages
+from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from django.views.decorators.http import require_POST
 from accounts.decorators import role_required, feature_required
 from reports.utils import resolve_range
-from .forms import AppointmentForm, DoctorForm, DoctorPayoutForm
-from .models import Appointment, Doctor
+from .availability import doctors_with_availability, split_by_availability
+from .forms import (AppointmentForm, DepartmentForm, DoctorForm, DoctorPayoutForm,
+                    DoctorScheduleFormSet, VisitForm)
+from .models import (Appointment, Department, Doctor, DoctorAvailabilityOverride)
 from .services import doctor_earnings, payouts_total, payout_summary
 
 PAYOUT_ROLES = ["ADMIN", "ACCOUNTANT"]
@@ -26,29 +31,119 @@ def doctor_list(request):
 def doctor_create(request):
     if request.method == 'POST':
         form = DoctorForm(request.POST)
+        formset = DoctorScheduleFormSet(request.POST)
         if form.is_valid():
-            form.save()
-            messages.success(request, 'Doctor profile created successfully.')
-            return redirect('doctor_list')
+            doctor = form.save()
+            formset = DoctorScheduleFormSet(request.POST, instance=doctor)
+            if formset.is_valid():
+                formset.save()
+                messages.success(request, 'Doctor profile created successfully.')
+                return redirect('doctor_list')
     else:
         form = DoctorForm()
-    return render(request, 'opd/doctor_form.html', {'form': form, 'title': 'Add Doctor'})
+        formset = DoctorScheduleFormSet()
+    return render(request, 'opd/doctor_form.html',
+                  {'form': form, 'formset': formset, 'title': 'Add Doctor'})
 
 
 @feature_required('doctors')
 def doctor_edit(request, pk):
-    """Edit a doctor — including the OPD / follow-up fees that auto-bill on each visit."""
+    """Edit a doctor — fees that auto-bill on each visit, and the OPD timings that
+    decide whether reception is offered them."""
     doctor = get_object_or_404(Doctor, pk=pk)
     if request.method == 'POST':
         form = DoctorForm(request.POST, instance=doctor)
-        if form.is_valid():
+        formset = DoctorScheduleFormSet(request.POST, instance=doctor)
+        if form.is_valid() and formset.is_valid():
             form.save()
+            formset.save()
             messages.success(request, f'{doctor.full_name} updated.')
             return redirect('doctor_list')
     else:
         form = DoctorForm(instance=doctor)
+        formset = DoctorScheduleFormSet(instance=doctor)
     return render(request, 'opd/doctor_form.html',
-                  {'form': form, 'title': f'Edit {doctor.full_name}', 'doctor': doctor})
+                  {'form': form, 'formset': formset,
+                   'title': f'Edit {doctor.full_name}', 'doctor': doctor})
+
+
+# --- Departments ----------------------------------------------------------
+
+@feature_required('doctors')
+def department_list(request):
+    """Departments and their doctors. Reception routes by department, so an empty
+    one is worth seeing."""
+    if request.method == 'POST':
+        form = DepartmentForm(request.POST)
+        if form.is_valid():
+            dept = form.save()
+            messages.success(request, f"Department '{dept.name}' added.")
+            return redirect('department_list')
+    else:
+        form = DepartmentForm()
+    departments = Department.objects.prefetch_related('doctors').all()
+    return render(request, 'opd/department_list.html',
+                  {'departments': departments, 'form': form})
+
+
+@feature_required('doctors')
+def department_delete(request, pk):
+    department = get_object_or_404(Department, pk=pk)
+    if request.method == 'POST':
+        if department.doctors.exists():
+            # SET_NULL would silently unfile every doctor in it.
+            department.is_active = False
+            department.save(update_fields=['is_active'])
+            messages.info(request, f"'{department.name}' still has doctors — hidden instead of deleted.")
+        else:
+            name = department.name
+            department.delete()
+            messages.success(request, f"Department '{name}' deleted.")
+    return redirect('department_list')
+
+
+# --- Who is sitting right now ---------------------------------------------
+
+@feature_required('appointments', 'opd')
+def doctor_availability_board(request):
+    """Today's OPD board: who is in, who is off, one click to change it."""
+    doctors = doctors_with_availability(request.user.hospital if not request.user.is_superuser else None)
+    sitting, away = split_by_availability(doctors)
+    return render(request, 'opd/availability_board.html', {
+        'sitting': sitting, 'away': away, 'today': timezone.localdate(),
+    })
+
+
+@feature_required('appointments', 'opd')
+@require_POST
+def doctor_availability_toggle(request, pk):
+    """Mark a doctor off (or back on) for TODAY only.
+
+    Written as a dated override rather than a flag on the doctor so today's leave
+    cannot leak into tomorrow — the commonest way a manual switch goes wrong.
+    """
+    doctor = get_object_or_404(Doctor, pk=pk)
+    today = timezone.localdate()
+    wanted = request.POST.get('available') == '1'
+    note = (request.POST.get('note') or '').strip()[:120]
+
+    DoctorAvailabilityOverride.objects.filter(doctor=doctor, date=today).delete()
+
+    if not wanted:
+        DoctorAvailabilityOverride.objects.create(
+            doctor=doctor, date=today, available=False, note=note, set_by=request.user)
+        messages.success(request, f"{doctor.full_name} marked off for today.")
+    elif doctor.availability()['available']:
+        # Their normal timings already cover now — dropping the override is
+        # enough, and leaves them following the schedule again tomorrow.
+        messages.success(request, f"{doctor.full_name} is back on their normal timings.")
+    else:
+        # Sitting today even though the timings do not say so.
+        DoctorAvailabilityOverride.objects.create(
+            doctor=doctor, date=today, available=True, note=note, set_by=request.user)
+        messages.success(request, f"{doctor.full_name} marked available for today.")
+
+    return redirect(request.POST.get('next') or 'doctor_availability_board')
 
 
 @feature_required('doctors')
@@ -125,6 +220,133 @@ def appointment_list(request):
         'is_doctor': is_doctor,
         'is_unlinked_doctor': is_unlinked_doctor
     })
+
+
+# --- Reception: register / find a patient, then book them in --------------
+
+def _book_visit(request, patient, visit):
+    """Create the appointment, notify the doctor and raise the consultation bill.
+
+    One transaction: a token handed to the patient with no invoice behind it is
+    money the desk never collects.
+    """
+    from accounts.models import Notification
+    from billing.services import create_service_invoice
+
+    doctor = visit['doctor']
+    with transaction.atomic():
+        appointment = Appointment.objects.create(
+            patient=patient, doctor=doctor,
+            appointment_date=visit['appointment_date'],
+            slot_time=visit.get('slot_time'),
+            visit_type=visit['visit_type'])
+        fee = doctor.followup_fee if appointment.visit_type == 'FOLLOWUP' else doctor.opd_fee
+        create_service_invoice(
+            patient=patient,
+            items=[(f"OPD Consultation — {doctor.full_name}", fee)],
+            created_by=request.user, appointment=appointment)
+
+    if doctor.user:
+        Notification.objects.create(
+            user=doctor.user,
+            message=f"New Patient assigned: '{patient.full_name}' is in your queue (Token: {appointment.token_no}).",
+            link=f"/patients/{patient.pk}/")
+    return appointment
+
+
+def _reception_context(request, **extra):
+    hospital = request.user.hospital if not request.user.is_superuser else None
+    doctors = doctors_with_availability(hospital)
+    sitting, away = split_by_availability(doctors)
+    ctx = {
+        'departments': Department.objects.filter(is_active=True),
+        'sitting': sitting,
+        'away': away,
+        'today': timezone.localdate(),
+    }
+    ctx.update(extra)
+    return ctx
+
+
+@feature_required('appointments')
+def reception_desk(request):
+    """The front desk's first screen: is this a new patient or an old one?
+
+    Registering and then separately booking was two screens and a search in
+    between; both paths now end on the same visit form.
+    """
+    q = (request.GET.get('q') or '').strip()
+    results = None
+    if q:
+        from django.db.models import Value
+        from django.db.models.functions import Replace
+        from patients.models import Patient
+
+        lookup = Q(mrn__icontains=q) | Q(phone__icontains=q) | Q(full_name__icontains=q)
+        digits = ''.join(ch for ch in q if ch.isdigit())
+        if digits:
+            # CNICs are stored dashed (35202-1234567-1) and phones however they
+            # were typed, so compare against a stripped copy — the desk reads the
+            # number off a card and types it straight through.
+            lookup |= Q(cnic_digits__contains=digits) | Q(phone_digits__contains=digits)
+        results = (Patient.objects.filter(is_active=True)
+                   .annotate(
+                       cnic_digits=Replace(Replace('cnic', Value('-'), Value('')),
+                                           Value(' '), Value('')),
+                       phone_digits=Replace(Replace('phone', Value('-'), Value('')),
+                                            Value(' '), Value('')))
+                   .filter(lookup)
+                   .order_by('full_name')[:20])
+    return render(request, 'opd/reception_desk.html', {'q': q, 'results': results})
+
+
+@feature_required('appointments')
+def visit_create(request):
+    """Book a visit. With `?patient=<pk>` the patient is already on file; without
+    one, they are registered and booked in the same submit."""
+    from patients.forms import PatientForm
+    from patients.models import Patient
+
+    patient_id = request.GET.get('patient') or request.POST.get('patient_id')
+    patient = get_object_or_404(Patient, pk=patient_id) if patient_id else None
+    is_new = patient is None
+
+    if request.method == 'POST':
+        visit_form = VisitForm(request.POST)
+        patient_form = PatientForm(request.POST) if is_new else None
+        forms_ok = visit_form.is_valid() and (patient_form.is_valid() if is_new else True)
+        if forms_ok:
+            if is_new:
+                patient = patient_form.save()
+            appointment = _book_visit(request, patient, visit_form.cleaned_data)
+            messages.success(
+                request,
+                f"{patient.full_name} ({patient.mrn}) booked with "
+                f"Dr. {appointment.doctor.full_name} — token {appointment.token_no}.")
+            return redirect('appointment_slip', pk=appointment.pk)
+    else:
+        visit_form = VisitForm()
+        patient_form = PatientForm() if is_new else None
+
+    return render(request, 'opd/visit_form.html', _reception_context(
+        request, visit_form=visit_form, patient_form=patient_form, patient=patient))
+
+
+@feature_required('opd')
+def appointment_slip(request, pk):
+    """The token slip the patient carries to the doctor's room."""
+    appointment = get_object_or_404(
+        Appointment.objects.select_related('patient', 'doctor', 'doctor__department')
+        .prefetch_related('doctor__schedules'),
+        pk=pk)
+    if not request.user.is_superuser:
+        if appointment.patient.hospital_id != request.user.hospital_id:
+            from django.http import Http404
+            raise Http404
+    doctor = appointment.doctor
+    fee = doctor.followup_fee if appointment.visit_type == 'FOLLOWUP' else doctor.opd_fee
+    return render(request, 'opd/appointment_slip.html',
+                  {'appointment': appointment, 'fee': fee})
 
 
 @feature_required('appointments')

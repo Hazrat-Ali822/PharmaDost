@@ -1,0 +1,110 @@
+{% extends 'partials/base.html' %}
+{% block title %}Token Slip #{{ appointment.token_no }}{% endblock %}
+{% block page_title %}Token Slip{% endblock %}
+{% block content %}
+
+<div class="no-print" style="display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap;">
+  <button class="btn" onclick="window.print()">🖨️ Print Slip</button>
+  <a class="btn alt" href="{% url 'reception_desk' %}">Next Patient</a>
+  <a class="btn alt" href="{% url 'appointment_list' %}">Today's Queue</a>
+  <a class="btn alt" href="{% url 'patient_detail' appointment.patient.pk %}">Patient History</a>
+</div>
+
+<div class="slip">
+  <div class="slip-head">
+    <div>
+      {% if branding.logo_image %}
+        <img src="{{ branding.logo_image.url }}" alt="" style="height:44px;">
+      {% else %}
+        <div class="slip-brand">{{ branding.brand_name }}</div>
+      {% endif %}
+      {% if branding.brand_tagline %}<div class="slip-sub">{{ branding.brand_tagline }}</div>{% endif %}
+      {% if branding.address %}<div class="slip-sub">{{ branding.address }}</div>{% endif %}
+      {% if branding.phone %}<div class="slip-sub">Ph: {{ branding.phone }}</div>{% endif %}
+    </div>
+    <div class="token-box">
+      <div class="token-label">Token</div>
+      <div class="token-no">{{ appointment.token_no }}</div>
+    </div>
+  </div>
+
+  <div class="slip-title">OPD Appointment Slip</div>
+
+  <table class="slip-rows">
+    <tr><td>MRN</td><th>{{ appointment.patient.mrn }}</th></tr>
+    <tr><td>Patient</td><th>{{ appointment.patient.full_name }}</th></tr>
+    {% if appointment.patient.guardian_name %}
+    <tr><td>Guardian</td><th>{{ appointment.patient.guardian_name }}</th></tr>
+    {% endif %}
+    <tr>
+      <td>Age / Gender</td>
+      <th>{% if appointment.patient.current_age %}{{ appointment.patient.current_age }} yrs{% else %}—{% endif %}
+        / {{ appointment.patient.get_gender_display|default:"—" }}</th>
+    </tr>
+    {% if appointment.patient.phone %}
+    <tr><td>Mobile</td><th>{{ appointment.patient.phone }}</th></tr>
+    {% endif %}
+    <tr><td>Department</td><th>{{ appointment.doctor.department.name|default:"—" }}</th></tr>
+    <tr><td>Doctor</td><th>Dr. {{ appointment.doctor.full_name }}{% if appointment.doctor.specialty %} <span style="font-weight:400">({{ appointment.doctor.specialty }})</span>{% endif %}</th></tr>
+    <tr><td>Visit</td><th>{{ appointment.get_visit_type_display }}</th></tr>
+    <tr>
+      <td>Date / Time</td>
+      <th>{{ appointment.appointment_date|date:"d M Y" }}{% if appointment.slot_time %} · {{ appointment.slot_time|time:"g:i A" }}{% endif %}</th>
+    </tr>
+    <tr><td>Fee</td><th>Rs {{ fee|floatformat:0 }}</th></tr>
+  </table>
+
+  {% if appointment.patient.allergies %}
+  <div class="slip-alert">⚠️ Allergies: {{ appointment.patient.allergies }}</div>
+  {% endif %}
+
+  <div class="slip-foot">
+    {% if appointment.doctor.timings_summary %}
+    <div>OPD timings: {{ appointment.doctor.timings_summary }}</div>
+    {% endif %}
+    <div>{{ branding.receipt_footer }}</div>
+    <div class="slip-sub">Issued {{ appointment.created_at|date:"d M Y, g:i A" }}</div>
+  </div>
+</div>
+
+<style>
+  .slip {
+    max-width: 420px; margin: 0 auto; background: #fff; color: #111;
+    border: 1px solid #ddd; border-radius: 10px; padding: 22px;
+  }
+  .slip-head { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; }
+  .slip-brand { font-size:19px; font-weight:800; }
+  .slip-sub { font-size:11.5px; color:#555; }
+  .token-box { text-align:center; border:2px solid #111; border-radius:8px; padding:6px 14px; min-width:74px; }
+  .token-label { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:#555; }
+  .token-no { font-size:34px; font-weight:800; line-height:1.05; }
+  .slip-title {
+    margin:16px 0 12px; padding:6px 0; border-top:1px solid #111; border-bottom:1px solid #111;
+    text-align:center; font-weight:800; font-size:13px; text-transform:uppercase; letter-spacing:1.5px;
+  }
+  .slip-rows { width:100%; border-collapse:collapse; font-size:13px; }
+  .slip-rows td, .slip-rows th { padding:5px 0; text-align:left; vertical-align:top; }
+  .slip-rows td { color:#555; width:38%; }
+  .slip-rows th { font-weight:700; }
+  .slip-alert {
+    margin-top:12px; padding:8px 10px; border:1px solid #f0a6a6;
+    background:#fff5f5; color:#8a1c1c; font-size:12px; font-weight:700; border-radius:6px;
+  }
+  .slip-foot {
+    margin-top:16px; padding-top:10px; border-top:1px dashed #bbb;
+    text-align:center; font-size:11.5px; color:#555;
+  }
+
+  /* The slip is the page when printing — no sidebar, no buttons, no shell. */
+  @media print {
+    @page { margin: 8mm; }
+    body * { visibility: hidden !important; }
+    .slip, .slip * { visibility: visible !important; }
+    .slip {
+      position: absolute; left: 0; top: 0; width: 100%;
+      max-width: none; border: none; border-radius: 0; padding: 0;
+    }
+    .no-print { display: none !important; }
+  }
+</style>
+{% endblock %}

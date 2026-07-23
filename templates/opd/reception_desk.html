@@ -1,0 +1,74 @@
+{% extends 'partials/base.html' %}
+{% block title %}Reception Desk{% endblock %}
+{% block page_title %}Reception Desk{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <h2>Reception Desk</h2>
+  <a class="btn alt" href="{% url 'doctor_availability_board' %}">Today's OPD Board</a>
+</div>
+
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:20px; margin-bottom:26px;">
+
+  {# New patient: register and book in one submit — the desk used to do these as #}
+  {# two separate screens with a search in between. #}
+  <a href="{% url 'visit_create' %}" class="card"
+     style="padding:26px; text-decoration:none; color:var(--text); border:2px solid var(--primary); border-radius:12px; display:block;">
+    <div style="font-size:30px; line-height:1; margin-bottom:12px;">🆕</div>
+    <h3 style="margin:0 0 6px 0; font-weight:800;">New Patient</h3>
+    <p class="muted" style="margin:0; font-size:13.5px;">
+      First time here. Register and book the visit together — one form, one token slip.
+    </p>
+  </a>
+
+  <div class="card" style="padding:26px; border:1px solid var(--border); border-radius:12px;">
+    <div style="font-size:30px; line-height:1; margin-bottom:12px;">🔁</div>
+    <h3 style="margin:0 0 6px 0; font-weight:800;">Old Patient</h3>
+    <p class="muted" style="margin:0 0 14px 0; font-size:13.5px;">
+      Already registered. Find them by MRN, mobile number, CNIC or name.
+    </p>
+    <form method="get" style="display:flex; gap:8px;">
+      <input type="text" name="q" value="{{ q }}" autofocus
+             placeholder="MRN or mobile number…"
+             style="flex:1; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:var(--card-bg); color:var(--text);">
+      <button class="btn" type="submit">Find</button>
+    </form>
+  </div>
+</div>
+
+{% if results is not None %}
+<div class="card">
+  <h3 style="margin-top:0;">
+    {{ results|length }} match{{ results|length|pluralize:"es" }} for "{{ q }}"
+  </h3>
+  {% if results %}
+  <table class="tbl">
+    <thead>
+      <tr><th>MRN</th><th>Name</th><th>Age</th><th>Mobile</th><th>Last visit</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for p in results %}
+      <tr>
+        <td><strong>{{ p.mrn }}</strong></td>
+        <td>{{ p.full_name }}{% if p.guardian_name %}<br><span class="muted" style="font-size:12px;">s/o {{ p.guardian_name }}</span>{% endif %}</td>
+        <td>{% if p.current_age %}{{ p.current_age }} yrs{% else %}—{% endif %}</td>
+        <td>{{ p.phone|default:"—" }}</td>
+        <td>{% with last=p.appointments.first %}{% if last %}{{ last.appointment_date|date:"d M Y" }}{% else %}<span class="muted">—</span>{% endif %}{% endwith %}</td>
+        <td style="white-space:nowrap;">
+          <a class="btn sm" href="{% url 'visit_create' %}?patient={{ p.pk }}">Book Visit</a>
+          <a class="btn sm alt" href="{% url 'patient_detail' p.pk %}">History</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted" style="margin:0 0 14px 0;">
+    Nobody on file matches that. They may be new.
+  </p>
+  <a class="btn" href="{% url 'visit_create' %}">Register as a new patient</a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

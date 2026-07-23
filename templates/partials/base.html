@@ -131,7 +131,17 @@
           Patients
         </a>
         {% endif %}
+        {% if nav.appointments %}
+        <a href="{% url 'reception_desk' %}" class="{% if '/opd/reception' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V8l7-5 7 5v13"/><path d="M10 21v-5h4v5"/></svg>
+          Reception Desk
+        </a>
+        {% endif %}
         {% if nav.opd %}
+        <a href="{% url 'doctor_availability_board' %}" class="{% if '/opd/board' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          Today's OPD Board
+        </a>
         <a href="{% url 'appointment_list' %}" class="{% if '/opd/appointments' in request.path %}active{% endif %}" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
           <div style="display:flex; align-items:center; gap:12px; min-width:0;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg>
@@ -146,6 +156,10 @@
         <a href="{% url 'doctor_list' %}" class="{% if '/opd/doctors' in request.path %}active{% endif %}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3v6a6 6 0 0 0 12 0V3"/><path d="M6 3H4M18 3h2"/><circle cx="12" cy="17" r="3"/></svg>
           Doctors
+        </a>
+        <a href="{% url 'department_list' %}" class="{% if '/opd/departments' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          Departments
         </a>
         {% endif %}
         {% if nav.prescriptions %}

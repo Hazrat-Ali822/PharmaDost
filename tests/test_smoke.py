@@ -38,6 +38,8 @@ ADMIN_PAGES = [
     'invoice_list', 'invoice_create', 'patient_billing_list',
     'expense_list', 'expense_create', 'cash_closing_list', 'cash_closing_new',
     'payout_list',
+    # front desk
+    'reception_desk', 'visit_create', 'doctor_availability_board', 'department_list',
     # reports
     'sales_report', 'inventory_report', 'profit_report', 'daybook_report',
     'visual_analytics',

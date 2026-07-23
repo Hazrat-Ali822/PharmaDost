@@ -1,0 +1,189 @@
+{% extends 'partials/base.html' %}
+{% block title %}{% if patient %}Book Visit{% else %}Register &amp; Book{% endif %}{% endblock %}
+{% block page_title %}{% if patient %}Book Visit{% else %}Register &amp; Book Visit{% endif %}{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <h2>{% if patient %}Book Visit{% else %}Register &amp; Book Visit{% endif %}</h2>
+  <a class="btn alt" href="{% url 'reception_desk' %}">Back to Desk</a>
+</div>
+
+<form method="post" novalidate>
+  {% csrf_token %}
+  {% if patient %}<input type="hidden" name="patient_id" value="{{ patient.pk }}">{% endif %}
+
+  {% if patient %}
+  {# Existing patient: everything already on file, shown so the desk can confirm #}
+  {# it is the right person without leaving the screen. #}
+  <div class="card" style="margin-bottom:20px; padding:20px; border-left:4px solid var(--primary);">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+      <div>
+        <h3 style="margin:0 0 4px 0; font-weight:800;">{{ patient.full_name }}</h3>
+        <div class="muted" style="font-size:13.5px;">
+          MRN <strong>{{ patient.mrn }}</strong>
+          {% if patient.current_age %} · {{ patient.current_age }} yrs{% endif %}
+          {% if patient.get_gender_display %} · {{ patient.get_gender_display }}{% endif %}
+          {% if patient.phone %} · {{ patient.phone }}{% endif %}
+          {% if patient.cnic %} · CNIC {{ patient.cnic }}{% endif %}
+        </div>
+      </div>
+      <a class="btn sm alt" href="{% url 'patient_edit' patient.pk %}">Edit details</a>
+    </div>
+    {% if patient.allergies %}
+    <div style="margin-top:12px; background:#fef2f2; border:1px solid #fecaca; border-left:4px solid #ef4444; padding:9px 12px; border-radius:8px;">
+      <strong style="color:#b91c1c; font-size:12px; text-transform:uppercase; letter-spacing:0.4px;">⚠️ Allergies</strong>
+      <div style="color:#7f1d1d; font-size:13.5px; font-weight:600;">{{ patient.allergies }}</div>
+    </div>
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="card" style="margin-bottom:20px; padding:20px;">
+    <h3 style="margin-top:0;">Patient Details</h3>
+    {{ patient_form.as_p }}
+  </div>
+  {% endif %}
+
+  <div class="card" style="padding:20px;">
+    <h3 style="margin-top:0;">Visit</h3>
+
+    {% if visit_form.non_field_errors %}
+    <div style="background:#fef2f2; border:1px solid #fecaca; color:#b91c1c; padding:11px 14px; border-radius:8px; margin-bottom:16px; font-size:14px; font-weight:600;">
+      {% for e in visit_form.non_field_errors %}{{ e }}{% endfor %}
+    </div>
+    {% endif %}
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:20px;">
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">Department</label>
+        <select id="department-filter" name="department"
+                style="width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:var(--card-bg); color:var(--text);">
+          <option value="">All departments</option>
+          {% for d in departments %}
+          <option value="{{ d.pk }}" {% if visit_form.department.value|stringformat:"s" == d.pk|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">Visit type</label>
+        {{ visit_form.visit_type }}
+      </div>
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">Date</label>
+        {{ visit_form.appointment_date }}
+      </div>
+      <div>
+        <label style="display:block; font-weight:600; margin-bottom:6px;">Time</label>
+        {{ visit_form.slot_time }}
+      </div>
+    </div>
+
+    <label style="display:block; font-weight:600; margin-bottom:8px;">Doctor</label>
+    {% for e in visit_form.doctor.errors %}
+    <div style="color:#ef4444; font-size:12.5px; margin-bottom:8px;">{{ e }}</div>
+    {% endfor %}
+
+    {# Only doctors actually sitting are offered. Off-duty ones are one checkbox #}
+    {# away, because an emergency still has to be bookable. #}
+    <div id="doctor-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:10px;">
+      {% for doctor, state in sitting %}
+      <label class="doc-card" data-department="{{ doctor.department_id|default:'' }}" data-away="0">
+        <input type="radio" name="doctor" value="{{ doctor.pk }}"
+               {% if visit_form.doctor.value|stringformat:"s" == doctor.pk|stringformat:"s" %}checked{% endif %}>
+        <span style="min-width:0;">
+          <strong style="display:block;">Dr. {{ doctor.full_name }}</strong>
+          <span class="muted" style="font-size:12.5px; display:block;">
+            {{ doctor.department.name|default:doctor.specialty|default:"General" }}
+          </span>
+          <span style="font-size:12px; color:#15803d; font-weight:700;">● {{ state.label }}</span>
+          <span class="muted" style="font-size:12px; display:block;">Fee Rs {{ doctor.opd_fee|floatformat:0 }}</span>
+        </span>
+      </label>
+      {% endfor %}
+
+      {% for doctor, state in away %}
+      <label class="doc-card is-away" data-department="{{ doctor.department_id|default:'' }}" data-away="1" style="display:none;">
+        <input type="radio" name="doctor" value="{{ doctor.pk }}"
+               {% if visit_form.doctor.value|stringformat:"s" == doctor.pk|stringformat:"s" %}checked{% endif %}>
+        <span style="min-width:0;">
+          <strong style="display:block;">Dr. {{ doctor.full_name }}</strong>
+          <span class="muted" style="font-size:12.5px; display:block;">
+            {{ doctor.department.name|default:doctor.specialty|default:"General" }}
+          </span>
+          <span style="font-size:12px; color:#b45309; font-weight:700;">○ {{ state.label }}</span>
+          <span class="muted" style="font-size:12px; display:block;">Fee Rs {{ doctor.opd_fee|floatformat:0 }}</span>
+        </span>
+      </label>
+      {% endfor %}
+    </div>
+
+    <p id="no-doctors" class="muted" style="display:none; padding:16px 0; margin:0;">
+      No doctor from this department is sitting right now. Tick the box below to book one anyway.
+    </p>
+
+    {% if away %}
+    <label style="display:flex; align-items:center; gap:8px; margin-top:14px; font-size:13px; color:var(--muted); cursor:pointer;">
+      <input type="checkbox" id="show-away" style="width:auto;">
+      Also show doctors who are not sitting right now ({{ away|length }})
+    </label>
+    {% endif %}
+
+    <div style="margin-top:24px; display:flex; gap:10px;">
+      <button class="btn" type="submit" style="background:#22c55e; border-color:#22c55e; color:#fff;">
+        {% if patient %}Book &amp; Print Slip{% else %}Register, Book &amp; Print Slip{% endif %}
+      </button>
+      <a class="btn alt" href="{% url 'reception_desk' %}">Cancel</a>
+    </div>
+  </div>
+</form>
+
+<style>
+  .doc-card {
+    display:flex; gap:10px; align-items:flex-start;
+    border:1px solid var(--border); border-radius:10px; padding:12px 14px;
+    cursor:pointer; background:var(--card-bg); transition:border-color .15s;
+  }
+  .doc-card:hover { border-color:var(--primary); }
+  .doc-card input { width:auto; margin-top:3px; flex-shrink:0; }
+  .doc-card:has(input:checked) { border-color:var(--primary); box-shadow:0 0 0 2px var(--primary) inset; }
+  .doc-card.is-away { opacity:.75; }
+  #doctor-grid + p { margin:0; }
+  .card input[type=text], .card input[type=date], .card input[type=time],
+  .card input[type=number], .card select, .card textarea {
+    width:100%; padding:10px 12px; border:1px solid var(--border);
+    border-radius:8px; background:var(--card-bg); color:var(--text); font-size:14px;
+  }
+  .card input[type=checkbox], .card input[type=radio] { width:auto; }
+</style>
+
+<script>
+// Show only the chosen department's doctors, and only the ones actually sitting
+// unless reception asks for the rest.
+(function () {
+  const dept = document.getElementById('department-filter');
+  const showAway = document.getElementById('show-away');
+  const cards = Array.prototype.slice.call(document.querySelectorAll('.doc-card'));
+  const empty = document.getElementById('no-doctors');
+  if (!dept) return;
+
+  function apply() {
+    const wanted = dept.value;
+    const away = showAway && showAway.checked;
+    let visible = 0;
+    cards.forEach(function (card) {
+      const matchesDept = !wanted || card.dataset.department === wanted;
+      const matchesAway = card.dataset.away === '0' || away;
+      const show = matchesDept && matchesAway;
+      card.style.display = show ? 'flex' : 'none';
+      if (show) visible++;
+      // never leave a hidden doctor selected
+      if (!show) { const r = card.querySelector('input'); if (r) r.checked = false; }
+    });
+    if (empty) empty.style.display = visible ? 'none' : 'block';
+  }
+
+  dept.addEventListener('change', apply);
+  if (showAway) showAway.addEventListener('change', apply);
+  apply();
+})();
+</script>
+{% endblock %}
