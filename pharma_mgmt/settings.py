@@ -23,7 +23,8 @@ load_dotenv(BASE_DIR / ".env")
 # A per-user .env in the data dir can override (used by the desktop app).
 load_dotenv(DATA_DIR / ".env", override=True)
 
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-secret-key-change-me")
+_INSECURE_SECRET_KEY = "dev-secret-key-change-me"
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", _INSECURE_SECRET_KEY)
 
 # DEBUG defaults True for local development, but NOT on a server. On PythonAnywhere
 # the project lives under /home/<user>/ and there is no .env setting this, so the old
@@ -59,8 +60,21 @@ if str(BASE_DIR).startswith("/home/"):
         CSRF_TRUSTED_ORIGINS.append(f"https://{username}.pythonanywhere.com")
         CSRF_TRUSTED_ORIGINS.append(f"https://*.pythonanywhere.com")
 
-if os.getenv("DJANGO_ENV") == "production" and not os.getenv("DJANGO_SECRET_KEY"):
-    raise RuntimeError("DJANGO_SECRET_KEY is required in production")
+# The key that signs session cookies and password-reset tokens. Running a server
+# on the published default lets anyone forge a cookie and sign in as any user, so
+# this refuses to start rather than serve.
+#
+# Keyed on the same "am I on a server" signal as DEBUG above, NOT on DJANGO_ENV:
+# nothing sets DJANGO_ENV on the PythonAnywhere host (there is no DATABASE_URL
+# there either), so the old check could never fire where it mattered.
+if _looks_like_a_server and SECRET_KEY == _INSECURE_SECRET_KEY:
+    raise RuntimeError(
+        "DJANGO_SECRET_KEY is not set. Add a long random value to .env in the "
+        "project root before starting the server:\n"
+        "  python -c \"import secrets; print('DJANGO_SECRET_KEY=' + secrets.token_urlsafe(64))\" >> .env\n"
+        "Changing it signs everyone out once; leaving it at the default lets "
+        "anyone forge a login."
+    )
 
 INSTALLED_APPS = [
     "django.contrib.admin",

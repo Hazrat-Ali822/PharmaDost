@@ -18,6 +18,7 @@ CI; this file covers behaviour those tools cannot see.
 """
 from datetime import date, timedelta
 from decimal import Decimal
+from pathlib import Path
 
 from django.test import TestCase, Client
 from django.urls import reverse
@@ -215,3 +216,29 @@ class CredentialTest(TestCase):
         c = Client()
         resp = c.post(reverse('login'), {'username': 'pw@t.com', 'password': 'wrong-guess'})
         self.assertNotContains(resp, 'wrong-guess', status_code=resp.status_code)
+
+
+class SecretKeyGuardTest(TestCase):
+    """The key signs session cookies and password-reset tokens. A server running
+    on the published default is one anyone can forge a login into."""
+
+    SETTINGS = Path(__file__).resolve().parent.parent / 'pharma_mgmt' / 'settings.py'
+
+    def _source(self):
+        return self.SETTINGS.read_text(encoding='utf-8')
+
+    def test_a_server_refuses_to_start_on_the_default_key(self):
+        source = self._source()
+        self.assertIn('_looks_like_a_server and SECRET_KEY == _INSECURE_SECRET_KEY', source,
+                      'the guard must key on the server signal, not an env var nobody sets')
+        self.assertIn('raise RuntimeError', source)
+
+    def test_the_guard_does_not_depend_on_DJANGO_ENV(self):
+        """It used to, and nothing sets DJANGO_ENV on the PythonAnywhere host —
+        so the check could never fire where it mattered. (The name still appears
+        in a comment explaining why; what must not come back is reading it.)"""
+        self.assertNotIn('getenv("DJANGO_ENV")', self._source())
+
+    def test_local_development_still_runs_without_a_key(self):
+        from django.conf import settings as live
+        self.assertTrue(live.SECRET_KEY, 'the suite itself must not need a key set')
