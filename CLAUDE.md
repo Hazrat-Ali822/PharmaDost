@@ -190,6 +190,45 @@ Patient" is additionally hidden from doctors, who advise instead of admitting.
 
 `/` maps to `inventory.views.dashboard` (the pharmacy dashboard). It is **not** feature-gated with a hard 403 — users lacking `inventory` are redirected to `post_login_redirect` instead, and `dashboard_router` avoids bouncing back for admins whose pharmacy module is off. Preserve both sides of that guard or you create a redirect loop.
 
+### The front desk (reception → doctor)
+
+`opd/reception/` is where a visit starts. It asks one question — **new patient or old?**
+
+- **New** → `visit_create` renders `PatientForm` *and* `VisitForm` on one screen and one
+  submit registers the patient, books the appointment and raises the consultation invoice.
+- **Old** → search by MRN, mobile, CNIC or name. CNIC is stored dashed, so the query
+  annotates a `Replace`-stripped copy and matches against that; typing the number straight
+  off the card has to work.
+
+Both paths land on `appointment_slip` — the printable token slip. Its `@media print` block
+hides the whole shell so the slip is the page.
+
+**Departments** (`opd.Department`, tenant-scoped) come first: reception picks the
+department, and only that department's doctors are offered. `VisitForm.clean` rejects a
+doctor/department mismatch, so the JS filter is convenience, not the guard.
+
+### Doctor availability
+
+`Doctor.availability(at=None)` returns `{'available', 'state', 'label'}` from two layers,
+in this order:
+
+1. **`DoctorAvailabilityOverride`** for that date — one click from the OPD board. It wins.
+2. **`DoctorSchedule`** rows — the weekly OPD timings (a doctor may have two per day).
+
+Neither works alone: timings leave a doctor on leave showing as available, and a bare
+manual switch has to be flipped every morning by someone who remembers. The override is
+stored **per date**, never as a flag on the doctor — that is what stops today's leave from
+hiding them tomorrow.
+
+The visit screen shows only doctors who are sitting, with the rest behind a checkbox —
+`VisitForm` still accepts any active doctor, because an emergency must be bookable against
+someone who is off.
+
+`availability()` reads `schedules` / `availability_overrides` via `.all()`, so **always
+fetch doctors through `opd.availability.doctors_with_availability()`** — it prefetches both
+(overrides filtered to today). A plain `Doctor.objects.filter(...)` on those screens is two
+extra queries per doctor.
+
 ### Cross-module pipelines
 
 These handoffs are the backbone of the app; each creates a record, notifies a role via `Notification.send_to_role(hospital, role, message, link)`, and pre-fills the receiving form:
@@ -239,9 +278,18 @@ receiver and therefore fires inside `super().save()` — too late.** `Patient.sa
 the hospital itself before allocating; remove that and every web registration is numbered
 off the global counter instead of the tenant's.
 
-An explicitly supplied MRN is always kept as-is and does not consume a sequence number, so
-a hospital can carry its paper register across. Changing the prefix never rewrites MRNs
-already issued.
+The MRN box in `PatientForm` is `disabled` and `clean_mrn` returns the instance's existing
+number (blank on create), so a posted value is ignored rather than trusted — the field is
+displayed, never entered. On create the shown number is only a *preview*: the real one is
+reserved in `Patient.save()`, because two receptionists with the form open would otherwise
+both be holding the same one. An MRN passed in code (seeds, imports) is still kept as-is
+and does not consume a sequence number. Changing the prefix never rewrites MRNs already
+issued.
+
+**CNIC** is stored in exactly one shape — `XXXXX-XXXXXXX-X`. `PatientForm.clean_cnic`
+strips everything non-numeric, requires 13 digits and re-inserts the dashes, so an import
+or a JS-off browser lands in the same format the reception search expects. The dashes
+appear as the user types (`templates/patients/patient_form.html`).
 
 **Age vs date of birth.** Reception may know either one, so `templates/patients/patient_form.html`
 fills each from the other in the browser. The rule they follow is not symmetric:

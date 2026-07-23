@@ -1,0 +1,83 @@
+{% extends 'partials/base.html' %}
+{% block title %}Today's OPD Board{% endblock %}
+{% block page_title %}Today's OPD Board{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <div>
+    <h2>Today's OPD Board</h2>
+    <div class="muted" style="font-size:13px;">{{ today|date:"l, d M Y" }}</div>
+  </div>
+  <a class="btn alt" href="{% url 'reception_desk' %}">Reception Desk</a>
+</div>
+
+<p class="muted" style="font-size:13px; margin-bottom:18px;">
+  Doctors appear here from their weekly OPD timings. Marking someone off applies to
+  <strong>today only</strong> — tomorrow they go back to their normal timings by themselves.
+</p>
+
+<div class="card" style="margin-bottom:20px;">
+  <h3 style="margin-top:0;">● Sitting now ({{ sitting|length }})</h3>
+  {% if sitting %}
+  <table class="tbl">
+    <thead><tr><th>Doctor</th><th>Department</th><th>Status</th><th>Timings</th><th></th></tr></thead>
+    <tbody>
+      {% for doctor, state in sitting %}
+      <tr>
+        <td><strong>Dr. {{ doctor.full_name }}</strong></td>
+        <td>{{ doctor.department.name|default:"—" }}</td>
+        <td style="color:#15803d; font-weight:700;">{{ state.label }}</td>
+        <td class="muted" style="font-size:12.5px;">{{ doctor.timings_summary|default:"—" }}</td>
+        <td style="white-space:nowrap;">
+          <form method="post" action="{% url 'doctor_availability_toggle' doctor.pk %}" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="available" value="0">
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <button class="btn sm alt" type="submit">Mark off today</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted" style="margin:0;">No doctor is in OPD at the moment.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0;">○ Not sitting ({{ away|length }})</h3>
+  {% if away %}
+  <table class="tbl">
+    <thead><tr><th>Doctor</th><th>Department</th><th>Status</th><th>Timings</th><th></th></tr></thead>
+    <tbody>
+      {% for doctor, state in away %}
+      <tr>
+        <td><strong>Dr. {{ doctor.full_name }}</strong></td>
+        <td>{{ doctor.department.name|default:"—" }}</td>
+        <td style="color:#b45309; font-weight:700;">{{ state.label }}</td>
+        <td class="muted" style="font-size:12.5px;">{{ doctor.timings_summary|default:"no timings set" }}</td>
+        <td style="white-space:nowrap;">
+          <form method="post" action="{% url 'doctor_availability_toggle' doctor.pk %}" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="available" value="1">
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <button class="btn sm" type="submit">Mark available</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted" style="margin:0;">Everyone is in.</p>
+  {% endif %}
+</div>
+
+{% if nav.doctors %}
+<p class="muted" style="font-size:12.5px; margin-top:16px;">
+  Timings are set per doctor under <a href="{% url 'doctor_list' %}">Doctors</a>. A doctor with
+  no timings never appears as sitting — mark them available here, or give them timings.
+</p>
+{% endif %}
+{% endblock %}

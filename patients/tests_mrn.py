@@ -129,11 +129,29 @@ class MrnRegistrationFormTest(TestCase):
         self.assertEqual(patient.mrn, 'SGH-000001')
         self.assertEqual(patient.hospital, self.h)
 
-    def test_a_duplicate_mrn_is_refused_with_a_message(self):
+    def test_the_mrn_box_is_read_only(self):
+        resp = self.client.get(reverse('patient_add'))
+        self.assertContains(resp, 'disabled')
+        self.assertContains(resp, 'Allocated automatically')
+
+    def test_a_posted_mrn_is_ignored_rather_than_trusted(self):
+        """The box is disabled, so a hand-crafted POST must not be able to claim
+        another patient's number or jump the sequence."""
         Patient.objects.create(full_name='Existing', mrn='SGH-000900', hospital=self.h)
         resp = self.client.post(reverse('patient_add'), {
-            'mrn': 'SGH-000900', 'full_name': 'Clash', 'gender': 'M',
+            'mrn': 'SGH-000900', 'full_name': 'Forger', 'gender': 'M',
         })
-        self.assertEqual(resp.status_code, 200)          # form re-rendered
-        self.assertContains(resp, 'already has this MRN')
-        self.assertFalse(Patient.objects.filter(full_name='Clash').exists())
+        self.assertEqual(resp.status_code, 302)
+        forger = Patient.objects.get(full_name='Forger')
+        self.assertNotEqual(forger.mrn, 'SGH-000900')
+        self.assertEqual(forger.mrn, 'SGH-000001')       # next in sequence, as issued
+
+    def test_editing_cannot_rewrite_an_issued_mrn(self):
+        p = Patient.objects.create(full_name='Settled', hospital=self.h)
+        issued = p.mrn
+        resp = self.client.post(reverse('patient_edit', args=[p.pk]), {
+            'mrn': 'HACKED-1', 'full_name': 'Settled', 'gender': 'M',
+        })
+        self.assertEqual(resp.status_code, 302)
+        p.refresh_from_db()
+        self.assertEqual(p.mrn, issued)

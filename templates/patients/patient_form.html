@@ -60,6 +60,28 @@
     note.style.display = 'none';
   });
 
+  // CNIC: type 13 digits, get 35202-1234567-1. Dashes are inserted as you go and
+  // anything past 13 digits is dropped, so the stored shape is always the same.
+  const cnic = document.getElementById('id_cnic');
+  if (cnic) {
+    const format = function (value) {
+      const d = (value || '').replace(/\D/g, '').slice(0, 13);
+      if (d.length <= 5) return d;
+      if (d.length <= 12) return d.slice(0, 5) + '-' + d.slice(5);
+      return d.slice(0, 5) + '-' + d.slice(5, 12) + '-' + d.slice(12);
+    };
+    cnic.addEventListener('input', function () {
+      // Retyping mid-string would jump the caret to the end, so only rewrite
+      // when the user is typing at the end — the normal case.
+      const atEnd = cnic.selectionStart === cnic.value.length;
+      const formatted = format(cnic.value);
+      if (formatted === cnic.value) return;
+      cnic.value = formatted;
+      if (!atEnd) cnic.setSelectionRange(formatted.length, formatted.length);
+    });
+    cnic.value = format(cnic.value);
+  }
+
   age.addEventListener('change', function () {
     const years = parseInt(age.value, 10);
     if (isNaN(years) || years < 0 || years > 130) return;

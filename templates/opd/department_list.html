@@ -1,0 +1,66 @@
+{% extends 'partials/base.html' %}
+{% block title %}Departments{% endblock %}
+{% block page_title %}Departments{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <h2>Departments</h2>
+  <a class="btn alt" href="{% url 'doctor_list' %}">Doctors</a>
+</div>
+
+<p class="muted" style="font-size:13px; margin-bottom:18px;">
+  Reception picks a department first, then sees only that department's doctors — a patient
+  says what is wrong, not which doctor they want.
+</p>
+
+<div style="display:grid; grid-template-columns:2fr 1fr; gap:20px; align-items:start;">
+  <div class="card">
+    <table class="tbl">
+      <thead><tr><th>Department</th><th>Doctors</th><th></th></tr></thead>
+      <tbody>
+        {% for d in departments %}
+        <tr>
+          <td>
+            <strong>{{ d.name }}</strong>{% if not d.is_active %} <span class="muted">(hidden)</span>{% endif %}
+            {% if d.description %}<br><span class="muted" style="font-size:12.5px;">{{ d.description }}</span>{% endif %}
+          </td>
+          <td>
+            {% for doc in d.doctors.all %}
+              Dr. {{ doc.full_name }}{% if not forloop.last %}, {% endif %}
+            {% empty %}
+              <span class="muted">nobody assigned yet</span>
+            {% endfor %}
+          </td>
+          <td style="white-space:nowrap;">
+            <form method="post" action="{% url 'department_delete' d.pk %}" style="display:inline;"
+                  onsubmit="return confirm('Remove {{ d.name }}?');">
+              {% csrf_token %}
+              <button class="btn sm danger" type="submit" style="background:#ef4444; color:#fff; border:none;">Remove</button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="3" class="muted">No departments yet — add the first one on the right.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0;">Add a department</h3>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button class="btn" type="submit">Add</button>
+    </form>
+  </div>
+</div>
+
+<style>
+  .card input[type=text], .card select, .card textarea {
+    width:100%; padding:10px 12px; border:1px solid var(--border);
+    border-radius:8px; background:var(--card-bg); color:var(--text); font-size:14px;
+  }
+  .card input[type=checkbox] { width:auto; }
+</style>
+{% endblock %}
