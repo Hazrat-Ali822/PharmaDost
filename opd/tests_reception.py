@@ -290,6 +290,10 @@ class SlipTest(ReceptionBase):
         self.assertContains(resp, 'Complaint / Diagnosis')
         self.assertContains(resp, 'BP')                        # vitals line
         self.assertContains(resp, 'Signature')
+        # A multi-line {# #} comment is not a comment in Django — it prints. The
+        # authoring notes must never leak onto the slip.
+        self.assertNotContains(resp, 'Reception fills the top')
+        self.assertNotContains(resp, 'prescription area')
 
     def test_whoever_can_book_can_reach_the_slip(self):
         """A custom-access user with `appointments` but not `opd` must not book a

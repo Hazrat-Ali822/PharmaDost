@@ -13,8 +13,11 @@
 {% endblock %}
 
 {% block body %}
-{# Reception fills the top; the doctor writes the Rx by hand in the ruled area
-   below, so this whole sheet is one A4 OPD slip that doubles as a script pad. #}
+{% comment %}
+Reception fills the top; the doctor writes the Rx by hand in the blank area below,
+so this whole sheet is one A4 OPD slip that doubles as a script pad. (Django {# #}
+comments are single-line — a multi-line one prints, so use {% comment %} here.)
+{% endcomment %}
 <div class="who">
   <div>
     <b>{{ appointment.patient.full_name }}</b>{% if appointment.patient.guardian_name %} · s/o {{ appointment.patient.guardian_name }}{% endif %}<br>
@@ -44,11 +47,9 @@
 
 <div class="cc"><b>Complaint / Diagnosis:</b> <span class="dots">………………………………………………………………………………………………………………………</span></div>
 
-{# The prescription area. The big ℞ and the ruled lines are the pad the doctor
-   writes on; it stretches to fill the page so there is room for a full script. #}
+{# ℞ mark, then plain white space for the doctor to write the script. #}
 <div class="rx">
   <div class="rx-mark">℞</div>
-  <div class="rx-lines"></div>
 </div>
 
 <div class="sign"><span class="line">Doctor's Signature</span></div>
@@ -72,21 +73,16 @@
   .cc{font-size:13px; margin:12px 0 4px}
   .cc .dots{color:var(--soft); letter-spacing:1px}
 
+  /* Just the ℞ mark and blank white space — no ruled lines. */
   .rx{position:relative; margin-top:8px; min-height:520px; padding-left:52px}
   .rx-mark{
     position:absolute; left:0; top:-6px; font-size:52px; line-height:1;
     font-weight:700; color:var(--pri); font-family:Georgia,"Times New Roman",serif;
   }
-  /* Faint ruled lines to write the script on — like a prescription pad. */
-  .rx-lines{
-    height:100%; min-height:520px;
-    background-image:repeating-linear-gradient(
-      to bottom, transparent 0, transparent 37px, var(--line) 37px, var(--line) 38px);
-  }
 
   @media print{
     /* Fill the sheet so the doctor has the whole page to write on. */
-    .rx, .rx-lines{min-height:560px}
+    .rx{min-height:560px}
   }
 </style>
 {% endblock %}
