@@ -12,6 +12,8 @@
       <a class="btn alt" href="{% url 'lab:order_create' %}?patient={{ admission.patient.pk }}">🧪 Order Lab Test</a>
       <a class="btn alt" href="{% url 'imaging:study_create' %}?patient={{ admission.patient.pk }}">🩻 Order Scan / X-Ray</a>
       {% if nav.ipd %}<a class="btn danger" href="{% url 'ipd:admission_discharge' admission.pk %}" style="display:inline-flex; align-items:center; background:#ef4444; color:white;">Discharge Patient</a>{% endif %}
+    {% else %}
+      <a class="btn" href="{% url 'ipd:discharge_summary' admission.pk %}" style="display:inline-flex; align-items:center; background:var(--primary); color:white;">🖨️ Discharge Summary</a>
     {% endif %}
   </div>
 </div>

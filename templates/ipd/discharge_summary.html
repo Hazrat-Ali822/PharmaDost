@@ -1,0 +1,93 @@
+{% extends 'print/base_print.html' %}
+{% block title %}Discharge Summary — {{ admission.patient.full_name }}{% endblock %}
+{% block doctitle %}Discharge Summary{% endblock %}
+
+{% block headmeta %}
+  <b>{{ admission.patient.full_name }}</b><br>
+  MRN: {{ admission.patient.mrn }}<br>
+  {% if admission.patient.phone %}☎ {{ admission.patient.phone }}{% endif %}
+{% endblock %}
+
+{% block actions %}
+  <a href="{% url 'ipd:admission_detail' admission.pk %}">Back to Admission</a>
+  {% if invoice %}<a href="{% url 'invoice_detail' invoice.pk %}">Open Bill</a>{% endif %}
+{% endblock %}
+
+{% block body %}
+<div class="who">
+  <div>
+    {% if admission.patient.age_display %}<b>Age:</b> {{ admission.patient.age_display }}<br>{% endif %}
+    {% if admission.patient.get_gender_display %}<b>Gender:</b> {{ admission.patient.get_gender_display }}<br>{% endif %}
+    <b>Attending:</b> Dr. {{ admission.attending_doctor.full_name }}
+  </div>
+  <div style="text-align:right">
+    <b>Ward/Bed:</b> {{ admission.bed.ward.name }} — Bed {{ admission.bed.bed_number }}<br>
+    <b>Admitted:</b> {{ admission.admission_date|date:"d M Y, g:i A" }}<br>
+    <b>Discharged:</b> {% if admission.discharge_date %}{{ admission.discharge_date|date:"d M Y, g:i A" }}{% else %}—{% endif %}<br>
+    <b>Stay:</b> {{ admission.days_stayed }} day(s)
+  </div>
+</div>
+
+<h3 class="sec">Reason for Admission</h3>
+<p style="font-size:13px;margin:6px 0">{{ admission.admission_reason|default:"—"|linebreaksbr }}</p>
+
+{% if admission.discharge_notes %}
+<h3 class="sec">Discharge Summary &amp; Advice</h3>
+<p style="font-size:13px;margin:6px 0">{{ admission.discharge_notes|linebreaksbr }}</p>
+{% endif %}
+
+{% if rounds %}
+<h3 class="sec">Doctor Rounds</h3>
+<table>
+  <thead><tr><th>Date</th><th>Vitals (T / BP / P)</th><th>Notes</th></tr></thead>
+  <tbody>
+    {% for r in rounds %}
+    <tr>
+      <td>{{ r.round_time|date:"d M, g:i A" }}</td>
+      <td>{{ r.vitals_temp|default:"—" }} / {{ r.vitals_bp|default:"—" }} / {{ r.vitals_pulse|default:"—" }}</td>
+      <td>{{ r.clinical_notes|default:"—"|truncatechars:80 }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if logs %}
+<h3 class="sec">Medications Administered</h3>
+<table>
+  <thead><tr><th>Date</th><th>Medicine</th><th>Dosage</th><th class="num">Qty</th><th class="num">Charge</th></tr></thead>
+  <tbody>
+    {% for log in logs %}
+    <tr>
+      <td>{{ log.administered_at|date:"d M, g:i A" }}</td>
+      <td>{{ log.medicine_name }}</td>
+      <td>{{ log.dosage }}</td>
+      <td class="num">{{ log.quantity }}</td>
+      <td class="num">{% if log.charge %}Rs {{ log.charge|floatformat:0 }}{% else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<h3 class="sec">Bill</h3>
+{% if invoice %}
+<table>
+  <thead><tr><th>Description</th><th class="num">Amount</th></tr></thead>
+  <tbody>
+    {% for it in items %}
+    <tr><td>{{ it.description }}</td><td class="num">Rs {{ it.amount|floatformat:0 }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<table style="width:300px;margin-left:auto;margin-top:12px;font-size:14px">
+  <tr><td>Total</td><td class="num">Rs {{ invoice.total|floatformat:0 }}</td></tr>
+  <tr><td>Paid</td><td class="num">Rs {{ invoice.paid|floatformat:0 }}</td></tr>
+  <tr style="font-size:16px;font-weight:800;color:var(--pri)"><td>Balance Due</td><td class="num">Rs {{ invoice.balance|floatformat:0 }}</td></tr>
+</table>
+{% else %}
+<p style="font-size:13px;color:var(--soft)">No charges were raised for this admission.</p>
+{% endif %}
+
+<div class="sign"><span class="line">Doctor's Signature</span></div>
+{% endblock %}

@@ -59,9 +59,20 @@ class Admission(models.Model):
     attending_doctor = models.ForeignKey('opd.Doctor', on_delete=models.CASCADE, related_name='admissions')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Admitted')
     discharge_notes = models.TextField(blank=True)
+    # The bill raised at discharge, kept so the printable discharge summary can
+    # show its line items and the balance without re-deriving them.
+    discharge_invoice = models.ForeignKey('billing.Invoice', on_delete=models.SET_NULL,
+                                          null=True, blank=True, related_name='+')
     hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
 
     objects = TenantManager()
+
+    @property
+    def days_stayed(self):
+        """Calendar days the bed was held, admission and discharge inclusive —
+        the same count the bill charges for. Uses today when still admitted."""
+        end = (self.discharge_date or timezone.now()).date()
+        return max((end - self.admission_date.date()).days + 1, 1)
 
     def __str__(self):
         return f"Admission: {self.patient.full_name} ({self.status})"

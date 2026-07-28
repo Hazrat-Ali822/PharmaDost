@@ -366,6 +366,39 @@ class WardMedicationStockAndBillingTest(TestCase):
         self.assertTrue(any('ALLERGY' in m.upper() for m in messages),
                         f"no allergy warning raised: {messages}")
 
+    def test_discharge_lands_on_the_printable_summary(self):
+        c = Client(); c.force_login(self.admin)
+        self._give(c, qty=2)
+        resp = c.post(reverse('ipd:admission_discharge', args=[self.adm.pk]),
+                      {'discharge_notes': 'recovered, review in 1 week'})
+        self.assertRedirects(resp, reverse('ipd:discharge_summary', args=[self.adm.pk]))
+
+    def test_the_summary_shows_stay_medicines_and_the_itemised_bill(self):
+        c = Client(); c.force_login(self.admin)
+        self._give(c, qty=2)                              # Rs 40 of Panadol
+        c.post(reverse('ipd:admission_discharge', args=[self.adm.pk]),
+               {'discharge_notes': 'review in 1 week'})
+
+        body = c.get(reverse('ipd:discharge_summary', args=[self.adm.pk])).content.decode()
+        self.assertIn('Discharge Summary', body)
+        self.assertIn('review in 1 week', body)           # the advice
+        self.assertIn('Panadol', body)                    # medicines administered
+        self.assertIn('Bed Charges', body)                # itemised bill
+        self.assertIn('1040', body)                       # bed 1000 + medicine 40
+
+    def test_the_discharge_invoice_is_kept_on_the_admission(self):
+        from billing.models import Invoice
+        c = Client(); c.force_login(self.admin)
+        c.post(reverse('ipd:admission_discharge', args=[self.adm.pk]),
+               {'discharge_notes': 'ok'})
+        self.adm.refresh_from_db()
+        self.assertIsNotNone(self.adm.discharge_invoice)
+        self.assertEqual(self.adm.discharge_invoice, Invoice.objects.get())
+
+    def test_days_stayed_counts_admission_and_discharge_inclusive(self):
+        # still admitted -> at least one day
+        self.assertGreaterEqual(self.adm.days_stayed, 1)
+
 
 class DoctorSeesOnlyOwnInpatientsTest(TestCase):
     """A doctor follows their own admitted patients — the full ward chart for

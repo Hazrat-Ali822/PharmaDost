@@ -343,12 +343,15 @@ def admission_discharge(request, pk):
                         ))
                         med_total += log.charge
 
-                create_service_invoice(
+                invoice = create_service_invoice(
                     patient=adm.patient,
                     items=items,
                     created_by=request.user,
                     paid=0,
                 )
+                if invoice:
+                    adm.discharge_invoice = invoice
+                    adm.save(update_fields=['discharge_invoice'])
 
             if med_total:
                 messages.success(
@@ -358,7 +361,8 @@ def admission_discharge(request, pk):
                 )
             else:
                 messages.success(request, f"Patient {adm.patient.full_name} has been discharged. Bed charges invoice generated.")
-            return redirect('ipd:admission_detail', pk=adm.pk)
+            # Land on the printable discharge summary — the patient leaves with it.
+            return redirect('ipd:discharge_summary', pk=adm.pk)
     else:
         form = DischargeForm(instance=admission)
 
@@ -374,6 +378,27 @@ def admission_discharge(request, pk):
         'days': days,
         'est_bed_charges': est_bed_charges,
     })
+
+@feature_required('ipd', 'ward')
+def discharge_summary(request, pk):
+    """The printable A4 discharge sheet: stay, diagnosis, medications given,
+    and the itemised bill. Reachable after discharge and from the admission page."""
+    admission = get_object_or_404(
+        _scoped_admissions(request)
+        .select_related('patient', 'bed__ward', 'attending_doctor', 'discharge_invoice'),
+        pk=pk)
+    logs = (admission.medication_logs.select_related('medicine')
+            .order_by('administered_at'))
+    rounds = admission.rounds.order_by('round_time')
+    invoice = admission.discharge_invoice
+    return render(request, 'ipd/discharge_summary.html', {
+        'admission': admission,
+        'logs': logs,
+        'rounds': rounds,
+        'invoice': invoice,
+        'items': invoice.items.all() if invoice else [],
+    })
+
 
 @feature_required('ipd', 'ward')
 def ward_bed_list(request):

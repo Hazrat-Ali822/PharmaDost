@@ -184,7 +184,7 @@ def doctor_delete(request, pk):
 
 # --- Appointments ---------------------------------------------------------
 
-@feature_required('opd')
+@feature_required('appointments', 'opd')
 def appointment_list(request):
     appointments = Appointment.objects.select_related('patient', 'doctor').order_by('appointment_date', 'token_no')
     
@@ -332,7 +332,11 @@ def visit_create(request):
         request, visit_form=visit_form, patient_form=patient_form, patient=patient))
 
 
-@feature_required('opd')
+# Gated on BOTH keys: whoever can book a visit (`appointments`) must be able to
+# reach the slip it produces, or a custom-access user with `appointments` but not
+# `opd` books a patient — creating the token and invoice — then hits a 403 on the
+# printable slip and can never open the queue either.
+@feature_required('appointments', 'opd')
 def appointment_slip(request, pk):
     """The token slip the patient carries to the doctor's room."""
     appointment = get_object_or_404(

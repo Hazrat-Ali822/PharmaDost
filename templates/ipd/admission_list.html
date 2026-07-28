@@ -77,8 +77,9 @@
         <td>{{ adm.admission_date|date:"Y-m-d" }}</td>
         <td>{{ adm.discharge_date|date:"Y-m-d" }}</td>
         <td>Dr. {{ adm.attending_doctor.full_name }}</td>
-        <td>
-          <a class="btn sm alt" href="{% url 'ipd:admission_detail' adm.pk %}">Discharge Summary</a>
+        <td style="white-space:nowrap;">
+          <a class="btn sm alt" href="{% url 'ipd:admission_detail' adm.pk %}">View</a>
+          <a class="btn sm" href="{% url 'ipd:discharge_summary' adm.pk %}">🖨️ Summary</a>
         </td>
       </tr>
       {% empty %}

@@ -239,8 +239,11 @@ the rows. Guarded by `tests/test_admin_awareness.py::AuditLogIsolationTest`.
   annotates a `Replace`-stripped copy and matches against that; typing the number straight
   off the card has to work.
 
-Both paths land on `appointment_slip` — the printable token slip. Its `@media print` block
-hides the whole shell so the slip is the page.
+Both paths land on `appointment_slip` — the printable A4 token slip. Every printed
+document (slip, patient bill, lab/imaging report, PO, IPD discharge summary) extends
+`templates/print/base_print.html`: one branded letterhead with theme variants, an
+`extrastyle` block for page-specific CSS, an `actions` block for extra no-print buttons,
+and `@page`/`@media print` geometry. Do not hand-roll a print stylesheet — extend that base.
 
 **Departments** (`opd.Department`, tenant-scoped) come first: reception picks the
 department, and only that department's doctors are offered. `VisitForm.clean` rejects a
@@ -282,6 +285,8 @@ These handoffs are the backbone of the app; each creates a record, notifies a ro
   - `source='PHARMACY'` but stock is short — the dose is still recorded, `unit_price` stays 0, ` [not deducted — pharmacy stock short]` is appended to `notes`, and the nurse gets a warning to have the pharmacy reconcile. **Do not turn this back into a `form.add_error`.**
 
   The medicine search box on `ipd/medication_form.html` is backed by **this patient's prescribed drugs** (`_prescribed_medicines`, from `PrescriptionItem` via `prescription__appointment__patient`), not the whole catalogue — a nurse gives what was prescribed. The full catalogue is behind the `#use-full-catalogue` checkbox for orders written on paper or during a round. Stock levels are shown as information only, never as a blocker.
+
+  Discharge stores the raised invoice on `Admission.discharge_invoice` and redirects to `ipd:discharge_summary` — the printable A4 sheet (stay, diagnosis, rounds, medications given, itemised bill). `Admission.days_stayed` is the inclusive calendar-day count both the bill and the summary use.
 - **Lab / imaging → billing**: ordering a test or scan auto-creates a pending `Invoice` via `billing.services.create_service_invoice`.
 - **Reorder → purchase order**: `inventory.services.reorder_suggestions()` (sales velocity based) feeds `reorder_to_po`, which creates draft `PurchaseRequest`s grouped by supplier.
 

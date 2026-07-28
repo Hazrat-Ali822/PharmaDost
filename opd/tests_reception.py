@@ -274,6 +274,24 @@ class SlipTest(ReceptionBase):
         self.assertContains(resp, 'Penicillin')               # allergies travel with them
         self.assertContains(resp, 'window.print()')
 
+    def test_the_slip_is_an_a4_letterhead_document(self):
+        """Not the old 420px token card — a full A4 sheet on the branded
+        letterhead, the same base every printed bill and report uses."""
+        resp = self.client.get(reverse('appointment_slip', args=[self.appointment.pk]))
+        self.assertTemplateUsed(resp, 'print/base_print.html')
+        self.assertContains(resp, '@page')                     # print page geometry
+        self.assertContains(resp, 'class="sheet"')             # the A4 sheet wrapper
+
+    def test_whoever_can_book_can_reach_the_slip(self):
+        """A custom-access user with `appointments` but not `opd` must not book a
+        patient — creating the token and invoice — then hit a 403 on the slip."""
+        booker = User.objects.create_user(email='book@x.com', password='pw',
+                                          role='RECEPTIONIST', hospital=self.h,
+                                          custom_features=['appointments', 'patients'])
+        c = Client(); c.force_login(booker)
+        resp = c.get(reverse('appointment_slip', args=[self.appointment.pk]))
+        self.assertEqual(resp.status_code, 200)
+
     def test_another_tenants_slip_is_not_reachable(self):
         other = Hospital.objects.create(name='Other', slug='other',
                                         expiry_date=date.today() + timedelta(days=30))

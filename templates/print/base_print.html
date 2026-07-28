@@ -97,11 +97,14 @@
     .lh-foot{position:fixed;left:8px;right:8px;bottom:10px}
     @page{margin:14mm}
   }
-</style></head>
+</style>
+{% block extrastyle %}{% endblock %}
+</head>
 <body class="theme-{{ branding.print_theme|default:'classic' }}">
 
 <div class="noprint">
   <span class="muted">Design: {{ branding.get_print_theme_display }} — change it in Settings → Print Design</span>
+  {% block actions %}{% endblock %}
   <button onclick="window.print()">🖨 Print</button>
 </div>
 
