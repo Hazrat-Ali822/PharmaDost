@@ -282,6 +282,15 @@ class SlipTest(ReceptionBase):
         self.assertContains(resp, '@page')                     # print page geometry
         self.assertContains(resp, 'class="sheet"')             # the A4 sheet wrapper
 
+    def test_the_slip_has_a_prescription_area_for_the_doctor(self):
+        """The OPD slip doubles as a script pad — some doctors write the Rx on it
+        by hand, so it carries the ℞ mark and a vitals line to fill."""
+        resp = self.client.get(reverse('appointment_slip', args=[self.appointment.pk]))
+        self.assertContains(resp, '℞')
+        self.assertContains(resp, 'Complaint / Diagnosis')
+        self.assertContains(resp, 'BP')                        # vitals line
+        self.assertContains(resp, 'Signature')
+
     def test_whoever_can_book_can_reach_the_slip(self):
         """A custom-access user with `appointments` but not `opd` must not book a
         patient — creating the token and invoice — then hit a 403 on the slip."""

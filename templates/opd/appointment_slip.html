@@ -1,10 +1,10 @@
 {% extends 'print/base_print.html' %}
-{% block title %}Token Slip #{{ appointment.token_no }} — {{ appointment.patient.full_name }}{% endblock %}
-{% block doctitle %}OPD Appointment Slip{% endblock %}
+{% block title %}OPD Slip #{{ appointment.token_no }} — {{ appointment.patient.full_name }}{% endblock %}
+{% block doctitle %}OPD Prescription Slip{% endblock %}
 
 {% block headmeta %}
-  <b>Token #{{ appointment.token_no }}</b><br>
-  {{ appointment.appointment_date|date:"d M Y" }}{% if appointment.slot_time %}<br>{{ appointment.slot_time|time:"g:i A" }}{% endif %}
+  <span class="token-badge">Token {{ appointment.token_no }}</span><br>
+  {{ appointment.appointment_date|date:"d M Y" }}{% if appointment.slot_time %} · {{ appointment.slot_time|time:"g:i A" }}{% endif %}
 {% endblock %}
 
 {% block actions %}
@@ -13,61 +13,80 @@
 {% endblock %}
 
 {% block body %}
-{# The token is what the patient watches the board for, so it dominates the sheet. #}
-<div class="token-hero">
-  <div class="token-hero-label">Your Token Number</div>
-  <div class="token-hero-no">{{ appointment.token_no }}</div>
-  <div class="token-hero-sub">{{ appointment.get_visit_type_display }} · {{ appointment.appointment_date|date:"d M Y" }}{% if appointment.slot_time %} · {{ appointment.slot_time|time:"g:i A" }}{% endif %}</div>
-</div>
-
+{# Reception fills the top; the doctor writes the Rx by hand in the ruled area
+   below, so this whole sheet is one A4 OPD slip that doubles as a script pad. #}
 <div class="who">
   <div>
-    <b>{{ appointment.patient.full_name }}</b>
-    {% if appointment.patient.guardian_name %}<br>s/o {{ appointment.patient.guardian_name }}{% endif %}
-    <br>MRN: {{ appointment.patient.mrn }}
+    <b>{{ appointment.patient.full_name }}</b>{% if appointment.patient.guardian_name %} · s/o {{ appointment.patient.guardian_name }}{% endif %}<br>
+    <b>MRN:</b> {{ appointment.patient.mrn }}
+    {% if appointment.patient.age_display %} · <b>Age:</b> {{ appointment.patient.age_display }}{% endif %}
+    {% if appointment.patient.get_gender_display %} · {{ appointment.patient.get_gender_display }}{% endif %}
+    {% if appointment.patient.phone %} · ☎ {{ appointment.patient.phone }}{% endif %}
   </div>
   <div style="text-align:right">
-    {% if appointment.patient.age_display %}Age: {{ appointment.patient.age_display }}<br>{% endif %}
-    {% if appointment.patient.get_gender_display %}{{ appointment.patient.get_gender_display }}<br>{% endif %}
-    {% if appointment.patient.phone %}☎ {{ appointment.patient.phone }}{% endif %}
+    <b>Dr. {{ appointment.doctor.full_name }}</b>{% if appointment.doctor.specialty %}<br>{{ appointment.doctor.specialty }}{% endif %}
+    <br>{{ appointment.doctor.department.name|default:appointment.get_visit_type_display }}
   </div>
 </div>
 
-<h3 class="sec">Consultation</h3>
-<table>
-  <tbody>
-    <tr><td style="width:38%">Department</td><td><b>{{ appointment.doctor.department.name|default:"—" }}</b></td></tr>
-    <tr><td>Doctor</td><td><b>Dr. {{ appointment.doctor.full_name }}</b>{% if appointment.doctor.specialty %} — {{ appointment.doctor.specialty }}{% endif %}</td></tr>
-    {% if appointment.doctor.timings_summary %}
-    <tr><td>OPD Timings</td><td>{{ appointment.doctor.timings_summary }}</td></tr>
-    {% endif %}
-    <tr><td>Consultation Fee</td><td><b>Rs {{ fee|floatformat:0 }}</b></td></tr>
-  </tbody>
-</table>
+{# A line the doctor fills at a glance during the consult. #}
+<div class="vitals">
+  <span><b>BP</b> ……………</span>
+  <span><b>Pulse</b> ……………</span>
+  <span><b>Temp</b> ……………</span>
+  <span><b>Wt</b> ……………</span>
+  <span><b>Fee</b> Rs {{ fee|floatformat:0 }}</span>
+</div>
 
 {% if appointment.patient.allergies %}
 <div class="slip-alert">⚠️ Known allergies: {{ appointment.patient.allergies }}</div>
 {% endif %}
 
-<p class="slip-note">
-  Please keep this slip and show your token number at the doctor's room.
-  Tokens are called in order; arrive before your number is reached.
-</p>
+<div class="cc"><b>Complaint / Diagnosis:</b> <span class="dots">………………………………………………………………………………………………………………………</span></div>
+
+{# The prescription area. The big ℞ and the ruled lines are the pad the doctor
+   writes on; it stretches to fill the page so there is room for a full script. #}
+<div class="rx">
+  <div class="rx-mark">℞</div>
+  <div class="rx-lines"></div>
+</div>
+
+<div class="sign"><span class="line">Doctor's Signature</span></div>
 {% endblock %}
 
 {% block extrastyle %}
 <style>
-  .token-hero{
-    text-align:center; border:2px solid var(--pri); border-radius:14px;
-    padding:18px 20px; margin:16px auto 6px; max-width:340px;
+  .token-badge{
+    display:inline-block; background:var(--pri); color:#fff; font-weight:800;
+    font-size:16px; padding:4px 12px; border-radius:8px; letter-spacing:.3px;
   }
-  .token-hero-label{font-size:12px; text-transform:uppercase; letter-spacing:2px; color:var(--soft)}
-  .token-hero-no{font-size:64px; font-weight:800; line-height:1.05; color:var(--pri)}
-  .token-hero-sub{font-size:13px; color:var(--ink)}
+  .vitals{
+    display:flex; flex-wrap:wrap; gap:8px 22px; margin:12px 0 6px;
+    font-size:13px; border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+    padding:9px 2px;
+  }
   .slip-alert{
-    margin:14px 0; padding:10px 14px; border:1px solid #f0a6a6; background:#fff5f5;
-    color:#8a1c1c; font-size:13px; font-weight:700; border-radius:8px;
+    margin:10px 0; padding:9px 13px; border:1px solid #f0a6a6; background:#fff5f5;
+    color:#8a1c1c; font-size:12.5px; font-weight:700; border-radius:8px;
   }
-  .slip-note{margin-top:18px; font-size:12px; color:var(--soft); text-align:center}
+  .cc{font-size:13px; margin:12px 0 4px}
+  .cc .dots{color:var(--soft); letter-spacing:1px}
+
+  .rx{position:relative; margin-top:8px; min-height:520px; padding-left:52px}
+  .rx-mark{
+    position:absolute; left:0; top:-6px; font-size:52px; line-height:1;
+    font-weight:700; color:var(--pri); font-family:Georgia,"Times New Roman",serif;
+  }
+  /* Faint ruled lines to write the script on — like a prescription pad. */
+  .rx-lines{
+    height:100%; min-height:520px;
+    background-image:repeating-linear-gradient(
+      to bottom, transparent 0, transparent 37px, var(--line) 37px, var(--line) 38px);
+  }
+
+  @media print{
+    /* Fill the sheet so the doctor has the whole page to write on. */
+    .rx, .rx-lines{min-height:560px}
+  }
 </style>
 {% endblock %}
