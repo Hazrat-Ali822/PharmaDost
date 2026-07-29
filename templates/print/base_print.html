@@ -2,7 +2,7 @@
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}Print{% endblock %} — {{ branding.brand_name|default:"PharmaDost" }}</title>
+<title>{% block title %}Print{% endblock %} — {{ branding.brand_name|default:"Sehatyar" }}</title>
 <style>
   :root{
     --pri: {{ branding.primary_color|default:'#4f46e5' }};
@@ -118,7 +118,7 @@
     <div class="brand">
       <div class="logo">{% if branding.logo_image %}<img src="{{ branding.logo_image.url }}" alt="">{% else %}{{ branding.logo_text|default:'P' }}{% endif %}</div>
       <div>
-        <div class="bname">{{ branding.brand_name|default:"PharmaDost" }}</div>
+        <div class="bname">{{ branding.brand_name|default:"Sehatyar" }}</div>
         {% if branding.brand_tagline %}<div class="tag">{{ branding.brand_tagline }}</div>{% endif %}
       </div>
     </div>
@@ -134,7 +134,7 @@
 
   {% if branding.print_theme != 'letterhead' %}
   <div class="lh-foot">
-    <div class="addr">{{ branding.brand_name|default:"PharmaDost" }}</div>
+    <div class="addr">{{ branding.brand_name|default:"Sehatyar" }}</div>
     {% if branding.address %}{{ branding.address }}{% endif %}
     {% if branding.phone %} · ☎ {{ branding.phone }}{% endif %}
     {% if branding.email %} · {{ branding.email }}{% endif %}

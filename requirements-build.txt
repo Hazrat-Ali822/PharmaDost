@@ -1,4 +1,4 @@
-# PharmaDost — extra dependencies for building the local Windows desktop .exe
+# Sehatyar — extra dependencies for building the local Windows desktop .exe
 # (PyInstaller). Not needed to run the server. Windows only.
 # Install with:  pip install -r requirements-build.txt
 

@@ -1,4 +1,4 @@
-# Deploying PharmaDost to cPanel + Passenger (LiteSpeed / CloudLinux)
+# Deploying Sehatyar to cPanel + Passenger (LiteSpeed / CloudLinux)
 
 This is the shared-hosting path — any cPanel host with **Setup Python App**
 (the CloudLinux "Python Selector", used on LiteSpeed hosts too). It runs Django
@@ -10,34 +10,34 @@ unique indexes for MRN, which MySQL silently drops).
 > and **SSH / Terminal access**. A PHP-only plan cannot run Django.
 
 **Hosting alongside other sites is fine.** Each "Setup Python App" is its own
-isolated virtualenv and domain mapping, so PharmaDost on `sehatyar.online` and an
+isolated virtualenv and domain mapping, so Sehatyar on `sehatyar.online` and an
 unrelated site on another domain (e.g. `khabirconsultant.ae`) coexist without
 touching each other. Put the app in its own folder, **not** in `public_html`.
 
 ## 1. Upload the code
 
 Either `git clone` in the Terminal, or upload a zip via File Manager and extract
-it. Put it in a folder like `/home/<cpaneluser>/pharmadost` (e.g.
-`/home/sehatyar/pharmadost`) — **outside** `public_html`; Passenger maps the
+it. Put it in a folder like `/home/<cpaneluser>/sehatyar` (e.g.
+`/home/sehatyar/sehatyar`) — **outside** `public_html`; Passenger maps the
 domain to it for you.
 
 ## 2. Create the Python app
 
 cPanel → **Setup Python App** → Create:
 - Python version: **3.10+**
-- Application root: `pharmadost` (the folder from step 1)
+- Application root: `sehatyar` (the folder from step 1)
 - Application URL: your domain
 - Application startup file: `passenger_wsgi.py` (already in the repo)
 
 Create it. cPanel makes a virtualenv and shows the command to activate it
-(`source /home/<cpaneluser>/virtualenv/pharmadost/3.10/bin/activate`).
+(`source /home/<cpaneluser>/virtualenv/sehatyar/3.10/bin/activate`).
 
 ## 3. Install dependencies
 
 In the SSH terminal, activate the virtualenv (command from step 2), then:
 
 ```bash
-cd ~/pharmadost
+cd ~/sehatyar
 pip install -r requirements.txt
 ```
 
@@ -46,7 +46,7 @@ SQLite needs no driver. (Only if you later switch to MySQL: `pip install mysqlcl
 ## 4. Create `.env` in the project root
 
 ```bash
-cd ~/pharmadost
+cd ~/sehatyar
 python -c "import secrets; print('DJANGO_SECRET_KEY=' + secrets.token_urlsafe(64))" >> .env
 echo "DJANGO_ALLOWED_HOSTS=yourdomain.com,www.yourdomain.com" >> .env
 echo "DJANGO_CSRF_TRUSTED=https://yourdomain.com,https://www.yourdomain.com" >> .env
@@ -70,7 +70,7 @@ python manage.py migrate
 python manage.py collectstatic --noinput
 ```
 
-The SQLite file is created at `~/pharmadost/db.sqlite3`. **Back this file up** — it
+The SQLite file is created at `~/sehatyar/db.sqlite3`. **Back this file up** — it
 is the whole database.
 
 ## 6. Create the platform owner (SaaS multi-tenant)
@@ -100,8 +100,8 @@ effect (like the Reload button on PythonAnywhere).
 ## Updating later
 
 ```bash
-cd ~/pharmadost && git pull
-source ~/virtualenv/pharmadost/3.10/bin/activate
+cd ~/sehatyar && git pull
+source ~/virtualenv/sehatyar/3.10/bin/activate
 pip install -r requirements.txt          # only if requirements changed
 python manage.py migrate                 # only if there are new migrations
 python manage.py collectstatic --noinput # only if static changed
@@ -113,7 +113,7 @@ python manage.py collectstatic --noinput # only if static changed
 cPanel → **Cron Jobs**, one daily line (adjust the path):
 
 ```
-cd ~/pharmadost && ~/virtualenv/pharmadost/3.10/bin/python manage.py expiry_alert && ~/virtualenv/pharmadost/3.10/bin/python manage.py low_stock_alert
+cd ~/sehatyar && ~/virtualenv/sehatyar/3.10/bin/python manage.py expiry_alert && ~/virtualenv/sehatyar/3.10/bin/python manage.py low_stock_alert
 ```
 
 ## If you insist on MySQL

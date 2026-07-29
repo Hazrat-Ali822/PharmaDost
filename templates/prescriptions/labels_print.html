@@ -2,7 +2,7 @@
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dispensing Labels — {{ branding.brand_name|default:"PharmaDost" }}</title>
+<title>Dispensing Labels — {{ branding.brand_name|default:"Sehatyar" }}</title>
 <style>
   :root{ --pri: {{ branding.primary_color|default:'#4f46e5' }}; --ink:#1f2937; --soft:#6b7280; --line:#e5e7eb; }
   *{box-sizing:border-box}
@@ -37,7 +37,7 @@
   {% for item in prescription.items.all %}
   <div class="label">
     <div class="top">
-      <span class="brand">{{ branding.brand_name|default:"PharmaDost" }}</span>
+      <span class="brand">{{ branding.brand_name|default:"Sehatyar" }}</span>
       <span>{{ prescription.created_at|date:"Y-m-d" }}</span>
     </div>
     <div class="med">{{ item.medicine.name|default:item.custom_medicine_name }}</div>

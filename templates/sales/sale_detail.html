@@ -68,7 +68,7 @@ function printReceipt() {
 
 <div id="bill">
   <div class="receipt-header">
-    <h1>{{ branding.brand_name|default:"PharmaDost" }}</h1>
+    <h1>{{ branding.brand_name|default:"Sehatyar" }}</h1>
     {% if branding.brand_tagline %}<p style="font-style:italic; font-size:11px;">{{ branding.brand_tagline }}</p>{% endif %}
     <p>{{ branding.address|default:"" }}</p>
     {% if branding.phone %}<p>☎ {{ branding.phone }}</p>{% endif %}
@@ -141,7 +141,7 @@ function printReceipt() {
 
   <div class="receipt-footer">
     <p>{{ branding.receipt_footer|default:"Thank you for choosing us!" }}</p>
-    <p style="font-size:10px; margin-top:8px; opacity:0.75;">Powered by PharmaDost</p>
+    <p style="font-size:10px; margin-top:8px; opacity:0.75;">Powered by Sehatyar</p>
   </div>
 </div>
 

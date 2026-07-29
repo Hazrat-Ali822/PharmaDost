@@ -1,4 +1,4 @@
-# PharmaDost — runtime dependencies (web server + desktop app)
+# Sehatyar — runtime dependencies (web server + desktop app)
 # Install with:  pip install -r requirements.txt
 # Pins match the tested .venv. For desktop-app packaging deps see requirements-build.txt
 

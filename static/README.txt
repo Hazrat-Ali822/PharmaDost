@@ -1,1 +1,1 @@
-Static files directory for PharmaDost.
+Static files directory for Sehatyar.

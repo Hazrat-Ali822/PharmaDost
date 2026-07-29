@@ -1,6 +1,6 @@
 """Progressive Web App plumbing: a per-tenant manifest, icon, service worker and
 offline page, so the site installs as an app carrying each hospital's own name,
-logo and colour — "Shaheen Health Care", not "PharmaDost".
+logo and colour — "Shaheen Health Care", not "Sehatyar".
 
 Everything here reads `SiteSettings.load()`, which resolves the current tenant
 from the logged-in user, so the installed app is branded per hospital. The
@@ -33,10 +33,10 @@ def _theme(branding):
 def manifest(request):
     """The web app manifest — what a browser reads to install the site as an app."""
     b = _branding()
-    name = b.brand_name or "PharmaDost"
+    name = b.brand_name or "Sehatyar"
     data = {
         "name": name,
-        "short_name": (name[:12] or "PharmaDost").strip(),
+        "short_name": (name[:12] or "Sehatyar").strip(),
         "description": b.brand_tagline or "Hospital & Pharmacy Management",
         "start_url": "/",
         "scope": "/",
@@ -81,7 +81,7 @@ def icon(request, size):
     if img is None:
         img = Image.new("RGB", (size, size), _theme(b))
         draw = ImageDraw.Draw(img)
-        letter = (b.logo_text or (b.brand_name or "P")[0] or "P")[:2].upper()
+        letter = (b.logo_text or (b.brand_name or "S")[0] or "S")[:2].upper()
         try:
             font = ImageFont.truetype("arialbd.ttf", int(size * 0.52))
         except Exception:
@@ -111,7 +111,7 @@ def service_worker(request):
 def offline(request):
     """Shown by the service worker when a page is requested with no connection."""
     return HttpResponse(_OFFLINE_PAGE.replace("__THEME__", _theme(_branding()))
-                        .replace("__NAME__", _branding().brand_name or "PharmaDost"),
+                        .replace("__NAME__", _branding().brand_name or "Sehatyar"),
                         content_type="text/html")
 
 

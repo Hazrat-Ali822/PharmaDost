@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-PharmaDost is a **multi-tenant SaaS Hospital & Pharmacy Management System** built with Django 4.2 (Python 3.10 locally, 3.13 on the production host). Server-rendered Django templates + vanilla JS — no frontend build step, no SPA framework.
+This is a **multi-tenant SaaS Hospital & Pharmacy Management System** built with Django 4.2 (Python 3.10 locally, 3.13 on the production host). Server-rendered Django templates + vanilla JS — no frontend build step, no SPA framework.
+
+**Brand vs codebase name.** The product ships as **Sehatyar** (`sehatyar.online`) — that is the name in every user-facing string and the platform default brand (`user_mgmt/models.SiteSettings` DEFAULTS). The *codebase* keeps its original name: the repo is `PharmaDost`, the Django project package is **`pharma_mgmt`** (settings/urls/wsgi live there — do NOT rename it; it is invisible to users and every `--settings=pharma_mgmt...` import depends on it). So "PharmaDost"/`pharma_mgmt` in code and docs is expected; user-facing text must read "Sehatyar". Each tenant then overrides the brand with its own name/logo/colour via `SiteSettings`.
 
 One deployment serves many hospitals ("tenants"). The same codebase is also packaged as a **local Windows desktop app** (PyInstaller + waitress + SQLite), which is why data paths are indirected through `DATA_DIR`.
 

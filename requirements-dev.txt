@@ -1,4 +1,4 @@
-# PharmaDost — testing & quality tooling (NOT needed to run the app)
+# Sehatyar — testing & quality tooling (NOT needed to run the app)
 # Install with:  pip install -r requirements-dev.txt
 #
 # Runtime deps live in requirements.txt; desktop-packaging deps in requirements-build.txt.

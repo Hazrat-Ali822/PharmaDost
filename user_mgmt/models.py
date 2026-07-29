@@ -6,7 +6,7 @@ from django.dispatch import receiver
 
 # Defaults used for the initial values AND the "Reset to default" action.
 SITE_DEFAULTS = {
-    "brand_name": "PharmaDost",
+    "brand_name": "Sehatyar",
     "brand_tagline": "Hospital & Pharmacy",
     "logo_text": "P",
     "primary_color": "#4f46e5",

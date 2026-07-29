@@ -1,4 +1,4 @@
-/* PharmaDost offline outbox
+/* Sehatyar offline outbox
  * -------------------------------------------------------------------------
  * When the connection is down, queue data-entry form submits in IndexedDB and
  * replay them to the server on reconnect. Any form marked

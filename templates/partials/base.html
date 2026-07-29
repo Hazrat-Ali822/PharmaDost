@@ -8,7 +8,7 @@
   {# outbox replay (static/js/offline.js) reads it. Rendering it also sets the #}
   {# csrftoken cookie on every page. #}
   <meta name="csrf-token" content="{{ csrf_token }}">
-  <title>{% block title %}PharmaDost{% endblock %}</title>
+  <title>{% block title %}Sehatyar{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -20,7 +20,7 @@
   <meta name="theme-color" content="{{ branding.primary_color|default:'#4f46e5' }}">
   <link rel="apple-touch-icon" href="{% url 'pwa_icon' 192 %}">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="{{ branding.brand_name|default:'PharmaDost' }}">
+  <meta name="apple-mobile-web-app-title" content="{{ branding.brand_name|default:'Sehatyar' }}">
   <script>
     // Register the service worker (needs HTTPS or localhost — degrades quietly on plain http).
     if ('serviceWorker' in navigator) {
@@ -110,7 +110,7 @@
         <span class="logo" style="background: linear-gradient(135deg, #4f46e5, #8b5cf6); color: white; display: flex; align-items: center; justify-content: center;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px; height:16px; color:white;"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>
         </span>
-        <span>PharmaDost<small>SaaS Portal</small></span>
+        <span>Sehatyar<small>SaaS Portal</small></span>
       </div>
       <nav class="nav">
         <a href="{% url 'saas:dashboard' %}" class="{% if request.path == '/saas/' %}active{% endif %}">
@@ -138,9 +138,9 @@
       {% if branding.logo_image %}
         <img class="logo" src="{{ branding.logo_image.url }}" alt="logo" style="object-fit:cover;background:none">
       {% else %}
-        <span class="logo">{{ branding.logo_text|default:"P" }}</span>
+        <span class="logo">{{ branding.logo_text|default:"S" }}</span>
       {% endif %}
-      <span>{{ branding.brand_name|default:"PharmaDost" }}<small>{{ branding.brand_tagline|default:"Hospital &amp; Pharmacy" }}</small></span>
+      <span>{{ branding.brand_name|default:"Sehatyar" }}<small>{{ branding.brand_tagline|default:"Hospital &amp; Pharmacy" }}</small></span>
     </div>
     <nav class="nav">
       {% if request.user.role == 'ADMIN' or request.user.is_superuser %}

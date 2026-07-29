@@ -176,7 +176,7 @@ def setup_wizard(request):
     error = None
     selected = MODULE_KEYS  # pre-check everything
     if request.method == 'POST':
-        brand = request.POST.get('brand_name', '').strip() or 'PharmaDost'
+        brand = request.POST.get('brand_name', '').strip() or 'Sehatyar'
         tagline = request.POST.get('brand_tagline', '').strip()
         email = request.POST.get('email', '').strip().lower()
         pwd = request.POST.get('password', '')
@@ -338,7 +338,7 @@ def backup_download(request):
     buf.seek(0)
 
     from django.utils import timezone
-    name = f"pharmadost-backup-{timezone.localtime().strftime('%Y%m%d-%H%M')}.zip"
+    name = f"sehatyar-backup-{timezone.localtime().strftime('%Y%m%d-%H%M')}.zip"
     resp = HttpResponse(buf.getvalue(), content_type='application/zip')
     resp['Content-Disposition'] = f'attachment; filename="{name}"'
     return resp
