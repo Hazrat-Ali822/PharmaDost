@@ -174,3 +174,73 @@ class HospitalProvisioningTest(TestCase):
             'admin_email': 'dupe@t.com', 'admin_password': 'pw12345',
         })
         self.assertFalse(Hospital.objects.filter(slug='dupe-clinic').exists())
+
+
+class SaasDashboardTest(TestCase):
+    """The owner portal shows real per-tenant intelligence, and does so without a
+    query per hospital."""
+
+    def setUp(self):
+        self.root = User.objects.create_superuser(email='root@t.com', password='pw')
+        self.client = Client()
+        self.client.force_login(self.root)
+
+    def _hospital_with_data(self, slug, patients=2, sales=1, expiry=None, **kw):
+        from sales.models import Sale
+        h = Hospital.objects.create(name=slug.upper(), slug=slug,
+                                    expiry_date=expiry or _future(), **kw)
+        for i in range(patients):
+            Patient.objects.create(full_name=f'{slug}-p{i}', gender='M',
+                                   mrn=f'{slug}-{i}', hospital=h)
+        for _ in range(sales):
+            Sale.objects.create(hospital=h, total=Decimal('100'))
+        return h
+
+    def test_dashboard_shows_per_tenant_counts(self):
+        self._hospital_with_data('alpha', patients=3, sales=2)
+        resp = self.client.get(reverse('saas:dashboard'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'ALPHA')
+        h = resp.context['hospitals'][0]
+        self.assertEqual(h.n_patients, 3)
+        self.assertEqual(h.n_sales, 2)
+        self.assertEqual(resp.context['total_patients'], 3)
+        self.assertEqual(resp.context['total_sales'], 2)
+
+    def test_expiry_and_block_status_are_flagged(self):
+        self._hospital_with_data('good', expiry=date.today() + timedelta(days=60))
+        self._hospital_with_data('soon', expiry=date.today() + timedelta(days=3))
+        self._hospital_with_data('gone', expiry=date.today() - timedelta(days=2))
+        self._hospital_with_data('barred', is_active=False)
+
+        resp = self.client.get(reverse('saas:dashboard'))
+        self.assertContains(resp, 'Expiring')
+        self.assertContains(resp, 'Expired')
+        self.assertContains(resp, 'Blocked')
+
+        status = {h.slug: h.status for h in resp.context['hospitals']}
+        self.assertEqual(status['good'], 'active')
+        self.assertEqual(status['soon'], 'expiring')
+        self.assertEqual(status['gone'], 'expired')
+        self.assertEqual(status['barred'], 'blocked')
+        self.assertEqual(resp.context['attention_count'], 3)   # soon + gone + barred
+
+    def test_per_tenant_stats_do_not_scale_queries_with_tenants(self):
+        """The real N+1 guard: adding tenants (and their rows) must not add
+        per-tenant queries — the stats are grouped aggregates, not a loop."""
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        self._hospital_with_data('h1')
+        self._hospital_with_data('h2')
+        with CaptureQueriesContext(connection) as small:
+            self.client.get(reverse('saas:dashboard'))
+
+        for s in ('h3', 'h4', 'h5', 'h6'):
+            self._hospital_with_data(s)
+        with CaptureQueriesContext(connection) as big:
+            self.client.get(reverse('saas:dashboard'))
+
+        self.assertLessEqual(
+            len(big.captured_queries) - len(small.captured_queries), 1,
+            "dashboard query count grew with tenant count — an N+1 crept in")

@@ -11,15 +11,56 @@ from accounts.permissions import MODULES
 def superuser_required(view_func):
     return user_passes_test(lambda u: u.is_superuser, login_url='/login/')(view_func)
 
+def _by_hospital(qs, value):
+    """One grouped query -> {hospital_id: aggregate}. Keeps per-tenant stats flat
+    (a fixed handful of queries) instead of one query per hospital in a loop."""
+    return {row['hospital_id']: row['v']
+            for row in qs.values('hospital_id').annotate(v=value)}
+
+
 @superuser_required
 def saas_dashboard(request):
-    hospitals = Hospital.objects.all().order_by('-created_at')
-    payments = HospitalPayment.objects.all().order_by('-payment_date')[:10]
+    from patients.models import Patient
+    from sales.models import Sale
+
+    today = timezone.localdate()
+    month_start = today.replace(day=1)
+
+    hospitals = list(Hospital.objects.all().order_by('-created_at'))
+
+    # Per-tenant intelligence: each of these is a SINGLE grouped query over all
+    # tenants, built into a dict and attached in Python — no query in the loop.
+    users_by = _by_hospital(User.objects.all(), models.Count('id'))
+    patients_by = _by_hospital(Patient.objects.all(), models.Count('id'))
+    sales_by = _by_hospital(Sale.objects.all(), models.Count('id'))
+    revenue_by = _by_hospital(
+        Sale.objects.filter(created_at__date__gte=month_start), models.Sum('total'))
+    last_sale_by = _by_hospital(Sale.objects.all(), models.Max('created_at'))
+
+    for h in hospitals:
+        h.n_users = users_by.get(h.id, 0)
+        h.n_patients = patients_by.get(h.id, 0)
+        h.n_sales = sales_by.get(h.id, 0)
+        h.rev_month = revenue_by.get(h.id) or 0
+        h.last_sale = last_sale_by.get(h.id)
+        h.days_left = (h.expiry_date - today).days
+        if not h.is_active:
+            h.status = 'blocked'
+        elif h.days_left < 0:
+            h.status = 'expired'
+        elif h.days_left <= 7:
+            h.status = 'expiring'
+        else:
+            h.status = 'active'
+
+    payments = (HospitalPayment.objects.select_related('hospital')
+                .order_by('-payment_date')[:10])
     expenses = PlatformExpense.objects.all().order_by('-expense_date')[:10]
 
-    # Metrics
-    active_count = Hospital.objects.filter(is_active=True).count()
-    projected_income = Hospital.objects.filter(is_active=True).aggregate(total=models.Sum('monthly_price'))['total'] or 0
+    # Platform-wide metrics
+    active_count = sum(1 for h in hospitals if h.is_active)
+    attention_count = sum(1 for h in hospitals if h.status in ('expired', 'expiring', 'blocked'))
+    projected_income = sum((h.monthly_price for h in hospitals if h.is_active), 0)
     total_received = HospitalPayment.objects.aggregate(total=models.Sum('amount'))['total'] or 0
     total_expense = PlatformExpense.objects.aggregate(total=models.Sum('amount'))['total'] or 0
     net_profit = total_received - total_expense
@@ -29,6 +70,11 @@ def saas_dashboard(request):
         'payments': payments,
         'expenses': expenses,
         'active_count': active_count,
+        'hospital_count': len(hospitals),
+        'attention_count': attention_count,
+        'total_patients': sum(patients_by.values()),
+        'total_sales': sum(sales_by.values()),
+        'total_users': sum(users_by.values()),
         'projected_income': projected_income,
         'total_received': total_received,
         'total_expense': total_expense,

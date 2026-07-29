@@ -456,11 +456,24 @@ should never contain two answers to the same question.
 ## Performance
 
 The app is deployed on a small shared host, so per-request cost is the difference
-between usable and sluggish. Four things carry that weight; keep them intact.
+between usable and sluggish. These things carry that weight; keep them intact.
 
 - **`DEBUG` defaults to `False` when `BASE_DIR` is under `/home/`** (i.e. on the server).
   With `DEBUG=True` Django retains every SQL query in memory for the process's life and
   serves stack traces to users. Never override this to `True` on a deployment.
+- **Templates use the cached loader when `DEBUG` is off** (`settings.py`): each template is
+  parsed from disk once per process, not once per render. `APP_DIRS` is therefore `False`
+  with explicit `loaders` — do not re-add `APP_DIRS: True` (Django refuses both together).
+  In `DEBUG` the plain loaders are used so edits show without a restart.
+- **SQLite runs in WAL mode** (`saas/signals.py` `_tune_sqlite`, on `connection_created`):
+  production (JabraHost / desktop) is SQLite, and WAL + `synchronous=NORMAL` let readers and
+  the writer work concurrently instead of locking the whole file. Skipped on Postgres and a
+  no-op on the in-memory test DB.
+- **The SaaS owner portal's per-tenant stats are grouped aggregates** keyed by `hospital_id`
+  (`saas.views._by_hospital`), built into dicts and attached to each hospital in Python — a
+  fixed handful of queries no matter how many tenants. Never add a query inside the
+  `{% for h in hospitals %}` loop or per-hospital in the view; `saas.tests.SaasDashboardTest`
+  asserts the query count does not grow with tenant count.
 - **Sidebar badge counts** (`accounts/context_processors.py`) run on *every* page render.
   They are computed only for modules the user can actually see, and cached per user for
   `BADGE_CACHE_SECONDS`. Adding an ungated count puts a query on every page in the app.

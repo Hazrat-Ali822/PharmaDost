@@ -120,12 +120,24 @@ MIDDLEWARE = [
 ]
 
 
+# In production (DEBUG off, i.e. on the server) wrap the loaders in the cached
+# loader so each template is parsed from disk once per process, not once per
+# render. In DEBUG we keep the plain loaders so edits show up without a restart.
+# APP_DIRS must stay False whenever `loaders` is set explicitly.
+_TEMPLATE_LOADERS = [
+    "django.template.loaders.filesystem.Loader",
+    "django.template.loaders.app_directories.Loader",
+]
+if not DEBUG:
+    _TEMPLATE_LOADERS = [("django.template.loaders.cached.Loader", _TEMPLATE_LOADERS)]
+
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "DIRS": [BASE_DIR / "templates"],   # <-- this needs BASE_DIR above!
-        "APP_DIRS": True,
+        "APP_DIRS": False,
         "OPTIONS": {
+            "loaders": _TEMPLATE_LOADERS,
             "context_processors": [
                 "django.template.context_processors.debug",
                 "django.template.context_processors.request",
