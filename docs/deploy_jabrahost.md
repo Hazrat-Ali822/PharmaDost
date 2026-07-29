@@ -1,17 +1,25 @@
-# Deploying PharmaDost to JabraHost (cPanel + Passenger)
+# Deploying PharmaDost to cPanel + Passenger (LiteSpeed / CloudLinux)
 
-This is the shared-hosting path (JabraHost or any cPanel host with **Setup Python
-App**). It runs Django through Passenger and uses **SQLite** — a single file, no
-database server to configure, and it sidesteps the one MySQL limitation this app
-has (conditional unique indexes for MRN, which MySQL silently drops).
+This is the shared-hosting path — any cPanel host with **Setup Python App**
+(the CloudLinux "Python Selector", used on LiteSpeed hosts too). It runs Django
+through Passenger and uses **SQLite** — a single file, no database server to
+configure, and it sidesteps the one MySQL limitation this app has (conditional
+unique indexes for MRN, which MySQL silently drops).
 
 > Before buying the plan, confirm cPanel has **Setup Python App**, **Python 3.10+**,
-> and **SSH access**. A PHP-only plan cannot run Django.
+> and **SSH / Terminal access**. A PHP-only plan cannot run Django.
+
+**Hosting alongside other sites is fine.** Each "Setup Python App" is its own
+isolated virtualenv and domain mapping, so PharmaDost on `sehatyar.online` and an
+unrelated site on another domain (e.g. `khabirconsultant.ae`) coexist without
+touching each other. Put the app in its own folder, **not** in `public_html`.
 
 ## 1. Upload the code
 
-Either `git clone` in the SSH terminal, or upload a zip via File Manager and
-extract it. Put it in a folder like `/home/<cpaneluser>/pharmadost`.
+Either `git clone` in the Terminal, or upload a zip via File Manager and extract
+it. Put it in a folder like `/home/<cpaneluser>/pharmadost` (e.g.
+`/home/sehatyar/pharmadost`) — **outside** `public_html`; Passenger maps the
+domain to it for you.
 
 ## 2. Create the Python app
 
@@ -65,11 +73,24 @@ python manage.py collectstatic --noinput
 The SQLite file is created at `~/pharmadost/db.sqlite3`. **Back this file up** — it
 is the whole database.
 
-## 6. Create the first admin
+## 6. Create the platform owner (SaaS multi-tenant)
 
-Visit the site once; the first-run setup wizard creates the admin account and picks
-the modules. (Or `python manage.py seed_demo` for a demo dataset — passwords
-`pharma123`.)
+This is a **multi-tenant SaaS** install: one platform owner (superuser) who then
+creates each hospital tenant from the owner portal. Create that superuser:
+
+```bash
+python manage.py createsuperuser
+```
+
+Log in with it → a superuser with **no hospital** lands on the **SaaS Owner Portal**
+(`/saas/`). From there, **Create Hospital** provisions each tenant (name, slug,
+monthly price, expiry, modules) *and* its first admin account in one step. Each
+tenant then logs in at `https://yourdomain.com/<slug>/`.
+
+Because a user now exists, the single-site first-run wizard is skipped — that wizard
+is only for a standalone one-hospital install, not this SaaS deployment.
+(`python manage.py seed_demo` still loads a demo tenant — passwords `pharma123` — if
+you want sample data to look at first.)
 
 ## 7. Restart
 
