@@ -8,7 +8,7 @@
   <a class="btn alt" href="{% url 'reception_desk' %}">Back to Desk</a>
 </div>
 
-<form method="post" novalidate>
+<form method="post" novalidate data-offline-kind="visit">
   {% csrf_token %}
   {% if patient %}<input type="hidden" name="patient_id" value="{{ patient.pk }}">{% endif %}
 

@@ -99,6 +99,7 @@ INSTALLED_APPS = [
     "sales.apps.SalesConfig",
     "ipd",
     "ot",
+    "offline_sync",
 ]
 
 LOGIN_URL = '/login/'

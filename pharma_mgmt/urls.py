@@ -18,6 +18,11 @@ urlpatterns = [
     path('app-icon-<int:size>.png', pwa_views.icon, name='pwa_icon'),
     path('offline/', pwa_views.offline, name='pwa_offline'),
     path('get-app/', pwa_views.get_app, name='get_app'),
+    # Offline outbox replay — the browser POSTs its queued actions to
+    # /offline/sync/ when it comes back online (authenticated, same-origin;
+    # not a headless job). Sits after pwa_offline so /offline/ still serves the
+    # offline page and only /offline/sync/ falls through to this include.
+    path('offline/', include('offline_sync.urls')),
     path('saas/', include('saas.urls')),
     path('setup/', setup_wizard, name='setup'),
     path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),

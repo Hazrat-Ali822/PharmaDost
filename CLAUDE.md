@@ -382,11 +382,49 @@ the whole site), and an `/offline/` fallback. All read `SiteSettings.load()`, so
 follows the logged-in tenant. The four browser-fetched endpoints are in
 `LoginRequiredMiddleware.ALLOWED_NAMES` — if they redirect to login, install breaks.
 
-The service worker is **shell-cache + offline-read only**: it keeps the app opening and
-shows already-visited pages on a dropped connection, with a clear offline page. It does
-**not** queue offline writes for sync-back, and must not be made to — stock, MRN and token
-numbers are server-authoritative (locked counters), so offline writes would oversell stock
-and clash numbers. True fully-offline use is the **desktop build** (local SQLite), not this.
+The service worker is **shell-cache + offline-read**: it keeps the app opening and shows
+already-visited pages on a dropped connection, with a clear offline page. Offline *writes*
+are handled separately by the outbox below, not by the service worker.
+
+### Offline data entry (outbox + sync)
+
+Reception can register + book a patient with **no connection**; the entry syncs when the
+network returns. This is opt-in per form and deliberately narrow — do not widen it without
+understanding the two rules below.
+
+- **Client** (`static/js/offline.js`, loaded on every page from `base.html`): any
+  `<form data-offline-kind="...">` is intercepted **only when `navigator.onLine` is false**
+  — online submits are 100% unchanged. Offline, the form is serialised, stamped with a
+  `crypto.randomUUID()`, and stored in an IndexedDB `outbox`. On the `online` event (and on
+  load) it POSTs the queue to `/offline/sync/`. A fixed `#offline-badge` shows the pending
+  count; toasts report saved/synced/rejected.
+- **Server** (`offline_sync/`): `sync` is called **by the logged-in browser**, same-origin
+  with the session cookie — *not* a headless job — so `request.user`, hospital scope and the
+  thread-local are all live. It is idempotent by `ClientAction.client_uuid` (unique): a
+  replayed UUID returns the stored result instead of re-applying, so a double-tap or a
+  two-tab race never doubles a patient/token/invoice. Each action runs in its own
+  `transaction.atomic()`; a `ValidationError`/`PermissionDenied` is filed `FAILED`
+  (permanent — bad data, surfaced to the desk), any other exception is **not** recorded so
+  the client retries it.
+- **Handlers reuse the live forms/services** (`offline_sync/handlers.py`): a queued visit is
+  bound to the same `PatientForm` + `VisitForm` and booked through `opd.views._book_visit`,
+  so offline data passes identical validation. There is no looser second path.
+
+Two things are load-bearing and must stay true:
+
+1. **Server-authoritative numbers are assigned at sync, never by the client.** MRN, token
+   and (Phase 2) sale/invoice numbers come from the locked counters when the action is
+   applied — the offline slip is provisional until then. Never let the client pick these.
+2. **Stock cannot be made safe offline.** Two devices can each sell the last unit while
+   offline; the physical overselling is real and no sync can undo it. When offline **sale**
+   lands (Phase 2, `kind='sale'`), a short-stock sale is still recorded but flagged for
+   pharmacist reconciliation (same principle as `ipd` short-stock) — it is not refused.
+   Do not "fix" this by having the client reserve stock offline.
+
+Current coverage: `kind='visit'` (reception register + book). Add a new kind by writing a
+handler that reuses the online view's form/service and registering it in
+`HANDLERS`; mark the form `data-offline-kind`. Fully-offline sites (no internet at all) are
+still better served by the **desktop build** (local SQLite), which has no sync step.
 
 `base.html` injects tenant colours as CSS variables over `app.css`. When editing `static/css/app.css`, bump the `?v=X.X` cache-busting query string in every template that links it.
 
