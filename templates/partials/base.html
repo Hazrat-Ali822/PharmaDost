@@ -9,6 +9,35 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=1.6">
+
+  {# Install-as-app (PWA). The manifest and icon are per-tenant, so an install #}
+  {# carries this hospital's own name, logo and colour. #}
+  <link rel="manifest" href="{% url 'pwa_manifest' %}">
+  <meta name="theme-color" content="{{ branding.primary_color|default:'#4f46e5' }}">
+  <link rel="apple-touch-icon" href="{% url 'pwa_icon' 192 %}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="{{ branding.brand_name|default:'PharmaDost' }}">
+  <script>
+    // Register the service worker (needs HTTPS or localhost — degrades quietly on plain http).
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/sw.js').catch(function () {});
+      });
+    }
+    // Stash the browser's install prompt so a button can trigger it later.
+    window.__pwaPrompt = null;
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      window.__pwaPrompt = e;
+      document.documentElement.classList.add('pwa-installable');
+    });
+    window.installPWA = function () {
+      if (!window.__pwaPrompt) return false;
+      window.__pwaPrompt.prompt();
+      window.__pwaPrompt.userChoice.finally(function () { window.__pwaPrompt = null; });
+      return true;
+    };
+  </script>
   {# SaaS owner portal keeps the platform's own default theme — never a tenant's colours #}
   {% if branding.primary_color and request.resolver_match.namespace != 'saas' %}<style>:root{ --primary: {{ branding.primary_color }}; --accent: {{ branding.accent_color }}; }</style>{% endif %}
   <style>
@@ -395,6 +424,14 @@
         {% endif %}
       </div>
       {% endif %}
+
+      <div class="nav-group">
+        <div class="nav-group-title">App</div>
+        <a href="{% url 'get_app' %}" class="{% if '/get-app' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></svg>
+          Get the App
+        </a>
+      </div>
     </nav>
     {% endif %}
   </aside>

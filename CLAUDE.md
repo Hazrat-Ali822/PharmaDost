@@ -372,6 +372,22 @@ Two things here are load-bearing:
 - The template context key is **`branding`**, not `site` — Django's `LoginView` injects its own `site` variable which would shadow it.
 - **Never force `pk=1`** when saving. Inserting an explicit primary key on PostgreSQL desyncs the id sequence and the next tenant's row collides with `duplicate key ... (id)=(1)`. Migration `user_mgmt/0008` resyncs the sequence.
 
+### Install-as-app (PWA)
+
+The site installs as an app (phone home screen, desktop) carrying **each tenant's own**
+name, logo and colour — not "PharmaDost". `user_mgmt/pwa_views.py` serves a per-tenant
+`manifest.webmanifest`, a Pillow-rendered `app-icon-<size>.png` (the uploaded logo, else the
+brand letter on the theme colour), a service worker at **`/sw.js`** (root, so its scope is
+the whole site), and an `/offline/` fallback. All read `SiteSettings.load()`, so branding
+follows the logged-in tenant. The four browser-fetched endpoints are in
+`LoginRequiredMiddleware.ALLOWED_NAMES` — if they redirect to login, install breaks.
+
+The service worker is **shell-cache + offline-read only**: it keeps the app opening and
+shows already-visited pages on a dropped connection, with a clear offline page. It does
+**not** queue offline writes for sync-back, and must not be made to — stock, MRN and token
+numbers are server-authoritative (locked counters), so offline writes would oversell stock
+and clash numbers. True fully-offline use is the **desktop build** (local SQLite), not this.
+
 `base.html` injects tenant colours as CSS variables over `app.css`. When editing `static/css/app.css`, bump the `?v=X.X` cache-busting query string in every template that links it.
 
 ## Keeping this file current

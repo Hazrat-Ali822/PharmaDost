@@ -1,0 +1,75 @@
+{% extends 'partials/base.html' %}
+{% block title %}Get the App{% endblock %}
+{% block page_title %}Get the App{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <h2>Install {{ branding.brand_name|default:"the App" }}</h2>
+</div>
+
+<div class="card" style="max-width:640px;padding:28px">
+  <div style="display:flex;gap:16px;align-items:center;margin-bottom:18px">
+    <img src="{% url 'pwa_icon' 192 %}" alt="" width="64" height="64" style="border-radius:14px">
+    <div>
+      <h3 style="margin:0">{{ branding.brand_name|default:"PharmaDost" }}</h3>
+      <p class="muted" style="margin:2px 0 0;font-size:13.5px">
+        Installs to your phone's home screen or your computer's desktop — opens in its
+        own window with {{ branding.brand_name|default:"your" }}'s name and logo, like a
+        normal app. No app store needed.
+      </p>
+    </div>
+  </div>
+
+  {# Chrome/Edge fire beforeinstallprompt; this button uses it. Hidden until the #}
+  {# browser says the app is installable (base.html adds .pwa-installable). #}
+  <button class="btn install-btn" onclick="if(!window.installPWA()){document.getElementById('manual').scrollIntoView({behavior:'smooth'});}"
+          style="font-size:15px;padding:11px 22px">📲 Install App</button>
+  <span class="muted install-hint" style="font-size:12.5px;margin-left:10px">
+    On this browser, follow the steps below.
+  </span>
+
+  <hr style="border:0;border-top:1px solid var(--border);margin:22px 0">
+
+  <div id="manual" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px">
+    <div>
+      <h4 style="margin:0 0 6px">📱 Android (Chrome)</h4>
+      <p class="muted" style="font-size:13px;line-height:1.7;margin:0">
+        Tap <b>Install App</b> above — or the ⋮ menu → <b>Install app</b> /
+        <b>Add to Home screen</b>.
+      </p>
+    </div>
+    <div>
+      <h4 style="margin:0 0 6px">🍎 iPhone / iPad (Safari)</h4>
+      <p class="muted" style="font-size:13px;line-height:1.7;margin:0">
+        Tap the <b>Share</b> button, then <b>Add to Home Screen</b>. (iPhone has no
+        one-tap install — Apple only allows this route.)
+      </p>
+    </div>
+    <div>
+      <h4 style="margin:0 0 6px">💻 Windows / Mac (Chrome / Edge)</h4>
+      <p class="muted" style="font-size:13px;line-height:1.7;margin:0">
+        Tap <b>Install App</b> — or the <b>⊕ install icon</b> in the address bar.
+        It opens like a desktop program.
+      </p>
+    </div>
+  </div>
+
+  <div style="margin-top:22px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px">
+    <b style="font-size:13.5px">Works on a shaky connection</b>
+    <p class="muted" style="font-size:13px;line-height:1.7;margin:6px 0 0">
+      The app keeps opening and shows the pages you already visited even if the internet
+      drops for a moment, and reconnects on its own. Live actions — sales, tokens, bills —
+      still need a connection, because stock and numbers are kept correct on the server.
+      For a clinic with <b>no</b> internet at all, ask about the offline desktop version.
+    </p>
+  </div>
+</div>
+
+<style>
+  /* The install button only makes sense once the browser offers an install. */
+  .install-btn{display:none}
+  .install-hint{display:inline}
+  .pwa-installable .install-btn{display:inline-block}
+  .pwa-installable .install-hint{display:none}
+</style>
+{% endblock %}

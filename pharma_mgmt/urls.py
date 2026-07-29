@@ -3,6 +3,7 @@ from django.urls import path, include
 from django.contrib.auth import views as auth_views
 from inventory.views import dashboard
 from user_mgmt.views import setup_wizard
+from user_mgmt import pwa_views
 from django.conf import settings
 from django.conf.urls.static import static
 from saas.views import hospital_login
@@ -10,6 +11,13 @@ from saas.views import hospital_login
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    # PWA (install-as-app). The service worker MUST be at the root so its scope
+    # covers every page; the rest sit alongside it for tidiness.
+    path('sw.js', pwa_views.service_worker, name='pwa_service_worker'),
+    path('manifest.webmanifest', pwa_views.manifest, name='pwa_manifest'),
+    path('app-icon-<int:size>.png', pwa_views.icon, name='pwa_icon'),
+    path('offline/', pwa_views.offline, name='pwa_offline'),
+    path('get-app/', pwa_views.get_app, name='get_app'),
     path('saas/', include('saas.urls')),
     path('setup/', setup_wizard, name='setup'),
     path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
