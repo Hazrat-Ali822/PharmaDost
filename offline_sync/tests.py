@@ -130,6 +130,84 @@ class VisitSyncTest(OfflineSyncBase):
         self.assertEqual(ClientAction.objects.filter(client_uuid="bad-2").count(), 1)
 
 
+def _sale_payload(med, qty, **over):
+    data = {
+        "sale_type": "RETAIL", "customer_name": "Walk In", "payment_method": "CASH",
+        "medicine_id[]": [str(med.id)], "quantity[]": [str(qty)],
+        "unit_price[]": [""], "line_discount[]": [""],
+    }
+    data.update(over)
+    return data
+
+
+class OfflineSaleSyncTest(OfflineSyncBase):
+    def setUp(self):
+        super().setUp()
+        from inventory.models import Medicine
+        # Pharmacist must exist in the tenant to receive the reconcile alert.
+        self.pharmacist = User.objects.create_user(
+            email="ph@ph.com", password="pw", role="PHARMACIST", hospital=self.h)
+        # POS is the pharmacist's screen, so an offline sale syncs under their login.
+        self.client.force_login(self.pharmacist)
+        self.med = Medicine.objects.create(
+            name="Paracetamol", brand="ACME", price=100, quantity=50,
+            expiry_date=date(2035, 1, 1), hospital=self.h)
+
+    def test_an_offline_sale_syncs_and_deducts_stock(self):
+        resp = self._sync({"uuid": "s-1", "kind": "sale",
+                           "data": _sale_payload(self.med, 5)})
+        result = resp.json()["results"][0]
+        self.assertEqual(result["status"], "applied")
+
+        from sales.models import Sale
+        sale = Sale.objects.get(pk=result["result"]["sale_id"])
+        self.assertEqual(sale.total, 500)
+        self.assertFalse(sale.needs_reconcile)
+        self.med.refresh_from_db()
+        self.assertEqual(self.med.quantity, 45)
+
+    def test_the_same_sale_uuid_is_never_billed_twice(self):
+        from sales.models import Sale
+        payload = {"uuid": "s-dup", "kind": "sale", "data": _sale_payload(self.med, 5)}
+        self._sync(payload)
+        self._sync(payload)
+        self.assertEqual(Sale.objects.count(), 1)
+        self.med.refresh_from_db()
+        self.assertEqual(self.med.quantity, 45)   # deducted once, not twice
+
+    def test_a_short_stock_offline_sale_is_recorded_and_flagged_not_refused(self):
+        from accounts.models import Notification
+        from sales.models import Sale
+        self.med.quantity = 3
+        self.med.save(update_fields=["quantity"])
+
+        resp = self._sync({"uuid": "s-short", "kind": "sale",
+                           "data": _sale_payload(self.med, 10)})
+        result = resp.json()["results"][0]
+        self.assertEqual(result["status"], "applied")   # NOT refused
+
+        sale = Sale.objects.get(pk=result["result"]["sale_id"])
+        # billed in full — the patient received all 10
+        self.assertEqual(sale.total, 1000)
+        self.assertEqual(sum(i.quantity for i in sale.items.all()), 10)
+        # only the 3 on hand were deducted; the shortfall is visible, not hidden
+        self.med.refresh_from_db()
+        self.assertEqual(self.med.quantity, 0)
+        self.assertTrue(sale.needs_reconcile)
+        self.assertIn("7", sale.reconcile_note)
+        # the pharmacist is actively told to reconcile
+        self.assertTrue(Notification.objects.filter(user=self.pharmacist).exists())
+
+    def test_a_live_sale_still_refuses_short_stock(self):
+        """The default path is unchanged — only offline replay may oversell."""
+        from sales.services import create_sale
+        self.med.quantity = 2
+        self.med.save(update_fields=["quantity"])
+        with self.assertRaises(ValueError):
+            create_sale(items=[{"medicine_id": self.med.id, "quantity": 10}],
+                        customer_name="Walk In")
+
+
 class OfflineSyncGuardTest(OfflineSyncBase):
     def test_a_user_without_the_feature_cannot_book_through_sync(self):
         nobody = User.objects.create_user(email="n@n.com", password="pw",

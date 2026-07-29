@@ -62,8 +62,90 @@ def handle_visit(request, data):
     }
 
 
-# kind -> handler. New offline-capable actions (sale, vitals, orders) are added
-# here as their phases land; the client sends the matching `kind`.
+def _one(value):
+    """A form array key (medicine_id[]) arrives as a list when repeated, but as a
+    bare value when a single row was submitted — normalise to a list."""
+    if value is None:
+        return []
+    return value if isinstance(value, list) else [value]
+
+
+def handle_sale(request, data):
+    """Replay a pharmacy sale taken while offline — mirrors the POST parsing in
+    ``sales.views.sale_create``, but with ``on_short="record"`` so a sale made
+    against stock that has since run short is recorded and flagged for the
+    pharmacist rather than refused (the medicine already left the shelf)."""
+    from django.shortcuts import get_object_or_404
+    from accounts.models import Notification
+    from customers.models import Customer
+    from patients.models import Patient
+    from sales.models import Sale
+    from sales.services import create_sale
+
+    _require(request.user, "pos")
+
+    med_ids = _one(data.get("medicine_id[]"))
+    qtys = _one(data.get("quantity[]"))
+    prices = _one(data.get("unit_price[]"))
+    line_discounts = _one(data.get("line_discount[]"))
+
+    items = []
+    for i, m_id in enumerate(med_ids):
+        if not m_id:
+            continue
+        try:
+            q = int(qtys[i]) if i < len(qtys) and qtys[i] else 0
+        except (TypeError, ValueError):
+            q = 0
+        if q < 1:
+            continue
+        item = {"medicine_id": int(m_id), "quantity": q}
+        price = prices[i].strip() if i < len(prices) and prices[i] else None
+        if price:
+            item["unit_price"] = price
+        ld = line_discounts[i].strip() if i < len(line_discounts) and line_discounts[i] else None
+        if ld:
+            item["discount"] = ld
+        items.append(item)
+
+    if not items:
+        raise ValidationError("The offline sale had no valid line items.")
+
+    customer = get_object_or_404(Customer, pk=data["customer_id"]) if data.get("customer_id") else None
+    patient = get_object_or_404(Patient, pk=data["patient_id"]) if data.get("patient_id") else None
+
+    sale = create_sale(
+        items=items,
+        sale_type=data.get("sale_type", Sale.RETAIL),
+        customer=customer,
+        patient=patient,
+        customer_name=(data.get("customer_name") or "").strip(),
+        discount=data.get("discount") or 0,
+        paid=data.get("paid"),
+        payment_method=data.get("payment_method", "CASH"),
+        cashier=request.user,
+        on_short="record",
+    )
+
+    if sale.needs_reconcile:
+        # Exceptional — the pharmacist must verify the physical count. This is one
+        # of the few things worth an active notification (see CLAUDE.md).
+        Notification.send_to_role(
+            sale.hospital, "PHARMACIST",
+            f"Offline sale #{sale.id} dispensed stock that was short — please "
+            f"reconcile: {sale.reconcile_note}", f"/sales/{sale.id}/")
+
+    return {
+        "sale_id": sale.id,
+        "total": str(sale.total),
+        "needs_reconcile": sale.needs_reconcile,
+        "reconcile_note": sale.reconcile_note,
+    }
+
+
+# kind -> handler. New offline-capable actions are added here as their phases
+# land; the client sends the matching `kind`.
 HANDLERS = {
     "visit": handle_visit,
+    "sale": handle_sale,
 }

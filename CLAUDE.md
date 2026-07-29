@@ -416,15 +416,19 @@ Two things are load-bearing and must stay true:
    and (Phase 2) sale/invoice numbers come from the locked counters when the action is
    applied — the offline slip is provisional until then. Never let the client pick these.
 2. **Stock cannot be made safe offline.** Two devices can each sell the last unit while
-   offline; the physical overselling is real and no sync can undo it. When offline **sale**
-   lands (Phase 2, `kind='sale'`), a short-stock sale is still recorded but flagged for
-   pharmacist reconciliation (same principle as `ipd` short-stock) — it is not refused.
-   Do not "fix" this by having the client reserve stock offline.
+   offline; the physical overselling is real and no sync can undo it. An offline **sale**
+   (`kind='sale'`) is replayed through `create_sale(..., on_short="record")`: it dispenses
+   the in-date stock that exists, **bills the full quantity anyway** (the patient already
+   has it), records the shortfall as a batch-less `SaleItem` (no COGS), and sets
+   `Sale.needs_reconcile` + `reconcile_note`, notifying the pharmacist. The default
+   `on_short="raise"` — every **live** POS sale — is unchanged and still refuses a short
+   sale. Do not route a live sale through `"record"`, and do not "fix" the offline case by
+   having the client reserve stock.
 
-Current coverage: `kind='visit'` (reception register + book). Add a new kind by writing a
-handler that reuses the online view's form/service and registering it in
-`HANDLERS`; mark the form `data-offline-kind`. Fully-offline sites (no internet at all) are
-still better served by the **desktop build** (local SQLite), which has no sync step.
+Current coverage: `kind='visit'` (reception register + book) and `kind='sale'` (POS). Add a
+new kind by writing a handler that reuses the online view's form/service and registering it
+in `HANDLERS`; mark the form `data-offline-kind`. Fully-offline sites (no internet at all)
+are still better served by the **desktop build** (local SQLite), which has no sync step.
 
 `base.html` injects tenant colours as CSS variables over `app.css`. When editing `static/css/app.css`, bump the `?v=X.X` cache-busting query string in every template that links it.
 

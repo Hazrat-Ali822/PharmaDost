@@ -15,13 +15,25 @@ def _dec(value, default="0.00"):
 
 @transaction.atomic
 def create_sale(*, items, sale_type=Sale.RETAIL, customer=None, customer_name="",
-                discount=0, paid=None, payment_method="CASH", cashier=None, patient=None):
+                discount=0, paid=None, payment_method="CASH", cashier=None, patient=None,
+                on_short="raise"):
     """
     Create a sale, dispensing stock FEFO (earliest expiry first) and recording the
     exact batch each line came from.
 
     items: list of {"medicine_id": int, "quantity": int,
                     optional "unit_price": Decimal, optional "discount": Decimal}
+
+    on_short controls what happens when a line asks for more in-date stock than is
+    on hand:
+      * "raise"  (default) — refuse the whole sale. This is the ONLY behaviour for
+        a live POS sale: the cashier can see the shortfall and fix it there.
+      * "record" — used solely to replay an *offline* sale, where the medicine is
+        already with the patient and refusing would leave a real handout unbilled
+        and unrecorded. Dispenses whatever in-date stock exists, bills the full
+        quantity anyway, and sets `sale.needs_reconcile` with a note so the
+        pharmacist verifies physical stock. The physical overselling is real and
+        cannot be undone by software — this makes it visible, it does not hide it.
     """
     if not items:
         raise ValueError("Add at least one item.")
@@ -51,19 +63,13 @@ def create_sale(*, items, sale_type=Sale.RETAIL, customer=None, customer_name=""
 
     gross = Decimal("0.00")
     total_line_discount = Decimal("0.00")
+    shortfalls = []       # (medicine_name, units) sold beyond recorded stock (offline)
 
     for it in items:
         med = Medicine.objects.select_for_update().get(id=it["medicine_id"])
         qty = int(it["quantity"])
         if qty < 1:
             raise ValueError("Quantity must be at least 1.")
-        if med.is_expired:
-            raise ValueError(f"{med.name} is expired - cannot sell.")
-        # only in-date (non-expired batch) stock is dispensable — never sell expired
-        if med.sellable_quantity < qty:
-            raise ValueError(
-                f"Not enough in-date stock for {med.name} (only {med.sellable_quantity} sellable)."
-            )
 
         if it.get("unit_price") not in (None, ""):
             unit_price = _dec(it["unit_price"])
@@ -73,8 +79,25 @@ def create_sale(*, items, sale_type=Sale.RETAIL, customer=None, customer_name=""
             unit_price = med.price
         line_discount = _dec(it.get("discount"))
 
-        # FEFO dispense; returns one chunk per batch consumed
-        consumed = med.reduce_stock(qty)
+        sellable = med.sellable_quantity
+        short = 0
+        if on_short == "record" and (med.is_expired or sellable < qty):
+            # Offline replay: dispense the in-date stock we have, bill the rest.
+            take = min(qty, max(sellable, 0))
+            consumed = med.reduce_stock(take) if take > 0 else []
+            short = qty - take
+            if short > 0:
+                shortfalls.append((med.name, short))
+        else:
+            # Live / default path — unchanged: never sell expired, never oversell.
+            if med.is_expired:
+                raise ValueError(f"{med.name} is expired - cannot sell.")
+            # only in-date (non-expired batch) stock is dispensable — never sell expired
+            if sellable < qty:
+                raise ValueError(
+                    f"Not enough in-date stock for {med.name} (only {sellable} sellable)."
+                )
+            consumed = med.reduce_stock(qty)   # FEFO; one chunk per batch consumed
 
         first = True
         for chunk in consumed:
@@ -98,7 +121,24 @@ def create_sale(*, items, sale_type=Sale.RETAIL, customer=None, customer_name=""
             gross += unit_price * chunk_qty
             first = False
 
+        if short > 0:
+            # The un-stocked remainder of an offline sale: billed because the
+            # patient received it, but with no batch and no COGS — the pharmacist
+            # reconciles the physical count from the flag below.
+            SaleItem.objects.create(
+                sale=sale, medicine=med, batch=None, unit_price=unit_price,
+                quantity=short, discount=(line_discount if first else Decimal("0.00")),
+                cost_price=Decimal("0.00"),
+            )
+            gross += unit_price * short
+            first = False
+
         total_line_discount += line_discount
+
+    if shortfalls:
+        sale.needs_reconcile = True
+        sale.reconcile_note = "; ".join(
+            f"{name}: {n} unit(s) dispensed beyond recorded stock" for name, n in shortfalls)
 
     subtotal = gross
     total = subtotal - total_line_discount - order_discount
@@ -127,7 +167,8 @@ def create_sale(*, items, sale_type=Sale.RETAIL, customer=None, customer_name=""
         if payment_method != "CREDIT":
             sale.payment_method = "CREDIT"
 
-    sale.save(update_fields=["subtotal", "total", "paid", "payment_method"])
+    sale.save(update_fields=["subtotal", "total", "paid", "payment_method",
+                             "needs_reconcile", "reconcile_note"])
     return sale
 
 

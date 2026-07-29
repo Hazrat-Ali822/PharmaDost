@@ -20,7 +20,7 @@
 </div>
 {% endif %}
 
-<form method="post" id="bill-form">{% csrf_token %}
+<form method="post" id="bill-form" data-offline-kind="sale" data-offline-next="{% url 'sale_create' %}">{% csrf_token %}
   <input type="hidden" name="prescription_id" value="{{ prescription_id|default:'' }}">
   <div class="card" style="margin-bottom:12px">
     <div class="form-row">

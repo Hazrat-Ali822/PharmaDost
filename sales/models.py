@@ -40,6 +40,12 @@ class Sale(models.Model):
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name="sales"
     )
     is_returned = models.BooleanField(default=False)
+    # Set when an offline sale was replayed against short stock: the goods left
+    # the shelf while the device was offline, so the sale is recorded and billed
+    # in full and the pharmacist verifies the physical count. See create_sale's
+    # on_short="record" path.
+    needs_reconcile = models.BooleanField(default=False)
+    reconcile_note = models.TextField(blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
 
