@@ -46,7 +46,7 @@ jobs:
         # e2e is excluded here and runs in its own job with a browser installed.
         run: |
           coverage run manage.py test accounts audit billing customers imaging inventory \
-            ipd lab opd ot patients prescriptions reports saas sales suppliers user_mgmt tests \
+            ipd lab offline_sync opd ot patients prescriptions reports saas sales suppliers user_mgmt tests \
             --settings=pharma_mgmt.test_settings --verbosity=2
 
       - name: Coverage report
