@@ -204,11 +204,11 @@ class AgeDisplayTest(TestCase):
         """A patient whose age today is exactly the parts given."""
         import calendar as cal
         today = timezone.localdate()
+        target = today - timedelta(days=days)
         total = years * 12 + months
-        year, month = divmod(today.month - 1 - total, 12)
-        year, month = today.year + year, month + 1
-        day = min(today.day, cal.monthrange(year, month)[1])
-        born = date(year, month, day) - timedelta(days=days)
+        year, month = divmod(target.month - 1 - total, 12)
+        year, month = target.year + year, month + 1
+        born = target.replace(year=year, month=month, day=min(target.day, cal.monthrange(year, month)[1]))
         return Patient.objects.create(full_name='X', dob=born, hospital=self.h)
 
     def test_zero_parts_are_dropped(self):
