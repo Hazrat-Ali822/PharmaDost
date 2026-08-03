@@ -1,0 +1,31 @@
+{
+  "appId": "online.sehatyar.app",
+  "appName": "Sehatyar",
+  "webDir": "dist_web",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "http://sehatyar.online",
+    "cleartext": true,
+    "allowNavigation": [
+      "*"
+    ]
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "launchAutoHide": true,
+      "backgroundColor": "#0d9488",
+      "androidSplashResourceName": "splash",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#0f766e"
+    }
+  }
+}
