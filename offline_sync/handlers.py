@@ -176,6 +176,72 @@ def handle_lab(request, data):
     }
 
 
+def handle_prescription(request, data):
+    """Replay an offline prescription creation."""
+    from prescriptions.forms import PrescriptionForm
+    _require(request.user, "prescriptions")
+    form = PrescriptionForm(data)
+    if not form.is_valid():
+        raise ValidationError(form.errors)
+    prescription = form.save(commit=False)
+    prescription.hospital = request.user.hospital
+    prescription.doctor = request.user
+    prescription.save()
+    return {"prescription_id": prescription.id}
+
+
+def handle_appointment(request, data):
+    """Replay an offline appointment creation."""
+    from opd.forms import AppointmentForm
+    _require(request.user, "appointments")
+    form = AppointmentForm(data)
+    if not form.is_valid():
+        raise ValidationError(form.errors)
+    appointment = form.save(commit=False)
+    appointment.hospital = request.user.hospital
+    appointment.save()
+    return {"appointment_id": appointment.id}
+
+
+def handle_supplier(request, data):
+    """Replay an offline supplier creation."""
+    from suppliers.forms import SupplierForm
+    _require(request.user, "suppliers")
+    form = SupplierForm(data)
+    if not form.is_valid():
+        raise ValidationError(form.errors)
+    supplier = form.save(commit=False)
+    supplier.hospital = request.user.hospital
+    supplier.save()
+    return {"supplier_id": supplier.id, "name": supplier.name}
+
+
+def handle_surgery(request, data):
+    """Replay an offline surgery creation."""
+    from ot.forms import SurgeryForm
+    _require(request.user, "ot")
+    form = SurgeryForm(data)
+    if not form.is_valid():
+        raise ValidationError(form.errors)
+    surgery = form.save(commit=False)
+    surgery.hospital = request.user.hospital
+    surgery.save()
+    return {"surgery_id": surgery.id}
+
+
+def handle_bed(request, data):
+    """Replay an offline bed creation."""
+    from ipd.forms import BedForm
+    _require(request.user, "ipd")
+    form = BedForm(data)
+    if not form.is_valid():
+        raise ValidationError(form.errors)
+    bed = form.save(commit=False)
+    bed.hospital = request.user.hospital
+    bed.save()
+    return {"bed_id": bed.id}
+
+
 # kind -> handler. New offline-capable actions are added here as their phases
 # land; the client sends the matching `kind`.
 HANDLERS = {
@@ -183,5 +249,11 @@ HANDLERS = {
     "sale": handle_sale,
     "patient": handle_patient,
     "lab": handle_lab,
+    "prescription": handle_prescription,
+    "appointment": handle_appointment,
+    "supplier": handle_supplier,
+    "surgery": handle_surgery,
+    "bed": handle_bed,
 }
+
 

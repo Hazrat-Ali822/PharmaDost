@@ -13,7 +13,7 @@
     🔪 Scheduling Dr. {{ surg_req.advised_by.first_name|default:surg_req.advised_by.email }}'s advice ({{ surg_req.get_urgency_display }}) — <strong>{{ surg_req.reason }}</strong>
   </div>
   {% endif %}
-  <form method="post" novalidate>
+  <form method="post" novalidate data-offline-kind="surgery">
     {% csrf_token %}
     {% if request_id %}<input type="hidden" name="request_id" value="{{ request_id }}">{% endif %}
 
