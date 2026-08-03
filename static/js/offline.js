@@ -236,10 +236,50 @@
     });
   }
 
+  // ---- GET Search Interception & Live Offline Filtering -----------------
+  function interceptSearchForm(form) {
+    form.addEventListener("submit", function (e) {
+      if (navigator.onLine) return;        // online: submit GET normally
+      e.preventDefault();
+      var input = form.querySelector('input[name="q"], input[type="search"], input[type="text"]');
+      var query = input ? (input.value || "").trim().toLowerCase() : "";
+      filterDomTables(query);
+      toast("🔍 Offline filter: '" + query + "'", "ok");
+    });
+  }
+
+  function filterDomTables(query) {
+    var tables = document.querySelectorAll("table.tbl, table");
+    Array.prototype.forEach.call(tables, function (tbl) {
+      var rows = tbl.querySelectorAll("tbody tr");
+      Array.prototype.forEach.call(rows, function (row) {
+        if (row.cells && row.cells.length === 1 && row.classList.contains("muted")) return;
+        var text = (row.textContent || row.innerText || "").toLowerCase();
+        row.style.display = (!query || text.indexOf(query) !== -1) ? "" : "none";
+      });
+    });
+  }
+
+  function setupLiveOfflineFilter() {
+    var searchInputs = document.querySelectorAll('input[name="q"], .search input');
+    Array.prototype.forEach.call(searchInputs, function (input) {
+      input.addEventListener("input", function () {
+        if (navigator.onLine) return;
+        var query = (input.value || "").trim().toLowerCase();
+        filterDomTables(query);
+      });
+    });
+  }
+
   // ---- boot -------------------------------------------------------------
   function boot() {
     var forms = document.querySelectorAll("form[data-offline-kind]");
     Array.prototype.forEach.call(forms, interceptForm);
+
+    var searchForms = document.querySelectorAll('form[method="get"], form.search');
+    Array.prototype.forEach.call(searchForms, interceptSearchForm);
+    setupLiveOfflineFilter();
+
     refreshBadge();
     if (navigator.onLine) sync();
   }
