@@ -3,7 +3,7 @@
 {% block content %}
 <div class="form-card">
   <h2>{{ title }}</h2>
-  <form method="post" novalidate>
+  <form method="post" novalidate data-offline-kind="patient">
     {% csrf_token %}
     {% include 'patients/_fields.html' with form=form %}
     <div style="margin-top:24px; display:flex; gap:10px; flex-wrap:wrap;">

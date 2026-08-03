@@ -6,7 +6,7 @@
   <a class="btn alt" href="{% url 'lab:order_list' %}">Back</a>
 </div>
 
-<form method="post" class="card" style="max-width:680px">{% csrf_token %}
+<form method="post" class="card" style="max-width:680px" data-offline-kind="lab">{% csrf_token %}
   <div class="form-row" style="align-items:flex-start">
     <label for="{{ form.patient.id_for_label }}">Patient</label>
     <div style="flex:1">

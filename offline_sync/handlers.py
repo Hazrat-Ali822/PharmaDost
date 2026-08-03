@@ -143,9 +143,45 @@ def handle_sale(request, data):
     }
 
 
+def handle_patient(request, data):
+    """Register a new patient while offline — mirrors patients.views.patient_create."""
+    from patients.forms import PatientForm
+    _require(request.user, "patients")
+    form = PatientForm(data)
+    if not form.is_valid():
+        raise ValidationError(form.errors)
+    patient = form.save()
+    return {
+        "patient_id": patient.pk,
+        "mrn": patient.mrn,
+        "full_name": patient.full_name,
+    }
+
+
+def handle_lab(request, data):
+    """Replay an offline lab order creation."""
+    from lab.forms import LabOrderForm
+    from lab.views import _create_order
+    from patients.models import Patient
+    _require(request.user, "lab")
+    form = LabOrderForm(data)
+    if not form.is_valid():
+        raise ValidationError(form.errors)
+    patient_id = data.get("patient_id")
+    patient = get_object_or_404(Patient, pk=patient_id) if patient_id else None
+    order = _create_order(request, form.cleaned_data, patient=patient)
+    return {
+        "order_id": order.id,
+        "test_name": order.test_catalog.name if order.test_catalog else "",
+    }
+
+
 # kind -> handler. New offline-capable actions are added here as their phases
 # land; the client sends the matching `kind`.
 HANDLERS = {
     "visit": handle_visit,
     "sale": handle_sale,
+    "patient": handle_patient,
+    "lab": handle_lab,
 }
+
