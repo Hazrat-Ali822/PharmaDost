@@ -127,10 +127,25 @@ def get_app(request):
 # --- The service worker itself (network-first for pages, cache-first for assets) ---
 _SERVICE_WORKER = r"""
 const CACHE = 'pharmadost-__VERSION__';
-const SHELL = ['/static/css/app.css', '/offline/'];
+const SHELL = [
+  '/static/css/app.css',
+  '/static/js/offline.js',
+  '/offline/',
+  '/patients/add/',
+  '/sales/new/',
+  '/opd/visit/',
+  '/lab/order/new/'
+];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(CACHE).then((c) => {
+      // Pre-cache shell assets; ignore individual failures so SW installs reliably.
+      return Promise.all(
+        SHELL.map((url) => c.add(url).catch((err) => console.log('SW shell skip:', url)))
+      );
+    }).then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', (e) => {
