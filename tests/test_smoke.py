@@ -113,10 +113,35 @@ class SuperuserSmokeTest(TestCase):
             with self.subTest(page=name):
                 self.assertEqual(self.client.get(reverse(name)).status_code, 200)
 
+    def test_the_bare_domain_takes_the_owner_to_the_portal_not_a_pharmacy(self):
+        """Typing sehatyar.online skips `dashboard_router`, so without this the
+        owner lands on a tenant's pharmacy dashboard and the whole platform looks
+        like it has become one hospital."""
+        resp = self.client.get('/')
+        self.assertRedirects(resp, reverse('saas:dashboard'))
+
+    def test_that_redirect_does_not_loop(self):
+        """`/` -> `/saas/` must be the end of it. The pharmacy dashboard already
+        bounces feature-less users to post_login_redirect, and a second hop back
+        to `/` would spin (see CLAUDE.md)."""
+        self.assertEqual(
+            self.client.get('/', follow=True).status_code, 200)
+
+    def test_a_hospital_admin_still_gets_the_pharmacy_dashboard(self):
+        from saas.models import Hospital
+        h = Hospital.objects.create(name='Gulab', slug='gulab',
+                                    expiry_date=date.today() + timedelta(days=30))
+        admin = User.objects.create_user(email='ga@test.com', password='pw',
+                                         role='ADMIN', hospital=h)
+        c = Client(); c.force_login(admin)
+        self.assertEqual(c.get('/').status_code, 200)
+
     def test_the_owner_can_get_back_to_the_portal_from_a_tenant_screen(self):
         """The portal's own sidebar only exists inside /saas/, so a superuser who
         steps into a hospital screen needs a way back that is not typing the URL."""
-        body = self.client.get(reverse('dashboard')).content.decode()
+        # `/` now redirects the owner to the portal, so check a screen they can
+        # actually be standing on inside a tenant.
+        body = self.client.get(reverse('patient_list')).content.decode()
         self.assertIn(reverse('saas:dashboard'), body)
         self.assertIn('Owner Portal', body)
 
@@ -127,7 +152,7 @@ class SuperuserSmokeTest(TestCase):
         admin = User.objects.create_user(email='ha@test.com', password='pw',
                                          role='ADMIN', hospital=h)
         c = Client(); c.force_login(admin)
-        self.assertNotIn('Owner Portal', c.get(reverse('dashboard')).content.decode())
+        self.assertNotIn('Owner Portal', c.get(reverse('patient_list')).content.decode())
 
 
 class AnonymousSmokeTest(TestCase):

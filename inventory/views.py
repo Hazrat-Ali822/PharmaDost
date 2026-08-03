@@ -17,6 +17,15 @@ from django.shortcuts import reverse
 
 @login_required
 def dashboard(request):
+    # The SaaS owner (a superuser belonging to no hospital) belongs in the owner
+    # portal, not in a tenant's pharmacy. `dashboard_router` already sends them
+    # there at login, but typing the bare domain skips the router — which is how
+    # the owner ends up staring at a pharmacy dashboard full of tenant-less
+    # numbers and concludes the platform has turned into one hospital.
+    # A direct redirect to /saas/, which never redirects back, so no loop.
+    if request.user.is_superuser and not getattr(request.user, 'hospital', None):
+        return redirect('saas:dashboard')
+
     # The home page ("/") is the pharmacy dashboard. Users without pharmacy
     # access (doctors, receptionists, lab/imaging staff, or installs with the
     # pharmacy module turned off) are sent to their own role dashboard instead

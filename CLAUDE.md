@@ -236,6 +236,8 @@ the rows. Guarded by `tests/test_admin_awareness.py::AuditLogIsolationTest`.
 
 `/` maps to `inventory.views.dashboard` (the pharmacy dashboard). It is **not** feature-gated with a hard 403 — users lacking `inventory` are redirected to `post_login_redirect` instead, and `dashboard_router` avoids bouncing back for admins whose pharmacy module is off. Preserve both sides of that guard or you create a redirect loop.
 
+`dashboard` **also** sends a hospital-less superuser straight to `saas:dashboard`, mirroring the router. `dashboard_router` only runs at login, so typing the bare domain while already signed in skipped it and dropped the SaaS owner onto a tenant's pharmacy dashboard — which reads as "the platform has turned into one hospital". That hop goes directly to `/saas/`, which never redirects back, so it cannot loop; do not route it through `post_login_redirect` instead.
+
 ### The front desk (reception → doctor)
 
 `opd/reception/` is where a visit starts. It asks one question — **new patient or old?**
