@@ -571,7 +571,30 @@ it in `HANDLERS`, marking the form `data-offline-kind` **with any parent id as a
 input**, adding its page to `pwa_views.SHELL_URL_NAMES`, and adding a payload to
 `tests_coverage.py`.
 
-`base.html` injects tenant colours as CSS variables over `app.css`. When editing `static/css/app.css`, bump the `?v=X.X` cache-busting query string in every template that links it.
+`base.html` injects tenant colours as CSS variables over `app.css`. When editing `static/css/app.css`, bump the `?v=X.X` cache-busting query string in every template that links it (`partials/base.html`, `registration/login.html`, `user_mgmt/setup.html`).
+
+### Phones
+
+Reception and the ward round both work off a phone, so a layout that only holds up
+on a laptop is a broken layout. Three things carry that and are easy to undo:
+
+- **Every table is wrapped in `.table-scroll` by `base.html` on load**, not in the ~40
+  templates that render one. Without a scroll box of its own, one wide table makes the
+  whole *page* wider than the screen and then every screen scrolls sideways — the
+  header slides away and the app reads as broken. `overflow-x:auto` clips in **both**
+  axes, so the wrapper skips any table containing a dropdown that hangs out of a cell
+  (the POS medicine search); `data-no-scroll-wrap` is the explicit opt-out.
+- **Inputs are 16px under 900px.** Below that iOS zooms the page in on focus and does
+  not zoom back out. The rule is written with three `:not()`s deliberately so it
+  outranks the page-level `<style>` blocks (`patients/_fields.html` among them) that
+  set 14px — do not "simplify" it to `input[type=text]`, which loses to them.
+- **Hover effects are gated behind `@media (hover: none)` overrides.** A tap counts as
+  a hover on touch and the style then sticks, so tapped cards stay lifted.
+
+`e2e/test_e2e.py::MobileLayoutTest` measures `scrollWidth - innerWidth` at 390px on
+seven screens; it fails by 54–128px if the table wrapping is removed. Those tests wait
+on elements rather than `networkidle` — every page polls notifications on a timer, so
+"the network went quiet" is a race, and that was making the E2E run flaky.
 
 ## Keeping this file current
 

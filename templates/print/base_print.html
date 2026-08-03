@@ -90,6 +90,28 @@
   body.theme-letterhead .sheet{padding-bottom:40px}
   @media print{ body.theme-letterhead .lh-space{height:35mm} }
 
+  /* ---- on a phone ----
+     The A4 geometry above is for paper. Read on a phone it is a 1040px-tall sheet
+     with 40px side padding inside a 360px screen, so the content sits in a narrow
+     column and the page scrolls sideways. Reception prints these *from a phone*
+     (the provisional slip especially), so the on-screen version has to be usable
+     before it reaches a printer — the @media print rules below are untouched and
+     still govern the paper. */
+  @media screen and (max-width: 640px){
+    .sheet{margin:8px;padding:18px 16px 90px;min-height:auto}
+    .noprint{margin:8px 8px 0;flex-wrap:wrap}
+    .noprint .muted{display:none}          /* the theme hint is desktop advice */
+    .lh{flex-direction:column;gap:10px}
+    .lh .meta{text-align:left}
+    body.theme-modern .band{margin:0 -16px 8px;padding:18px 16px;flex-direction:column;
+         align-items:flex-start;gap:10px}
+    .who{flex-direction:column;gap:8px}
+    .who div[style*="right"]{text-align:left !important}
+    .lh-foot{position:static;left:auto;right:auto;bottom:auto;margin-top:26px}
+    table{font-size:12px}
+    th,td{padding:6px 7px}
+  }
+
   @media print{
     body{background:#fff}
     .noprint{display:none}

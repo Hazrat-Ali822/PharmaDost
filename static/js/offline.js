@@ -165,7 +165,7 @@
     el.style.cssText =
       "background:#111827;color:#fff;padding:11px 16px;border-radius:10px;" +
       "margin-top:8px;box-shadow:0 4px 18px rgba(0,0,0,.25);font-size:14px;" +
-      "max-width:340px;line-height:1.45";
+      "max-width:min(340px,100%);line-height:1.45";
     if (kind === "warn") el.style.background = "#b45309";
     if (kind === "ok") el.style.background = "#047857";
     if (kind === "bad") el.style.background = "#b91c1c";

@@ -61,7 +61,11 @@ body.dark-theme {
 * { box-sizing: border-box; }
 
 html, body { height: 100%; }
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+  /* iOS Safari otherwise inflates text on rotation, which shifts every layout. */
+  -webkit-text-size-adjust: 100%;
+}
 
 body {
   margin: 0;
@@ -426,6 +430,32 @@ input[type=checkbox], input[type=radio] { accent-color: var(--primary); width: 1
   backdrop-filter: blur(2px); z-index: 35;
 }
 
+/* ---------- Wide content: tables, and anything else that cannot shrink ----
+   A ward list or a bill has more columns than a phone has width. Without a
+   scroll box of its own the table pushes the *page* wider than the screen, and
+   every screen in the app then scrolls sideways — the header slides away, the
+   sidebar button drifts off, and it reads as broken. Give the wide thing its own
+   horizontal scroll and let the page stay put.
+
+   `base.html` wraps every table in `.table-scroll` on load, so this needs no
+   change in the ~40 templates that render one. */
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;   /* don't drag the page when the table ends */
+  border-radius: var(--radius);
+}
+.table-scroll > table { margin: 0; }
+
+/* Inside the scroll box a `width:100%` table still squeezes itself to fit, so a
+   six-column list on a phone becomes six unreadable slivers with every cell
+   wrapped over three lines. Give it a floor and let the box scroll — that is the
+   point of the box. */
+@media (max-width: 700px) {
+  .table-scroll > table { min-width: 620px; }
+}
+
 /* ---------- Responsive --------------------------------------------------- */
 @media (max-width: 900px) {
   .sidebar {
@@ -440,6 +470,81 @@ input[type=checkbox], input[type=radio] { accent-color: var(--primary); width: 1
   .form-row { flex-direction: column; align-items: stretch; gap: 6px; }
   .form-row label { min-width: 0; }
   .user-chip .who { display: none; }
+
+  /* Under 16px, iOS zooms the page in the moment a field is focused and does not
+     zoom back out — the desk then works the rest of the form at 150%. This is the
+     single most complained-about thing about web forms on iPhone.
+
+     Written with three :not()s deliberately: several screens carry their own
+     page-level <style> setting inputs to 14px (patients/_fields.html among them),
+     and a plain `input[type=text]` rule loses to `.pf-grid input[type=text]`. This
+     one outranks them without needing !important or an edit per template. */
+  input:not([type=checkbox]):not([type=radio]):not([type=file]),
+  select:not([size]), textarea {
+    font-size: 16px;
+  }
+}
+
+/* ---------- Phones ------------------------------------------------------- */
+@media (max-width: 560px) {
+  .content { padding: 12px; }
+  .card, .form-card { padding: 14px; border-radius: 12px; }
+  .card + .card { margin-top: 12px; }
+
+  /* One tile per row reads; two half-width ones with a 27px number do not. */
+  .stat-grid { grid-template-columns: 1fr; gap: 12px; margin-bottom: 16px; }
+  .stat { padding: 14px; }
+  .stat .meta .value { font-size: 22px; }
+  .stat .ic { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 11px; }
+  .stat .ic svg { width: 20px; height: 20px; }
+
+  /* The topbar carries hamburger + title + four round buttons + avatar + Logout.
+     On a 390px screen that runs past the right edge and Logout is the thing that
+     falls off — the one control a shared device genuinely needs. Drop what a
+     phone cannot use anyway (the keyboard-shortcut guide) and let the title give
+     up its space instead of the buttons. */
+  .topbar { padding: 10px 10px; gap: 8px; }
+  .topbar .title {
+    font-size: 15px; min-width: 0; flex: 0 1 auto;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  #kbdGuideTrigger { display: none; }
+  .topbar .user-chip { padding: 3px; border: none; background: none; }
+  .topbar .btn.alt.sm { padding: 7px 10px; }
+
+  /* A row of seven header buttons has to break to full width, not to seven
+     slivers of text. */
+  .page-head { gap: 8px; }
+  .page-head > div:last-child, .page-head .actions { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+  .page-head .btn, .page-head .btn.alt { flex: 1 1 auto; }
+
+  /* Fingers, not mouse pointers. */
+  .btn { padding: 10px 14px; }
+  .btn.sm { padding: 8px 12px; font-size: 13px; }
+
+  .tbl th, .tbl td, .content table th, .content table td { padding: 10px 11px; font-size: 13.5px; }
+
+  h2 { font-size: 19px; }
+  h3 { font-size: 16px; }
+
+  /* The outbox badge sits over the bottom-left corner, which on a phone is where
+     the last row of a list and the "Save" button end up. Keep it clear of them. */
+  #offline-badge { left: 10px; right: 10px; bottom: 10px; text-align: center; font-size: 12px; }
+}
+
+/* ---------- Touch devices ------------------------------------------------ */
+/* A tap counts as a hover and the style then sticks until you tap elsewhere, so a
+   tapped card stays lifted and a tapped row stays highlighted. Keep the motion for
+   real pointers only. */
+@media (hover: none) {
+  .stat:hover, .card:hover, .btn:hover {
+    transform: none;
+    box-shadow: var(--shadow);
+  }
+  .stat:hover::before { opacity: 0; }
+  .stat:hover .ic { transform: none; }
+  .btn:hover::after { left: -120%; }
+  .brand:hover .logo { transform: none; }
 }
 
 /* ---------- Reduced motion ---------------------------------------------- */

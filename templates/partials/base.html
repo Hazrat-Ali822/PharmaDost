@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=1.6">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=1.7">
 
   {# Install-as-app (PWA). The manifest and icon are per-tenant, so an install #}
   {# carries this hospital's own name, logo and colour. #}
@@ -91,6 +91,17 @@
         transform: translateX(0);
         opacity: 1;
       }
+    }
+
+    /* On a phone a 380px panel inset 24px from the right is wider than the
+       screen, so toasts arrive half off it. Span the width instead, and sit
+       above the offline badge rather than on top of it. */
+    @media (max-width: 560px) {
+      #toast-container {
+        left: 10px; right: 10px; bottom: 58px;
+        max-width: none;
+      }
+      .toast-popup { padding: 13px 15px; }
     }
   </style>
   {% block extra_head %}{% endblock %}
@@ -486,7 +497,9 @@
               <span class="notif-badge" id="notifBadge" style="position: absolute; top: -4px; right: -4px; background: #ef4444; color: white; border-radius: 50%; font-size: 9px; font-weight: 700; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; line-height: 1;">{{ unread_notifications_count }}</span>
             {% endif %}
           </button>
-          <div class="notif-dropdown" id="notifDropdown" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 8px; width: 320px; background: var(--bg-card, #ffffff); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; overflow: hidden; text-align: left;">
+          {# `width` not `max-width` would be 320px inside a 360px phone anchored to #}
+          {# the right edge — the panel hangs off screen. Cap it to the viewport. #}
+          <div class="notif-dropdown" id="notifDropdown" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 8px; width: 320px; max-width: calc(100vw - 24px); background: var(--bg-card, #ffffff); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; overflow: hidden; text-align: left;">
             <div style="padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 14px; display: flex; justify-content: space-between; align-items: center; background: var(--bg);">
               <span>Notifications</span>
               {% if unread_notifications_count > 0 %}
@@ -900,6 +913,38 @@
       .catch(err => console.error("Error polling notifications:", err));
     }, 30000);
   }
+
+  // ---- Wide tables get their own horizontal scroll ------------------------
+  // A ward list or a bill has more columns than a phone has width. Left alone the
+  // table widens the whole page, so every screen scrolls sideways and the layout
+  // reads as broken. Wrapping here rather than in the ~40 templates that render a
+  // table keeps it true for pages added later too.
+  (function () {
+    function wrapTables() {
+      document.querySelectorAll('.content table').forEach(function (t) {
+        var parent = t.parentNode;
+        if (parent && parent.classList && parent.classList.contains('table-scroll')) return;
+        // `overflow-x:auto` clips in BOTH axes, so a scroll box would cut off any
+        // dropdown that hangs out of a cell — the POS medicine search lives in one.
+        // Those tables keep the page-level behaviour; opt out explicitly elsewhere
+        // with data-no-scroll-wrap.
+        if (t.hasAttribute('data-no-scroll-wrap')) return;
+        if (t.querySelector('.autocomplete-wrapper, .autocomplete-dropdown')) return;
+        var box = document.createElement('div');
+        box.className = 'table-scroll';
+        parent.insertBefore(box, t);
+        box.appendChild(t);
+      });
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', wrapTables);
+    } else {
+      wrapTables();
+    }
+    // Screens that build their rows in JS (the POS cart, the PO builder) add
+    // tables after load; re-wrap when the content changes.
+    window.wrapContentTables = wrapTables;
+  })();
 </script>
 
 <div id="toast-container"></div>

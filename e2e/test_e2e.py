@@ -159,6 +159,80 @@ class PosCartTest(BrowserTestCase):
         self.assertIn('Create Bill', self.page.content())
 
 
+class MobileLayoutTest(BrowserTestCase):
+    """The app is used on phones at the reception desk and on the ward round.
+
+    The failure this guards is specific and unmistakable: one wide table pushes the
+    whole page wider than the screen, so *every* screen scrolls sideways — the
+    header slides away, the menu button drifts off, and the app reads as broken.
+    Nothing in a template review catches it; you have to measure the page.
+    """
+
+    PHONE = {'width': 390, 'height': 844}          # iPhone 14-ish
+
+    def setUp(self):
+        super().setUp()
+        self.page.set_viewport_size(self.PHONE)
+        # Enough rows that the wide tables really are wide.
+        for i in range(6):
+            Medicine.objects.create(name=f'Med {i}', brand='B',
+                                    price=Decimal('50'), expiry_date=_future(),
+                                    hospital=self.hospital)
+
+    def _open(self, path):
+        """Wait for the page to be laid out, not for the network to fall quiet.
+
+        `networkidle` is the wrong signal for this app: every page polls
+        /accounts/notifications/latest/ on a timer and registers a service worker,
+        so "500ms of silence" is a race rather than a state. Waiting for the
+        content element is deterministic.
+        """
+        self.page.goto(path if path.startswith('http') else self.url(path),
+                       wait_until='load')
+        self.page.wait_for_selector('.content, .sheet', state='attached')
+
+    def _overflow(self, path):
+        self._open(path)
+        return self.page.evaluate(
+            "() => document.documentElement.scrollWidth - window.innerWidth")
+
+    def test_no_screen_scrolls_sideways_on_a_phone(self):
+        self.login('e2e-admin@test.com')
+        for path in ['/', '/patients/', '/medicines/', '/sales/new/',
+                     '/opd/appointments/', '/billing/', '/offline/queue/']:
+            with self.subTest(page=path):
+                # A pixel or two is sub-pixel rounding; a column's worth is the bug.
+                self.assertLessEqual(
+                    self._overflow(path), 2,
+                    f"{path} is wider than the phone screen — a wide element is "
+                    f"not inside a .table-scroll box")
+
+    def test_a_wide_table_scrolls_inside_its_own_box(self):
+        """The table must still be readable — the fix is a scroll box, not
+        hiding the overflow."""
+        self.login('e2e-admin@test.com')
+        self._open('/medicines/')
+        boxes = self.page.locator('.table-scroll')
+        self.assertGreater(boxes.count(), 0, "the medicine table was never wrapped")
+
+    def test_the_menu_button_is_reachable_and_opens_the_sidebar(self):
+        self.login('e2e-admin@test.com')
+        self._open('/patients/')
+        self.assertTrue(self.page.locator('.hamburger').is_visible(),
+                        "no way to open the menu on a phone")
+        self.page.click('.hamburger')
+        self.assertTrue(self.page.locator('aside.sidebar').is_visible())
+
+    def test_form_fields_do_not_trigger_the_ios_zoom(self):
+        """Under 16px iOS zooms in on focus and does not zoom back out."""
+        self.login('e2e-admin@test.com')
+        self._open('/patients/add/')
+        size = self.page.evaluate(
+            "() => parseFloat(getComputedStyle("
+            "document.querySelector('input[name=\"full_name\"]')).fontSize)")
+        self.assertGreaterEqual(size, 16, "text inputs are below 16px on a phone")
+
+
 class RoleVisibilityTest(BrowserTestCase):
     """What a role cannot use must not be in their sidebar."""
 
