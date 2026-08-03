@@ -58,11 +58,24 @@
     <b style="font-size:13.5px">Works on a shaky connection</b>
     <p class="muted" style="font-size:13px;line-height:1.7;margin:6px 0 0">
       The app keeps opening and shows the pages you already visited even if the internet
-      drops for a moment, and reconnects on its own. Live actions — sales, tokens, bills —
-      still need a connection, because stock and numbers are kept correct on the server.
-      For a clinic with <b>no</b> internet at all, ask about the offline desktop version.
+      drops, and anything you enter is saved on the device and syncs by itself when the
+      connection returns — see the <a href="{% url 'offline_queue' %}">Offline Queue</a>.
+      Tokens, MRNs and stock are still worked out on the server, so those numbers arrive
+      with the sync. For a clinic with <b>no</b> internet at all, run the desktop version
+      as a local server (below).
     </p>
   </div>
+
+  {% if lan_url %}
+  <div style="margin-top:14px;background:var(--primary-50,#eef2ff);border:1px solid var(--primary);border-radius:10px;padding:14px 16px">
+    <b style="font-size:13.5px">📶 Other devices on this wifi</b>
+    <p class="muted" style="font-size:13px;line-height:1.7;margin:6px 0 10px">
+      This computer is acting as the server. Phones on the same wifi can use the whole
+      system at <b>{{ lan_url }}</b> — with no internet at all.
+    </p>
+    <a class="btn" href="{% url 'lan_connect' %}">Show the QR code &amp; steps</a>
+  </div>
+  {% endif %}
 </div>
 
 <style>

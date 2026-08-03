@@ -70,16 +70,9 @@ def order_create(request):
     if request.method == "POST":
         form = TestOrderCreateForm(request.POST, user=request.user)
         if form.is_valid():
-            order = form.save()
-            # auto-generate a pending bill for the ordered tests
-            from billing.services import create_service_invoice
-            items = [(f"Lab: {r.lab_test.name}", r.lab_test.price)
-                     for r in order.results.select_related("lab_test")]
-            inv = create_service_invoice(
-                patient=order.patient, items=items, created_by=request.user)
-            if inv:
-                order.invoice = inv
-                order.save()
+            from .services import create_test_order
+            order = create_test_order(form, request.user)
+            inv = order.invoice
             # Whoever can enter results (lab/admin) goes straight to the results screen;
             # a doctor/receptionist who only *ordered* the test gets a clean confirmation
             # instead of being bounced to a lab-only page (which would 403).

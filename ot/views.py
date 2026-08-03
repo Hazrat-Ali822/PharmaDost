@@ -36,27 +36,8 @@ def surgery_create(request):
     if request.method == 'POST':
         form = SurgeryRecordForm(request.POST)
         if form.is_valid():
-            from billing.services import create_service_invoice
-            with transaction.atomic():
-                record = form.save()
-
-                # Create billing invoice for the surgery procedure (atomic with the
-                # record — never leave a surgery saved but unbilled, or vice-versa).
-                items = [
-                    (f"OT Surgery: {record.procedure.name} (Surgeon: Dr. {record.lead_surgeon.full_name})", record.procedure.standard_charge),
-                ]
-                create_service_invoice(
-                    patient=record.patient,
-                    items=items,
-                    created_by=request.user,
-                    paid=0,
-                )
-                # close the originating advice, if any
-                if surg_req:
-                    surg_req.status = 'Scheduled'
-                    surg_req.surgery = record
-                    surg_req.save(update_fields=['status', 'surgery'])
-
+            from .services import schedule_surgery
+            record = schedule_surgery(form, request.user, surgery_request=surg_req)
             messages.success(request, f"Surgery for {record.patient.full_name} scheduled successfully. Surgery invoice generated.")
             return redirect('ot:surgery_detail', pk=record.pk)
     else:

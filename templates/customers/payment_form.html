@@ -4,7 +4,9 @@
 <div class="form-card">
   <h2>{{ title }}</h2>
   <p>Current outstanding balance: <strong>{{ customer.balance }}</strong></p>
-  <form method="post">
+  <form method="post" data-offline-kind="customer_payment">
+    {# Carried for the offline outbox — the live view reads it from the URL. #}
+    <input type="hidden" name="customer_id" value="{{ customer.pk }}">
     {% csrf_token %}
     {{ form.as_p }}
     <button class="btn" type="submit">Record Payment</button>

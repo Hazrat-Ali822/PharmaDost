@@ -3,7 +3,7 @@
 {% block content %}
 <div class="form-card" style="max-width:880px;">
   <h2>{{ title }}</h2>
-  <form method="post">
+  <form method="post" data-offline-kind="rx_preset">
     {% csrf_token %}
     
     <p>

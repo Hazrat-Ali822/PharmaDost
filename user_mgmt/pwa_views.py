@@ -6,14 +6,18 @@ Everything here reads `SiteSettings.load()`, which resolves the current tenant
 from the logged-in user, so the installed app is branded per hospital. The
 requests carry the session cookie (same-origin), so tenancy is in scope.
 
-Honest scope note: the service worker caches the *shell* so the app opens and
-shows recently-loaded pages on a dropped connection, with a clear offline banner.
-It does NOT do offline transactional writes with sync-back — stock, MRN and token
-numbers are server-authoritative, and queuing those offline would oversell stock
-and clash numbers. True fully-offline use is the desktop build (local SQLite).
+Scope: the service worker handles *reading* offline — it caches the shell and
+every data-entry screen, so the app opens and its forms can be filled in with no
+connection. Offline *writing* is a separate mechanism, the outbox in
+`offline_sync/` (see CLAUDE.md), which queues the submitted entry and replays it
+to the server on reconnect. Server-authoritative numbers (MRN, token, sale #) are
+still assigned by the server at replay time, never on the device.
 """
+import base64
 import hashlib
 import io
+import json
+import os
 
 from django.http import HttpResponse, JsonResponse
 from django.urls import reverse
@@ -96,12 +100,65 @@ def icon(request, size):
     return HttpResponse(buffer.getvalue(), content_type="image/png")
 
 
+# Every screen a shift might need with no connection: each data-entry form (a
+# form that will not open cannot be filled in offline), the list it is reached
+# from, and the outbox. Held as url *names* and reversed at request time, so a
+# renamed route breaks loudly at the next deploy instead of quietly caching
+# nothing.
+SHELL_URL_NAMES = [
+    'dashboard', 'pwa_offline', 'offline_queue', 'offline_slip',
+    'patient_list', 'patient_add',
+    'sale_list', 'sale_create',
+    'appointment_list', 'appointment_add', 'visit_create',
+    'department_list', 'doctor_list', 'doctor_add', 'payout_list',
+    'prescription_list', 'prescription_presets',
+    'lab:order_list', 'lab:order_create', 'lab:test_catalog',
+    'imaging:study_list', 'imaging:study_create', 'imaging:scan_catalog',
+    'medicine_list', 'medicine_add', 'adjustment_list', 'adjustment_create',
+    'preturn_create',
+    'supplier_list', 'supplier_add',
+    'customer_list', 'customer_add',
+    'ipd:admission_list', 'ipd:admission_create', 'ipd:ward_bed_list',
+    'ipd:ward_create', 'ipd:bed_create',
+    'ot:surgery_list', 'ot:surgery_create', 'ot:procedure_list',
+    'invoice_list', 'expense_list', 'expense_create', 'cash_closing_new',
+]
+
+_SHELL_STATIC = ['/static/css/app.css', '/static/js/offline.js']
+
+
+def _shell_urls():
+    from django.urls import NoReverseMatch
+
+    urls = list(_SHELL_STATIC)
+    for name in SHELL_URL_NAMES:
+        try:
+            urls.append(reverse(name))
+        except NoReverseMatch:
+            continue      # route removed — nothing to pre-cache, not an error
+    return urls
+
+
 def service_worker(request):
     """Served at /sw.js (root) so its scope covers the whole site — a service
-    worker can only control pages at or below its own URL."""
+    worker can only control pages at or below its own URL.
+
+    The cache name carries the **signed-in user**, not just the tenant. The
+    worker caches whole rendered pages, and those pages hold patient names, bills
+    and staff lists; a shared device where a doctor signs out and a receptionist
+    signs in would otherwise serve the doctor's cached pages to whoever is there
+    now. A different user means a different cache name, and `activate` deletes
+    every cache that is not the current one — so signing out empties the previous
+    user's pages instead of leaving them on the device.
+    """
+    b = _branding()
+    who = request.user.pk if request.user.is_authenticated else "anon"
+    shell = _shell_urls()
     version = hashlib.md5(
-        f"{_branding().pk}:{_branding().updated_at}".encode()).hexdigest()[:8]
-    body = _SERVICE_WORKER.replace("__VERSION__", version)
+        f"{b.pk}:{b.updated_at}:{who}:{len(shell)}".encode()).hexdigest()[:8]
+    body = (_SERVICE_WORKER
+            .replace("__VERSION__", version)
+            .replace("__SHELL__", json.dumps(shell)))
     resp = HttpResponse(body, content_type="application/javascript")
     # The SW file itself must never be cached, or updates never reach clients.
     resp["Cache-Control"] = "no-cache"
@@ -121,29 +178,59 @@ from accounts.decorators import feature_required  # noqa: E402
 def get_app(request):
     """The 'Get the App' page — an Install button plus per-platform instructions."""
     from django.shortcuts import render
-    return render(request, "pwa/get_app.html")
+    return render(request, "pwa/get_app.html", _lan_context(request))
+
+
+def _lan_context(request):
+    """What to tell staff about joining this machine over the wifi.
+
+    Only the desktop build sets `PHARMADOST_LAN_URL` (see `desktop/launcher.py`), so
+    on the hosted site this is all empty and the page shows nothing about a LAN.
+    """
+    url = os.environ.get("PHARMADOST_LAN_URL", "")
+    ips = [i for i in os.environ.get("PHARMADOST_LAN_IPS", "").split(",") if i]
+    return {
+        "lan_url": url,
+        "lan_extra_urls": [url.replace(ips[0], ip) for ip in ips[1:]] if ips else [],
+        "lan_qr": _qr_data_uri(url) if url else "",
+    }
+
+
+def _qr_data_uri(text):
+    """A QR of the LAN address, inlined as a data: URI.
+
+    Typing `http://192.168.1.7:8000` into a phone is where clinic staff give up, so
+    the QR matters more than it looks. `qrcode` is optional — without it the page
+    still shows the address in large type, which is why nothing here raises.
+    """
+    try:
+        import qrcode
+    except Exception:
+        return ""
+    try:
+        img = qrcode.make(text)
+        buffer = io.BytesIO()
+        img.save(buffer, "PNG")
+        return "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()
+    except Exception:
+        return ""
+
+
+def lan_connect(request):
+    """A big, printable card with the address and QR — stick it on the wall."""
+    from django.shortcuts import render
+    return render(request, "pwa/lan_connect.html", _lan_context(request))
 
 
 # --- The service worker itself (network-first for pages, cache-first for assets) ---
 _SERVICE_WORKER = r"""
 const CACHE = 'pharmadost-__VERSION__';
-const SHELL = [
-  '/',
-  '/static/css/app.css',
-  '/static/js/offline.js',
-  '/offline/',
-  '/patients/',
-  '/patients/add/',
-  '/sales/',
-  '/sales/new/',
-  '/opd/',
-  '/opd/visit/',
-  '/lab/',
-  '/lab/order/new/',
-  '/prescriptions/',
-  '/suppliers/',
-  '/suppliers/add/'
-];
+// Built from Django's own url names (see SHELL_URL_NAMES) — a hand-written path
+// that no longer resolves fails silently and the screen is simply not there when
+// the connection drops, which is how `/opd/visit/` and `/lab/order/new/` sat in
+// this list caching nothing. A URL the user's role cannot reach fails its
+// `cache.add` and is skipped, which is fine.
+const SHELL = __SHELL__;
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
@@ -165,11 +252,17 @@ self.addEventListener('activate', (e) => {
   );
 });
 
+// Never cached: the sync endpoints (they must always hit the network), the
+// notification poll (JSON, changes every few seconds) and anything auth-related
+// — a cached login or logout page is how a session ends up looking wrong.
+const NO_CACHE = ['/offline/sync/', '/offline/ping/', '/accounts/', '/admin/'];
+
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;                 // never cache writes
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;  // leave cross-origin alone
+  if (NO_CACHE.some((p) => url.pathname.startsWith(p))) return;
 
   // Static assets: cache-first (they are versioned by ?v= query strings).
   if (url.pathname.startsWith('/static/')) {
@@ -186,11 +279,20 @@ self.addEventListener('fetch', (e) => {
   // Pages: network-first, fall back to the last cached copy, then the offline page.
   e.respondWith(
     fetch(req).then((res) => {
-      const copy = res.clone();
-      caches.open(CACHE).then((c) => c.put(req, copy));
+      // Don't cache a redirect to the login page under the URL that was asked
+      // for — offline that would show a sign-in screen where a ward list should
+      // be, and the staff would think the app had logged them out.
+      if (res.ok && !res.redirected) {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(req, copy));
+      }
       return res;
     }).catch(() =>
-      caches.match(req).then((hit) => hit || caches.match('/offline/'))
+      // `ignoreSearch` so a filtered list (/patients/?q=ali) falls back to the
+      // cached /patients/ rather than the offline page — the rows are already
+      // there and the client filters them without the server.
+      caches.match(req, { ignoreSearch: true })
+        .then((hit) => hit || caches.match('/offline/'))
     )
   );
 });
@@ -214,9 +316,9 @@ _OFFLINE_PAGE = r"""<!doctype html><html><head><meta charset="utf-8">
   <div class="card">
     <div class="dot">📶</div>
     <h1>You're offline</h1>
-    <p>__NAME__ needs a connection for live data — stock, tokens and bills come from
-       the server. Pages you already opened still work. We'll reconnect on their own
-       once the internet is back.</p>
+    <p>This page hasn't been opened on this device yet, so there's nothing saved to
+       show. Pages you have already visited still work, and anything you enter is
+       saved here and sent to __NAME__ automatically once the internet is back.</p>
     <button onclick="location.reload()">Try again</button>
   </div>
 </body></html>"""

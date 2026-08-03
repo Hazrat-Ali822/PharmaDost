@@ -24,12 +24,21 @@ def site_branding(request):
     Uses the key `branding` (NOT `site`) because Django's auth LoginView injects
     its own `site` context variable, which would otherwise shadow ours.
     """
+    import os
+
     from user_mgmt.models import SiteSettings, SITE_DEFAULTS
     try:
         branding = SiteSettings.load()
     except Exception:
         branding = None
-    return {'branding': branding, 'site_defaults': SITE_DEFAULTS}
+    return {
+        'branding': branding,
+        'site_defaults': SITE_DEFAULTS,
+        # Set only by the desktop build acting as a LAN server (see
+        # desktop/launcher.py). An env read, not a query — this runs on every
+        # render. Empty on the hosted site, which hides the sidebar link.
+        'lan_url': os.environ.get('PHARMADOST_LAN_URL', ''),
+    }
 
 
 BADGE_KEYS = (

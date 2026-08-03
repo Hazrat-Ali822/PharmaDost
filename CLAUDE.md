@@ -8,7 +8,7 @@ This is a **multi-tenant SaaS Hospital & Pharmacy Management System** built with
 
 **Brand vs codebase name.** The product ships as **Sehatyar** (`sehatyar.online`) — that is the name in every user-facing string and the platform default brand (`user_mgmt/models.SiteSettings` DEFAULTS). The *codebase* keeps its original name: the repo is `PharmaDost`, the Django project package is **`pharma_mgmt`** (settings/urls/wsgi live there — do NOT rename it; it is invisible to users and every `--settings=pharma_mgmt...` import depends on it). So "PharmaDost"/`pharma_mgmt` in code and docs is expected; user-facing text must read "Sehatyar". Each tenant then overrides the brand with its own name/logo/colour via `SiteSettings`.
 
-One deployment serves many hospitals ("tenants"). The same codebase is also packaged as a **local Windows desktop app** (PyInstaller + waitress + SQLite), which is why data paths are indirected through `DATA_DIR`.
+One deployment serves many hospitals ("tenants"). The same codebase is also packaged as a **local Windows desktop app** (PyInstaller + waitress + SQLite), which is why data paths are indirected through `DATA_DIR`. That build doubles as a **clinic LAN server** — it binds `0.0.0.0`, so every phone on the same wifi runs the whole system with no internet at all (see "The desktop build as a clinic LAN server").
 
 ## Commands
 
@@ -215,6 +215,11 @@ Two channels, deliberately separated — mixing them makes the inbox unreadable:
 Repeated failed sign-ins fire once, on the attempt that crosses `FAILED_LOGIN_BURST` within
 `FAILED_LOGIN_WINDOW_MINUTES` (`audit/signals.py`) — not on every attempt after it.
 
+`Notification.save()` is the single chokepoint for every creation path, and it is where the
+offline-replay stamp is applied (see "Offline data entry"). Keep new notification code
+going through `objects.create` / `send_to_role` rather than `bulk_create`, which skips
+`save()` and would put a replayed queue back to ringing once per entry.
+
 **`AuditLog` is tenant-scoped** (`hospital` FK + `TenantManager`, with `all_objects` for the
 superuser portal and commands). It was not, and one hospital's admin could read every other
 tenant's trail — patient names, sales, staff sign-ins — from `/audit/`. Entries are filed
@@ -388,35 +393,97 @@ The service worker is **shell-cache + offline-read**: it keeps the app opening a
 already-visited pages on a dropped connection, with a clear offline page. Offline *writes*
 are handled separately by the outbox below, not by the service worker.
 
+Three things about it are load-bearing:
+
+- **The shell is built from url *names*** (`pwa_views.SHELL_URL_NAMES`, reversed per
+  request), not hand-written paths. Hard-coded paths rot silently: `/opd/visit/` and
+  `/lab/order/new/` sat in that list resolving to nothing, so the two screens the offline
+  outbox most needed were never cached. `user_mgmt/tests_pwa.py` asserts every shell url
+  resolves and that each offline-capable screen is in it. **Every new offline form's page
+  belongs here** — a form that will not open cannot be filled in.
+- **The cache name includes the signed-in user**, not just the tenant. The worker caches
+  whole rendered pages, and those hold patient names and bills; on a shared desk where a
+  doctor signs out and a receptionist signs in, one cache would serve the doctor's pages to
+  whoever is there now. A different user → a different cache name → `activate` deletes the
+  old one.
+- **Redirects and auth paths are never cached** (`res.redirected` is skipped, `NO_CACHE`
+  covers `/accounts/`, `/admin/` and the sync endpoints). Caching the login page a session
+  timeout redirected to would show a sign-in screen where a ward list should be.
+
 ### Offline data entry (outbox + sync)
 
-Reception can register + book a patient with **no connection**; the entry syncs when the
-network returns. This is opt-in per form and deliberately narrow — do not widen it without
-understanding the two rules below.
+Every data-entry screen in the app works with **no connection**: the entry is queued on
+the device and replayed to the server when it can be reached. Reading offline is the
+service worker's job (previous section); writing offline is this.
 
 - **Client** (`static/js/offline.js`, loaded on every page from `base.html`): any
-  `<form data-offline-kind="...">` is intercepted **only when `navigator.onLine` is false**
-  — online submits are 100% unchanged. Offline, the form is serialised, stamped with a
-  `crypto.randomUUID()`, and stored in an IndexedDB `outbox`. On the `online` event (and on
-  load) it POSTs the queue to `/offline/sync/`. A fixed `#offline-badge` shows the pending
-  count; toasts report saved/synced/rejected.
+  `<form data-offline-kind="...">` is intercepted. Before each submit the client asks the
+  **server** whether it is reachable (`GET /offline/ping/`, 204, result cached ~4s). Reachable
+  → `form.submit()`, i.e. the native submit, unchanged. Not reachable → the form is
+  serialised, stamped with a `crypto.randomUUID()` and stored in an IndexedDB `outbox`.
+  The queue is POSTed to `/offline/sync/` on the `online` event, on load, on tab focus and
+  on a 60s timer, in slices of `MAX_BATCH`.
+
+  **Do not go back to gating on `navigator.onLine`.** That flag only reports a network
+  *link*; on a clinic router with a dead uplink it stays `true`, the form submits into the
+  void and the browser replaces the page with an error — the typed entry is gone. The probe
+  is the whole point. A session that has expired answers with a redirect, which counts as
+  unreachable, so the entry is queued instead of being thrown away on a login screen.
+
+  Two more client rules: the interceptor **returns if `e.defaultPrevented`** (a page's own
+  validation already blocked the submit — queueing would smuggle past it), and `csrf()`
+  reads the **cookie first**, because a service-worker-cached page carries a stale `<meta>`
+  token and Django rotates the token on login. File inputs cannot be queued; they are
+  dropped with a toast naming them, and re-attached once online.
 - **Server** (`offline_sync/`): `sync` is called **by the logged-in browser**, same-origin
   with the session cookie — *not* a headless job — so `request.user`, hospital scope and the
-  thread-local are all live. It is idempotent by `ClientAction.client_uuid` (unique): a
-  replayed UUID returns the stored result instead of re-applying, so a double-tap or a
-  two-tab race never doubles a patient/token/invoice. Each action runs in its own
-  `transaction.atomic()`; a `ValidationError`/`PermissionDenied` is filed `FAILED`
-  (permanent — bad data, surfaced to the desk), any other exception is **not** recorded so
-  the client retries it.
+  thread-local are all live. Idempotency is by `ClientAction.client_uuid` (unique), and the
+  ledger row is **created first, inside the same `transaction.atomic()` as the handler**:
+  the unique index is what serialises two concurrent replays, and a rollback takes the claim
+  with it. Do not move the ledger insert back outside the transaction — a crash between the
+  commit and the bookkeeping would let a retry create a second patient or sale.
+  `ValidationError` / `PermissionDenied` / `Http404` are filed `FAILED` (permanent, shown on
+  the outbox screen); any other exception records nothing so the client retries.
 - **Handlers reuse the live forms/services** (`offline_sync/handlers.py`): a queued visit is
-  bound to the same `PatientForm` + `VisitForm` and booked through `opd.views._book_visit`,
-  so offline data passes identical validation. There is no looser second path.
+  bound to the same `PatientForm` + `VisitForm` and booked through `opd.views._book_visit`;
+  a queued dose goes through `ipd.services.log_medication`; a queued lab order through
+  `lab.services.create_test_order`. There is no looser second path. The service modules
+  (`lab/`, `imaging/`, `ipd/`, `ot/`, `prescriptions/services.py`, `opd.services.bill_and_notify`)
+  exist for exactly this: the online view and the replay call one function.
+- **The outbox screen** is `/offline/queue/` (sidebar → App → Offline Queue, and the
+  floating badge links to it). It lists what is waiting and what was **rejected, with the
+  reason**, and offers Try again / Discard. A rejection that is only a six-second toast is a
+  lost record.
+- **The offline handoff is paper, and that is not a workaround** (`/offline/slip/`).
+  Two devices with no server between them cannot notify each other — there is no channel,
+  and no amount of code creates one. So a visit registered offline redirects to a
+  **provisional slip** the patient carries to the doctor's room, exactly as clinics worked
+  before computers. It renders entirely from the browser's outbox (the entry has not synced
+  yet), so `offline/provisional_slip.html` pulls in `js/offline.js` itself — the print base
+  does not extend `partials/base.html`. Its `OFF-3` reference is a **local counter, marked
+  provisional**: MRN and token are still server-issued at sync, and must never be guessed
+  client-side. `visit_form.html` carries `patient_label` / `mrn_label` as hidden fields
+  purely so the slip can name a returning patient (an id on paper tells the doctor nothing);
+  the server ignores them. Anyone who wants the handoff to appear on the *doctor's screen*
+  offline needs the LAN server — say so rather than attempting a peer-to-peer scheme.
+- **A synced queue must not ring like new work** (`accounts/replay.py`). Notifications are
+  raised when the queue is *replayed*, not when the work happened, so without this a desk
+  that worked through a four-hour outage pings the doctor ten times about patients they
+  already saw and tells reception to allot a bed that is already occupied — finished work
+  reading as pending work. `sync` therefore wraps the batch in `replaying()`, and
+  `Notification.save()` (the one chokepoint every creation path goes through) stamps each
+  message with the time it was actually entered on the device — `⏱ 10:32 offline —` — and
+  files it **read**. One unread summary per affected person follows: "📥 14 entries made
+  offline (10:05–13:40) synced just now." Nothing is deleted; the detail is all still there.
+  The exception is work that is *still outstanding* — a short-stock sale the pharmacist must
+  go and count — which passes `send_to_role(..., force=True)` and stays unread. The client
+  sends each action's `at` (its IndexedDB `createdAt`) to make the stamp truthful.
 
-Two things are load-bearing and must stay true:
+Three things are load-bearing and must stay true:
 
 1. **Server-authoritative numbers are assigned at sync, never by the client.** MRN, token
-   and (Phase 2) sale/invoice numbers come from the locked counters when the action is
-   applied — the offline slip is provisional until then. Never let the client pick these.
+   and sale/invoice numbers come from the locked counters when the action is applied — the
+   offline slip is provisional until then. Never let the client pick these.
 2. **Stock cannot be made safe offline.** Two devices can each sell the last unit while
    offline; the physical overselling is real and no sync can undo it. An offline **sale**
    (`kind='sale'`) is replayed through `create_sale(..., on_short="record")`: it dispenses
@@ -425,12 +492,82 @@ Two things are load-bearing and must stay true:
    `Sale.needs_reconcile` + `reconcile_note`, notifying the pharmacist. The default
    `on_short="raise"` — every **live** POS sale — is unchanged and still refuses a short
    sale. Do not route a live sale through `"record"`, and do not "fix" the offline case by
-   having the client reserve stock.
+   having the client reserve stock. The same shape applies to a ward dose
+   (`ipd.services.log_medication` records it and flags the shortfall) and to an offline
+   admission (the bed is re-checked under a lock at replay, and a clash is rejected
+   permanently rather than double-booked).
+3. **A form is offline-capable only when everything its handler needs is inside the form.**
+   Where the online view takes the parent from the URL — the appointment an Rx hangs off,
+   the patient of a clinical record, the admission of a dose — the template must carry it as
+   a hidden `<input name="..._id">`. Without it the handler raised a NOT NULL error, which
+   is not a `ValidationError`, so it was retried for ever behind a badge reading "waiting to
+   sync". `handlers._parent()` now turns a missing or dangling id into a permanent rejection;
+   keep new handlers using it.
 
-Current coverage: `kind='visit'` (reception register + book) and `kind='sale'` (POS). Add a
-new kind by writing a handler that reuses the online view's form/service and registering it
-in `HANDLERS`; mark the form `data-offline-kind`. Fully-offline sites (no internet at all)
-are still better served by the **desktop build** (local SQLite), which has no sync step.
+**Coverage: all 36 kinds in `HANDLERS`** — visit, patient, patient_record, appointment,
+department, doctor, payout, prescription, rx_preset, sale, medicine, adjustment,
+purchase_return, supplier, supplier_payment, customer, customer_payment, lab, lab_result,
+lab_test, imaging, imaging_report, scan_type, ward, bed, admission, admission_advise, round,
+medication, discharge, surgery, surgery_advise, surgery_category, procedure, expense,
+cash_closing.
+
+`offline_sync/tests_coverage.py::EveryKindAppliesTest` **walks `HANDLERS`**, so adding a kind
+without adding a payload there fails the suite — that is deliberate, because a broken handler
+is otherwise indistinguishable from a slow sync.
+
+Deliberately **not** offline, and each for a reason: sign-in and user management (auth must
+be verified by the server), site settings and the first-run wizard (they change what every
+other screen renders), deletes and invoice voids (irreversible against state the device
+cannot see), bulk price-list updates (they rewrite rows the device may hold a stale copy of),
+and the two-step wholesale-order / purchase-order builders (they create an empty shell and
+then add items, so queueing step one alone is worthless — the POS `sale` kind covers
+pharmacy selling offline). Fully-offline sites with no internet at all are still better
+served by the **desktop build in LAN mode** (next section), which has no sync step.
+
+### The desktop build as a clinic LAN server
+
+The outbox above saves *one device* through an outage. It does not run a hospital: each
+device holds its own queue, so reception's ten registrations are invisible to the doctor
+until the internet comes back, and **no notification is delivered at all** while the
+server is unreachable. For a clinic where the internet is down most of the day (the KPK
+case this was built for), the answer is to put the server in the room.
+
+`desktop/launcher.py` therefore binds **`0.0.0.0`, not localhost** (`PHARMADOST_LAN=0`
+opts out), so every phone and PC on the same wifi uses that one machine. From the app's
+point of view it *is* online — notifications, tokens, live stock, the doctor↔reception
+handoff all work normally, with no internet anywhere.
+
+Four things there are load-bearing:
+
+- **The detected LAN addresses go into `DJANGO_ALLOWED_HOSTS` *and* `DJANGO_CSRF_TRUSTED`**
+  (both env vars `settings.py` already reads). Miss the first and every phone gets
+  "Bad Request (400)"; miss the second and every form fails CSRF. `lan_addresses()` finds
+  them with a UDP `connect()` that sends no packets and needs no internet — it only reads
+  the routing table — plus `gethostbyname_ex` for a second interface.
+- **The port is fixed** (8000, then 8080/8800/5000, `PHARMADOST_PORT` to force it). Staff
+  bookmark `http://<ip>:8000` on a phone; a random port each launch breaks that daily.
+- **Windows Firewall silently drops incoming connections**, so the launcher adds an
+  inbound rule via `netsh` — which needs administrator. When it cannot, it prints exactly
+  that, because otherwise the phones simply time out with nothing anywhere to explain why.
+- **`DJANGO_SSL=false`**: on plain http over the LAN, secure-only cookies stop login
+  working. The corollary is that the **service worker will not register on
+  `http://192.168.x.x`** (browsers require a secure origin), so LAN phones get no page
+  cache and no "install as app" — they do not need either, the server is on the wifi. The
+  outbox still works there, because IndexedDB has no such restriction.
+
+In-app, `/get-app/connect/` (sidebar → App → Connect a Device, shown only when
+`PHARMADOST_LAN_URL` is set) prints the address and a QR. `qrcode` is an **optional**
+import — without it the page still shows the address in large type, so the desktop build
+must never hard-depend on it. Setup and troubleshooting for the clinic: `docs/lan_setup.md`.
+
+**The LAN server and the hosted site are two separate databases** with no sync between
+them. Do not build a feature that assumes otherwise without first building real two-way
+sync (per-row versioning and conflict resolution) — a much larger piece of work.
+
+Add a new kind by: writing a handler that reuses the online view's form/service, registering
+it in `HANDLERS`, marking the form `data-offline-kind` **with any parent id as a hidden
+input**, adding its page to `pwa_views.SHELL_URL_NAMES`, and adding a payload to
+`tests_coverage.py`.
 
 `base.html` injects tenant colours as CSS variables over `app.css`. When editing `static/css/app.css`, bump the `?v=X.X` cache-busting query string in every template that links it.
 

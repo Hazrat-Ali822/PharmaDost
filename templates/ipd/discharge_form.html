@@ -19,7 +19,8 @@
     </div>
   </div>
 
-  <form method="post" novalidate>
+  <form method="post" novalidate data-offline-kind="discharge">
+    <input type="hidden" name="admission_id" value="{{ admission.pk }}">
     {% csrf_token %}
     
     {% for field in form %}

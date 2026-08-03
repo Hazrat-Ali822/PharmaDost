@@ -18,6 +18,8 @@ urlpatterns = [
     path('app-icon-<int:size>.png', pwa_views.icon, name='pwa_icon'),
     path('offline/', pwa_views.offline, name='pwa_offline'),
     path('get-app/', pwa_views.get_app, name='get_app'),
+    # Desktop/LAN build only: the address other devices on the wifi join on.
+    path('get-app/connect/', pwa_views.lan_connect, name='lan_connect'),
     # Offline outbox replay — the browser POSTs its queued actions to
     # /offline/sync/ when it comes back online (authenticated, same-origin;
     # not a headless job). Sits after pwa_offline so /offline/ still serves the

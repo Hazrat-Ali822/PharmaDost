@@ -124,8 +124,13 @@ class MedicineFlowTest(BrowserTestCase):
         self.page.fill('input[name="brand"]', 'Panadol')
         self.page.fill('input[name="price"]', '25')
         self.page.fill('input[name="expiry_date"]', _future().isoformat())
-        self.page.click('button[type="submit"]')
-        self.page.wait_for_load_state('networkidle')
+        # This form is offline-capable, so the click first asks the server whether it
+        # is reachable (static/js/offline.js) and only then submits. `networkidle`
+        # alone can therefore fire in the gap *before* the real navigation starts and
+        # `page.content()` reads a page that is on its way out — wait for the
+        # navigation itself.
+        with self.page.expect_navigation(wait_until='networkidle'):
+            self.page.click('button[type="submit"]')
 
         med = Medicine.objects.filter(name='Paracetamol E2E').first()
         self.assertIsNotNone(med, "medicine was not saved through the browser form")

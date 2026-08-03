@@ -19,7 +19,7 @@ if exist ".venv\Scripts\activate.bat" (
 echo [1/3] Installing/refreshing build dependencies ...
 python -m pip install --upgrade pip >nul
 python -m pip install -r requirements.txt
-python -m pip install waitress whitenoise pyinstaller pywebview
+python -m pip install waitress whitenoise pyinstaller pywebview qrcode
 if errorlevel 1 goto :error
 
 echo.

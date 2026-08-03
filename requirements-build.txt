@@ -4,6 +4,11 @@
 
 -r requirements.txt
 
+# The QR code on the "Connect a Device" page, so clinic staff scan the LAN address
+# instead of typing http://192.168.x.x:8000 into a phone. Optional at runtime —
+# without it the page still shows the address in large type.
+qrcode==8.0
+
 pyinstaller==6.10.0
 pyinstaller-hooks-contrib==2026.6
 altgraph==0.17.5

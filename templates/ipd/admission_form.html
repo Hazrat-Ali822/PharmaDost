@@ -13,7 +13,9 @@
     🛏️ Confirming Dr. {{ adm_req.advised_by.first_name|default:adm_req.advised_by.email }}'s advice — <strong>{{ adm_req.reason }}</strong>
   </div>
   {% endif %}
-  <form method="post" novalidate>
+  {# The bed is re-checked under a lock when an offline admission syncs, so one #}
+  {# made against a bed that has since been filled is rejected, not doubled. #}
+  <form method="post" novalidate data-offline-kind="admission">
     {% csrf_token %}
     {% if request_id %}<input type="hidden" name="request_id" value="{{ request_id }}">{% endif %}
 

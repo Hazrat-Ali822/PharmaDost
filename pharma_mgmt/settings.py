@@ -214,6 +214,18 @@ MIDDLEWARE += [
 ROOT_URLCONF = "pharma_mgmt.urls"
 
 # ------------------------
+# Session lifetime — sized for sites that lose the internet for days.
+# ------------------------
+# A device with no connection cannot sign in: the login page needs the server. So a
+# session that quietly expires mid-outage locks the desk out of a system that would
+# otherwise have kept working from cache and the offline outbox. Django's two-week
+# default is short for a clinic that is offline for a week at a time.
+#
+# `SESSION_SAVE_EVERY_REQUEST` stays off on purpose — it would write the session row
+# on every request, which is real cost on a small shared host for little gain here.
+SESSION_COOKIE_AGE = int(os.getenv("DJANGO_SESSION_DAYS", "30")) * 24 * 60 * 60
+
+# ------------------------
 # HTTPS hardening — only when actually served over HTTPS (e.g. PythonAnywhere).
 # The desktop app runs over plain http://127.0.0.1, where secure-only cookies would
 # stop login working, so it sets DJANGO_SSL=false. Default: on whenever DEBUG is off,

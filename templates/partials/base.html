@@ -435,6 +435,19 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></svg>
           Get the App
         </a>
+        {# Always reachable, not only while the floating badge is showing — a #}
+        {# rejected entry has to be findable by someone who missed the toast. #}
+        <a href="{% url 'offline_queue' %}" class="{% if '/offline/queue' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l2 6 4-14 2 8h6"/></svg>
+          Offline Queue
+        </a>
+        {# Only when this machine is the LAN server (desktop build). #}
+        {% if lan_url %}
+        <a href="{% url 'lan_connect' %}" class="{% if '/get-app/connect' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5.5 5.5 0 0 1 7 0M12 19.5h.01"/></svg>
+          Connect a Device
+        </a>
+        {% endif %}
       </div>
     </nav>
     {% endif %}
@@ -882,12 +895,14 @@
 
 <div id="toast-container"></div>
 
-{# Offline outbox: queues data entry when the connection drops and syncs it back #}
-{# on reconnect. The badge shows how many entries are still waiting to sync. #}
-<div id="offline-badge" style="display:none; position:fixed; left:14px; bottom:14px;
-     z-index:9998; background:#b45309; color:#fff; padding:8px 13px; border-radius:20px;
-     font-size:12.5px; font-weight:600; box-shadow:0 3px 12px rgba(0,0,0,.25);"></div>
-<script src="{% static 'js/offline.js' %}?v=1.0" defer></script>
+{# Offline outbox: queues data entry when the server can't be reached and syncs it #}
+{# back later. The badge shows what is still waiting and what was rejected, and #}
+{# opens the queue screen — a rejection nobody can see is a lost record. #}
+<a id="offline-badge" href="{% url 'offline_queue' %}" title="Open the offline queue"
+   style="display:none; position:fixed; left:14px; bottom:14px; text-decoration:none;
+   z-index:9998; background:#b45309; color:#fff; padding:8px 13px; border-radius:20px;
+   font-size:12.5px; font-weight:600; box-shadow:0 3px 12px rgba(0,0,0,.25);"></a>
+<script src="{% static 'js/offline.js' %}?v=2.0" defer></script>
 
 {% block extra_js %}{% endblock %}
 </body>

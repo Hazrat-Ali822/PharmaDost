@@ -5,7 +5,7 @@
 <div class="form-card">
   <h2>New Stock Adjustment</h2>
   <p class="muted">Use negative quantity to remove stock (damage / expiry write-off), positive to add (stock count correction).</p>
-  <form method="post">{% csrf_token %}
+  <form method="post" data-offline-kind="adjustment">{% csrf_token %}
     <div class="form-row">
       <label>Batch</label>
       <select name="batch" required>

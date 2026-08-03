@@ -6,6 +6,8 @@
   <h2>{{ title }}</h2>
   <p>Current payable: <strong>{{ supplier.balance }}</strong></p>
   <form method="post" data-offline-kind="supplier_payment">
+    {# Carried for the offline outbox — the live view reads it from the URL. #}
+    <input type="hidden" name="supplier_id" value="{{ supplier.pk }}">
     {% csrf_token %}
     {{ form.as_p }}
     <button class="btn" type="submit">Record Payment</button>

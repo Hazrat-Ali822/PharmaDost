@@ -69,7 +69,9 @@
     {% endfor %}
   </datalist>
 
-  <form method="post" novalidate>
+  <form method="post" novalidate data-offline-kind="medication">
+    {# A dose given at the bedside is recorded whatever the connection is doing. #}
+    <input type="hidden" name="admission_id" value="{{ admission.pk }}">
     {% csrf_token %}
     {% for field in form.hidden_fields %}{{ field }}{% endfor %}
 

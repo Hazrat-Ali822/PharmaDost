@@ -14,7 +14,11 @@
 <div class="msg" style="margin-bottom:12px"><strong>Referring note:</strong> {{ study.clinical_note }}</div>
 {% endif %}
 
-<form method="post" enctype="multipart/form-data" class="card" style="max-width:760px">{% csrf_token %}
+{# Offline-capable: findings and impression queue and sync. The film itself #}
+{# cannot ride in the outbox — the client warns and it is attached once online. #}
+<form method="post" enctype="multipart/form-data" class="card" style="max-width:760px"
+      data-offline-kind="imaging_report">{% csrf_token %}
+<input type="hidden" name="study_id" value="{{ study.pk }}">
   {% for field in form %}
   <div class="form-row" style="align-items:flex-start">
     <label for="{{ field.id_for_label }}">{{ field.label }}</label>

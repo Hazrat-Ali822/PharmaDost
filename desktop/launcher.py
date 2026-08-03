@@ -1,19 +1,42 @@
 """
-PharmaDost — Local Desktop App launcher.
+PharmaDost / Sehatyar — Local Desktop App launcher.
 
 Runs the whole Django system as a self-contained Windows program:
   * stores the database + uploaded files in a per-user folder that survives re-installs
     (%LOCALAPPDATA%\\PharmaDost) — nothing is written into the read-only install dir;
   * applies any pending database migrations automatically on every start;
   * collects static assets once (served by WhiteNoise, no separate web server needed);
-  * starts a local web server (waitress) bound to 127.0.0.1 on a free port;
+  * starts a local web server (waitress);
   * opens the app in a native desktop window if pywebview is available, otherwise in
     the default web browser.
+
+LAN MODE (on by default)
+------------------------
+The server binds to **0.0.0.0**, not just localhost, so every phone and computer on
+the same wifi can use this one machine as the hospital's server. That is the whole
+point in places where the internet is down most of the day: the server is in the
+room, so nothing depends on the uplink — notifications, the doctor↔reception
+handoff, live stock, all of it works exactly as it does online, because from the
+app's point of view it *is* online.
+
+Two things this requires and does:
+  * the LAN address must be in `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS`, or Django
+    answers "Bad Request (400)" / rejects every form — both are set from the detected
+    addresses below;
+  * Windows Firewall blocks incoming connections by default, so the launcher adds an
+    inbound rule for the port (needs admin; if it cannot, it says so plainly instead
+    of leaving staff to guess why their phones cannot connect).
+
+Set `PHARMADOST_LAN=0` to go back to localhost-only.
+
+The port is **fixed** (default 8000) rather than random: staff type this address into
+a phone once and bookmark it, and a new port every morning would break that.
 
 This same file is the PyInstaller entry point (see PharmaDost.spec).
 """
 import os
 import socket
+import subprocess
 import sys
 import threading
 import time
@@ -22,7 +45,14 @@ from pathlib import Path
 
 
 APP_NAME = "PharmaDost"
-HOST = "127.0.0.1"
+BRAND = "Sehatyar"
+LOCALHOST = "127.0.0.1"
+DEFAULT_PORT = 8000
+FIREWALL_RULE = "Sehatyar HMS (LAN)"
+
+
+def lan_enabled() -> bool:
+    return os.getenv("PHARMADOST_LAN", "1").lower() not in ("0", "false", "no", "off")
 
 
 # --------------------------------------------------------------------------- paths
@@ -42,17 +72,100 @@ def data_dir() -> Path:
     return d
 
 
-def free_port() -> int:
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind((HOST, 0))
+# ----------------------------------------------------------------------- networking
+def lan_addresses() -> list:
+    """Every IPv4 address this machine can be reached on from the local network.
+
+    The first entry is the one the operating system would actually use — found by
+    opening a UDP socket toward a public address, which sends **no packets** and
+    needs **no internet**; it only asks the routing table which interface would be
+    chosen. On a clinic router with a dead uplink there is still a default route, so
+    this keeps working. `gethostbyname_ex` is the fallback and also catches a second
+    interface (wifi + ethernet), because the staff may be on either one.
+    """
+    found = []
+
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(0.4)
+        s.connect(("8.8.8.8", 80))
+        found.append(s.getsockname()[0])
+        s.close()
+    except Exception:
+        pass
+
+    try:
+        for ip in socket.gethostbyname_ex(socket.gethostname())[2]:
+            if ip not in found:
+                found.append(ip)
+    except Exception:
+        pass
+
+    # Loopback is not a LAN address; a 169.254.x.x is Windows saying "no DHCP".
+    return [ip for ip in found
+            if not ip.startswith("127.") and not ip.startswith("169.254.")]
+
+
+def pick_port(host: str, preferred: int = DEFAULT_PORT) -> int:
+    """Keep the same port every launch when we can — the address staff typed into a
+    phone yesterday has to still work today. Only move if something else has it."""
+    for port in [preferred, 8080, 8800, 5000]:
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.bind((host, port))
+            s.close()
+            return port
+        except OSError:
+            continue
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)   # last resort: any free one
+    s.bind((host, 0))
     port = s.getsockname()[1]
     s.close()
     return port
 
 
+def _is_admin() -> bool:
+    try:
+        import ctypes
+        return bool(ctypes.windll.shell32.IsUserAnAdmin())
+    except Exception:
+        return False
+
+
+def open_firewall(port: int) -> str:
+    """Let other devices on the wifi reach this port.
+
+    Windows Firewall drops incoming connections silently, so without this the phones
+    just time out and nobody can tell whether the address is wrong, the wifi is wrong
+    or the app is down. Returns a human-readable status the startup banner prints —
+    never raises, and never blocks the app from starting.
+    """
+    if os.name != "nt":
+        return "not Windows — no firewall rule needed"
+    if not _is_admin():
+        return ("SKIPPED — not running as administrator. If phones cannot connect, "
+                "right-click the app and 'Run as administrator' once.")
+    try:
+        flags = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {}
+        # Replace any rule from a previous run — the port may have changed.
+        subprocess.run(["netsh", "advfirewall", "firewall", "delete", "rule",
+                        f"name={FIREWALL_RULE}"],
+                       capture_output=True, timeout=15, **flags)
+        result = subprocess.run(
+            ["netsh", "advfirewall", "firewall", "add", "rule",
+             f"name={FIREWALL_RULE}", "dir=in", "action=allow", "protocol=TCP",
+             f"localport={port}", "profile=private,domain"],
+            capture_output=True, timeout=15, **flags)
+        if result.returncode == 0:
+            return f"allowed on port {port}"
+        return f"could not be added (netsh exit {result.returncode})"
+    except Exception as exc:
+        return f"could not be added ({exc})"
+
+
 # --------------------------------------------------------------------- environment
-def configure_environment() -> Path:
-    """Point Django at the per-user data folder and localhost-friendly settings."""
+def configure_environment(host_names, port) -> Path:
+    """Point Django at the per-user data folder and at the addresses it will answer on."""
     root = install_dir()
     # When frozen, PyInstaller unpacks the code to sys._MEIPASS; the project modules
     # (pharma_mgmt, accounts, ...) are bundled there. In dev, add the project root.
@@ -64,8 +177,15 @@ def configure_environment() -> Path:
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "pharma_mgmt.settings")
     os.environ["PHARMADOST_DATA_DIR"] = str(dd)
     os.environ.setdefault("DJANGO_DEBUG", "False")   # no tracebacks to the end user
-    os.environ.setdefault("DJANGO_SSL", "false")     # plain http on localhost — keep cookies working
-    os.environ.setdefault("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost")
+    os.environ.setdefault("DJANGO_SSL", "false")     # plain http on the LAN — secure-only cookies would break login
+
+    # Django refuses a request whose Host header is not listed, and rejects a POST
+    # whose Origin is not trusted. Both must name the LAN address, or the phones get
+    # "Bad Request (400)" and every form fails CSRF.
+    os.environ["DJANGO_ALLOWED_HOSTS"] = ",".join(host_names)
+    os.environ["DJANGO_CSRF_TRUSTED"] = ",".join(
+        f"http://{h}:{port}" for h in host_names if h != "*")
+
     # A stable secret key per install, generated once and stored in the data folder.
     _ensure_secret_key(dd)
     return dd
@@ -91,21 +211,26 @@ def prepare_database() -> None:
     django.setup()
     from django.core.management import call_command
 
-    print("[PharmaDost] Preparing database ...", flush=True)
+    print(f"[{BRAND}] Preparing database ...", flush=True)
     call_command("migrate", interactive=False, verbosity=1)
 
     # Collect static once so WhiteNoise can serve it. Re-running is cheap/idempotent.
     try:
         call_command("collectstatic", interactive=False, verbosity=0)
     except Exception as exc:  # never block startup on a static hiccup
-        print(f"[PharmaDost] collectstatic skipped: {exc}", flush=True)
+        print(f"[{BRAND}] collectstatic skipped: {exc}", flush=True)
 
 
-def serve(port: int) -> None:
-    """Run the WSGI app under waitress (a production-quality pure-Python server)."""
+def serve(bind_host: str, port: int) -> None:
+    """Run the WSGI app under waitress (a production-quality pure-Python server).
+
+    Threads are sized for a small clinic on one wifi — a handful of devices, each
+    polling notifications every 30s. SQLite is in WAL mode (`saas.signals._tune_sqlite`),
+    so those readers do not block the one writer.
+    """
     from waitress import serve as waitress_serve
     from pharma_mgmt.wsgi import application
-    waitress_serve(application, host=HOST, port=port, threads=8, _quiet=True)
+    waitress_serve(application, host=bind_host, port=port, threads=16, _quiet=True)
 
 
 def wait_until_up(url: str, timeout: float = 20.0) -> bool:
@@ -123,29 +248,67 @@ def wait_until_up(url: str, timeout: float = 20.0) -> bool:
     return False
 
 
+def banner(dd, local_url, lan_url, ips, port, firewall) -> None:
+    line = "=" * 66
+    print(f"\n{line}")
+    print(f"  {BRAND} is running")
+    print(line)
+    print(f"  On this computer : {local_url}")
+    if lan_url:
+        print(f"  On phones/tablets: {lan_url}")
+        if len(ips) > 1:
+            print(f"                     (other addresses: "
+                  f"{', '.join(f'http://{i}:{port}/' for i in ips[1:])})")
+        print(f"  Firewall         : {firewall}")
+        print("")
+        print("  Every device must be on the SAME wifi. Internet is not needed.")
+        print(f"  A phone opens the address above in Chrome — {BRAND} works there")
+        print("  fully: notifications, tokens, stock, everything, live.")
+    else:
+        print("  LAN mode is OFF — only this computer can use the app.")
+    print("")
+    print(f"  Data folder      : {dd}")
+    print("  Closing this window stops the app for everyone.")
+    print(f"{line}\n", flush=True)
+
+
 # --------------------------------------------------------------------------- main
 def main() -> None:
-    dd = configure_environment()
+    use_lan = lan_enabled()
+    ips = lan_addresses() if use_lan else []
+    bind_host = "0.0.0.0" if use_lan else LOCALHOST
+    port = pick_port(LOCALHOST, int(os.getenv("PHARMADOST_PORT", DEFAULT_PORT)))
+
+    hosts = [LOCALHOST, "localhost"] + ips
+    try:
+        hosts.append(socket.gethostname())
+    except Exception:
+        pass
+
+    dd = configure_environment(hosts, port)
+
+    local_url = f"http://{LOCALHOST}:{port}/"
+    lan_url = f"http://{ips[0]}:{port}/" if ips else ""
+    # The in-app "Connect a device" page reads these to show the address + QR code.
+    os.environ["PHARMADOST_LAN_URL"] = lan_url
+    os.environ["PHARMADOST_LAN_IPS"] = ",".join(ips)
+
     prepare_database()
 
-    port = free_port()
-    url = f"http://{HOST}:{port}/"
+    firewall = open_firewall(port) if use_lan else "LAN mode off"
 
-    threading.Thread(target=serve, args=(port,), daemon=True).start()
-    wait_until_up(url)
+    threading.Thread(target=serve, args=(bind_host, port), daemon=True).start()
+    wait_until_up(local_url)
 
-    print(f"\n  {APP_NAME} is running")
-    print(f"  Open:  {url}")
-    print(f"  Data:  {dd}")
-    print("  Close this window to stop the app.\n", flush=True)
+    banner(dd, local_url, lan_url, ips, port, firewall)
 
     # Prefer a native desktop window; fall back to the default browser.
     try:
         import webview  # pywebview
-        webview.create_window(APP_NAME, url, width=1280, height=800)
+        webview.create_window(BRAND, local_url, width=1280, height=800)
         webview.start()
     except Exception:
-        webbrowser.open(url)
+        webbrowser.open(local_url)
         try:
             while True:
                 time.sleep(3600)

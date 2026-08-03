@@ -56,29 +56,12 @@ def admission_create(request):
     if request.method == 'POST':
         form = AdmissionForm(request.POST)
         if form.is_valid():
+            from .services import admit_patient
             admission = form.save(commit=False)
             try:
-                with transaction.atomic():
-                    # Lock the chosen bed and re-check it is still free, so two
-                    # receptionists can't admit two patients into the same bed.
-                    bed = Bed.objects.select_for_update().get(pk=admission.bed_id)
-                    if bed.status != 'Available':
-                        raise ValidationError(f"Bed {bed.bed_number} is no longer available.")
-                    # A patient can only occupy one bed at a time.
-                    if Admission.objects.filter(patient=admission.patient, status='Admitted').exists():
-                        raise ValidationError(f"{admission.patient.full_name} already has an active admission.")
-                    bed.status = 'Occupied'
-                    bed.save(update_fields=['status'])
-                    admission.save()
-                    # close the originating advice, if any
-                    if adm_req:
-                        adm_req.status = 'Admitted'
-                        adm_req.admission = admission
-                        adm_req.save(update_fields=['status', 'admission'])
-                messages.success(request, f"Patient {admission.patient.full_name} admitted successfully to Bed {bed.bed_number}.")
+                res = admit_patient(admission, request.user, adm_request=adm_req)
+                messages.success(request, f"Patient {admission.patient.full_name} admitted successfully to Bed {res.bed.bed_number}.")
                 return redirect('ipd:admission_detail', pk=admission.pk)
-            except Bed.DoesNotExist:
-                messages.error(request, "Selected bed was not found.")
             except ValidationError as e:
                 messages.error(request, e.messages[0] if getattr(e, 'messages', None) else str(e))
     else:
@@ -148,49 +131,13 @@ def medication_log_add(request, pk):
     if request.method == 'POST':
         form = MedicationLogForm(request.POST)
         if form.is_valid():
-            log = form.save(commit=False)
-            log.admission = admission
-            log.administered_by = request.user
-            medicine = form.cleaned_data.get('medicine')
-            log.medicine = medicine
-            if medicine is not None and not log.medicine_name:
-                log.medicine_name = (f"{medicine.name} ({medicine.brand})"
-                                     if medicine.brand else medicine.name)
+            from .services import log_medication
+            res = log_medication(admission, form.save(commit=False),
+                                 form.cleaned_data.get('medicine'), request.user)
+            log, stock_short = res.log, res.stock_short
 
-            stock_short = None
-            if medicine is None or log.source != 'PHARMACY':
-                # Off-catalogue, or a supply the patient already had: recorded on
-                # the chart, but the pharmacy never issued it — nothing to take
-                # from stock and nothing to bill.
-                log.unit_price = Decimal('0.00')
-                log.save()
-            else:
-                # Stock and money move together, on a locked row (see CLAUDE.md).
-                try:
-                    with transaction.atomic():
-                        med = Medicine.objects.select_for_update().get(pk=medicine.pk)
-                        med.reduce_stock(log.quantity)
-                        # Freeze the price of the day — the catalogue may change
-                        # before this patient is discharged and billed.
-                        log.unit_price = med.price or Decimal('0.00')
-                        log.save()
-                except ValueError as exc:
-                    # The dose has already gone into the patient. Refusing to save
-                    # would leave the chart lying about what was given, so record
-                    # it anyway — just without touching stock or the bill, since
-                    # the pharmacy has no record of issuing it. The ward reconciles
-                    # afterwards; a nurse is not blocked at the bedside.
-                    stock_short = str(exc)
-                    log.unit_price = Decimal('0.00')
-                    marker = ' [not deducted — pharmacy stock short]'
-                    log.notes = (log.notes + marker)[:255] if log.notes else marker.strip()
-                    log.save()
-
-            # Allergy check happens AFTER recording: the dose is already given, so
-            # the chart must reflect reality — the warning is for the staff to act on.
-            if medicine is not None:
-                for warning in screen_medicines(admission.patient, [medicine]):
-                    messages.warning(request, warning)
+            for warning in res.warnings:
+                messages.warning(request, warning)
 
             if stock_short:
                 messages.warning(
@@ -307,51 +254,9 @@ def admission_discharge(request, pk):
     if request.method == 'POST':
         form = DischargeForm(request.POST, instance=admission)
         if form.is_valid():
-            with transaction.atomic():
-                adm = form.save(commit=False)
-                adm.status = 'Discharged'
-                adm.discharge_date = timezone.now()
-                adm.save()
-
-                # Free the bed (locked so a concurrent admission can't clobber it)
-                bed = Bed.objects.select_for_update().get(pk=adm.bed_id)
-                bed.status = 'Available'
-                bed.save(update_fields=['status'])
-
-                # Bed charges = calendar days the bed was occupied, counting the
-                # admission day and the discharge day (inclusive), minimum one day —
-                # this is how hospital room bills are normally itemised.
-                days = (adm.discharge_date.date() - adm.admission_date.date()).days + 1
-                if days < 1:
-                    days = 1
-                est_bed_charges = days * adm.bed.ward.daily_rate
-
-                from billing.services import create_service_invoice
-                items = [
-                    (f"IPD Bed Charges: Bed {adm.bed.bed_number} ({adm.bed.ward.name}) — {days} Day(s)", est_bed_charges),
-                ]
-
-                # Everything the ward gave this patient from pharmacy stock. Without
-                # this the discharge bill was bed charges only, so every dose
-                # administered during the stay was given away free.
-                med_total = Decimal('0.00')
-                for log in adm.medication_logs.select_related('medicine').all():
-                    if log.charge:
-                        items.append((
-                            f"Medicine: {log.medicine_name} x{log.quantity}",
-                            log.charge,
-                        ))
-                        med_total += log.charge
-
-                invoice = create_service_invoice(
-                    patient=adm.patient,
-                    items=items,
-                    created_by=request.user,
-                    paid=0,
-                )
-                if invoice:
-                    adm.discharge_invoice = invoice
-                    adm.save(update_fields=['discharge_invoice'])
+            from .services import discharge_patient
+            res = discharge_patient(form.save(commit=False), request.user)
+            adm, med_total, est_bed_charges = res.admission, res.med_total, res.bed_charges
 
             if med_total:
                 messages.success(

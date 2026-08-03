@@ -11,7 +11,9 @@
   <p style="margin:0 0 18px; color:var(--muted); font-size:14px;">
     Patient: <strong>{{ patient.full_name }}</strong> <span class="muted">({{ patient.mrn }})</span>
   </p>
-  <form method="post">
+  <form method="post" data-offline-kind="surgery_advise">
+    {# Carried for the offline outbox — the live view reads it from the URL. #}
+    <input type="hidden" name="patient_id" value="{{ patient.pk }}">
     {% csrf_token %}
     <div style="margin-bottom:18px;">
       <label style="display:block; font-weight:600; margin-bottom:6px;">Indication / reason for surgery *</label>

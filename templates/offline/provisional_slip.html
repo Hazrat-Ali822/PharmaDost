@@ -1,0 +1,208 @@
+{% extends 'print/base_print.html' %}
+{% load static %}
+{% comment %}
+The slip reception hands a patient when the connection is down.
+
+This is the offline handoff. Two devices with no server between them cannot notify
+each other — there is no channel — so the doctor learns that a patient has arrived
+the way clinics have always done it: the patient walks in holding a slip. It needs no
+network at all.
+
+Everything on it is read from the browser's own outbox (IndexedDB) by the script at
+the bottom, because the entry has not reached the server yet. The number on it is a
+LOCAL counter and is marked as provisional: the real MRN and token are issued by the
+server when the queue syncs, and must never be guessed here (see CLAUDE.md).
+{% endcomment %}
+{% block title %}Provisional OPD Slip{% endblock %}
+{% block doctitle %}OPD Slip — Provisional{% endblock %}
+
+{% block headmeta %}
+  <span class="prov-badge" id="s-ref">OFF-…</span><br>
+  <span id="s-when"></span>
+{% endblock %}
+
+{% block actions %}
+  <a href="{% url 'visit_create' %}">Next Patient</a>
+  <a href="{% url 'offline_queue' %}">Offline Queue</a>
+{% endblock %}
+
+{% block body %}
+<div class="offline-note">
+  📴 Saved on this device while the connection was down. The <b>MRN and token number
+  will be issued when it syncs</b> — until then this slip is the record. Hand it to the
+  patient; the doctor sees it when they walk in.
+</div>
+
+<div class="who">
+  <div>
+    <b id="s-name">—</b><br>
+    <span id="s-detail"></span>
+  </div>
+  <div style="text-align:right">
+    <b id="s-doctor">—</b>
+    <div id="s-visit"></div>
+  </div>
+</div>
+
+<div class="vitals">
+  <span><b>BP</b> ……………</span>
+  <span><b>Pulse</b> ……………</span>
+  <span><b>Temp</b> ……………</span>
+  <span><b>Wt</b> ……………</span>
+</div>
+
+<div id="s-allergy" class="slip-alert" style="display:none"></div>
+
+<div class="cc"><b>Complaint / Diagnosis:</b> <span class="dots">………………………………………………………………………………………………………………………</span></div>
+
+<div class="rx"><div class="rx-mark">℞</div></div>
+
+<div class="sign"><span class="line">Doctor's Signature</span></div>
+
+<div id="s-missing" style="display:none;text-align:center;padding:60px 20px;color:#6b7280">
+  <h3 style="margin:0 0 8px">Nothing to print</h3>
+  <p style="font-size:14px">This page shows the last visit saved on this device while
+  offline. Register a patient from the reception screen first.</p>
+</div>
+
+{# The print base does not extend partials/base.html, so the outbox reader has to #}
+{# be pulled in here — it is where this slip's contents come from. #}
+<script src="{% static 'js/offline.js' %}?v=2.0" defer></script>
+<script>
+(function () {
+  // The uuid of the entry to print is handed over in sessionStorage rather than the
+  // URL: a query string would miss the service worker's cached copy of this page,
+  // which is the one case that has to work.
+  var wanted = null;
+  try { wanted = sessionStorage.getItem('offline-slip-uuid'); } catch (e) {}
+
+  function text(id, value) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = value || '';
+  }
+
+  function when(iso) {
+    try {
+      var d = new Date(iso);
+      return d.toLocaleDateString() + ' · ' + d.toLocaleTimeString(
+        [], { hour: '2-digit', minute: '2-digit' });
+    } catch (e) { return ''; }
+  }
+
+  // A local, clearly-provisional number so the desk can order the queue and match
+  // the paper to the record once it syncs. NOT a token — the server issues that.
+  function reference(all, rec) {
+    var day = (rec.createdAt || '').slice(0, 10);
+    var sameDay = all.filter(function (r) {
+      return r.kind === 'visit' && (r.createdAt || '').slice(0, 10) === day;
+    }).sort(function (a, b) {
+      return (a.createdAt || '') < (b.createdAt || '') ? -1 : 1;
+    });
+    var i = 0;
+    for (var n = 0; n < sameDay.length; n++) {
+      if (sameDay[n].uuid === rec.uuid) { i = n + 1; break; }
+    }
+    return 'OFF-' + (i || sameDay.length || 1);
+  }
+
+  function render(rec, all) {
+    var d = rec.data || {};
+    var labels = rec.labels || {};
+
+    text('s-ref', reference(all, rec));
+    text('s-when', when(rec.createdAt));
+
+    // A returning patient carries their name in a hidden field; a new one has just
+    // typed it into the registration half of the same form.
+    text('s-name', d.patient_label || d.full_name || 'Patient');
+
+    var bits = [];
+    if (d.mrn_label) bits.push('MRN ' + d.mrn_label);
+    else bits.push('MRN: to be issued');
+    if (d.age_years) bits.push(d.age_years + 'y');
+    if (labels.gender) bits.push(labels.gender);
+    if (d.phone) bits.push('☎ ' + d.phone);
+    if (d.cnic) bits.push('CNIC ' + d.cnic);
+    text('s-detail', bits.join(' · '));
+
+    text('s-doctor', labels.doctor ? 'Dr. ' + labels.doctor : 'Doctor: as booked');
+    text('s-visit', labels.department || labels.visit_type || '');
+
+    if (d.allergies) {
+      var box = document.getElementById('s-allergy');
+      box.textContent = '⚠️ Known allergies: ' + d.allergies;
+      box.style.display = '';
+    }
+  }
+
+  function missing() {
+    document.getElementById('s-missing').style.display = '';
+    ['s-ref', 's-when'].forEach(function (id) { text(id, ''); });
+    var sheet = document.querySelector('.sheet');
+    ['.who', '.vitals', '.cc', '.rx', '.sign', '.offline-note'].forEach(function (sel) {
+      var el = sheet.querySelector(sel);
+      if (el) el.style.display = 'none';
+    });
+  }
+
+  function start() {
+    if (!window.PharmaOffline) { missing(); return; }
+    window.PharmaOffline.all().then(function (all) {
+      var visits = all.filter(function (r) { return r.kind === 'visit'; });
+      var rec = null;
+      if (wanted) {
+        rec = all.filter(function (r) { return r.uuid === wanted; })[0] || null;
+      }
+      if (!rec) {
+        // Fall back to the most recent one, so a reload still prints something.
+        visits.sort(function (a, b) {
+          return (a.createdAt || '') < (b.createdAt || '') ? 1 : -1;
+        });
+        rec = visits[0] || null;
+      }
+      if (!rec) { missing(); return; }
+      render(rec, all);
+      if (sessionStorage.getItem('offline-slip-print') === '1') {
+        sessionStorage.removeItem('offline-slip-print');
+        setTimeout(function () { window.print(); }, 300);
+      }
+    }).catch(missing);
+  }
+
+  // offline.js is deferred, so it may not have run when this inline script does.
+  if (window.PharmaOffline) start();
+  else window.addEventListener('DOMContentLoaded', start);
+})();
+</script>
+{% endblock %}
+
+{% block extrastyle %}
+<style>
+  .prov-badge{
+    display:inline-block; background:#b45309; color:#fff; font-weight:800;
+    font-size:16px; padding:4px 12px; border-radius:8px; letter-spacing:.3px;
+  }
+  .offline-note{
+    margin:10px 0 4px; padding:10px 14px; border:1px dashed #b45309;
+    background:#fffbeb; color:#7c2d12; font-size:12.5px; border-radius:8px;
+    line-height:1.6;
+  }
+  .vitals{
+    display:flex; flex-wrap:wrap; gap:8px 22px; margin:12px 0 6px;
+    font-size:13px; border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+    padding:9px 2px;
+  }
+  .slip-alert{
+    margin:10px 0; padding:9px 13px; border:1px solid #f0a6a6; background:#fff5f5;
+    color:#8a1c1c; font-size:12.5px; font-weight:700; border-radius:8px;
+  }
+  .cc{font-size:13px; margin:12px 0 4px}
+  .cc .dots{color:var(--soft); letter-spacing:1px}
+  .rx{position:relative; margin-top:8px; min-height:500px; padding-left:52px}
+  .rx-mark{
+    position:absolute; left:0; top:-6px; font-size:52px; line-height:1;
+    font-weight:700; color:var(--pri); font-family:Georgia,"Times New Roman",serif;
+  }
+  @media print{ .rx{min-height:540px} }
+</style>
+{% endblock %}

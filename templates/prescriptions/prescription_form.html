@@ -20,6 +20,9 @@
 
   <form method="post" data-offline-kind="prescription">
     {% csrf_token %}
+    {# The appointment comes from the URL online; offline it has to ride along, #}
+    {# or the queued Rx has nothing to hang off. #}
+    <input type="hidden" name="appointment_id" value="{{ appointment.pk }}">
 
     <div class="form-row">
       <div><label>Complaint</label>{{ form.complaint }}{{ form.complaint.errors }}</div>

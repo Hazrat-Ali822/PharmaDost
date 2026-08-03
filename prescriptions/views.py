@@ -44,31 +44,10 @@ def prescription_create(request, appointment_id):
         form = PrescriptionForm(request.POST)
         med_formset = PrescriptionItemFormSet(request.POST, prefix='meds')
         if form.is_valid() and med_formset.is_valid():
-            with transaction.atomic():
-                prescription = form.save(commit=False)
-                prescription.appointment = appointment
-                prescription.save()
-
-                # ---- medicines (many) ----
-                med_formset.instance = prescription
-                meds = med_formset.save()  # blank extra rows are skipped automatically
-                n_meds = len(meds)
-
-                # ---- clinical safety screening (allergy + duplicate salt) ----
-                from inventory.safety import screen_medicines
-                rx_warnings = screen_medicines(patient, [pi.medicine for pi in meds])
-
-                # ---- lab tests -> one order + a pending bill ----
-                tests = list(form.cleaned_data.get('tests') or [])
-                n_tests = _order_lab_tests(patient, tests, request.user)
-
-                # ---- scans -> each study + a pending bill (priced from the catalog) ----
-                scans = list(form.cleaned_data.get('scans') or [])
-                n_img = _order_scans(scans, patient, request.user)
-
-                # ---- Update appointment status to DONE ----
-                appointment.status = 'DONE'
-                appointment.save()
+            from .services import save_prescription
+            res = save_prescription(appointment, form, med_formset, request.user)
+            n_meds, n_tests, n_img = len(res.medicines), res.n_tests, res.n_scans
+            rx_warnings = res.warnings
 
             parts = [f"{n_meds} medicine(s)"]
             if n_tests:

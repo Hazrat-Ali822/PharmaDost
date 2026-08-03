@@ -78,17 +78,30 @@ class Notification(models.Model):
     def __str__(self):
         return f"Notification for {self.user.email}: {self.message[:30]}"
 
+    def save(self, *args, **kwargs):
+        """One chokepoint for every creation path, so a syncing offline queue
+        cannot ring the bell once per queued entry (see `accounts/replay.py`)."""
+        if self._state.adding:
+            from accounts.replay import stamp
+            stamp(self)
+        return super().save(*args, **kwargs)
+
     @classmethod
-    def send_to_role(cls, hospital, role, message, link=''):
+    def send_to_role(cls, hospital, role, message, link='', force=False):
+        """Notify everyone in a role.
+
+        `force=True` means "this is still outstanding whenever it was raised" — a
+        short-stock sale the pharmacist must still go and count. Those stay unread
+        through an offline replay; everything else is filed as history.
+        """
         if not hospital:
             return
         users = User.objects.filter(hospital=hospital, role=role, is_active=True)
         for u in users:
-            cls.objects.create(
-                user=u,
-                message=message,
-                link=link
-            )
+            note = cls(user=u, message=message, link=link)
+            if force:
+                note.needs_action = True
+            note.save()
 
     @classmethod
     def notify_admins(cls, hospital, message, link=''):

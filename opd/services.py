@@ -19,6 +19,33 @@ def _fee_for(doctor, visit_type):
     return doctor.followup_fee if visit_type == 'FOLLOWUP' else doctor.opd_fee
 
 
+def bill_and_notify(appointment, user):
+    """Raise the consultation invoice and put the patient in the doctor's queue.
+
+    Every booked appointment goes through here — the reception visit screen, the
+    generic booking form and offline replay alike — so a token handed to a
+    patient always has an invoice behind it. `token_no` is assigned by
+    `Appointment.save()`, never by whoever submitted the form.
+    """
+    from accounts.models import Notification
+    from billing.services import create_service_invoice
+
+    doctor = appointment.doctor
+    create_service_invoice(
+        patient=appointment.patient,
+        items=[(f"OPD Consultation — {doctor.full_name}",
+                _fee_for(doctor, appointment.visit_type))],
+        created_by=user, appointment=appointment)
+
+    if doctor.user:
+        Notification.objects.create(
+            user=doctor.user,
+            message=(f"New Patient assigned: '{appointment.patient.full_name}' is in "
+                     f"your queue (Token: {appointment.token_no})."),
+            link=f"/patients/{appointment.patient.pk}/")
+    return appointment
+
+
 def doctor_earnings(doctor, start=None, end=None):
     """Return {consultations, gross, share} for a doctor, optionally in a range.
 

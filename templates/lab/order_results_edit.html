@@ -9,7 +9,8 @@
   <a class="btn alt" href="{% url 'lab:order_detail' order.id %}">Back</a>
 </div>
 
-<form method="post" class="card">{% csrf_token %}
+<form method="post" class="card" data-offline-kind="lab_result">{% csrf_token %}
+<input type="hidden" name="order_id" value="{{ order.pk }}">
   {{ formset.management_form }}
   <table class="tbl">
     <thead><tr><th>Test</th><th>Result Value</th><th>Normal Range</th><th>Unit</th><th>Remarks</th></tr></thead>

@@ -64,16 +64,9 @@ def study_create(request):
     if request.method == "POST":
         form = ImagingStudyCreateForm(request.POST, user=request.user)
         if form.is_valid():
-            study = form.save()
-            # auto-generate a pending bill for the scan fee
-            from billing.services import create_service_invoice
-            inv = create_service_invoice(
-                patient=study.patient,
-                items=[(f"{study.get_modality_display()}: {study.study_name}", study.price)],
-                created_by=request.user)
-            if inv:
-                study.invoice = inv
-                study.save()
+            from .services import create_study
+            study = create_study(form, request.user)
+            inv = study.invoice
             # Sonographer/admin goes to the report screen; a doctor/receptionist who only
             # referred the scan gets a clean confirmation (not a 403 on a report-only page).
             can_report = request.user.is_superuser or getattr(request.user, "role", None) in REPORT_ROLES

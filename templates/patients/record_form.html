@@ -7,6 +7,9 @@
   <p class="muted" style="font-size:13px">Record a consultation, procedure, operation, ultrasound, x-ray etc. with full details. It will appear in the patient's history.</p>
   <form method="post" data-offline-kind="patient_record">
     {% csrf_token %}
+    {# The online view takes the patient from the URL; an offline entry carries #}
+    {# only the form, so it has to travel with it or there is nothing to file. #}
+    <input type="hidden" name="patient_id" value="{{ patient.pk }}">
     {{ form.as_p }}
     <button class="btn" type="submit">Save to History</button>
     <a class="btn alt" href="{% url 'patient_detail' patient.pk %}">Cancel</a>

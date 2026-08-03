@@ -10,7 +10,9 @@
 <!-- Add a new test -->
 <div class="card" style="margin-bottom:16px">
   <h3>➕ Add a test</h3>
-  <form method="post" style="margin-top:8px">{% csrf_token %}
+  {# Only the "add a test" form is offline-capable; the bulk price update below #}
+  {# rewrites rows the device may be holding a stale copy of, so it stays online. #}
+  <form method="post" style="margin-top:8px" data-offline-kind="lab_test">{% csrf_token %}
     <input type="hidden" name="add" value="1">
     <div class="form-row">
       <div><label>Test name</label><input name="name" required placeholder="e.g. Vitamin D"></div>

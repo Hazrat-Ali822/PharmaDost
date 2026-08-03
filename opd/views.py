@@ -230,27 +230,15 @@ def _book_visit(request, patient, visit):
     One transaction: a token handed to the patient with no invoice behind it is
     money the desk never collects.
     """
-    from accounts.models import Notification
-    from billing.services import create_service_invoice
+    from .services import bill_and_notify
 
-    doctor = visit['doctor']
     with transaction.atomic():
         appointment = Appointment.objects.create(
-            patient=patient, doctor=doctor,
+            patient=patient, doctor=visit['doctor'],
             appointment_date=visit['appointment_date'],
             slot_time=visit.get('slot_time'),
             visit_type=visit['visit_type'])
-        fee = doctor.followup_fee if appointment.visit_type == 'FOLLOWUP' else doctor.opd_fee
-        create_service_invoice(
-            patient=patient,
-            items=[(f"OPD Consultation — {doctor.full_name}", fee)],
-            created_by=request.user, appointment=appointment)
-
-    if doctor.user:
-        Notification.objects.create(
-            user=doctor.user,
-            message=f"New Patient assigned: '{patient.full_name}' is in your queue (Token: {appointment.token_no}).",
-            link=f"/patients/{patient.pk}/")
+        bill_and_notify(appointment, request.user)
     return appointment
 
 
@@ -358,22 +346,9 @@ def appointment_create(request):
     if request.method == 'POST':
         form = AppointmentForm(request.POST)
         if form.is_valid():
-            appt = form.save()
-            # Trigger notification for the doctor if they have a linked user account
-            if appt.doctor.user:
-                from accounts.models import Notification
-                Notification.objects.create(
-                    user=appt.doctor.user,
-                    message=f"New Patient assigned: '{appt.patient.full_name}' is in your queue (Token: {appt.token_no}).",
-                    link=f"/patients/{appt.patient.pk}/"
-                )
-            # auto-bill the consultation fee (pending) so it lands on the patient's bill
-            from billing.services import create_service_invoice
-            fee = appt.doctor.followup_fee if appt.visit_type == 'FOLLOWUP' else appt.doctor.opd_fee
-            create_service_invoice(
-                patient=appt.patient,
-                items=[(f"OPD Consultation — {appt.doctor.full_name}", fee)],
-                created_by=request.user, appointment=appt)
+            from .services import bill_and_notify
+            with transaction.atomic():
+                appt = bill_and_notify(form.save(), request.user)
             messages.success(request, 'Appointment booked successfully.')
             return redirect('appointment_list')
     else:

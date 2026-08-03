@@ -1,0 +1,166 @@
+{% extends 'partials/base.html' %}
+{% block title %}Offline Queue{% endblock %}
+{% block page_title %}Offline Queue{% endblock %}
+{% block content %}
+<div class="card" style="max-width:900px">
+  <h2 style="margin-top:0">Offline Queue</h2>
+  <p class="muted" style="font-size:13px;line-height:1.6">
+    Entries saved on <strong>this device</strong> while the server could not be reached.
+    They sync on their own as soon as it can. Anything the server <em>rejected</em>
+    is listed here with the reason — nothing is thrown away silently.
+  </p>
+
+  <div style="margin:14px 0">
+    <button class="btn" type="button" id="oq-sync">Sync now</button>
+    <button class="btn alt" type="button" id="oq-refresh">Refresh</button>
+  </div>
+
+  <div id="oq-empty" class="muted" style="display:none;padding:18px 0">
+    Nothing waiting — every entry made on this device has reached the server.
+  </div>
+
+  <table class="tbl" id="oq-table" style="display:none">
+    <thead>
+      <tr>
+        <th>Saved</th><th>What</th><th>Status</th><th>Details</th><th></th>
+      </tr>
+    </thead>
+    <tbody id="oq-rows"></tbody>
+  </table>
+</div>
+
+<script>
+(function () {
+  var rows = document.getElementById('oq-rows');
+  var table = document.getElementById('oq-table');
+  var empty = document.getElementById('oq-empty');
+
+  // Human names for the `kind` the form was tagged with.
+  var LABELS = {
+    visit: 'Patient visit (register + token)', patient: 'Patient registration',
+    patient_record: 'Clinical record', appointment: 'Appointment',
+    department: 'Department', doctor: 'Doctor', payout: 'Doctor payout',
+    prescription: 'Prescription', rx_preset: 'Rx preset',
+    sale: 'Pharmacy sale', medicine: 'Medicine', adjustment: 'Stock adjustment',
+    purchase_return: 'Purchase return', supplier: 'Supplier',
+    supplier_payment: 'Supplier payment', customer: 'Customer',
+    customer_payment: 'Customer payment', lab: 'Lab order',
+    lab_result: 'Lab results', lab_test: 'Lab test (price list)',
+    imaging: 'Scan / study', imaging_report: 'Radiology report',
+    scan_type: 'Scan (price list)', ward: 'Ward', bed: 'Bed',
+    admission: 'Admission', admission_advise: 'Admission advice',
+    round: 'Doctor round', medication: 'Ward medication', discharge: 'Discharge',
+    surgery: 'Surgery', surgery_advise: 'Surgery advice',
+    surgery_category: 'Surgery category', procedure: 'Surgery procedure',
+    expense: 'Expense', cash_closing: 'Cash closing'
+  };
+
+  function when(iso) {
+    try { return new Date(iso).toLocaleString(); } catch (e) { return iso || ''; }
+  }
+
+  // A short, readable summary so the desk can tell one queued entry from
+  // another without reading raw JSON.
+  function summarise(data) {
+    var keys = ['full_name', 'name', 'title', 'customer_name', 'amount',
+                'study_name', 'reason', 'complaint', 'bed_number', 'phone'];
+    var bits = [];
+    keys.forEach(function (k) {
+      var v = data && data[k];
+      if (v && typeof v === 'string' && v.trim()) bits.push(v.trim());
+      else if (typeof v === 'number') bits.push(String(v));
+    });
+    return bits.slice(0, 3).join(' · ') || '—';
+  }
+
+  function render(list) {
+    rows.innerHTML = '';
+    if (!list.length) {
+      table.style.display = 'none';
+      empty.style.display = '';
+      return;
+    }
+    empty.style.display = 'none';
+    table.style.display = '';
+
+    // Rejected first — those are the ones somebody has to do something about.
+    list.sort(function (a, b) {
+      if (a.status !== b.status) return a.status === 'failed' ? -1 : 1;
+      return (a.createdAt || '') < (b.createdAt || '') ? -1 : 1;
+    });
+
+    list.forEach(function (rec) {
+      var tr = document.createElement('tr');
+
+      var td = function (text) {
+        var c = document.createElement('td');
+        c.textContent = text;
+        return c;
+      };
+
+      tr.appendChild(td(when(rec.createdAt)));
+      tr.appendChild(td(LABELS[rec.kind] || rec.kind));
+
+      var status = document.createElement('td');
+      if (rec.status === 'failed') {
+        status.innerHTML = '<span style="color:#b91c1c;font-weight:600">Rejected</span>';
+      } else {
+        status.innerHTML = '<span style="color:#b45309;font-weight:600">Waiting</span>';
+      }
+      tr.appendChild(status);
+
+      var details = document.createElement('td');
+      details.textContent = rec.status === 'failed'
+        ? (rec.error || 'rejected by the server')
+        : summarise(rec.data);
+      details.style.fontSize = '13px';
+      tr.appendChild(details);
+
+      var actions = document.createElement('td');
+      actions.style.whiteSpace = 'nowrap';
+      if (rec.status === 'failed') {
+        var again = document.createElement('button');
+        again.className = 'btn';
+        again.type = 'button';
+        again.style.padding = '4px 10px';
+        again.textContent = 'Try again';
+        again.onclick = function () {
+          window.PharmaOffline.retry(rec.uuid).then(load);
+        };
+        actions.appendChild(again);
+      }
+      var drop = document.createElement('button');
+      drop.className = 'btn alt';
+      drop.type = 'button';
+      drop.style.padding = '4px 10px';
+      drop.style.marginLeft = '6px';
+      drop.textContent = 'Discard';
+      drop.onclick = function () {
+        if (!confirm('Discard this entry? It will not reach the server, and it '
+                     + 'cannot be recovered.')) return;
+        window.PharmaOffline.remove(rec.uuid)
+          .then(window.PharmaOffline.refreshBadge).then(load);
+      };
+      actions.appendChild(drop);
+      tr.appendChild(actions);
+
+      rows.appendChild(tr);
+    });
+  }
+
+  function load() {
+    if (!window.PharmaOffline) return;
+    return window.PharmaOffline.all().then(render);
+  }
+
+  document.getElementById('oq-refresh').onclick = load;
+  document.getElementById('oq-sync').onclick = function () {
+    window.PharmaOffline.sync().then(load);
+  };
+
+  // offline.js is deferred, so it may not have run yet when this inline script does.
+  if (window.PharmaOffline) load();
+  else window.addEventListener('DOMContentLoaded', load);
+})();
+</script>
+{% endblock %}

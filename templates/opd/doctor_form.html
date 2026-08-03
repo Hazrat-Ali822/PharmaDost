@@ -3,7 +3,7 @@
 {% block content %}
 <div class="form-card">
   <h2>{{ title }}</h2>
-  <form method="post">
+  <form method="post" data-offline-kind="doctor">
     {% csrf_token %}
     {{ form.as_p }}
 

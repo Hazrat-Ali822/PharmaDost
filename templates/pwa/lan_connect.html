@@ -1,0 +1,87 @@
+{% extends 'partials/base.html' %}
+{% block title %}Connect a Device{% endblock %}
+{% block page_title %}Connect a Device{% endblock %}
+{% block content %}
+
+{% if lan_url %}
+<div class="card" style="max-width:640px">
+  <h2 style="margin-top:0">Use {{ branding.brand_name|default:"Sehatyar" }} on a phone</h2>
+  <p class="muted" style="font-size:14px;line-height:1.7">
+    This computer is the server. Any phone, tablet or laptop on the
+    <strong>same wifi</strong> can use the full system from the address below —
+    <strong>no internet needed</strong>. Notifications, tokens, stock and the
+    doctor&nbsp;↔&nbsp;reception handoff all work live, because nothing leaves the building.
+  </p>
+
+  {% if lan_qr %}
+  <div style="text-align:center;margin:22px 0">
+    <img src="{{ lan_qr }}" alt="QR code for {{ lan_url }}"
+         style="width:230px;height:230px;image-rendering:pixelated;border:10px solid #fff;border-radius:12px;box-shadow:0 2px 14px rgba(0,0,0,.12)">
+    <div class="muted" style="font-size:13px;margin-top:8px">
+      Point the phone's camera at this
+    </div>
+  </div>
+  {% endif %}
+
+  <div style="text-align:center;background:var(--primary-50,#eef2ff);border:1px solid var(--primary);
+              border-radius:12px;padding:18px;margin:18px 0">
+    <div class="muted" style="font-size:12px;letter-spacing:.06em;text-transform:uppercase">
+      Or type this in the phone's browser
+    </div>
+    <div style="font-size:26px;font-weight:800;margin-top:6px;word-break:break-all">{{ lan_url }}</div>
+  </div>
+
+  {% if lan_extra_urls %}
+  <p class="muted" style="font-size:13px">
+    If that one does not work, this computer is also reachable on:
+    {% for u in lan_extra_urls %}<code>{{ u }}</code>{% if not forloop.last %}, {% endif %}{% endfor %}
+    — try the one that starts the same way as the phone's own wifi address.
+  </p>
+  {% endif %}
+
+  <h3 style="margin-bottom:6px">Steps</h3>
+  <ol style="font-size:14px;line-height:1.9;padding-left:20px">
+    <li>Connect the phone to the <strong>same wifi</strong> as this computer.</li>
+    <li>Scan the QR, or open Chrome and type the address above.</li>
+    <li>Sign in with that person's own staff account.</li>
+    <li>Bookmark it / "Add to Home screen" so nobody types it again.</li>
+  </ol>
+
+  <div style="background:#fffbeb;border:1px solid #f59e0b;border-radius:10px;padding:12px 14px;
+              font-size:13px;line-height:1.7;margin-top:16px">
+    <strong>Keep in mind</strong>
+    <ul style="margin:6px 0 0;padding-left:18px">
+      <li>This computer must stay <strong>on and awake</strong> — closing the app stops it for everyone.</li>
+      <li>The address changes if the router hands this computer a new one. If phones
+          suddenly cannot connect, open this page again and check the number.</li>
+      <li>On the wifi the app runs over plain <code>http</code>, so phones cannot
+          "install" it as an app or cache pages — they do not need to, the server is
+          right here. Anything typed while a phone briefly loses wifi is still queued
+          and syncs by itself.</li>
+      <li>Only devices on your wifi can reach it. It is <strong>not</strong> on the internet.</li>
+    </ul>
+  </div>
+
+  <div style="margin-top:18px" class="no-print">
+    <button class="btn" type="button" onclick="window.print()">Print this page</button>
+    <a class="btn alt" href="{% url 'get_app' %}">Back</a>
+  </div>
+</div>
+
+{% else %}
+<div class="card" style="max-width:640px">
+  <h2 style="margin-top:0">Not running as a local server</h2>
+  <p class="muted" style="font-size:14px;line-height:1.7">
+    This page shows the wifi address other devices join on, and it only applies to the
+    <strong>desktop app</strong> running on a computer in your clinic.
+  </p>
+  <p style="font-size:14px;line-height:1.7">
+    You are using the hosted site, which every device already reaches over the internet.
+    To run {{ branding.brand_name|default:"Sehatyar" }} on your own computer so it keeps
+    working when the internet is down, install the desktop app and open this page there.
+  </p>
+  <a class="btn alt" href="{% url 'get_app' %}">Back</a>
+</div>
+{% endif %}
+
+{% endblock %}

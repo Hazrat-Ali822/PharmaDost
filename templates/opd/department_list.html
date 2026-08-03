@@ -48,7 +48,7 @@
 
   <div class="card">
     <h3 style="margin-top:0;">Add a department</h3>
-    <form method="post">
+    <form method="post" data-offline-kind="department">
       {% csrf_token %}
       {{ form.as_p }}
       <button class="btn" type="submit">Add</button>

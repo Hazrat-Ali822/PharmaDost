@@ -10,7 +10,11 @@
 
 <form method="post" novalidate data-offline-kind="visit">
   {% csrf_token %}
-  {% if patient %}<input type="hidden" name="patient_id" value="{{ patient.pk }}">{% endif %}
+  {% if patient %}<input type="hidden" name="patient_id" value="{{ patient.pk }}">
+  {# Carried only so the provisional slip printed offline can name the patient — #}
+  {# an id on a piece of paper tells the doctor nothing. The server ignores it. #}
+  <input type="hidden" name="patient_label" value="{{ patient.full_name }}">
+  <input type="hidden" name="mrn_label" value="{{ patient.mrn }}">{% endif %}
 
   {% if patient %}
   {# Existing patient: everything already on file, shown so the desk can confirm #}

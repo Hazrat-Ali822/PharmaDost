@@ -31,7 +31,7 @@
 </div>
 
 {% if not existing %}
-<form method="post" class="card" style="max-width:520px">{% csrf_token %}
+<form method="post" class="card" style="max-width:520px" data-offline-kind="cash_closing">{% csrf_token %}
   {% for field in form %}
   <div class="form-row" style="align-items:flex-start">
     <label for="{{ field.id_for_label }}">{{ field.label }}</label>

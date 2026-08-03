@@ -3,7 +3,7 @@
 {% block page_title %}Purchase Return{% endblock %}
 {% block content %}
 <h2>New Purchase Return</h2>
-<form method="post" id="ret-form">{% csrf_token %}
+<form method="post" id="ret-form" data-offline-kind="purchase_return">{% csrf_token %}
   <div class="card" style="margin-bottom:12px">
     <div class="form-row">
       <label>Supplier</label>

@@ -29,7 +29,9 @@
 
 <div class="card" style="margin-bottom:16px;max-width:560px">
   <h3>Record a Payout</h3>
-  <form method="post">{% csrf_token %}
+  <form method="post" data-offline-kind="payout">{% csrf_token %}
+    {# Carried for the offline outbox — the live view reads it from the URL. #}
+    <input type="hidden" name="doctor_id" value="{{ doctor.pk }}">
     {% for field in form %}
     <div class="form-row" style="align-items:flex-start">
       <label for="{{ field.id_for_label }}">{{ field.label }}</label>
