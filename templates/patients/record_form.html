@@ -5,7 +5,7 @@
 <div class="form-card">
   <h2>Add Clinical Record — {{ patient.full_name }}</h2>
   <p class="muted" style="font-size:13px">Record a consultation, procedure, operation, ultrasound, x-ray etc. with full details. It will appear in the patient's history.</p>
-  <form method="post">
+  <form method="post" data-offline-kind="patient_record">
     {% csrf_token %}
     {{ form.as_p }}
     <button class="btn" type="submit">Save to History</button>

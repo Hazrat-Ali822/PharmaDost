@@ -242,6 +242,66 @@ def handle_bed(request, data):
     return {"bed_id": bed.id}
 
 
+def handle_patient_record(request, data):
+    """Replay an offline patient clinical record addition."""
+    from patients.forms import ClinicalRecordForm
+    from patients.models import Patient
+    _require(request.user, "patients")
+    form = ClinicalRecordForm(data)
+    if not form.is_valid():
+        raise ValidationError(form.errors)
+    patient_id = data.get("patient_id")
+    patient = get_object_or_404(Patient, pk=patient_id) if patient_id else None
+    record = form.save(commit=False)
+    record.patient = patient
+    record.created_by = request.user
+    record.save()
+    return {"record_id": record.id}
+
+
+def handle_supplier_payment(request, data):
+    """Replay an offline supplier payment."""
+    from suppliers.forms import SupplierPaymentForm
+    from suppliers.models import Supplier
+    _require(request.user, "suppliers")
+    form = SupplierPaymentForm(data)
+    if not form.is_valid():
+        raise ValidationError(form.errors)
+    supplier_id = data.get("supplier_id")
+    supplier = get_object_or_404(Supplier, pk=supplier_id) if supplier_id else None
+    payment = form.save(commit=False)
+    payment.supplier = supplier
+    payment.created_by = request.user
+    payment.save()
+    return {"payment_id": payment.id}
+
+
+def handle_procedure(request, data):
+    """Replay an offline OT procedure catalog addition."""
+    from ot.forms import ProcedureForm
+    _require(request.user, "ot")
+    form = ProcedureForm(data)
+    if not form.is_valid():
+        raise ValidationError(form.errors)
+    procedure = form.save(commit=False)
+    procedure.hospital = request.user.hospital
+    procedure.save()
+    return {"procedure_id": procedure.id}
+
+
+def handle_ward(request, data):
+    """Replay an offline IPD ward creation."""
+    from ipd.forms import WardForm
+    _require(request.user, "ipd")
+    form = WardForm(data)
+    if not form.is_valid():
+        raise ValidationError(form.errors)
+    ward = form.save(commit=False)
+    ward.hospital = request.user.hospital
+    ward.save()
+    return {"ward_id": ward.id}
+
+
 # kind -> handler. New offline-capable actions are added here as their phases
 # land; the client sends the matching `kind`.
 HANDLERS = {
@@ -254,6 +314,11 @@ HANDLERS = {
     "supplier": handle_supplier,
     "surgery": handle_surgery,
     "bed": handle_bed,
+    "patient_record": handle_patient_record,
+    "supplier_payment": handle_supplier_payment,
+    "procedure": handle_procedure,
+    "ward": handle_ward,
 }
+
 
 

@@ -5,7 +5,7 @@
 <div class="form-card">
   <h2>{{ title }}</h2>
   <p>Current payable: <strong>{{ supplier.balance }}</strong></p>
-  <form method="post">
+  <form method="post" data-offline-kind="supplier_payment">
     {% csrf_token %}
     {{ form.as_p }}
     <button class="btn" type="submit">Record Payment</button>

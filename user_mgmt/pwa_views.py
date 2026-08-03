@@ -128,13 +128,21 @@ def get_app(request):
 _SERVICE_WORKER = r"""
 const CACHE = 'pharmadost-__VERSION__';
 const SHELL = [
+  '/',
   '/static/css/app.css',
   '/static/js/offline.js',
   '/offline/',
+  '/patients/',
   '/patients/add/',
+  '/sales/',
   '/sales/new/',
+  '/opd/',
   '/opd/visit/',
-  '/lab/order/new/'
+  '/lab/',
+  '/lab/order/new/',
+  '/prescriptions/',
+  '/suppliers/',
+  '/suppliers/add/'
 ];
 
 self.addEventListener('install', (e) => {
