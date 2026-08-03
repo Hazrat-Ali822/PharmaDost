@@ -113,6 +113,22 @@ class SuperuserSmokeTest(TestCase):
             with self.subTest(page=name):
                 self.assertEqual(self.client.get(reverse(name)).status_code, 200)
 
+    def test_the_owner_can_get_back_to_the_portal_from_a_tenant_screen(self):
+        """The portal's own sidebar only exists inside /saas/, so a superuser who
+        steps into a hospital screen needs a way back that is not typing the URL."""
+        body = self.client.get(reverse('dashboard')).content.decode()
+        self.assertIn(reverse('saas:dashboard'), body)
+        self.assertIn('Owner Portal', body)
+
+    def test_staff_are_not_shown_the_owner_portal(self):
+        from saas.models import Hospital
+        h = Hospital.objects.create(name='Shaheen', slug='sh',
+                                    expiry_date=date.today() + timedelta(days=30))
+        admin = User.objects.create_user(email='ha@test.com', password='pw',
+                                         role='ADMIN', hospital=h)
+        c = Client(); c.force_login(admin)
+        self.assertNotIn('Owner Portal', c.get(reverse('dashboard')).content.decode())
+
 
 class AnonymousSmokeTest(TestCase):
     """Public surface: the login page must work; everything else must not leak."""
