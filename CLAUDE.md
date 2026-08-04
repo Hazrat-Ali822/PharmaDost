@@ -65,6 +65,21 @@ pip-audit --requirement requirements.txt
 `.github/workflows/ci.yml` runs the suite, a missing-migration check, coverage, the E2E
 job and the security scans on every push and pull request.
 
+**Testing offline behaviour needs the network genuinely severed**, and three obvious ways
+of doing that silently do nothing — each one leaves the test passing while proving nothing:
+
+- `context.set_offline(True)` and `context.route(..., abort)` apply to the *page*, not to
+  the service worker's own fetches; the worker keeps reaching the server.
+- `server_thread.terminate()` closes the listening socket but leaves the keep-alive
+  connections Chrome already holds being served by their handler threads.
+
+`e2e.TrulyOfflineTest` therefore sets `QuietWSGIRequestHandler.protocol_version` to
+`HTTP/1.0` (no keep-alive, so every request needs a fresh socket) and then stops the server
+— and asks for an **un-cached URL first as a control**. The app's own offline page coming
+back is what proves the cut worked; Django's 404 coming back means it did not. Keep that
+control: without it the whole test is decoration. The class holds one test because there is
+no server left to run a second against.
+
 Two traps when adding tests:
 
 - `Patient.mrn` is auto-allocated when left blank, so fixtures normally omit it. Passing
@@ -391,12 +406,33 @@ the whole site), and an `/offline/` fallback. All read `SiteSettings.load()`, so
 follows the logged-in tenant. The four browser-fetched endpoints are in
 `LoginRequiredMiddleware.ALLOWED_NAMES` — if they redirect to login, install breaks.
 
+**A browser does not send cookies for either of them.** The manifest link therefore carries
+`crossorigin="use-credentials"`, and the icon URL carries `?t=<brand_token>` naming the
+tenant's `SiteSettings` row. Without both, `SiteSettings.load()` sees an anonymous request,
+falls back to the hospital-less row, and every install lands on the home screen branded
+"Sehatyar" with the default letter icon instead of the hospital's own name and logo — which
+is exactly what shipped. `brand_token` is signed (so the endpoint cannot be walked for every
+tenant's logo) and deterministic bar `updated_at` (stable URL, but a replaced logo appears).
+Renaming an *already installed* app is up to the browser; on Android the app has to be
+removed from the home screen and re-added.
+
 The service worker is **shell-cache + offline-read**: it keeps the app opening and shows
 already-visited pages on a dropped connection, with a clear offline page. Offline *writes*
 are handled separately by the outbox below, not by the service worker.
 
-Three things about it are load-bearing:
+Five things about it are load-bearing:
 
+- **`install` waits on `_CRITICAL_URL_NAMES` only** — the offline page, the dashboard and
+  the two static assets — and the other ~45 screens are fetched afterwards, from a `warm`
+  message the page posts once the worker is active. Blocking activation on the whole shell
+  meant that on a clinic connection **no worker existed** for as long as the download took,
+  and staff who turned the wifi off in that window got the browser's own "you cannot reach
+  this site" page on every tap. Nothing slow may go in `activate` either: fetch events are
+  held until it settles.
+- **Every branch of `fetch` must end in a `Response`.** `respondWith(undefined)` is a
+  network error and the browser answers it with that same error page, so the last-resort
+  offline HTML is *built into* the worker rather than fetched from the cache — a fallback
+  that has to be retrieved is unavailable in precisely the case it exists for.
 - **The shell is built from url *names*** (`pwa_views.SHELL_URL_NAMES`, reversed per
   request), not hand-written paths. Hard-coded paths rot silently: `/opd/visit/` and
   `/lab/order/new/` sat in that list resolving to nothing, so the two screens the offline
@@ -408,9 +444,26 @@ Three things about it are load-bearing:
   doctor signs out and a receptionist signs in, one cache would serve the doctor's pages to
   whoever is there now. A different user → a different cache name → `activate` deletes the
   old one.
-- **Redirects and auth paths are never cached** (`res.redirected` is skipped, `NO_CACHE`
-  covers `/accounts/`, `/admin/` and the sync endpoints). Caching the login page a session
-  timeout redirected to would show a sign-in screen where a ward list should be.
+- **Redirects and auth paths are never cached** — in the fetch handler (`res.redirected` is
+  skipped, `NO_CACHE` covers `/accounts/`, `/login/`, `/logout/`, `/admin/` and the sync
+  endpoints) **and in the pre-cache**. The pre-cache is the easy one to get wrong:
+  `cache.add()` follows redirects and stores the final response under the URL that was
+  *asked for*, so warming while signed out filed the sign-in page under `/sales/new/`,
+  `/patients/` and every other screen — and each of them then showed a login form offline,
+  which from the ward is indistinguishable from having been logged out. Use the worker's
+  `save()` helper (fetch, then `res.ok && !res.redirected`), never `cache.add`. Warming is
+  skipped outright when `SIGNED_IN` is false.
+
+Static assets are matched exactly first and then with `ignoreSearch`, because templates link
+them as `app.css?v=1.7`: after a version bump the exact URL misses, and without the second
+lookup the page renders offline with no stylesheet at all.
+
+**A service worker only runs on a secure origin**, so `SECURE_SSL_REDIRECT` is on whenever
+`USE_SSL` is (`DJANGO_SSL_REDIRECT=false` disables it). Plain http was a dead end in two
+ways at once — no worker, and `SESSION_COOKIE_SECURE` meant a sign-in never stuck — with
+nothing on screen saying so. `/get-app/` now reports what is actually true on *this* device:
+secure origin, worker running, N of M screens saved, and a button to save them. A silent
+failure here previously had nowhere to be seen.
 
 ### Offline data entry (outbox + sync)
 

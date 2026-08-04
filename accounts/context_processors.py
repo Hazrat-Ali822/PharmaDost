@@ -31,8 +31,23 @@ def site_branding(request):
         branding = SiteSettings.load()
     except Exception:
         branding = None
+
+    # The app icon, addressed by tenant rather than by session. Safari fetches
+    # apple-touch-icon through its own loader without the session cookie, so a
+    # plain {% url 'pwa_icon' %} renders the platform default and the installed
+    # app on the home screen carries the wrong logo.
+    icon_url = ''
+    if branding is not None:
+        try:
+            from user_mgmt.pwa_views import brand_token
+            from django.urls import reverse
+            icon_url = f"{reverse('pwa_icon', args=[192])}?t={brand_token(branding)}"
+        except Exception:
+            icon_url = ''
+
     return {
         'branding': branding,
+        'brand_icon_url': icon_url,
         'site_defaults': SITE_DEFAULTS,
         # Set only by the desktop build acting as a LAN server (see
         # desktop/launcher.py). An env read, not a query — this runs on every

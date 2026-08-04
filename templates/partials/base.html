@@ -16,16 +16,43 @@
 
   {# Install-as-app (PWA). The manifest and icon are per-tenant, so an install #}
   {# carries this hospital's own name, logo and colour. #}
-  <link rel="manifest" href="{% url 'pwa_manifest' %}">
+  {# crossorigin="use-credentials" is load-bearing: a manifest is fetched with #}
+  {# NO cookies by default, so without it the tenant cannot be resolved and #}
+  {# every install came out branded "Sehatyar" instead of the hospital's name. #}
+  <link rel="manifest" href="{% url 'pwa_manifest' %}" crossorigin="use-credentials">
   <meta name="theme-color" content="{{ branding.primary_color|default:'#4f46e5' }}">
-  <link rel="apple-touch-icon" href="{% url 'pwa_icon' 192 %}">
+  <link rel="apple-touch-icon" href="{{ brand_icon_url|default_if_none:'' }}">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="{{ branding.brand_name|default:'Sehatyar' }}">
   <script>
     // Register the service worker (needs HTTPS or localhost — degrades quietly on plain http).
-    if ('serviceWorker' in navigator) {
+    // Status is recorded on window.__sw so the Get the App page can tell staff
+    // whether offline is actually armed; a silent failure here is why "offline
+    // doesn't work" had nowhere to be seen.
+    window.__sw = { supported: ('serviceWorker' in navigator),
+                    secure: window.isSecureContext, ready: false, error: '' };
+    if (window.__sw.supported) {
       window.addEventListener('load', function () {
-        navigator.serviceWorker.register('/sw.js').catch(function () {});
+        navigator.serviceWorker.register('/sw.js').then(function () {
+          return navigator.serviceWorker.ready;
+        }).then(function (reg) {
+          window.__sw.ready = true;
+          // Save the remaining screens now that the worker is already active and
+          // protecting the app. It used to be the other way round — nothing was
+          // protected until all ~45 had downloaded.
+          //
+          // Deliberately late and at most once a tab: this is ~45 page requests
+          // on the same weak link the user is working over, so it must never
+          // compete with the screen actually in front of them. The worker skips
+          // anything already saved, so on every later load it costs nothing.
+          if (!reg.active || sessionStorage.getItem('sw-warmed')) return;
+          setTimeout(function () {
+            sessionStorage.setItem('sw-warmed', '1');
+            reg.active.postMessage({ type: 'warm' });
+          }, 4000);
+        }).catch(function (err) {
+          window.__sw.error = String((err && err.message) || err);
+        });
       });
     }
     // Stash the browser's install prompt so a button can trigger it later.

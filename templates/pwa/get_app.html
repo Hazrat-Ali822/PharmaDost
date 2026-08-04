@@ -9,7 +9,7 @@
 
 <div class="card" style="max-width:640px;padding:28px">
   <div style="display:flex;gap:16px;align-items:center;margin-bottom:18px">
-    <img src="{% url 'pwa_icon' 192 %}" alt="" width="64" height="64" style="border-radius:14px">
+    <img src="{{ brand_icon_url }}" alt="" width="64" height="64" style="border-radius:14px">
     <div>
       <h3 style="margin:0">{{ branding.brand_name|default:"Sehatyar" }}</h3>
       <p class="muted" style="margin:2px 0 0;font-size:13.5px">
@@ -54,7 +54,26 @@
     </div>
   </div>
 
-  <div style="margin-top:22px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px">
+  {# Whether offline is actually armed on THIS device. Without it the only way #}
+  {# to find out was to switch the wifi off and see, and a device that had #}
+  {# quietly failed to save anything looked identical to one that was ready. #}
+  <div id="offline-status" style="margin-top:22px;border:1px solid var(--border);border-radius:10px;padding:14px 16px">
+    <b style="font-size:13.5px">Offline readiness on this device</b>
+    <ul id="offline-checks" style="list-style:none;padding:0;margin:10px 0 0;font-size:13px;line-height:2">
+      <li id="chk-secure">⏳ Checking secure connection…</li>
+      <li id="chk-engine">⏳ Checking offline engine…</li>
+      <li id="chk-pages">⏳ Checking saved screens…</li>
+    </ul>
+    <button class="btn alt" id="warm-btn" style="margin-top:10px;font-size:13.5px">
+      Save screens for offline now
+    </button>
+    <p class="muted" style="font-size:12.5px;line-height:1.7;margin:8px 0 0">
+      Do this once while the internet is working. After that the app opens and its
+      forms can be filled in with no connection at all.
+    </p>
+  </div>
+
+  <div style="margin-top:14px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px">
     <b style="font-size:13.5px">Works on a shaky connection</b>
     <p class="muted" style="font-size:13px;line-height:1.7;margin:6px 0 0">
       The app keeps opening and shows the pages you already visited even if the internet
@@ -84,5 +103,65 @@
   .install-hint{display:inline}
   .pwa-installable .install-btn{display:inline-block}
   .pwa-installable .install-hint{display:none}
+  #offline-checks li{white-space:normal}
 </style>
+
+<script>
+(function () {
+  var set = function (id, text) { document.getElementById(id).textContent = text; };
+
+  // A service worker only runs on a secure origin. On plain http it is not
+  // "broken" — the browser refuses to register it — and nothing on screen said
+  // so, which is worth naming here rather than leaving as a silent no-op.
+  set('chk-secure', window.isSecureContext
+      ? '✅ Secure connection — offline is allowed here'
+      : '❌ This page is not on a secure (https) address, so the browser will not '
+        + 'let the app work offline. Open the site with https:// .');
+
+  if (!('serviceWorker' in navigator)) {
+    set('chk-engine', '❌ This browser has no offline support. Use Chrome, Edge or Safari.');
+    set('chk-pages', '—');
+    document.getElementById('warm-btn').disabled = true;
+    return;
+  }
+
+  var btn = document.getElementById('warm-btn');
+
+  function showPages(s) {
+    var done = s.saved >= s.total;
+    set('chk-pages', (done ? '✅ ' : '⚠️ ') + s.saved + ' of ' + s.total
+        + ' screens saved on this device'
+        + (done ? '' : ' — stay on this page a moment longer, or tap below'));
+    btn.disabled = false;
+    btn.textContent = done ? 'Save again' : 'Save screens for offline now';
+  }
+
+  // Always ask for `warm`, never a bare status: the worker replies when the copy
+  // has *finished*, so the number on screen is the final one. Asking for a
+  // status instead reported whatever had been saved in the first second and
+  // then never corrected itself — a device that was in fact fully ready sat
+  // there showing a warning.  `warm` is idempotent and joins a copy already in
+  // progress, so pressing the button twice costs nothing.
+  function warm() {
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    set('chk-pages', '⏳ Saving screens for offline use…');
+    navigator.serviceWorker.ready.then(function (reg) {
+      set('chk-engine', '✅ Offline engine is running');
+      if (reg.active) reg.active.postMessage({ type: 'warm' });
+    }).catch(function () {
+      set('chk-engine', '❌ Offline engine did not start'
+          + (window.__sw && window.__sw.error ? ' (' + window.__sw.error + ')' : ''));
+      set('chk-pages', '—');
+    });
+  }
+
+  navigator.serviceWorker.addEventListener('message', function (e) {
+    if (e.data && e.data.type === 'status') showPages(e.data);
+  });
+
+  btn.addEventListener('click', warm);
+  warm();
+})();
+</script>
 {% endblock %}

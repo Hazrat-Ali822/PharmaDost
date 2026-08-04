@@ -14,3 +14,9 @@ DATABASES = {
 
 # Fast password hashing for tests
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+
+# The suite (and the Playwright live server) speaks plain http. On CI, BASE_DIR
+# lives under /home/, so DEBUG is off and settings.py switches the HTTPS
+# hardening on — which would put a 301 in front of every view and fail every
+# assertion in the suite at once.
+SECURE_SSL_REDIRECT = False

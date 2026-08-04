@@ -112,6 +112,110 @@ class PwaTest(TestCase):
         self.assertIn('rel="manifest"', body)
         self.assertIn("serviceWorker", body)
 
+    def test_the_manifest_link_is_fetched_with_the_session_cookie(self):
+        """A manifest is fetched with NO cookies unless the link says otherwise,
+        so without this the tenant cannot be resolved and every installed app
+        came out branded with the platform default instead of the hospital."""
+        body = self.client.get(reverse('get_app')).content.decode()
+        self.assertIn('crossorigin="use-credentials"', body)
+
+    def test_the_icon_is_the_tenants_even_when_fetched_without_a_session(self):
+        """The home-screen icon is fetched by the browser's image loader, which
+        need not send the session cookie. Addressed only by session it rendered
+        the platform default — the wrong logo on the phone's home screen."""
+        anon = Client()
+        clear_current_hospital()
+        src = json.loads(anon.get(reverse('pwa_manifest')).content)['icons'][0]['src']
+        self.assertIn('?t=', src, "icon url does not name the tenant")
+
+        # What that URL renders must not depend on who is asking.
+        signed_in = self.client.get(reverse('pwa_manifest'))
+        tenant_src = json.loads(signed_in.content)['icons'][0]['src']
+        clear_current_hospital()
+        resp = anon.get(tenant_src)
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.content.startswith(b'\x89PNG'))
+
+        from user_mgmt.pwa_views import _branding_from_token
+        token = tenant_src.split('?t=')[1]
+        self.assertEqual(_branding_from_token(token).brand_name, 'Shaheen Health Care')
+
+    def test_a_tampered_icon_token_is_refused_rather_than_trusted(self):
+        """The token is signed so the endpoint cannot be walked to pull every
+        tenant's logo off a shared host."""
+        from user_mgmt.pwa_views import _branding_from_token
+        self.assertIsNone(_branding_from_token('1:0:not-a-real-signature'))
+        self.assertIsNone(_branding_from_token(''))
+
+    def test_the_icon_url_is_stable_but_changes_when_the_logo_does(self):
+        """Stable, or the browser re-downloads the icon on every page load;
+        changed on edit, or a replaced logo never appears."""
+        from user_mgmt.pwa_views import brand_token
+        b = SiteSettings.objects.get(hospital=self.h)
+        self.assertEqual(brand_token(b), brand_token(b))
+        before = brand_token(b)
+        # Move `updated_at` by hand rather than saving and trusting the clock:
+        # Windows' timer granularity is coarse enough that a save in the same
+        # tick leaves it unchanged, which made this assertion flaky.
+        b.updated_at = b.updated_at + timedelta(seconds=1)
+        self.assertNotEqual(before, brand_token(b))
+
+    def test_the_worker_takes_over_before_the_whole_shell_is_downloaded(self):
+        """Blocking activation on all ~45 screens meant that on a clinic
+        connection no worker existed for minutes after the app was opened, and a
+        wifi drop in that window left every tap on the browser's own error page.
+        Install must wait on a handful of URLs, not the lot."""
+        from user_mgmt.pwa_views import _critical_urls, _shell_urls
+
+        critical = _critical_urls()
+        self.assertLessEqual(len(critical), 6,
+                             "too much is blocking the worker from activating")
+        # The two that make the app openable at all, plus its own offline page.
+        self.assertIn(reverse('pwa_offline'), critical)
+        self.assertIn(reverse('dashboard'), critical)
+        self.assertLess(len(critical), len(_shell_urls()) / 4)
+
+        body = self.client.get('/sw.js').content.decode()
+        install = body.split("addEventListener('install'")[1].split('activate')[0]
+        self.assertIn('CRITICAL', install)
+        self.assertNotIn('WARM', install,
+                         "install still waits on the full shell")
+
+    def test_pre_caching_never_files_a_login_page_under_a_real_screen(self):
+        """`cache.add()` follows redirects and stores the final response under
+        the URL that was *asked for*. Pre-caching while signed out therefore
+        filed the sign-in page under /sales/new/, /patients/ and every other
+        screen — and the app then showed a login form on each of them offline,
+        which from the ward is indistinguishable from having been logged out."""
+        body = self.client.get('/sw.js').content.decode()
+        self.assertNotIn('c.add(', body,
+                         "cache.add() follows redirects — use the save() helper")
+        self.assertIn('res.redirected', body.split('async function save')[1][:400])
+
+        # And signed out there is nothing worth fetching in the first place.
+        anon = Client()
+        clear_current_hospital()
+        self.assertIn('const SIGNED_IN = false', anon.get('/sw.js').content.decode())
+        self.assertIn('const SIGNED_IN = true', body)
+
+    def test_the_sign_in_screen_itself_is_never_cached(self):
+        body = self.client.get('/sw.js').content.decode()
+        no_cache = body.split('const NO_CACHE = ')[1].split(';')[0]
+        for path in ("'/accounts/'", "'/login/'", "'/logout/'"):
+            self.assertIn(path, no_cache)
+
+    def test_an_offline_page_is_built_into_the_worker_itself(self):
+        """Every branch of the fetch handler has to end in a Response.
+        `respondWith(undefined)` is a network error, and the browser answers
+        that with its own 'you cannot reach this site' page — the exact screen
+        this mechanism exists to prevent."""
+        body = self.client.get('/sw.js').content.decode()
+        self.assertIn('OFFLINE_HTML', body)
+        self.assertIn("You're offline", body,
+                      "the fallback page is fetched, not built in — so it is "
+                      "unavailable in exactly the case it is needed")
+        self.assertIn('offlinePage()', body)
+
 
 class LanConnectTest(TestCase):
     """The desktop build can act as the clinic's own server on the wifi, so every

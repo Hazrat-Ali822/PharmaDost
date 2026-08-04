@@ -233,6 +233,18 @@ class MobileLayoutTest(BrowserTestCase):
         self.assertGreaterEqual(size, 16, "text inputs are below 16px on a phone")
 
 
+# NOTE: there is deliberately no browser test for the offline shell here.
+# Staging a real network cut is harder than it looks and every cheap way of
+# faking one silently proves nothing: `context.set_offline(True)` and
+# `context.route(..., abort)` apply to the page, not to the service worker's own
+# fetches, and `server_thread.terminate()` leaves the keep-alive sockets Chrome
+# already holds being served by their handler threads. Stopping an HTTP/1.0
+# server does work and was used by hand to verify the behaviour (CLAUDE.md
+# records the method), but as a standing test it passed about one run in three
+# and left ~14 Chromium processes behind, which then broke whichever test ran
+# next. What it would have guarded is covered deterministically in
+# user_mgmt/tests_pwa.py instead.
+
 class RoleVisibilityTest(BrowserTestCase):
     """What a role cannot use must not be in their sidebar."""
 

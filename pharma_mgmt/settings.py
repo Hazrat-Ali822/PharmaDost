@@ -239,3 +239,15 @@ if USE_SSL:
     CSRF_COOKIE_SECURE = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = "DENY"
+    # Send plain http straight to https instead of serving the app there.
+    # Typing the bare domain on a phone lands on http, and that address is a
+    # dead end for this app in two ways at once: browsers refuse to register a
+    # service worker on an insecure origin (so nothing works offline), and the
+    # cookies above are Secure-only (so a sign-in never sticks). Neither failure
+    # says anything on screen.
+    # Env-overridable because it is the one setting here that can take a site
+    # down rather than merely weaken it: a host that does not tell Django the
+    # request arrived over TLS would redirect to https for ever. Set
+    # DJANGO_SSL_REDIRECT=false in .env if that happens.
+    SECURE_SSL_REDIRECT = os.getenv(
+        "DJANGO_SSL_REDIRECT", "true").lower() in ("1", "true", "yes")
