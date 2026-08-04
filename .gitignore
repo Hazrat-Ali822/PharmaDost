@@ -38,3 +38,6 @@ e2e-artifacts/
 *.mdb
 *.DBF
 *.dbf
+# products.csv is misnamed — it is actually an encrypted Access DB (73MB), not a
+# CSV; kept on the machine for import, never in the repo
+/products.csv
