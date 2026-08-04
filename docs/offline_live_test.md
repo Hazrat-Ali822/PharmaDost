@@ -50,11 +50,15 @@ If `/sw.js` shows an old short SHELL, `collectstatic`/restart did not happen.
 
 **Test A — the basic loop**
 
-1. Sign in. Wait ~15 seconds without touching anything (the worker is caching every
-   screen in the background; DevTools → Application → Cache Storage fills up).
+1. Sign in, then open **App → Get the App** and look at *Offline readiness on this
+   device*. Wait until it reads **"✅ 46 of 46 screens saved"** (tap **Save screens
+   for offline now** if it hasn't finished). This panel is the reliable signal that the
+   device is ready — do not guess with a timer. If it says the connection is not secure,
+   the site is not on HTTPS: go back to step 0.
 2. Turn the laptop's **wifi off**.
-3. Open **Patients → Add Patient**. *The page must open.* If you get the offline page,
-   go back to step 0 — HTTPS or caching is not working.
+3. Open **Patients → Add Patient**. *The page must open.* If you get the browser's own
+   "you cannot reach this site" page, the worker never armed — reopen Get the App on a
+   working connection and let the readiness panel reach 46/46 first.
 4. Fill it in, Save. Expect: **"💾 No connection — saved on this device."**
 5. Bottom-left shows **"⏳ 1 waiting to sync"**.
 6. Turn wifi **on**. Within about a minute (or immediately on the first click):
@@ -100,17 +104,29 @@ This is the case that matters most in KPK: wifi connected, internet dead.
 2. Wifi on. The entry is **rejected**, and `/offline/queue/` shows it in red with the
    reason and a **Try again** / **Discard** button. It must not sit at "waiting" forever.
 
+**Test G — the installed app carries the hospital's name, not "Sehatyar"**
+
+1. On a phone, sign in **as a user of the hospital** (not the platform owner, whose
+   account has no hospital).
+2. Install: Android Chrome ⋮ → *Install app*; iPhone Safari Share → *Add to Home Screen*.
+3. The home-screen icon and name must be the **hospital's own** (its logo, or its brand
+   letter on its colour). If an older install still says "Sehatyar", remove it from the
+   home screen and add it again — the name is fixed at install time, and updating the
+   server does not rename an app already on the phone.
+
 ---
 
 ## If something fails
 
 | Symptom | Cause |
 |---|---|
-| Offline page instead of the app | No HTTPS, or the worker never installed — step 0 |
-| Form submits and shows a browser error offline | Old `offline.js` — `collectstatic` + restart |
-| "⏳ waiting" forever, never syncs | Open `/offline/queue/`; if it is red it was rejected, and the reason is printed |
-| Everything syncs twice | Should be impossible — check `ClientAction` rows have unique `client_uuid` |
-| Bell floods after reconnect | `Notification` created via `bulk_create` somewhere — it skips the `save()` hook |
+| Browser's own error page offline | The worker never armed — open **Get the App**, confirm the readiness panel says secure + 46/46. No HTTPS is the usual cause (step 0). |
+| Readiness panel stuck below 46/46 | Left the page too soon — the warm-up runs in the background; reopen Get the App on a working connection and tap **Save screens**. |
+| Installed app says "Sehatyar", not the hospital | An install from before this fix, or installed by the owner account (no hospital). Remove from the home screen and re-add, signed in as a hospital user. |
+| Form submits and shows a browser error offline | Old `offline.js` served — `collectstatic` + restart, then hard-refresh the phone once. |
+| "⏳ waiting" forever, never syncs | Open `/offline/queue/`; if it is red it was rejected, and the reason is printed. |
+| Everything syncs twice | Should be impossible — check `ClientAction` rows have unique `client_uuid`. |
+| Bell floods after reconnect | `Notification` created via `bulk_create` somewhere — it skips the `save()` hook. |
 
 ## What still will not work offline, by design
 
