@@ -24,3 +24,17 @@ build/
 htmlcov/
 test-results/
 e2e-artifacts/
+
+# local scratch / throwaway tooling — never commit
+/scratch/
+*.bin
+
+# per-machine Claude settings (see CLAUDE.md — must never be committed)
+.claude/settings.local.json
+
+# clinic data files brought in for import — belong on the machine, never in the
+# repo or on the server (patient/sales data + they bloat every clone)
+*.accdb
+*.mdb
+*.DBF
+*.dbf
