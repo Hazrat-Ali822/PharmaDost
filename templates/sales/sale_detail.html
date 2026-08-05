@@ -3,8 +3,8 @@
 {% block content %}
 <div class="page-head noprint">
   <h2>Bill #{{ sale.id }} {% if sale.is_returned %}<span class="danger">(RETURNED)</span>{% endif %}</h2>
-  <div style="display:inline-flex; align-items:center; gap:8px;">
-    <select id="receipt-size-select" style="padding:8px 12px; border-radius:8px; border:1px solid var(--border-strong); background:var(--surface); color:var(--text); font-weight:600;">
+  <div class="btn-row">
+    <select id="receipt-size-select" style="width:auto; padding:9px 12px; border-radius:11px; font-weight:600;">
       <option value="80mm">Standard 80mm Roll</option>
       <option value="58mm">Small 58mm Roll</option>
     </select>
