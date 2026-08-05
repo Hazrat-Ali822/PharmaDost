@@ -43,17 +43,25 @@ def invoice_create(request, appointment_id=None):
         appointment = get_object_or_404(Appointment, pk=appointment_id)
 
     if request.method == 'POST':
-        form = InvoiceForm(request.POST)
+        form = InvoiceForm(request.POST, user=request.user)
         if form.is_valid():
-            invoice = create_opd_invoice(form.cleaned_data['appointment'], request.user, payment_method=form.cleaned_data['payment_method'], discount=form.cleaned_data['discount'])
-            messages.success(request, 'Invoice created successfully.')
-            return redirect('invoice_list')
+            appt = form.cleaned_data.get('appointment')
+            if not appt:
+                form.add_error('appointment',
+                               'Select the appointment whose consultation fee you want to bill.')
+            else:
+                invoice = create_opd_invoice(
+                    appt, request.user,
+                    payment_method=form.cleaned_data['payment_method'],
+                    discount=form.cleaned_data['discount'])
+                messages.success(request, f'Invoice {invoice.display_no} created successfully.')
+                return redirect('invoice_list')
     else:
         initial = {}
         if appointment:
             initial['appointment'] = appointment
             initial['patient'] = appointment.patient
-        form = InvoiceForm(initial=initial)
+        form = InvoiceForm(initial=initial, user=request.user)
 
     return render(request, 'billing/invoice_form.html', {'form': form, 'title': 'Create Invoice'})
 
