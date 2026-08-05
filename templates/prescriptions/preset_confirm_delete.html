@@ -7,7 +7,7 @@
   
   <form method="post" style="margin-top:20px; display:inline-flex; gap:8px; justify-content:center; width:100%;">
     {% csrf_token %}
-    <button class="btn danger" type="submit" style="background:#ef4444; color:white; border:none; padding:10px 20px;">Yes, Delete</button>
+    <button class="btn danger" type="submit">Yes, Delete</button>
     <a class="btn alt" href="{% url 'prescription_presets' %}">Cancel</a>
   </form>
 </div>

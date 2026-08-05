@@ -12,7 +12,7 @@
 
   <form method="post" onsubmit="this.querySelector('button[type=submit]').disabled = true; this.querySelector('button[type=submit]').innerText = 'Processing...';" style="display:flex; gap:10px; justify-content:center;">
     {% csrf_token %}
-    <button class="btn danger" type="submit" style="background:#ef4444; border:none; color:white !important; padding:10px 24px; font-weight:600; cursor:pointer; border-radius:8px;">Yes, Void Invoice</button>
+    <button class="btn danger" type="submit">Yes, Void Invoice</button>
     <a class="btn alt" href="{% url 'invoice_detail' invoice.pk %}" style="padding:10px 24px; font-weight:600; text-decoration:none; border-radius:8px;">Cancel</a>
   </form>
 </div>
