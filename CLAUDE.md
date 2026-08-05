@@ -214,6 +214,20 @@ the full `ipd` feature (Admit Patient, Discharge) are gated on `nav.ipd` in
 `templates/ipd/admission_list.html` so a nurse never gets a link into a 403; "Admit
 Patient" is additionally hidden from doctors, who advise instead of admitting.
 
+**`ward_manage` (Ward In-charge / Charge Nurse)** is a third tier above `ward`. `ward`
+(every nurse) can *view* the duty roster and their own duties and do bedside work;
+`ward_manage` *builds* the roster and *allocates* patients. Default roles: `ADMIN` only —
+the admin promotes a senior nurse to In-charge by granting `ward_manage` in the access
+editor. It is bundled into the `ipd` module. Screens (`ipd/views.py`): `duty_roster`
+(`ward`, weekly grid per ward, one `NurseShift` per nurse/date/shift — the roster the
+In-charge builds), `patient_allocation` (`ward_manage`, assigns each admitted patient to a
+nurse *rostered for that shift* — `PatientAllocation` is unique per admission/date/shift,
+and the nurse's load is shown so the ratio is visible), and `my_duties` (`ward`, a nurse's
+own upcoming shifts + the patients allotted to them today). `Ward.in_charge` names the
+senior nurse who runs the ward. Shifts are `MORNING/EVENING/NIGHT` (`ipd.models.SHIFT_CHOICES`,
+times in `SHIFT_TIMES`); `_current_shift()` maps the clock to one. `roster_add` upserts on
+the unique `(nurse, date, shift)` so a re-add moves the nurse rather than duplicating.
+
 ### What the admin is told
 
 Two channels, deliberately separated — mixing them makes the inbox unreadable:

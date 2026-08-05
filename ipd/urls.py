@@ -19,4 +19,10 @@ urlpatterns = [
     path('beds/new/', views.bed_create, name='bed_create'),
     path('beds/<int:pk>/edit/', views.bed_edit, name='bed_edit'),
     path('beds/<int:pk>/delete/', views.bed_delete, name='bed_delete'),
+    # Nursing / ward management
+    path('roster/', views.duty_roster, name='duty_roster'),
+    path('roster/add/', views.roster_add, name='roster_add'),
+    path('roster/<int:pk>/remove/', views.roster_remove, name='roster_remove'),
+    path('allocation/', views.patient_allocation, name='patient_allocation'),
+    path('my-duties/', views.my_duties, name='my_duties'),
 ]

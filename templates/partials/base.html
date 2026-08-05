@@ -283,6 +283,18 @@
           {% endif %}
         </a>
         {% endif %}
+        {# Nursing / ward management #}
+        <a href="{% url 'ipd:duty_roster' %}" class="{% if '/ipd/roster' in request.path %}active{% endif %}" style="display:flex; align-items:center; width:100%; padding-left:44px;">
+          <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px;">Duty Roster</span>
+        </a>
+        {% if nav.ward_manage %}
+        <a href="{% url 'ipd:patient_allocation' %}" class="{% if '/ipd/allocation' in request.path %}active{% endif %}" style="display:flex; align-items:center; width:100%; padding-left:44px;">
+          <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px;">Patient Allocation</span>
+        </a>
+        {% endif %}
+        <a href="{% url 'ipd:my_duties' %}" class="{% if '/ipd/my-duties' in request.path %}active{% endif %}" style="display:flex; align-items:center; width:100%; padding-left:44px;">
+          <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px;">My Duties</span>
+        </a>
         {% endif %}
         {% if nav.ot and request.user.role != 'DOCTOR' %}
         <a href="{% url 'ot:surgery_list' %}" class="{% if '/ot/' in request.path %}active{% endif %}" style="display:flex; justify-content:space-between; align-items:center; width:100%;">

@@ -6,7 +6,16 @@ from opd.models import Doctor
 class WardForm(forms.ModelForm):
     class Meta:
         model = Ward
-        fields = ['name', 'ward_type', 'daily_rate']
+        fields = ['name', 'ward_type', 'daily_rate', 'in_charge']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Ward In-charge is a senior nurse (admins may run a ward too).
+        from accounts.models import User
+        self.fields['in_charge'].queryset = User.objects.filter(
+            is_active=True, role__in=['NURSE', 'ADMIN']).order_by('first_name', 'email')
+        self.fields['in_charge'].required = False
+        self.fields['in_charge'].label = 'Ward In-charge (senior nurse)'
 
 class BedForm(forms.ModelForm):
     class Meta:

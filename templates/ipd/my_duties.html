@@ -1,0 +1,56 @@
+{% extends 'partials/base.html' %}
+{% block title %}My Duties{% endblock %}
+{% block page_title %}My Duties{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>My Duties</h2>
+</div>
+
+{# Patients allotted to me today — the work in front of me right now. #}
+<div class="card">
+  <h3 style="margin-top:0;">My patients today <span class="muted" style="font-weight:400; font-size:13px;">({{ today|date:'d/m/Y' }})</span></h3>
+  {% if my_alloc %}
+  <table class="tbl">
+    <thead><tr><th>Shift</th><th>Bed / Ward</th><th>Patient</th><th>Action</th></tr></thead>
+    <tbody>
+      {% for a in my_alloc %}
+      <tr {% if a.shift == current_shift %}style="background:color-mix(in srgb, var(--primary) 6%, transparent);"{% endif %}>
+        <td>{{ a.get_shift_display }}{% if a.shift == current_shift %} <span class="badge" style="background:var(--primary); color:#fff;">now</span>{% endif %}</td>
+        <td>Bed {{ a.admission.bed.bed_number }} <span class="muted">· {{ a.admission.bed.ward.name }}</span></td>
+        <td>{{ a.admission.patient.full_name }}</td>
+        <td>
+          <a class="btn sm" href="{% url 'ipd:admission_detail' a.admission.pk %}">Open chart</a>
+          <a class="btn sm alt" href="{% url 'ipd:medication_log_add' a.admission.pk %}">Give med</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted" style="margin:0;">No patients allotted to you today. The Ward In-charge assigns patients from the allocation screen.</p>
+  {% endif %}
+</div>
+
+{# My upcoming shifts from the roster. #}
+<div class="card" style="margin-top:16px;">
+  <h3 style="margin-top:0;">My upcoming shifts</h3>
+  {% if upcoming %}
+  <table class="tbl">
+    <thead><tr><th>Date</th><th>Shift</th><th>Time</th><th>Ward</th><th>Role</th></tr></thead>
+    <tbody>
+      {% for s in upcoming %}
+      <tr {% if s.date == today %}style="font-weight:600;"{% endif %}>
+        <td>{{ s.date|date:'D d/m/Y' }}{% if s.date == today %} <span class="badge" style="background:#22c55e; color:#fff;">today</span>{% endif %}</td>
+        <td>{{ s.get_shift_display }}</td>
+        <td class="muted">{{ s.shift_time }}</td>
+        <td>{{ s.ward.name }}</td>
+        <td>{% if s.duty == 'INCHARGE' %}<span style="color:#b45309;">★ Shift In-charge</span>{% else %}Staff Nurse{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted" style="margin:0;">You have no upcoming shifts on the roster.</p>
+  {% endif %}
+</div>
+{% endblock %}

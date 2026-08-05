@@ -4,6 +4,20 @@ from django.db import models
 from django.utils import timezone
 from saas.utils import TenantManager
 
+# The standard three-shift ward day. Times follow the common Pakistani pattern and
+# are advisory (shown on screen); the roster keys on the shift name, not the clock.
+SHIFT_CHOICES = [
+    ('MORNING', 'Morning'),
+    ('EVENING', 'Evening'),
+    ('NIGHT', 'Night'),
+]
+SHIFT_TIMES = {
+    'MORNING': '07:00 – 14:00',
+    'EVENING': '14:00 – 21:00',
+    'NIGHT': '21:00 – 07:00',
+}
+
+
 class Ward(models.Model):
     WARD_TYPE_CHOICES = [
         ('General Male', 'General Ward (Male)'),
@@ -19,6 +33,11 @@ class Ward(models.Model):
     name = models.CharField(max_length=100)
     ward_type = models.CharField(max_length=50, choices=WARD_TYPE_CHOICES, default='General Male')
     daily_rate = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    # The senior nurse (Ward In-charge / Charge Nurse) who runs this ward — makes
+    # the duty roster and allocates patients. Informational + shown on the board.
+    in_charge = models.ForeignKey('accounts.User', on_delete=models.SET_NULL,
+                                  null=True, blank=True, related_name='wards_in_charge',
+                                  help_text='Ward In-charge (senior nurse who runs the ward)')
     hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
 
     objects = TenantManager()
@@ -163,3 +182,72 @@ class AdmissionRequest(models.Model):
 
     def __str__(self):
         return f"Admission advice: {self.patient.full_name} ({self.status})"
+
+
+class NurseShift(models.Model):
+    """One line of the duty roster: a nurse on duty in a ward for a date + shift.
+
+    This is the roster the Ward In-charge builds. A ward has many nurses per shift;
+    a nurse works one place per shift (the unique constraint). `duty` marks who is
+    the shift in-charge — the senior nurse running that shift on the floor.
+    """
+    DUTY_CHOICES = [
+        ('INCHARGE', 'Shift In-charge'),
+        ('STAFF', 'Staff Nurse'),
+    ]
+    nurse = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='nurse_shifts')
+    ward = models.ForeignKey(Ward, on_delete=models.CASCADE, related_name='shifts')
+    date = models.DateField(default=timezone.localdate)
+    shift = models.CharField(max_length=10, choices=SHIFT_CHOICES)
+    duty = models.CharField(max_length=10, choices=DUTY_CHOICES, default='STAFF')
+    notes = models.CharField(max_length=200, blank=True)
+    created_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True,
+                                   blank=True, related_name='+')
+    created_at = models.DateTimeField(default=timezone.now)
+    hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
+
+    objects = TenantManager()
+
+    class Meta:
+        ordering = ('-date', 'shift')
+        constraints = [
+            models.UniqueConstraint(fields=['nurse', 'date', 'shift'],
+                                    name='uniq_nurse_date_shift'),
+        ]
+
+    @property
+    def shift_time(self):
+        return SHIFT_TIMES.get(self.shift, '')
+
+    def __str__(self):
+        return f"{self.nurse.get_full_name() or self.nurse.email} — {self.ward.name} {self.date} {self.get_shift_display()}"
+
+
+class PatientAllocation(models.Model):
+    """Which nurse is responsible for which inpatient, for a date + shift.
+
+    The In-charge allocates the ward's admitted patients among the nurses rostered
+    for that shift. The nurse-to-patient *ratio* is simply how many allocations a
+    nurse holds in a shift (ICU 1:1–1:2, general 1:6–1:10). One patient has one
+    responsible nurse per shift — the unique constraint.
+    """
+    admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name='allocations')
+    nurse = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='patient_allocations')
+    date = models.DateField(default=timezone.localdate)
+    shift = models.CharField(max_length=10, choices=SHIFT_CHOICES)
+    assigned_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True,
+                                    blank=True, related_name='+')
+    created_at = models.DateTimeField(default=timezone.now)
+    hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
+
+    objects = TenantManager()
+
+    class Meta:
+        ordering = ('-date', 'shift')
+        constraints = [
+            models.UniqueConstraint(fields=['admission', 'date', 'shift'],
+                                    name='uniq_admission_date_shift'),
+        ]
+
+    def __str__(self):
+        return f"{self.admission.patient.full_name} → {self.nurse.get_full_name() or self.nurse.email} ({self.date} {self.get_shift_display()})"

@@ -431,3 +431,168 @@ def admission_request_cancel(request, pk):
         req.save(update_fields=['status'])
         messages.info(request, 'Admission request cancelled.')
     return redirect('ipd:admission_request_list')
+
+
+# --------------------------------------------------------------------------
+# Nursing / Ward management — duty roster, patient allocation, my duties
+#
+# Two capabilities: `ward` (every nurse) can VIEW the roster/board and their own
+# duties; `ward_manage` (Ward In-charge / Admin) BUILDS the roster and allocates
+# patients. Mirrors how the ward feature is narrower than ipd.
+# --------------------------------------------------------------------------
+from datetime import date, timedelta                                    # noqa: E402
+from django.urls import reverse                                         # noqa: E402
+from accounts.models import User                                        # noqa: E402
+from .models import SHIFT_CHOICES, SHIFT_TIMES, NurseShift, PatientAllocation  # noqa: E402
+
+_SHIFT_KEYS = [k for k, _ in SHIFT_CHOICES]
+
+
+def _hospital_nurses(request):
+    """Active nurses of this hospital (admins also take ward duty). Fail-closed:
+    a hospital-less non-superuser matches only hospital-less users."""
+    qs = User.objects.filter(is_active=True, role__in=['NURSE', 'ADMIN'])
+    if not request.user.is_superuser:
+        qs = qs.filter(hospital=request.user.hospital)
+    return qs.order_by('first_name', 'last_name', 'email')
+
+
+def _current_shift():
+    h = timezone.localtime().hour
+    if 7 <= h < 14:
+        return 'MORNING'
+    if 14 <= h < 21:
+        return 'EVENING'
+    return 'NIGHT'
+
+
+def _parse_date(value, fallback):
+    try:
+        return date.fromisoformat(value) if value else fallback
+    except (TypeError, ValueError):
+        return fallback
+
+
+@feature_required('ward')
+def duty_roster(request):
+    """The weekly duty roster for a ward — who is on which shift. In-charge/Admin
+    edits; every nurse can look."""
+    wards = list(Ward.objects.all().order_by('name'))
+    ward = next((w for w in wards if str(w.pk) == request.GET.get('ward')), wards[0] if wards else None)
+    anchor = _parse_date(request.GET.get('week'), timezone.localdate())
+    start = anchor - timedelta(days=anchor.weekday())        # Monday
+    days = [start + timedelta(days=i) for i in range(7)]
+
+    grid = {}
+    if ward:
+        for e in (NurseShift.objects.filter(ward=ward, date__range=(days[0], days[-1]))
+                  .select_related('nurse')):
+            grid.setdefault((e.date.isoformat(), e.shift), []).append(e)
+
+    rows = [{
+        'shift': skey,
+        'label': dict(SHIFT_CHOICES)[skey],
+        'time': SHIFT_TIMES[skey],
+        'cells': [{'date': d, 'shift': skey, 'entries': grid.get((d.isoformat(), skey), [])}
+                  for d in days],
+    } for skey in _SHIFT_KEYS]
+
+    can_manage = request.user.is_superuser or request.user.has_feature('ward_manage')
+    return render(request, 'ipd/duty_roster.html', {
+        'wards': wards, 'ward': ward, 'days': days, 'rows': rows,
+        'nurses': _hospital_nurses(request), 'shift_choices': SHIFT_CHOICES,
+        'week_start': start, 'prev_week': start - timedelta(days=7),
+        'next_week': start + timedelta(days=7), 'today': timezone.localdate(),
+        'can_manage': can_manage,
+    })
+
+
+@feature_required('ward_manage')
+def roster_add(request):
+    ward_id = request.POST.get('ward')
+    week = request.POST.get('date', '')
+    if request.method == 'POST':
+        nurse = _hospital_nurses(request).filter(pk=request.POST.get('nurse')).first()
+        ward = Ward.objects.filter(pk=ward_id).first()
+        shift = request.POST.get('shift')
+        d = _parse_date(request.POST.get('date'), None)
+        duty = request.POST.get('duty') if request.POST.get('duty') in ('STAFF', 'INCHARGE') else 'STAFF'
+        if nurse and ward and shift in _SHIFT_KEYS and d:
+            obj, created = NurseShift.objects.get_or_create(
+                nurse=nurse, date=d, shift=shift,
+                defaults={'ward': ward, 'duty': duty, 'created_by': request.user})
+            if not created:
+                obj.ward, obj.duty = ward, duty
+                obj.save(update_fields=['ward', 'duty'])
+                messages.info(request, f"{nurse.get_full_name() or nurse.email} was already on that shift — updated.")
+            else:
+                messages.success(request, f"{nurse.get_full_name() or nurse.email} added to the roster.")
+        else:
+            messages.error(request, "Pick a nurse, ward, date and shift.")
+    return redirect(f"{reverse('ipd:duty_roster')}?ward={ward_id}&week={week}")
+
+
+@feature_required('ward_manage')
+def roster_remove(request, pk):
+    e = get_object_or_404(NurseShift, pk=pk)
+    ward_id, week = e.ward_id, e.date.isoformat()
+    if request.method == 'POST':
+        e.delete()
+        messages.success(request, "Removed from the roster.")
+    return redirect(f"{reverse('ipd:duty_roster')}?ward={ward_id}&week={week}")
+
+
+@feature_required('ward_manage')
+def patient_allocation(request):
+    """Allocate a ward's admitted patients among the nurses rostered for a shift."""
+    wards = list(Ward.objects.all().order_by('name'))
+    ward = next((w for w in wards if str(w.pk) == request.GET.get('ward')), wards[0] if wards else None)
+    d = _parse_date(request.GET.get('date'), timezone.localdate())
+    shift = request.GET.get('shift') if request.GET.get('shift') in _SHIFT_KEYS else _current_shift()
+
+    admissions = (Admission.objects.filter(status='Admitted', bed__ward=ward)
+                  .select_related('patient', 'bed') if ward else Admission.objects.none())
+    rostered = (NurseShift.objects.filter(ward=ward, date=d, shift=shift).select_related('nurse')
+                if ward else NurseShift.objects.none())
+    nurses = [ns.nurse for ns in rostered]
+
+    if request.method == 'POST':
+        by_pk = {str(n.pk): n for n in nurses}
+        for a in admissions:
+            nid = request.POST.get(f"alloc_{a.pk}")
+            if nid and nid in by_pk:
+                PatientAllocation.objects.update_or_create(
+                    admission=a, date=d, shift=shift,
+                    defaults={'nurse': by_pk[nid], 'assigned_by': request.user})
+            else:
+                PatientAllocation.objects.filter(admission=a, date=d, shift=shift).delete()
+        messages.success(request, "Patient allocation saved.")
+        return redirect(f"{reverse('ipd:patient_allocation')}?ward={ward.pk if ward else ''}&date={d}&shift={shift}")
+
+    existing = {a.admission_id: a.nurse_id for a in
+                PatientAllocation.objects.filter(date=d, shift=shift, admission__in=admissions)}
+    load = {}
+    for nid in existing.values():
+        load[nid] = load.get(nid, 0) + 1
+    rows = [{'admission': a, 'allocated_to': existing.get(a.pk)} for a in admissions]
+    nurse_rows = [{'nurse': ns.nurse, 'duty': ns.duty, 'load': load.get(ns.nurse_id, 0)} for ns in rostered]
+    return render(request, 'ipd/patient_allocation.html', {
+        'wards': wards, 'ward': ward, 'date': d, 'shift': shift,
+        'shift_choices': SHIFT_CHOICES, 'shift_time': SHIFT_TIMES.get(shift, ''),
+        'rows': rows, 'nurses': nurses, 'nurse_rows': nurse_rows,
+    })
+
+
+@feature_required('ward')
+def my_duties(request):
+    """A nurse's own upcoming shifts and the patients allotted to them today."""
+    today = timezone.localdate()
+    upcoming = (NurseShift.objects.filter(nurse=request.user, date__gte=today)
+                .select_related('ward').order_by('date', 'shift')[:20])
+    my_alloc = (PatientAllocation.objects.filter(nurse=request.user, date=today)
+                .select_related('admission__patient', 'admission__bed__ward')
+                .order_by('shift'))
+    return render(request, 'ipd/my_duties.html', {
+        'upcoming': upcoming, 'my_alloc': my_alloc, 'today': today,
+        'shift_times': SHIFT_TIMES, 'current_shift': _current_shift(),
+    })

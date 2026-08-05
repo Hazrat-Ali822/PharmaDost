@@ -1,0 +1,80 @@
+{% extends 'partials/base.html' %}
+{% block title %}Patient Allocation{% endblock %}
+{% block page_title %}Patient Allocation{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Patient Allocation{% if ward %} — {{ ward.name }}{% endif %}</h2>
+  <a class="btn alt" href="{% url 'ipd:duty_roster' %}{% if ward %}?ward={{ ward.pk }}{% endif %}">← Duty Roster</a>
+</div>
+
+{% if not wards %}
+  <div class="msg info">No wards yet. <a href="{% url 'ipd:ward_create' %}">Create a ward</a> first.</div>
+{% else %}
+
+<form class="search" method="get" style="gap:10px; flex-wrap:wrap; align-items:flex-end;">
+  <label>Ward<br>
+    <select name="ward" onchange="this.form.submit()">
+      {% for w in wards %}<option value="{{ w.pk }}" {% if ward and w.pk == ward.pk %}selected{% endif %}>{{ w.name }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Date<br><input type="date" name="date" value="{{ date|date:'Y-m-d' }}" onchange="this.form.submit()"></label>
+  <label>Shift<br>
+    <select name="shift" onchange="this.form.submit()">
+      {% for key, label in shift_choices %}<option value="{{ key }}" {% if key == shift %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </label>
+  <span class="muted" style="font-size:13px;">{{ shift_time }}</span>
+</form>
+
+{% if not nurses %}
+  <div class="msg info" style="margin-top:12px;">
+    No nurses are rostered for this ward on this shift.
+    <a href="{% url 'ipd:duty_roster' %}?ward={{ ward.pk }}&week={{ date|date:'Y-m-d' }}">Set the duty roster first →</a>
+  </div>
+{% else %}
+
+{# Nurse workload for this shift — watch the ratio #}
+<div class="card" style="margin-top:12px;">
+  <h3 style="margin-top:0;">On this shift ({{ nurse_rows|length }} nurse{{ nurse_rows|length|pluralize }})</h3>
+  <div style="display:flex; gap:10px; flex-wrap:wrap;">
+    {% for nr in nurse_rows %}
+    <span style="border:1px solid var(--border); border-radius:20px; padding:5px 12px; font-size:13px;">
+      {% if nr.duty == 'INCHARGE' %}★ {% endif %}{{ nr.nurse.get_full_name|default:nr.nurse.email }}
+      <strong style="color:var(--primary);">· {{ nr.load }} patient{{ nr.load|pluralize }}</strong>
+    </span>
+    {% endfor %}
+  </div>
+</div>
+
+<form method="post" style="margin-top:16px;">
+  {% csrf_token %}
+  <div class="card">
+    <table class="tbl">
+      <thead>
+        <tr><th>Bed</th><th>Patient</th><th>MRN</th><th style="min-width:220px;">Responsible nurse (this shift)</th></tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td>{{ r.admission.bed.bed_number }}</td>
+          <td>{{ r.admission.patient.full_name }}</td>
+          <td>{{ r.admission.patient.mrn }}</td>
+          <td>
+            <select name="alloc_{{ r.admission.pk }}">
+              <option value="">— unassigned —</option>
+              {% for n in nurses %}<option value="{{ n.pk }}" {% if r.allocated_to == n.pk %}selected{% endif %}>{% if n.role == 'ADMIN' %}(admin) {% endif %}{{ n.get_full_name|default:n.email }}</option>{% endfor %}
+            </select>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="muted">No patients are currently admitted in this ward.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if rows %}<div style="margin-top:12px;"><button class="btn" type="submit">Save allocation</button></div>{% endif %}
+</form>
+
+{% endif %}
+{% endif %}
+{% endblock %}

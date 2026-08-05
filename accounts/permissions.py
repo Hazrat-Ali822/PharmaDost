@@ -21,6 +21,10 @@ FEATURES = {
     # ward/nursing work inside IPD (medication logs, nursing rounds, bed status) —
     # NOT admitting/discharging/billing. Given to nurses; admins have it too.
     'ward':          {'ADMIN', 'NURSE'},
+    # Ward In-charge / Charge Nurse: builds the duty roster and allocates the
+    # ward's patients among the nurses on shift. A management capability — default
+    # ADMIN only; the admin promotes a senior nurse to In-charge by granting this.
+    'ward_manage':   {'ADMIN'},
     'ot':            {'ADMIN', 'DOCTOR'},
     # Pharmacy
     'pos':           {'ADMIN', 'PHARMACIST', 'WHOLESALE'},
@@ -56,6 +60,7 @@ FEATURE_GROUPS = [
         ('imaging', 'Imaging / Radiology'),
         ('ipd', 'IPD / Patient Admission'),
         ('ward', 'Ward / Nursing (medication & rounds)'),
+        ('ward_manage', 'Ward In-charge (roster & patient allocation)'),
         ('ot', 'OT / Surgery Management'),
     ]),
     ('Pharmacy', [
@@ -96,7 +101,7 @@ MODULES = [
     ('opd', 'OPD / Hospital', 'Patients, doctors, appointments & prescriptions',
      ['patients', 'opd', 'appointments', 'doctors', 'prescriptions']),
     ('ipd', 'Inpatient (IPD)', 'Ward, bed, patient admission and daily rounds management',
-     ['ipd', 'ward']),
+     ['ipd', 'ward', 'ward_manage']),
     ('ot', 'Operation Theatre (OT)', 'Surgery booking, team scheduling and logs management',
      ['ot']),
     ('lab', 'Laboratory', 'Lab test orders & printed reports',
