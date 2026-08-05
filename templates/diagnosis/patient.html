@@ -1,0 +1,30 @@
+{% extends 'partials/base.html' %}
+{% block title %}Diagnoses — {{ patient.full_name }}{% endblock %}
+{% block page_title %}Patient Diagnoses{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>{{ patient.full_name }} — Diagnoses</h2>
+    <div class="muted">{{ patient.mrn }}</div>
+  </div>
+  <a class="btn alt" href="{% url 'diagnosis_list' %}">Back</a>
+</div>
+<div class="card">
+  <table class="tbl">
+    <thead><tr><th>Date</th><th>Code</th><th>Diagnosis</th><th>Note</th><th>Doctor</th></tr></thead>
+    <tbody>
+      {% for d in dxs %}
+      <tr>
+        <td>{{ d.diagnosed_on|date:"d/m/Y" }}</td>
+        <td><strong>{{ d.code.code }}</strong></td>
+        <td>{{ d.code.title }}</td>
+        <td>{{ d.clinical_note|default:"—" }}</td>
+        <td>{% if d.doctor %}Dr. {{ d.doctor.full_name }}{% else %}—{% endif %}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="muted text-center" style="padding:16px;">No diagnoses for this patient.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

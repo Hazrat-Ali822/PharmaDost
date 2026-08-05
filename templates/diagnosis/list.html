@@ -1,0 +1,45 @@
+{% extends 'partials/base.html' %}
+{% block title %}Diagnoses (ICD-10){% endblock %}
+{% block page_title %}Diagnoses (ICD-10){% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Coded Diagnoses (ICD-10)</h2>
+    <div class="muted">Structured, reportable diagnoses — claim-ready.</div>
+  </div>
+  {% if request.user.role == 'ADMIN' or request.user.is_superuser %}
+  <a class="btn alt" href="{% url 'diagnosis_catalogue' %}">ICD Code Catalogue</a>
+  {% endif %}
+</div>
+
+<div class="grid" style="grid-template-columns:1.5fr 1fr; gap:16px; align-items:start;">
+  <div class="card">
+    <h3 style="margin-top:0;">Recent diagnoses</h3>
+    <table class="tbl">
+      <thead><tr><th>Date</th><th>Patient</th><th>Code</th><th>Diagnosis</th><th>Note</th></tr></thead>
+      <tbody>
+        {% for d in recent %}
+        <tr>
+          <td>{{ d.diagnosed_on|date:"d/m/Y" }}</td>
+          <td><a href="{% url 'patient_diagnoses' d.patient_id %}">{{ d.patient.full_name }}</a></td>
+          <td><strong>{{ d.code.code }}</strong></td>
+          <td>{{ d.code.title }}</td>
+          <td>{{ d.clinical_note|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="muted text-center" style="padding:16px;">No diagnoses recorded yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0;">Add diagnosis</h3>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="btn-row" style="margin-top:8px;"><button class="btn" type="submit">Save</button></div>
+    </form>
+  </div>
+</div>
+{% endblock %}

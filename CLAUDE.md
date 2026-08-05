@@ -363,6 +363,16 @@ posts parallel `baby_sex[]`/`baby_weight[]`/`baby_status[]` arrays and a live de
 with no baby row still writes one. `birth_register` is the register view. Guarded by
 `maternity/tests.py`.
 
+### ICD-10 diagnoses
+
+The `diagnosis` app (`/diagnosis/`, feature `diagnosis` in the `opd` module; DOCTOR/
+ADMIN) adds coded diagnoses. `DiagnosisCode` is a **global** reference table (ICD-10 is
+an international standard — no `hospital` FK, no `TenantManager`), seeded by
+`seed_icd` (idempotent, ~35 common codes) and extendable by an admin on
+`/diagnosis/catalogue/` (role-gated to ADMIN even though DOCTOR holds the feature).
+`PatientDiagnosis` is the tenant-scoped record linking a patient to a code. Guarded by
+`diagnosis/tests.py`.
+
 ### Doctor availability
 
 `Doctor.availability(at=None)` returns `{'available', 'state', 'label'}` from two layers,

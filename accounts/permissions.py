@@ -30,6 +30,8 @@ FEATURES = {
     'emergency':     {'ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'},
     # Maternity / Obstetrics — ANC, deliveries, birth register.
     'maternity':     {'ADMIN', 'DOCTOR', 'NURSE'},
+    # ICD-10 coded diagnoses.
+    'diagnosis':     {'ADMIN', 'DOCTOR'},
     # Pharmacy
     'pos':           {'ADMIN', 'PHARMACIST', 'WHOLESALE'},
     'inventory':     {'ADMIN', 'PHARMACIST'},
@@ -73,6 +75,7 @@ FEATURE_GROUPS = [
         ('ot', 'OT / Surgery Management'),
         ('emergency', 'Emergency / Casualty'),
         ('maternity', 'Maternity / Obstetrics'),
+        ('diagnosis', 'Diagnoses (ICD-10)'),
     ]),
     ('Pharmacy', [
         ('pos', 'Point of Sale / Bills'),
@@ -113,8 +116,8 @@ CORE_FEATURES = {'settings', 'audit', 'overview', 'catalog'}
 MODULES = [
     ('pharmacy', 'Pharmacy', 'POS billing, inventory, purchases, customers & suppliers',
      ['pos', 'inventory', 'customers', 'suppliers']),
-    ('opd', 'OPD / Hospital', 'Patients, doctors, appointments & prescriptions',
-     ['patients', 'opd', 'appointments', 'doctors', 'prescriptions']),
+    ('opd', 'OPD / Hospital', 'Patients, doctors, appointments, prescriptions & ICD-10 diagnoses',
+     ['patients', 'opd', 'appointments', 'doctors', 'prescriptions', 'diagnosis']),
     ('ipd', 'Inpatient (IPD)', 'Ward, bed, patient admission and daily rounds management',
      ['ipd', 'ward', 'ward_manage']),
     ('ot', 'Operation Theatre (OT)', 'Surgery booking, team scheduling and logs management',

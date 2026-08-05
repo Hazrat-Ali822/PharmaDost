@@ -1,0 +1,45 @@
+{% extends 'partials/base.html' %}
+{% block title %}ICD-10 Catalogue{% endblock %}
+{% block page_title %}ICD-10 Catalogue{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>ICD-10 Code Catalogue</h2>
+    <div class="muted">Seed common codes with <code>manage.py seed_icd</code>, or add your own.</div>
+  </div>
+  <a class="btn alt" href="{% url 'diagnosis_list' %}">Back</a>
+</div>
+
+<div class="grid" style="grid-template-columns:1.6fr 1fr; gap:16px; align-items:start;">
+  <div class="card">
+    <form class="search" method="get" style="margin-bottom:12px;">
+      <input type="text" name="q" value="{{ q }}" placeholder="Search code, title or category">
+      <button class="btn" type="submit">Search</button>
+    </form>
+    <table class="tbl">
+      <thead><tr><th>Code</th><th>Title</th><th>Category</th><th>Active</th></tr></thead>
+      <tbody>
+        {% for c in codes %}
+        <tr>
+          <td><strong>{{ c.code }}</strong></td>
+          <td>{{ c.title }}</td>
+          <td>{{ c.category|default:"—" }}</td>
+          <td>{% if c.is_active %}<span class="badge green">Yes</span>{% else %}<span class="badge">No</span>{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="muted text-center" style="padding:16px;">No codes. Run <code>seed_icd</code> or add one.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0;">Add code</h3>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="btn-row" style="margin-top:8px;"><button class="btn" type="submit">Add</button></div>
+    </form>
+  </div>
+</div>
+{% endblock %}
