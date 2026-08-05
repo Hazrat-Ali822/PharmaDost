@@ -20,3 +20,7 @@ waitress==3.0.0
 
 # Media / image handling (logos, scan images)
 pillow==12.3.0
+
+# QR codes (printed-bill QR, LAN "connect a device" page) — optional at runtime,
+# the code degrades to no-QR if it is ever missing
+qrcode==8.0

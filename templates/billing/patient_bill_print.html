@@ -1,4 +1,5 @@
 {% extends 'print/base_print.html' %}
+{% load qr %}
 {% block title %}Bill — {{ patient.full_name }}{% endblock %}
 {% block doctitle %}Patient Bill / Statement{% endblock %}
 
@@ -30,9 +31,18 @@
   </tbody>
 </table>
 
-<table style="width:320px;margin-left:auto;margin-top:14px;font-size:14px">
-  <tr><td>Total Charged</td><td class="num">Rs {{ s.charged }}</td></tr>
-  <tr><td>Total Paid</td><td class="num">Rs {{ s.paid }}</td></tr>
-  <tr style="font-size:16px;font-weight:800;color:var(--pri)"><td>Outstanding</td><td class="num">Rs {{ s.outstanding }}</td></tr>
-</table>
+<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-top:14px">
+  {% qr_data_uri qr_text as billqr %}
+  {% if billqr %}
+  <div style="text-align:center;font-size:10.5px;color:var(--soft)">
+    <img src="{{ billqr }}" alt="Bill QR" style="width:104px;height:104px">
+    <div>Scan for this bill summary</div>
+  </div>
+  {% else %}<div></div>{% endif %}
+  <table style="width:320px;font-size:14px">
+    <tr><td>Total Charged</td><td class="num">Rs {{ s.charged }}</td></tr>
+    <tr><td>Total Paid</td><td class="num">Rs {{ s.paid }}</td></tr>
+    <tr style="font-size:16px;font-weight:800;color:var(--pri)"><td>Outstanding</td><td class="num">Rs {{ s.outstanding }}</td></tr>
+  </table>
+</div>
 {% endblock %}

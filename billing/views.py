@@ -101,9 +101,22 @@ def patient_bill(request, pk):
 
 @feature_required('billing')
 def patient_bill_print(request, pk):
+    from user_mgmt.models import SiteSettings
     patient = get_object_or_404(Patient, pk=pk)
     summary = patient_billing_summary(patient)
-    return render(request, 'billing/patient_bill_print.html', {'patient': patient, 's': summary})
+    branding = SiteSettings.load()
+    qr_text = ''
+    if branding.show_bill_qr:
+        qr_text = (
+            f"{branding.brand_name or 'Sehatyar'}\n"
+            f"Bill — {patient.full_name} (MRN {patient.mrn})\n"
+            f"Charged: Rs {summary['charged']}\n"
+            f"Paid: Rs {summary['paid']}\n"
+            f"Outstanding: Rs {summary['outstanding']}\n"
+            f"Printed: {date.today():%d %b %Y}"
+        )
+    return render(request, 'billing/patient_bill_print.html',
+                  {'patient': patient, 's': summary, 'qr_text': qr_text})
 
 
 @feature_required('billing')

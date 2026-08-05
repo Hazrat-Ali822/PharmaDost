@@ -64,6 +64,9 @@ class SiteSettings(models.Model):
     # send a WhatsApp button on bills (uses the free wa.me link — no gateway needed)
     whatsapp_enabled = models.BooleanField(
         default=True, help_text="Show a 'Send on WhatsApp' button on patient bills")
+    # print a scannable QR of the bill summary on the printed bill (needs no internet)
+    show_bill_qr = models.BooleanField(
+        default=True, help_text="Print a scannable QR of the bill summary on printed bills")
 
     # show the prescribing doctor's name to pharmacy/POS staff (on the pending-Rx loader)
     show_doctor_to_pharmacy = models.BooleanField(

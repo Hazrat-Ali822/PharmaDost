@@ -71,6 +71,11 @@
         <span><b>Show "Send on WhatsApp" on patient bills</b><br>
           <span class="muted" style="font-size:13px">Opens WhatsApp with the bill summary ready to send to the patient's number — no gateway or setup needed. Turn OFF to hide it.</span></span>
       </label>
+      <label style="display:flex;gap:10px;align-items:flex-start;padding:9px 0">
+        {{ form.show_bill_qr }}
+        <span><b>Print a QR code on the bill</b><br>
+          <span class="muted" style="font-size:13px">Adds a scannable QR with the bill summary (total, paid, outstanding) to the printed bill — the patient can scan it with any phone camera, no internet needed.</span></span>
+      </label>
 
       <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
       <h3>Patient Numbering (MRN)</h3>
