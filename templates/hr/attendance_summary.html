@@ -1,0 +1,32 @@
+{% extends 'partials/base.html' %}
+{% block title %}Attendance Summary{% endblock %}
+{% block page_title %}Attendance Summary{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>Attendance Summary — {{ month|date:"F Y" }}</h2></div>
+  <a class="btn alt" href="{% url 'hr_attendance' %}">Daily Marking</a>
+</div>
+
+<form method="get" class="search" style="margin-bottom:14px;">
+  <label style="align-self:center;">Month</label>
+  <input type="month" name="month" value="{{ month|date:'Y-m' }}">
+  <button class="btn" type="submit">Go</button>
+</form>
+
+<div class="card">
+  <table class="tbl">
+    <thead><tr><th>Staff</th><th class="num">Present</th><th class="num">Absent</th><th class="num">Leave</th><th class="num">Half day</th></tr></thead>
+    <tbody>
+      {% for u in staff %}
+      <tr>
+        <td>{{ u.get_full_name|default:u.email }}</td>
+        <td class="num">{{ u.tally.PRESENT|default:0 }}</td>
+        <td class="num">{{ u.tally.ABSENT|default:0 }}</td>
+        <td class="num">{{ u.tally.LEAVE|default:0 }}</td>
+        <td class="num">{{ u.tally.HALF|default:0 }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

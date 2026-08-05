@@ -1,0 +1,30 @@
+{% extends 'print/base_print.html' %}
+{% block title %}Payslip{% endblock %}
+{% block doctitle %}Salary Payslip{% endblock %}
+{% block headmeta %}
+  Period: {{ slip.period }}<br>
+  Paid on: {{ slip.paid_on|date:"d/m/Y" }}
+{% endblock %}
+{% block body %}
+<table style="width:100%; border-collapse:collapse; margin-bottom:16px;">
+  <tr><td style="padding:6px 0;"><strong>Employee</strong></td><td style="text-align:right;">{{ slip.user.get_full_name|default:slip.user.email }}</td></tr>
+  <tr><td style="padding:6px 0;">Role</td><td style="text-align:right;">{{ slip.user.get_role_display }}</td></tr>
+  {% if slip.user.staff_profile.designation %}<tr><td style="padding:6px 0;">Designation</td><td style="text-align:right;">{{ slip.user.staff_profile.designation }}</td></tr>{% endif %}
+</table>
+
+<table style="width:100%; border-collapse:collapse;">
+  <tr><td style="padding:8px 0; border-top:1px solid #ccc;">Basic salary</td><td style="text-align:right; border-top:1px solid #ccc;">{{ currency }} {{ slip.basic|floatformat:0 }}</td></tr>
+  <tr><td style="padding:8px 0;">Allowances</td><td style="text-align:right;">+ {{ currency }} {{ slip.allowances|floatformat:0 }}</td></tr>
+  <tr><td style="padding:8px 0;">Deductions</td><td style="text-align:right;">− {{ currency }} {{ slip.deductions|floatformat:0 }}</td></tr>
+  <tr><td style="padding:10px 0; border-top:2px solid #333; font-weight:800; font-size:16px;">Net paid</td>
+      <td style="text-align:right; border-top:2px solid #333; font-weight:800; font-size:16px;">{{ currency }} {{ slip.net|floatformat:0 }}</td></tr>
+</table>
+
+<p style="margin-top:14px;">Paid via {{ slip.method }}{% if slip.note %} — {{ slip.note }}{% endif %}.</p>
+{% if slip.paid_by %}<p class="muted" style="font-size:12px;">Processed by {{ slip.paid_by.get_full_name|default:slip.paid_by.email }}.</p>{% endif %}
+
+<div style="margin-top:48px; display:flex; justify-content:space-between;">
+  <div>_______________________<br>Employee signature</div>
+  <div>_______________________<br>Authorised signature</div>
+</div>
+{% endblock %}

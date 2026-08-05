@@ -1,0 +1,39 @@
+{% extends 'partials/base.html' %}
+{% block title %}Leave Requests{% endblock %}
+{% block page_title %}Leave Requests{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Leave Requests</h2>
+  <a class="btn" href="{% url 'hr_leave_create' %}">+ Add Leave</a>
+</div>
+<div class="card">
+  <table class="tbl">
+    <thead><tr><th>Staff</th><th>Type</th><th>From</th><th>To</th><th class="num">Days</th><th>Reason</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for l in leaves %}
+      <tr>
+        <td>{{ l.user.get_full_name|default:l.user.email }}</td>
+        <td>{{ l.get_leave_type_display }}</td>
+        <td>{{ l.start_date|date:"d/m/Y" }}</td>
+        <td>{{ l.end_date|date:"d/m/Y" }}</td>
+        <td class="num">{{ l.days }}</td>
+        <td>{{ l.reason|default:"—" }}</td>
+        <td>
+          {% if l.status == 'APPROVED' %}<span class="badge green">Approved</span>
+          {% elif l.status == 'REJECTED' %}<span class="badge red">Rejected</span>
+          {% else %}<span class="badge amber">Pending</span>{% endif %}
+        </td>
+        <td>
+          {% if l.status == 'PENDING' %}
+          <form method="post" action="{% url 'hr_leave_decide' l.pk 'approve' %}" style="display:inline">{% csrf_token %}<button class="btn sm success" type="submit">Approve</button></form>
+          <form method="post" action="{% url 'hr_leave_decide' l.pk 'reject' %}" style="display:inline">{% csrf_token %}<button class="btn sm danger" type="submit">Reject</button></form>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8" class="muted text-center" style="padding:20px;">No leave requests.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

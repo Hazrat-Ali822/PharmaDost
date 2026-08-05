@@ -1,0 +1,19 @@
+{% extends 'partials/base.html' %}
+{% block title %}Staff Profile{% endblock %}
+{% block page_title %}Staff Profile{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>{{ staff_user.get_full_name|default:staff_user.email }}</h2>
+  <a class="btn alt" href="{% url 'hr_staff_list' %}">Back</a>
+</div>
+<div class="card" style="max-width:560px;">
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div class="btn-row" style="margin-top:10px;">
+      <button class="btn" type="submit">Save</button>
+      <a class="btn alt" href="{% url 'hr_staff_list' %}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends 'partials/base.html' %}
+{% block title %}Payroll{% endblock %}
+{% block page_title %}Payroll{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Payroll / Salary Payments</h2>
+  <a class="btn" href="{% url 'hr_salary_create' %}">+ Pay Salary</a>
+</div>
+<div class="card">
+  <table class="tbl">
+    <thead><tr><th>Staff</th><th>Period</th><th class="num">Basic</th><th class="num">Allow.</th><th class="num">Deduct.</th><th class="num">Net</th><th>Paid on</th><th></th></tr></thead>
+    <tbody>
+      {% for s in payslips %}
+      <tr>
+        <td>{{ s.user.get_full_name|default:s.user.email }}</td>
+        <td>{{ s.period }}</td>
+        <td class="num">{{ s.basic|floatformat:0 }}</td>
+        <td class="num">{{ s.allowances|floatformat:0 }}</td>
+        <td class="num">{{ s.deductions|floatformat:0 }}</td>
+        <td class="num"><strong>{{ currency }} {{ s.net|floatformat:0 }}</strong></td>
+        <td>{{ s.paid_on|date:"d/m/Y" }}</td>
+        <td><a class="btn sm alt" href="{% url 'hr_salary_slip' s.pk %}">Slip</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8" class="muted text-center" style="padding:20px;">No salary payments yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

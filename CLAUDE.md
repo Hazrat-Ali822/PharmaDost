@@ -535,6 +535,19 @@ billed to it are debits it owes, `PanelPayment`s are credits.
   out — coverage is enforced as a money limit, not a covered-services list.
   Guarded by `panels/tests.py`.
 
+### Staff HR (attendance, leave, payroll)
+
+The `hr` app (`/hr/`, feature `hr`, its own module; roles ADMIN/ACCOUNTANT) is the
+people side. `StaffProfile` (OneToOne to `User`, optional — kept off the auth model)
+holds designation, `monthly_salary`, joining date. `Attendance` is one row per
+`(user, date)` (unique) marked from a daily grid that **upserts** — re-saving a day
+moves the mark, never duplicates it — with a monthly present/absent/leave summary.
+`LeaveRequest` (approve/reject stamps `decided_by`). `SalaryPayment` is a payslip
+whose `net` is a derived property (`basic + allowances − deductions`, never stored)
+printed via `print/base_print.html`; `salary_create` pre-fills `basic` from the
+staff profile when opened with `?user_id=`. Staff are the hospital's own users
+(`User.objects.filter(hospital=...)`, superuser sees all). Guarded by `hr/tests.py`.
+
 ### Install-as-app (PWA)
 
 The site installs as an app (phone home screen, desktop) carrying **each tenant's own**

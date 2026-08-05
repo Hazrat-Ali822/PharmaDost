@@ -44,6 +44,8 @@ FEATURES = {
     'reports':       {'ADMIN', 'PHARMACIST', 'ACCOUNTANT'},
     'profit':        {'ADMIN', 'ACCOUNTANT'},
     'daybook':       {'ADMIN', 'ACCOUNTANT'},
+    # Staff HR — attendance, leave, payroll. Management + accounts.
+    'hr':            {'ADMIN', 'ACCOUNTANT'},
     # System
     'settings':      {'ADMIN'},
     'audit':         {'ADMIN'},
@@ -85,6 +87,9 @@ FEATURE_GROUPS = [
         ('profit', 'Profit Report'),
         ('daybook', 'Day Book'),
     ]),
+    ('Staff', [
+        ('hr', 'Staff HR (attendance, leave, payroll)'),
+    ]),
     ('System', [
         ('settings', 'Settings / Branding'),
         ('audit', 'Audit Log'),
@@ -121,6 +126,8 @@ MODULES = [
      ['billing', 'panel', 'expenses', 'cashclosing', 'payouts']),
     ('reports', 'Reports & Analytics', 'Sales, profit, inventory & day-book reports',
      ['reports', 'profit', 'daybook']),
+    ('hr', 'Staff / HR', 'Staff profiles, attendance, leave & payroll',
+     ['hr']),
 ]
 MODULE_KEYS = [m[0] for m in MODULES]
 

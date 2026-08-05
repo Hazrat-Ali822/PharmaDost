@@ -1,0 +1,20 @@
+{% extends 'partials/base.html' %}
+{% block title %}Pay Salary{% endblock %}
+{% block page_title %}Pay Salary{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Pay Salary / Record Payslip</h2>
+  <a class="btn alt" href="{% url 'hr_salary_list' %}">Back</a>
+</div>
+<div class="card" style="max-width:560px;">
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <p class="muted" style="font-size:12.5px;">Net = Basic + Allowances − Deductions.</p>
+    <div class="btn-row" style="margin-top:10px;">
+      <button class="btn" type="submit">Save &amp; Print Slip</button>
+      <a class="btn alt" href="{% url 'hr_salary_list' %}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

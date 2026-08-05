@@ -101,6 +101,7 @@ INSTALLED_APPS = [
     "ipd",
     "ot",
     "emergency",
+    "hr",
     "offline_sync",
 ]
 

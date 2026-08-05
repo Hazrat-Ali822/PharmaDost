@@ -1,0 +1,48 @@
+{% extends 'partials/base.html' %}
+{% block title %}Attendance{% endblock %}
+{% block page_title %}Attendance{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Attendance — {{ day|date:"d/m/Y" }}</h2>
+    <div class="muted">Mark each staff member for the day.</div>
+  </div>
+  <a class="btn alt" href="{% url 'hr_attendance_summary' %}">Monthly Summary</a>
+</div>
+
+<form method="get" class="search" style="margin-bottom:14px;">
+  <label style="align-self:center;">Date</label>
+  <input type="date" name="date" value="{{ day|date:'Y-m-d' }}">
+  <button class="btn" type="submit">Go</button>
+</form>
+
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="date" value="{{ day|date:'Y-m-d' }}">
+  <div class="card">
+    <table class="tbl">
+      <thead><tr><th>Staff</th><th>Status</th><th>Note</th></tr></thead>
+      <tbody>
+        {% for u in staff %}
+        <tr>
+          <td><strong>{{ u.get_full_name|default:u.email }}</strong><br><small class="muted">{{ u.get_role_display }}</small></td>
+          <td>
+            <select name="status_{{ u.id }}" style="width:auto;">
+              {% for val, label in status_choices %}
+              <option value="{{ val }}" {% if u.att and u.att.status == val %}selected{% elif not u.att and val == 'PRESENT' %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </td>
+          <td><input type="text" name="notes_{{ u.id }}" value="{{ u.att.notes|default:'' }}" placeholder="optional" style="width:100%;"></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="3" class="muted text-center" style="padding:20px;">No staff found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="btn-row" style="margin-top:14px;">
+    <button class="btn" type="submit">Save Attendance</button>
+  </div>
+</form>
+{% endblock %}
