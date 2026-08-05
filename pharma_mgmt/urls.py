@@ -7,6 +7,7 @@ from user_mgmt import pwa_views
 from django.conf import settings
 from django.conf.urls.static import static
 from saas.views import hospital_login
+from accounts.views import demo_login
 
 
 urlpatterns = [
@@ -28,6 +29,9 @@ urlpatterns = [
     path('saas/', include('saas.urls')),
     path('setup/', setup_wizard, name='setup'),
     path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
+    # One-click public demo. Explicit route so it wins over the <hospital_slug>
+    # catch-all at the bottom of this list.
+    path('demo/', demo_login, name='demo_login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('', dashboard, name='dashboard'),
     path('dashboard/', dashboard, name='dashboard_page'),

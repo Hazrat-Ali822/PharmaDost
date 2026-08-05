@@ -30,6 +30,7 @@ ALLOWED_NAMES = {
 'password_reset', 'password_reset_done', 'password_reset_confirm', 'password_reset_complete',
 'admin:login', 'admin:index',
 'hospital_login', 'hospital_login_landing',
+'demo_login',
 # PWA plumbing the browser fetches without a session (install prompt, offline
 # fallback) — these must never redirect to login or the install breaks.
 'pwa_service_worker', 'pwa_manifest', 'pwa_icon', 'pwa_offline',

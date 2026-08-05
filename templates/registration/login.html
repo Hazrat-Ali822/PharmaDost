@@ -208,6 +208,19 @@
           <button class="btn" type="submit">Sign in</button>
           <input type="hidden" name="next" value="{{ next }}">
         </form>
+
+        <div style="display:flex;align-items:center;gap:12px;margin:18px 0 14px;color:var(--muted);font-size:12px">
+          <span style="flex:1;height:1px;background:var(--border)"></span>
+          <span>just looking around?</span>
+          <span style="flex:1;height:1px;background:var(--border)"></span>
+        </div>
+        <a href="{% url 'demo_login' %}" class="btn alt" style="width:100%;justify-content:center;padding:11px;font-size:15px;text-decoration:none">
+          ▶ Try the live demo — no signup
+        </a>
+        <p class="muted" style="margin-top:8px;font-size:12px;text-align:center">
+          Explore every module with sample data. No password needed.
+        </p>
+
         <p class="muted" style="margin-top:14px;font-size:13px;">
           Forgot password? Ask your Admin to reset it, or use <a href="{% url 'password_reset' %}">password reset</a>.
         </p>

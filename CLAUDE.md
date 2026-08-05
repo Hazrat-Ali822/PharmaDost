@@ -94,6 +94,7 @@ Two traps when adding tests:
 | Command | Purpose |
 |---|---|
 | `seed_demo` | Demo hospital + users + data (all demo passwords are `pharma123`) |
+| `seed_public_demo [--reset]` | Isolated **public demo tenant** ("Sehatyar Demo Hospital", slug `demo`) with a user per role (all `demo1122`) and data in **every** module. Idempotent — re-run only refreshes logins; `--reset` wipes and rebuilds. Powers the `/demo/` one-click login. |
 | `expiry_alert [--days N]` | Notify pharmacist/admin about near-expiry stock (daily cron) |
 | `low_stock_alert` | Notify pharmacist/admin about low stock (daily cron) |
 | `reconcile_stock [--fix]` | Repair `Medicine.quantity` drift vs the sum of its `StockBatch` rows (weekly cron) |
@@ -293,6 +294,8 @@ the rows. Guarded by `tests/test_admin_awareness.py::AuditLogIsolationTest`.
 ### Landing / dashboards
 
 `LOGIN_REDIRECT_URL` → `user_mgmt:post_login_redirect` → `user_mgmt.views.dashboard_router`, which sends superusers to the SaaS portal, ADMINs to `/`, and everyone else to a role template from `ROLE_TEMPLATES`.
+
+**Public demo.** `/demo/` (`accounts.views.demo_login`, in `LoginRequiredMiddleware.ALLOWED_NAMES` so it's reachable signed-out) signs a visitor straight in — no password — as `demo@sehatyar.online`, a non-superuser ADMIN scoped to the isolated demo tenant (`seed_public_demo`). The login page carries a "Try the live demo" button to it. Because the demo user is tenant-scoped and never a superuser, playing in the demo can't touch a real hospital's data. The explicit `path('demo/', ...)` sits above the `<slug:hospital_slug>` catch-all so it wins.
 
 `/` maps to `inventory.views.dashboard` (the pharmacy dashboard). It is **not** feature-gated with a hard 403 — users lacking `inventory` are redirected to `post_login_redirect` instead, and `dashboard_router` avoids bouncing back for admins whose pharmacy module is off. Preserve both sides of that guard or you create a redirect loop.
 
