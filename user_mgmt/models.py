@@ -88,6 +88,22 @@ class SiteSettings(models.Model):
         default=0, help_text="Last patient number issued. Raise it to skip ahead; "
                              "lowering it risks colliding with existing MRNs.")
 
+    # Invoice (service/OPD bill) numbering — its own per-hospital counter, same
+    # locked-row pattern as the MRN counter above. Pharmacy POS receipts keep their
+    # own "Sale #id"; this is the accounting document number.
+    invoice_prefix = models.CharField(
+        max_length=8, blank=True, default="INV",
+        help_text="Letters in front of the invoice number, e.g. INV in INV-2026-00001.")
+    invoice_year_in_number = models.BooleanField(
+        default=True, help_text="Put the year in the invoice number (INV-2026-00001). "
+                                "Off gives INV-00001.")
+    invoice_last_number = models.PositiveIntegerField(
+        default=0, help_text="Last invoice number issued. With the year switched on the "
+                             "count restarts each calendar year.")
+    invoice_number_year = models.PositiveIntegerField(
+        default=0, help_text="The year the counter is currently running in (used to "
+                             "restart numbering each year). Managed automatically.")
+
     hospital = models.OneToOneField('saas.Hospital', on_delete=models.CASCADE, related_name='site_settings', null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 

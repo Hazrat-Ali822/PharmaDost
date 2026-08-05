@@ -17,7 +17,7 @@
     {% for inv in s.invoices %}
     <tr>
       <td>{{ inv.created_at|date:"d M Y" }}</td><td>Service</td>
-      <td>{% for it in inv.items.all %}{{ it.description }}{% if not forloop.last %}, {% endif %}{% empty %}Invoice #{{ inv.id }}{% endfor %}</td>
+      <td>{% for it in inv.items.all %}{{ it.description }}{% if not forloop.last %}, {% endif %}{% empty %}Invoice {{ inv.display_no }}{% endfor %}</td>
       <td class="num">{{ inv.total }}</td><td class="num">{{ inv.paid }}</td><td class="num">{{ inv.balance }}</td>
     </tr>
     {% endfor %}

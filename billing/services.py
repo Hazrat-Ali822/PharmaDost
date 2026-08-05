@@ -1,9 +1,36 @@
 from decimal import Decimal
 
+from django.db import transaction
 from django.db.models import Sum
 from django.db.models.functions import Coalesce
+from django.utils import timezone
 
 from .models import Invoice, InvoiceItem, Expense, PatientPayment
+
+
+def next_invoice_number(hospital):
+    """Reserve and return the next invoice number for this hospital.
+
+    Reuses the same locked-SiteSettings-row pattern as the MRN counter so two
+    invoices raised at the same instant cannot share a number. With the year
+    switched on, the running count restarts at 1 each calendar year.
+    """
+    from patients.services import _settings_row
+
+    with transaction.atomic():
+        row = _settings_row(hospital, lock=True)
+        prefix = (row.invoice_prefix or 'INV').upper()
+        if row.invoice_year_in_number:
+            year = timezone.localdate().year
+            if row.invoice_number_year != year:
+                row.invoice_number_year = year
+                row.invoice_last_number = 0
+            row.invoice_last_number = (row.invoice_last_number or 0) + 1
+            row.save(update_fields=['invoice_last_number', 'invoice_number_year'])
+            return f"{prefix}-{year}-{row.invoice_last_number:05d}"
+        row.invoice_last_number = (row.invoice_last_number or 0) + 1
+        row.save(update_fields=['invoice_last_number'])
+        return f"{prefix}-{row.invoice_last_number:05d}"
 
 
 def patient_billing_summary(patient):

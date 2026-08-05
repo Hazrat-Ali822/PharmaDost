@@ -5,7 +5,7 @@
   <h2 style="color:#ef4444; margin-top:0; font-weight:700;">Void / Cancel Invoice</h2>
   
   <p style="font-size:15px; line-height:1.6; color:var(--text); margin-bottom:25px;">
-    Are you sure you want to void <strong>Invoice #{{ invoice.pk }}</strong> for patient <strong>{{ invoice.patient.full_name }}</strong> totaling <strong>Rs {{ invoice.total }}</strong>?
+    Are you sure you want to void <strong>Invoice {{ invoice.display_no }}</strong> for patient <strong>{{ invoice.patient.full_name }}</strong> totaling <strong>Rs {{ invoice.total }}</strong>?
     <br><br>
     This will cancel the invoice, mark it as voided, and exclude its amount from all financial reports, charts, and billing calculations. This action is audited and cannot be undone.
   </p>

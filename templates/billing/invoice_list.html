@@ -18,7 +18,7 @@
     <tbody>
       {% for invoice in invoices %}
       <tr>
-        <td>{{ invoice.pk }}</td>
+        <td>{{ invoice.display_no }}</td>
         <td>{{ invoice.created_at|date:"Y-m-d" }}</td>
         <td>{{ invoice.patient.full_name }}</td>
         <td>{% for it in invoice.items.all %}{{ it.description }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>

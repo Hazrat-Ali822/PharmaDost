@@ -9,7 +9,8 @@ class SiteSettingsForm(forms.ModelForm):
                   "primary_color", "accent_color", "default_theme",
                   "address", "phone", "email", "license_no", "receipt_footer",
                   "print_theme", "show_doctor_to_pharmacy", "whatsapp_enabled",
-                  "show_bill_qr", "mrn_prefix", "mrn_last_number"]
+                  "show_bill_qr", "mrn_prefix", "mrn_last_number",
+                  "invoice_prefix", "invoice_year_in_number", "invoice_last_number"]
         widgets = {
             "primary_color": forms.TextInput(attrs={"type": "color"}),
             "accent_color": forms.TextInput(attrs={"type": "color"}),

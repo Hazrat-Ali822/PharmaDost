@@ -66,7 +66,7 @@ Contact: {{ branding.phone }}{% endif %}{% endfilter %}">💬 Send on WhatsApp</
       <tr>
         <td>{{ inv.created_at|date:"Y-m-d" }}</td>
         <td><span class="badge">Service</span></td>
-        <td><a href="{% url 'invoice_detail' inv.id %}">{% for it in inv.items.all %}{{ it.description }}{% if not forloop.last %}, {% endif %}{% empty %}Invoice #{{ inv.id }}{% endfor %}</a></td>
+        <td><a href="{% url 'invoice_detail' inv.id %}">{% for it in inv.items.all %}{{ it.description }}{% if not forloop.last %}, {% endif %}{% empty %}Invoice {{ inv.display_no }}{% endfor %}</a></td>
         <td>{{ inv.total }}</td><td>{{ inv.paid }}</td>
         <td>{% if inv.balance > 0 %}<span class="danger">{{ inv.balance }}</span>{% else %}0{% endif %}</td>
       </tr>

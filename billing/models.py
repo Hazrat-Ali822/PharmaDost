@@ -13,6 +13,10 @@ class ActiveInvoiceManager(TenantManager):
 
 
 class Invoice(models.Model):
+    # Human-facing accounting number (INV-2026-00001), allocated per hospital from
+    # the locked SiteSettings counter in save(). Null on rows created before this
+    # existed — display_no falls back to "#id" for those.
+    number = models.CharField(max_length=32, null=True, blank=True, default=None)
     patient = models.ForeignKey(Patient, on_delete=models.PROTECT, related_name='invoices')
     appointment = models.ForeignKey(Appointment, on_delete=models.SET_NULL, null=True, blank=True, related_name='invoices')
     subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
@@ -27,12 +31,35 @@ class Invoice(models.Model):
 
     class Meta:
         ordering = ('-created_at',)
+        constraints = [
+            models.UniqueConstraint(
+                fields=['hospital', 'number'],
+                condition=models.Q(number__isnull=False),
+                name='uniq_invoice_number_per_hospital'),
+        ]
 
     objects = ActiveInvoiceManager()
     all_objects = TenantManager()
 
+    def save(self, *args, **kwargs):
+        # Allocate the accounting number on first save, before the row is written.
+        # The tenant is resolved here (not via the pre_save signal, which fires
+        # inside super().save() — too late) so seeds, imports and offline replay all
+        # get a numbered invoice against the right hospital's counter.
+        if self._state.adding and not self.number:
+            from saas.utils import get_current_hospital
+            from .services import next_invoice_number
+            hospital = self.hospital or get_current_hospital()
+            self.number = next_invoice_number(hospital)
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f'Invoice #{self.pk}'
+        return f'Invoice {self.display_no}'
+
+    @property
+    def display_no(self):
+        """The accounting number if allocated, else the legacy '#id'."""
+        return self.number or f'#{self.pk}'
 
     @property
     def balance(self):

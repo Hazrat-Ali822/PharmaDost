@@ -1,10 +1,10 @@
 {% extends 'partials/base.html' %}
-{% block title %}Invoice #{{ invoice.pk }}{% endblock %}
+{% block title %}Invoice {{ invoice.display_no }}{% endblock %}
 {% block page_title %}Invoice{% endblock %}
 {% block content %}
 <div class="page-head">
   <div>
-    <h2>Invoice #{{ invoice.pk }}
+    <h2>Invoice {{ invoice.display_no }}
       {% if invoice.status == 'VOID' %}
         <span class="badge red" style="background:#ef4444; color:white;">Voided / Cancelled</span>
       {% elif invoice.is_paid %}
