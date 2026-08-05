@@ -166,6 +166,49 @@ def sonographer_dashboard(request):
     return render(request, ROLE_TEMPLATES['SONOGRAPHER'])
 
 
+# ---------------------------------------------------------------- user guide / help
+
+# For each role, the guide sections that matter most to it (anchors in
+# templates/help/guide.html). Admin sees everything. Everyone can still scroll to
+# any section — this only powers the "Start here for your role" quick links.
+ROLE_GUIDE_SECTIONS = {
+    'ADMIN': ['start', 'reception', 'doctor', 'pharmacy', 'lab', 'imaging', 'ipd',
+              'ot', 'billing', 'reports', 'users', 'settings', 'offline'],
+    'RECEPTIONIST': ['start', 'reception', 'billing', 'offline'],
+    'DOCTOR': ['start', 'doctor', 'ipd', 'ot', 'offline'],
+    'NURSE': ['start', 'ipd', 'offline'],
+    'PHARMACIST': ['start', 'pharmacy', 'offline'],
+    'WHOLESALE': ['start', 'pharmacy', 'offline'],
+    'LABTECH': ['start', 'lab', 'offline'],
+    'SONOGRAPHER': ['start', 'imaging', 'offline'],
+    'ACCOUNTANT': ['start', 'billing', 'reports', 'offline'],
+}
+
+# Human labels for the anchors, so the role card can name them.
+GUIDE_SECTION_LABELS = {
+    'start': 'Getting started', 'reception': 'Front desk / Reception',
+    'doctor': 'Doctor / OPD', 'pharmacy': 'Pharmacy', 'lab': 'Laboratory',
+    'imaging': 'Imaging / Radiology', 'ipd': 'Inpatient & Ward (IPD)',
+    'ot': 'Operation Theatre', 'billing': 'Billing & Finance',
+    'reports': 'Reports', 'users': 'Users & Access', 'settings': 'Settings & Branding',
+    'offline': 'Working offline',
+}
+
+
+@login_required
+def help_center(request):
+    role = getattr(request.user, 'role', '') or ''
+    if request.user.is_superuser:
+        role = 'ADMIN'
+    keys = ROLE_GUIDE_SECTIONS.get(role, ['start', 'offline'])
+    my_sections = [(k, GUIDE_SECTION_LABELS[k]) for k in keys]
+    return render(request, 'help/guide.html', {
+        'role': role,
+        'role_label': dict(getattr(User, 'ROLE_CHOICES', [])).get(role, role.title() or 'Staff'),
+        'my_sections': my_sections,
+    })
+
+
 # ---------------------------------------------------------------- first-run setup
 def setup_wizard(request):
     """Shown on a fresh install (no users yet): create the admin account, name

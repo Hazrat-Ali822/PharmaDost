@@ -55,6 +55,7 @@ ADMIN_NAMESPACED_PAGES = [
     'ot:surgery_list', 'ot:surgery_create', 'ot:surgery_request_list',
     'ot:procedure_list', 'ot:procedure_create', 'ot:category_create',
     'user_mgmt:user_list', 'user_mgmt:user_create', 'user_mgmt:site_settings',
+    'user_mgmt:help_center',
 ]
 
 

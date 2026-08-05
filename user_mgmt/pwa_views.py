@@ -178,6 +178,7 @@ SHELL_URL_NAMES = [
     'ipd:handover_board', 'ipd:ward_census',
     'ot:surgery_list', 'ot:surgery_create', 'ot:procedure_list',
     'invoice_list', 'expense_list', 'expense_create', 'cash_closing_new',
+    'user_mgmt:help_center',
 ]
 
 _SHELL_STATIC = ['/static/css/app.css', '/static/js/offline.js']

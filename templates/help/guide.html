@@ -1,0 +1,389 @@
+{% extends 'partials/base.html' %}
+{% block title %}User Guide{% endblock %}
+{% block page_title %}User Guide{% endblock %}
+{% block content %}
+
+<style>
+  .guide-wrap{max-width:960px}
+  .guide-hero{background:linear-gradient(135deg,var(--primary,#4f46e5),var(--accent,#0ea5a4));
+    color:#fff;border-radius:16px;padding:22px 24px;margin-bottom:18px}
+  .guide-hero h2{margin:0 0 6px;font-size:22px}
+  .guide-hero p{margin:0;opacity:.92;font-size:14px}
+  .role-card{border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:18px;background:var(--card-bg,#fff)}
+  .role-card h3{margin:0 0 6px;font-size:16px}
+  .role-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .role-links a{background:var(--primary,#4f46e5);color:#fff;text-decoration:none;border-radius:999px;
+    padding:6px 13px;font-size:13px;font-weight:600}
+  details.guide{border:1px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden;background:var(--card-bg,#fff)}
+  details.guide>summary{cursor:pointer;padding:14px 16px;font-weight:700;font-size:15.5px;list-style:none;
+    display:flex;align-items:center;gap:10px}
+  details.guide>summary::-webkit-details-marker{display:none}
+  details.guide>summary::after{content:"+";margin-left:auto;font-size:20px;color:var(--muted,#6b7280);font-weight:400}
+  details.guide[open]>summary::after{content:"–"}
+  details.guide>summary .ic{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;
+    background:color-mix(in srgb,var(--primary,#4f46e5) 15%,transparent);flex:none;font-size:15px}
+  .guide-body{padding:2px 18px 16px 18px;font-size:14px;line-height:1.65}
+  .guide-body h4{margin:14px 0 4px;font-size:14px;color:var(--primary,#4f46e5)}
+  .guide-body ol,.guide-body ul{margin:6px 0 6px 2px;padding-left:20px}
+  .guide-body li{margin:4px 0}
+  .guide-body .who{font-size:12.5px;color:var(--muted,#6b7280);margin:2px 0 8px}
+  .guide-body .tip{background:color-mix(in srgb,var(--accent,#0ea5a4) 10%,transparent);
+    border-left:3px solid var(--accent,#0ea5a4);border-radius:8px;padding:8px 12px;margin:10px 0;font-size:13px}
+  .guide-body code{background:var(--border);padding:1px 6px;border-radius:6px;font-size:12.5px}
+  .role-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+  .role-table th,.role-table td{border:1px solid var(--border);padding:7px 9px;text-align:left;vertical-align:top}
+  .role-table th{background:color-mix(in srgb,var(--primary,#4f46e5) 12%,transparent)}
+</style>
+
+<div class="guide-wrap">
+
+  <div class="guide-hero">
+    <h2>How to use {{ branding.brand_name|default:"Sehatyar" }}</h2>
+    <p>A step-by-step guide to every module. Open a section to read how it works, who uses it, and exactly what to click.</p>
+  </div>
+
+  <div class="role-card">
+    <h3>You are signed in as: {{ role_label }}</h3>
+    <div class="muted" style="font-size:13px">These are the parts of the system you will use most. Start here — you can still read any other section below.</div>
+    <div class="role-links">
+      {% for key, label in my_sections %}
+        <a href="#{{ key }}">{{ label }}</a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ============================ GETTING STARTED ============================ -->
+  <details class="guide" id="start" open>
+    <summary><span class="ic">🚀</span> Getting started (everyone)</summary>
+    <div class="guide-body">
+      <p>{{ branding.brand_name|default:"Sehatyar" }} is a complete hospital &amp; pharmacy system. What you see in the left menu depends on your role — you only get the screens you need.</p>
+      <h4>Sign in</h4>
+      <ol>
+        <li>Open the website (or the installed app) and enter your email and password.</li>
+        <li>You land on your own dashboard — a summary made for your role.</li>
+      </ol>
+      <h4>Find your way around</h4>
+      <ul>
+        <li><b>Left sidebar</b> — every screen you can open, grouped (Clinical, Pharmacy, Finance, System, App). Click a group heading to expand or collapse it.</li>
+        <li><b>Top bar</b> — the hospital name/logo, notifications (🔔) and your account menu.</li>
+        <li><b>Theme</b> — switch light/dark with the toggle; your choice is remembered on this device.</li>
+        <li><b>Notifications</b> — a red dot means something needs you (a prescription to fill, a patient to admit, a bill to collect). Click it to see the list.</li>
+      </ul>
+      <h4>Install it as an app</h4>
+      <ol>
+        <li>Go to <b>App → Get the App</b> in the sidebar.</li>
+        <li>Follow the prompt to add it to your phone's home screen or desktop.</li>
+        <li>It then opens like a normal app, with the hospital's own name and logo.</li>
+      </ol>
+      <div class="tip">Tip: the whole system works on a phone — reception, the ward round and the pharmacy counter are all designed for a small screen.</div>
+    </div>
+  </details>
+
+  <!-- ============================ RECEPTION ============================ -->
+  <details class="guide" id="reception">
+    <summary><span class="ic">🧾</span> Front desk / Reception</summary>
+    <div class="guide-body">
+      <p class="who">Used by: Receptionist, Admin</p>
+      <p>Reception is where every visit begins. The system asks one question: is this a <b>new</b> patient or an <b>old</b> one?</p>
+      <h4>A brand-new patient</h4>
+      <ol>
+        <li>Open <b>Reception → New Visit</b> (or <b>Patients → Register</b>).</li>
+        <li>Pick the <b>department</b> first — only that department's doctors are then offered.</li>
+        <li>Fill the patient details. You can type either the <b>age</b> or the <b>date of birth</b> — the other fills in automatically. CNIC dashes are added as you type.</li>
+        <li>Choose the doctor (only doctors currently sitting are shown; tick the box to see everyone for an emergency).</li>
+        <li>Save. In one step this registers the patient, books the appointment and raises the consultation fee.</li>
+        <li>The printable <b>token slip</b> opens — hand it to the patient.</li>
+      </ol>
+      <h4>A returning patient</h4>
+      <ol>
+        <li>Open <b>Reception → New Visit</b> and search by <b>MRN, mobile, CNIC or name</b>. Typing the CNIC straight off the card works.</li>
+        <li>Select the patient, choose department + doctor, and book. The token slip prints as before.</li>
+      </ol>
+      <div class="tip">The patient number (MRN) is given automatically — you never type it. Each hospital has its own numbering.</div>
+    </div>
+  </details>
+
+  <!-- ============================ DOCTOR ============================ -->
+  <details class="guide" id="doctor">
+    <summary><span class="ic">🩺</span> Doctor / OPD</summary>
+    <div class="guide-body">
+      <p class="who">Used by: Doctor</p>
+      <h4>See your patients</h4>
+      <ol>
+        <li>Your dashboard shows today's queue — patients booked to you, in token order.</li>
+        <li>Open a patient to see their history: past visits, prescriptions, lab &amp; imaging results, admissions.</li>
+      </ol>
+      <h4>Write a prescription</h4>
+      <ol>
+        <li>On the visit, choose <b>Write Prescription</b>.</li>
+        <li>Add medicines (with dose, duration, instructions). Allergy and duplicate warnings appear automatically.</li>
+        <li>Use a saved <b>prescription template</b> to add a common set of medicines in one click.</li>
+        <li>Save — it goes straight to the pharmacy's pending queue.</li>
+      </ol>
+      <h4>Order tests &amp; scans</h4>
+      <ul>
+        <li>Add lab tests or imaging from the visit; each order automatically raises a bill and notifies the lab / radiology.</li>
+      </ul>
+      <h4>Advise admission or surgery</h4>
+      <ul>
+        <li>Use <b>Advise Admission</b> or <b>Advise Surgery</b>. This sends a request to reception / the OT queue — they confirm the bed or schedule the operation. The patient stays yours.</li>
+      </ul>
+      <h4>Set your availability</h4>
+      <ul>
+        <li>From the OPD board, one click marks you on leave / available for a given day. This is per-date, so today's leave never hides you tomorrow.</li>
+      </ul>
+    </div>
+  </details>
+
+  <!-- ============================ PHARMACY ============================ -->
+  <details class="guide" id="pharmacy">
+    <summary><span class="ic">💊</span> Pharmacy</summary>
+    <div class="guide-body">
+      <p class="who">Used by: Pharmacist, Wholesale, Admin</p>
+      <h4>Sell at the counter (POS)</h4>
+      <ol>
+        <li>Open <b>Pharmacy → New Sale</b>.</li>
+        <li>Search and add medicines; set quantity. The price fills in automatically.</li>
+        <li>Add any discount; choose the payment method and the amount paid (blank = full).</li>
+        <li>Save — stock is reduced automatically (earliest-expiry batch first) and the receipt is ready to print.</li>
+      </ol>
+      <h4>Fill a doctor's prescription</h4>
+      <ol>
+        <li>The <b>pending prescriptions</b> list shows what doctors have prescribed.</li>
+        <li>Click one — the sale screen opens with the medicines pre-loaded.</li>
+        <li>Sell all of them and the prescription is marked dispensed; sell some and it stays as partial.</li>
+      </ol>
+      <h4>Stock &amp; batches</h4>
+      <ul>
+        <li><b>Medicines</b> lists your catalogue with live stock. Expired batches are never sellable.</li>
+        <li>The system warns you about <b>low stock</b> and <b>near-expiry</b> items.</li>
+      </ul>
+      <h4>Purchase orders (buying stock)</h4>
+      <ol>
+        <li>Open <b>Purchase Orders → New</b>. Add items (paste a list, quick-add, or repeat a past order); low-stock items can be suggested for you.</li>
+        <li>Send the order to the supplier, then <b>Receive</b> it to add the stock in.</li>
+      </ol>
+      <h4>Wholesale / bulk orders</h4>
+      <ul>
+        <li><b>Wholesale</b> lets you build a large order sheet fast and convert it to a bill in one click. Wholesale pricing needs a registered customer.</li>
+      </ul>
+      <div class="tip">Returns go back to their batch; anything that came back expired is kept aside and cannot be re-sold.</div>
+    </div>
+  </details>
+
+  <!-- ============================ LAB ============================ -->
+  <details class="guide" id="lab">
+    <summary><span class="ic">🧪</span> Laboratory</summary>
+    <div class="guide-body">
+      <p class="who">Used by: Lab Technician, Admin</p>
+      <ol>
+        <li>Open <b>Lab → Orders</b> to see tests doctors (or the ward) have ordered — each already has a pending bill.</li>
+        <li>Open an order and <b>enter the results</b>; save.</li>
+        <li>Print the report on the hospital letterhead; the doctor sees the result on the patient's history.</li>
+      </ol>
+      <h4>Prices</h4>
+      <ul>
+        <li>Admin sets test prices under <b>Price List → Lab Tests</b>. These prices are used automatically when a test is ordered.</li>
+      </ul>
+    </div>
+  </details>
+
+  <!-- ============================ IMAGING ============================ -->
+  <details class="guide" id="imaging">
+    <summary><span class="ic">🩻</span> Imaging / Radiology</summary>
+    <div class="guide-body">
+      <p class="who">Used by: Sonographer / Radiologist, Admin</p>
+      <ol>
+        <li>Open <b>Imaging → Studies</b> to see scans that have been referred (each already billed).</li>
+        <li>Open a study and <b>write the report</b>; save and print on the letterhead.</li>
+      </ol>
+      <h4>Prices</h4>
+      <ul>
+        <li>Admin sets scan prices under <b>Price List → Scans / Imaging</b>.</li>
+      </ul>
+    </div>
+  </details>
+
+  <!-- ============================ IPD / WARD ============================ -->
+  <details class="guide" id="ipd">
+    <summary><span class="ic">🛏️</span> Inpatient &amp; Ward (IPD)</summary>
+    <div class="guide-body">
+      <p class="who">Used by: Doctor, Nurse (Ward Staff), Ward In-charge, Admin</p>
+      <h4>Admit a patient</h4>
+      <ol>
+        <li>When a doctor advises admission, reception sees it in the queue and confirms — pick the ward/bed and attending doctor to create the admission.</li>
+        <li><b>Wards &amp; Beds</b> is where you set up rooms, beds and daily rates.</li>
+      </ol>
+      <h4>Doctor rounds</h4>
+      <ul>
+        <li>Doctors record a round (assessment/plan) on the admitted patient. Doctors see this as <b>My Inpatients</b>.</li>
+      </ul>
+      <h4>Nursing care (Ward Staff)</h4>
+      <ul>
+        <li><b>Record Vitals</b> — temperature, pulse, BP, breathing, oxygen, consciousness, pain, blood sugar. The system scores an early-warning number (MEWS) and colours it green / amber / red so a deteriorating patient stands out.</li>
+        <li><b>Fluid I/O</b> — record intake and output; the balance is totalled for you.</li>
+        <li><b>Nursing Note</b> — your shift progress note. <b>Care Task</b> — log routine care (turning, hygiene, catheter/IV/wound care, mobilising, feeding).</li>
+        <li><b>Give Medication</b> — record a dose. If it's a pharmacy medicine it reduces stock and is added to the discharge bill; the patient's own medicine and off-catalogue drugs are recorded without a charge.</li>
+      </ul>
+      <h4>Shift change &amp; the whole ward</h4>
+      <ul>
+        <li><b>Handover</b> — write an end-of-shift SBAR handover; the incoming nurse reads the <b>Handover Board</b> and acknowledges taking over.</li>
+        <li><b>Nursing Board</b> — every inpatient with their latest early-warning score, sickest first — the "who needs attention now" screen.</li>
+        <li><b>Ward Census</b> — admissions, discharges and occupancy for a day.</li>
+      </ul>
+      <h4>Running the ward (Ward In-charge)</h4>
+      <ul>
+        <li><b>Duty Roster</b> — build the weekly shift roster (morning/evening/night) for each nurse.</li>
+        <li><b>Patient Allocation</b> — assign each admitted patient to a nurse who is rostered for that shift; each nurse's load is shown.</li>
+        <li>A nurse sees their own shifts and today's patients under <b>My Duties</b>.</li>
+      </ul>
+      <h4>Discharge</h4>
+      <ol>
+        <li>Open the admission and choose <b>Discharge</b>.</li>
+        <li>The bill is prepared automatically: bed charges for every day plus every medicine given.</li>
+        <li>The printable <b>discharge summary</b> (stay, diagnosis, rounds, medicines, itemised bill) opens.</li>
+      </ol>
+    </div>
+  </details>
+
+  <!-- ============================ OT ============================ -->
+  <details class="guide" id="ot">
+    <summary><span class="ic">⚕️</span> Operation Theatre (OT)</summary>
+    <div class="guide-body">
+      <p class="who">Used by: Doctor (advises), OT staff, Admin</p>
+      <ol>
+        <li>A doctor uses <b>Advise Surgery</b>; it lands in the OT queue.</li>
+        <li>OT staff confirm it to create the surgery record and schedule it.</li>
+        <li>Record the procedure details; the charge is invoiced automatically.</li>
+        <li><b>Procedures</b> holds the standard operations and their charges.</li>
+      </ol>
+    </div>
+  </details>
+
+  <!-- ============================ BILLING ============================ -->
+  <details class="guide" id="billing">
+    <summary><span class="ic">💵</span> Billing &amp; Finance</summary>
+    <div class="guide-body">
+      <p class="who">Used by: Receptionist, Accountant, Admin</p>
+      <h4>Collect a patient's payment</h4>
+      <ol>
+        <li>Open <b>Billing → Patient Billing</b> and search the patient (it defaults to everyone who owes money).</li>
+        <li>Open their bill — it shows every charge (consultation, lab, imaging, pharmacy, admission) in one place.</li>
+        <li>Enter the amount and method, and <b>Receive Payment</b> (it clears the oldest items first).</li>
+      </ol>
+      <h4>Print / send the bill</h4>
+      <ul>
+        <li><b>Print Bill</b> puts it on the hospital letterhead — with a scannable QR of the summary if turned on.</li>
+        <li><b>Send on WhatsApp</b> opens WhatsApp with the bill summary ready to send to the patient — no setup needed.</li>
+      </ul>
+      <h4>Invoices, expenses &amp; the day book</h4>
+      <ul>
+        <li>Service invoices carry a proper number (e.g. <code>INV-2026-00001</code>). An admin can void an invoice (this is recorded).</li>
+        <li><b>Expenses</b> records money going out (rent, salaries, utilities…).</li>
+        <li><b>Cash Closing / Day Book</b> reconciles the drawer at day-end: expected vs counted cash.</li>
+        <li><b>Doctor Payouts</b> records fees paid to doctors.</li>
+      </ul>
+    </div>
+  </details>
+
+  <!-- ============================ REPORTS ============================ -->
+  <details class="guide" id="reports">
+    <summary><span class="ic">📊</span> Reports</summary>
+    <div class="guide-body">
+      <p class="who">Used by: Admin, Accountant</p>
+      <ul>
+        <li><b>Dashboard</b> shows today's income by department (OPD, lab, imaging, pharmacy) and the attention list.</li>
+        <li><b>Analytics / Visual Analytics</b> show sales trends, best/dead-stock movers and profit (from the cost captured at each sale).</li>
+        <li>Reports can be filtered by day / week / month.</li>
+      </ul>
+    </div>
+  </details>
+
+  <!-- ============================ USERS & ACCESS ============================ -->
+  <details class="guide" id="users">
+    <summary><span class="ic">👥</span> Users &amp; Access (Admin)</summary>
+    <div class="guide-body">
+      <p class="who">Used by: Admin</p>
+      <h4>Add a staff member</h4>
+      <ol>
+        <li>Open <b>System → Users → New</b>.</li>
+        <li>Enter their details and pick a <b>role</b> (Doctor, Nurse, Pharmacist, Receptionist, Lab Tech, Sonographer, Accountant, Wholesale, Admin). The role decides what they can see.</li>
+        <li>Save and give them their password.</li>
+      </ol>
+      <h4>Fine-tune what someone can do</h4>
+      <ul>
+        <li>In <b>Edit user → Access</b> you can switch individual features on or off for that one person, beyond their role's defaults.</li>
+        <li>Example: promote a senior nurse to <b>Ward In-charge</b> by granting the roster/allocation feature.</li>
+      </ul>
+    </div>
+  </details>
+
+  <!-- ============================ SETTINGS ============================ -->
+  <details class="guide" id="settings">
+    <summary><span class="ic">⚙️</span> Settings &amp; Branding (Admin)</summary>
+    <div class="guide-body">
+      <p class="who">Used by: Admin</p>
+      <p>Open <b>System → Settings</b>. Everything here is per-hospital.</p>
+      <h4>Brand</h4>
+      <ul>
+        <li>Set the <b>name, tagline, logo and colours</b>. Tick "pick the theme colour from the logo" to match your app to your logo automatically. A live preview updates as you type.</li>
+        <li>Choose the <b>default theme</b> (light / dark / follow the device) and the <b>print design</b> for bills &amp; reports.</li>
+      </ul>
+      <h4>Money</h4>
+      <ul>
+        <li><b>Currency symbol</b> — shown before every amount (Rs, PKR, $…).</li>
+        <li><b>Tax, discount &amp; rounding</b> — an optional tax % on every bill, a standing discount % on pharmacy sales, and rounding the total to the nearest 1/5/10. All start at zero, so nothing changes until you set them.</li>
+        <li><b>Invoice numbering</b> — your prefix (e.g. INV) and whether the year appears in the number.</li>
+        <li><b>Patient numbering (MRN)</b> — your prefix and the running number.</li>
+      </ul>
+      <h4>Modules</h4>
+      <ul>
+        <li>Turn whole modules on/off (pharmacy, OPD, IPD, OT, lab, imaging, finance, reports). An off module disappears from everyone's menu.</li>
+      </ul>
+      <h4>Backup</h4>
+      <ul>
+        <li><b>Download Backup</b> saves your whole database and uploaded files as one <code>.zip</code>. Keep it somewhere safe.</li>
+      </ul>
+    </div>
+  </details>
+
+  <!-- ============================ OFFLINE ============================ -->
+  <details class="guide" id="offline">
+    <summary><span class="ic">📶</span> Working offline</summary>
+    <div class="guide-body">
+      <p class="who">Used by: everyone</p>
+      <p>The app keeps working when the internet drops — entries are saved on the device and sent to the server the moment it can be reached.</p>
+      <ul>
+        <li>Keep working normally. A form saved offline is queued, not lost.</li>
+        <li>The <b>Offline Queue</b> (App → Offline Queue) shows what is waiting to sync, and anything that was rejected with the reason.</li>
+        <li>A visit registered offline prints a <b>provisional slip</b> the patient carries to the doctor. The real MRN and token are issued once it syncs.</li>
+        <li>Numbers (MRN, token, bill numbers) are always given by the server at sync — never guessed on the device.</li>
+      </ul>
+      <div class="tip">For a clinic with no internet at all, the desktop build can act as a <b>LAN server</b>: every phone on the same wifi runs the whole system live, with no internet. Ask your admin.</div>
+    </div>
+  </details>
+
+  <!-- ============================ ROLE REFERENCE ============================ -->
+  <details class="guide" id="roles">
+    <summary><span class="ic">🗂️</span> Roles at a glance</summary>
+    <div class="guide-body">
+      <table class="role-table">
+        <thead><tr><th>Role</th><th>Mainly uses</th></tr></thead>
+        <tbody>
+          <tr><td>Admin</td><td>Everything — settings, users, all modules and reports</td></tr>
+          <tr><td>Receptionist</td><td>Reception, patient registration, billing / payments</td></tr>
+          <tr><td>Doctor</td><td>OPD queue, prescriptions, lab/imaging orders, advise admission/surgery, rounds</td></tr>
+          <tr><td>Nurse (Ward Staff)</td><td>Vitals, fluids, notes, care tasks, medications, handover</td></tr>
+          <tr><td>Ward In-charge</td><td>Duty roster &amp; patient allocation (plus nursing)</td></tr>
+          <tr><td>Pharmacist</td><td>Counter sales, filling prescriptions, stock, purchase orders</td></tr>
+          <tr><td>Wholesale</td><td>Bulk / wholesale orders</td></tr>
+          <tr><td>Lab Technician</td><td>Lab orders &amp; results</td></tr>
+          <tr><td>Sonographer</td><td>Imaging studies &amp; reports</td></tr>
+          <tr><td>Accountant</td><td>Billing, expenses, day book, reports</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+</div>
+{% endblock %}
