@@ -88,6 +88,7 @@ class LogoColourTest(TestCase):
         self.client.post('/manage/settings/', {
             'brand_name': 'ColourCo', 'brand_tagline': '', 'logo_text': 'C',
             'primary_color': '#4f46e5', 'accent_color': '#4338ca',
+            'default_theme': 'light',
             'address': '', 'phone': '', 'email': '', 'license_no': '',
             'receipt_footer': '', 'print_theme': 'classic',
             'mrn_prefix': '', 'mrn_last_number': '0',

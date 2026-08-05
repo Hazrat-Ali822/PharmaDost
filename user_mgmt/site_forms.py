@@ -6,9 +6,9 @@ class SiteSettingsForm(forms.ModelForm):
     class Meta:
         model = SiteSettings
         fields = ["brand_name", "brand_tagline", "logo_text", "logo_image",
-                  "primary_color", "accent_color",
+                  "primary_color", "accent_color", "default_theme",
                   "address", "phone", "email", "license_no", "receipt_footer",
-                  "print_theme", "show_doctor_to_pharmacy",
+                  "print_theme", "show_doctor_to_pharmacy", "whatsapp_enabled",
                   "mrn_prefix", "mrn_last_number"]
         widgets = {
             "primary_color": forms.TextInput(attrs={"type": "color"}),

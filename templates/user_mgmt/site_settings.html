@@ -56,11 +56,20 @@
       </div>
 
       <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
+      <h3>Appearance</h3>
+      <p><label>Default theme (each device can still switch)</label><br>{{ form.default_theme }}</p>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
       <h3>Pharmacy / Privacy</h3>
       <label style="display:flex;gap:10px;align-items:flex-start;padding:9px 0">
         {{ form.show_doctor_to_pharmacy }}
         <span><b>Show doctor's name to pharmacy staff</b><br>
           <span class="muted" style="font-size:13px">On the POS "pending prescriptions" list, show which doctor wrote each prescription. Turn OFF to hide the doctor's name from pharmacy/counter staff.</span></span>
+      </label>
+      <label style="display:flex;gap:10px;align-items:flex-start;padding:9px 0">
+        {{ form.whatsapp_enabled }}
+        <span><b>Show "Send on WhatsApp" on patient bills</b><br>
+          <span class="muted" style="font-size:13px">Opens WhatsApp with the bill summary ready to send to the patient's number — no gateway or setup needed. Turn OFF to hide it.</span></span>
       </label>
 
       <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">

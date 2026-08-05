@@ -135,9 +135,19 @@
 </head>
 <body>
 <script>
-  if (localStorage.getItem('theme') === 'dark') {
-    document.body.classList.add('dark-theme');
-  }
+  // A device's own choice (localStorage) always wins; otherwise fall back to the
+  // hospital's default theme, and 'auto' follows the device's system setting.
+  (function () {
+    var saved = localStorage.getItem('theme');
+    var def = "{{ branding.default_theme|default:'light' }}";
+    var dark;
+    if (saved === 'dark') dark = true;
+    else if (saved === 'light') dark = false;
+    else if (def === 'dark') dark = true;
+    else if (def === 'auto') dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    else dark = false;
+    if (dark) document.body.classList.add('dark-theme');
+  })();
 </script>
 <div class="app" id="app">
   <div class="backdrop" onclick="document.getElementById('app').classList.remove('nav-open')"></div>

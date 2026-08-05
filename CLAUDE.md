@@ -438,6 +438,8 @@ must agree.
 
 The settings screen can **theme the app from the logo**: ticking "Pick the theme colour from the logo" on save runs `user_mgmt.color_utils.dominant_color()` (Pillow — picks the most common vivid, non-white/black, non-transparent pixel) over the uploaded/current logo and sets `primary_color` + a `darker()` accent. It only fires when the box is ticked, so a hand-set colour is never overwritten silently.
 
+`default_theme` (light/dark/auto) sets the tenant's default appearance: `base.html` applies it only when the *device* has no `localStorage.theme` of its own, so a per-device toggle always wins; `auto` follows `prefers-color-scheme`. `whatsapp_enabled` shows a **Send on WhatsApp** button on the patient bill — a free `wa.me` link (no gateway/credentials), with the number normalised by the `wa_number` filter (`billing/templatetags/wa.py`: `03…`/`+92…`/`0092…` → `92…`) and the bill summary URL-encoded into the message.
+
 Two things here are load-bearing:
 
 - The template context key is **`branding`**, not `site` — Django's `LoginView` injects its own `site` variable which would shadow it.

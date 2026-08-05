@@ -55,6 +55,16 @@ class SiteSettings(models.Model):
     print_theme = models.CharField(max_length=20, choices=PRINT_THEMES, default="classic",
                                    help_text="Design used for printed lab reports, bills & receipts")
 
+    # the app's default light/dark mode for this hospital (a device can still toggle)
+    default_theme = models.CharField(max_length=10,
+                                     choices=(("light", "Light"), ("dark", "Dark"),
+                                              ("auto", "Follow the device")),
+                                     default="light",
+                                     help_text="Light or dark by default for everyone (each device can still switch)")
+    # send a WhatsApp button on bills (uses the free wa.me link — no gateway needed)
+    whatsapp_enabled = models.BooleanField(
+        default=True, help_text="Show a 'Send on WhatsApp' button on patient bills")
+
     # show the prescribing doctor's name to pharmacy/POS staff (on the pending-Rx loader)
     show_doctor_to_pharmacy = models.BooleanField(
         default=True,
