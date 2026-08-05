@@ -1,5 +1,5 @@
 from django import forms
-from .models import Ward, Bed, Admission, DoctorRound
+from .models import Ward, Bed, Admission, DoctorRound, VitalsObservation, FluidBalanceEntry
 from patients.models import Patient
 from opd.models import Doctor
 
@@ -110,3 +110,41 @@ class MedicationLogForm(forms.ModelForm):
         if qty < 1:
             raise forms.ValidationError('Quantity must be at least 1.')
         return qty
+
+
+class VitalsObservationForm(forms.ModelForm):
+    """The nursing vitals set. Every measured field is optional so a partial obs
+    is still saveable (MEWS marks it incomplete); the point is never to block the
+    nurse from recording what they did take."""
+    class Meta:
+        model = VitalsObservation
+        fields = ['taken_at', 'temperature', 'pulse', 'respiratory_rate',
+                  'systolic_bp', 'diastolic_bp', 'spo2', 'consciousness',
+                  'pain_score', 'blood_glucose', 'notes']
+        widgets = {
+            'taken_at': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'consciousness': forms.RadioSelect(),
+            'notes': forms.TextInput(attrs={'placeholder': 'e.g. resting, on O₂ 2L'}),
+        }
+
+    def clean(self):
+        cleaned = super().clean()
+        # At least one measured value — an empty obs is not an observation.
+        measured = ['temperature', 'pulse', 'respiratory_rate', 'systolic_bp',
+                    'diastolic_bp', 'spo2', 'pain_score', 'blood_glucose']
+        if not any(cleaned.get(f) is not None for f in measured):
+            raise forms.ValidationError('Record at least one vital sign.')
+        return cleaned
+
+
+class FluidBalanceEntryForm(forms.ModelForm):
+    class Meta:
+        model = FluidBalanceEntry
+        fields = ['recorded_at', 'direction', 'kind', 'volume_ml', 'notes']
+        widgets = {
+            'recorded_at': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'direction': forms.RadioSelect(),
+            'kind': forms.TextInput(attrs={'list': 'fluid-kinds',
+                                           'placeholder': 'IV fluid, Oral, Urine…'}),
+            'notes': forms.TextInput(attrs={'placeholder': 'optional'}),
+        }

@@ -7,6 +7,8 @@
   <div style="display:flex; gap:10px;">
     <a class="btn alt" href="{% url 'ipd:admission_list' %}">Back to Registry</a>
     {% if admission.status == 'Admitted' %}
+      <a class="btn success" href="{% url 'ipd:vitals_add' admission.pk %}" style="display:inline-flex; align-items:center; background:#0ea5e9; color:white;">➕ Record Vitals</a>
+      <a class="btn alt" href="{% url 'ipd:fluid_add' admission.pk %}">💧 Fluid I/O</a>
       <a class="btn success" href="{% url 'ipd:doctor_round_add' admission.pk %}" style="display:inline-flex; align-items:center; background:#22c55e; color:white;">Record Round</a>
       <a class="btn" href="{% url 'ipd:medication_log_add' admission.pk %}" style="display:inline-flex; align-items:center; background:var(--primary); color:white;">Record Medication</a>
       <a class="btn alt" href="{% url 'lab:order_create' %}?patient={{ admission.patient.pk }}">🧪 Order Lab Test</a>
@@ -63,6 +65,68 @@
       <p style="font-size:14.5px; white-space:pre-wrap; line-height:1.6; color:var(--text);">{{ admission.discharge_notes }}</p>
     </div>
     {% endif %}
+
+    {# Nursing vitals chart + MEWS — the nurse's own observations, separate from doctor rounds. #}
+    <div class="card" style="padding:25px; border-radius:12px; border:1px solid var(--border);">
+      <h3 style="margin-top:0; font-weight:700; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <span>Vitals Chart (Nursing)</span>
+        {% if latest_obs %}
+        <span style="font-size:13px; background:{{ latest_obs.mews.color }}; color:#fff; padding:3px 12px; border-radius:20px; font-weight:700;">MEWS {{ latest_obs.mews.score }} · {{ latest_obs.mews.band }}</span>
+        {% endif %}
+      </h3>
+      {% if latest_obs %}
+      <div style="background:var(--bg); border-radius:8px; padding:10px 12px; margin-bottom:14px; font-size:13px;">
+        <strong>Latest ({{ latest_obs.taken_at|date:'d/m H:i' }}):</strong>
+        T {{ latest_obs.temperature|default:'—' }}°F · P {{ latest_obs.pulse|default:'—' }} · RR {{ latest_obs.respiratory_rate|default:'—' }} ·
+        BP {{ latest_obs.bp_display }} · SpO₂ {{ latest_obs.spo2|default:'—' }}% · {{ latest_obs.get_consciousness_display }}{% if latest_obs.pain_score is not None %} · Pain {{ latest_obs.pain_score }}/10{% endif %}
+        <div class="muted" style="margin-top:4px; color:{{ latest_obs.mews.color }};">{{ latest_obs.mews.advice }}</div>
+      </div>
+      <div class="table-scroll">
+        <table class="tbl">
+          <thead><tr><th>Time</th><th>Temp</th><th>Pulse</th><th>RR</th><th>BP</th><th>SpO₂</th><th>AVPU</th><th>MEWS</th></tr></thead>
+          <tbody>
+            {% for o in observations %}
+            <tr>
+              <td>{{ o.taken_at|date:'d/m H:i' }}</td>
+              <td>{{ o.temperature|default:'—' }}</td><td>{{ o.pulse|default:'—' }}</td>
+              <td>{{ o.respiratory_rate|default:'—' }}</td><td>{{ o.bp_display }}</td>
+              <td>{{ o.spo2|default:'—' }}</td><td>{{ o.consciousness }}</td>
+              <td><span style="color:{{ o.mews.color }}; font-weight:700;">{{ o.mews.score }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="muted" style="margin:0;">No vitals recorded yet. <a href="{% url 'ipd:vitals_add' admission.pk %}">Record the first set →</a></p>
+      {% endif %}
+    </div>
+
+    {# Fluid balance (intake / output). #}
+    <div class="card" style="padding:25px; border-radius:12px; border:1px solid var(--border);">
+      <h3 style="margin-top:0; font-weight:700; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <span>Fluid Balance</span>
+        <span style="font-size:13px;">Today: <span style="color:#15803d;">In {{ fluid_today.intake }}</span> / <span style="color:#b45309;">Out {{ fluid_today.output }}</span> · <strong>Balance {{ fluid_today.balance }} mL</strong></span>
+      </h3>
+      {% if fluid_entries %}
+      <div class="table-scroll">
+        <table class="tbl">
+          <thead><tr><th>Time</th><th>In/Out</th><th>Type</th><th>mL</th></tr></thead>
+          <tbody>
+            {% for f in fluid_entries %}
+            <tr>
+              <td>{{ f.recorded_at|date:'d/m H:i' }}</td>
+              <td>{% if f.direction == 'IN' %}<span style="color:#15803d;">Intake</span>{% else %}<span style="color:#b45309;">Output</span>{% endif %}</td>
+              <td>{{ f.kind }}</td><td>{{ f.volume_ml }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="muted" style="margin:0;">No fluid entries yet. <a href="{% url 'ipd:fluid_add' admission.pk %}">Add one →</a></p>
+      {% endif %}
+    </div>
 
     <div class="card" style="padding:25px; border-radius:12px; border:1px solid var(--border);">
       <h3 style="margin-top:0; font-weight:700; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:20px;">Attending Doctor Rounds Timeline</h3>

@@ -1,0 +1,35 @@
+{% extends 'partials/base.html' %}
+{% block title %}Fluid Balance — {{ admission.patient.full_name }}{% endblock %}
+{% block page_title %}Fluid Intake / Output{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Fluid Balance — {{ admission.patient.full_name }}</h2>
+  <a class="btn alt" href="{% url 'ipd:admission_detail' admission.pk %}">← Back to chart</a>
+</div>
+
+<div class="card" style="max-width:560px;">
+  <form method="post" data-offline-kind="fluid">
+    {% csrf_token %}
+    <input type="hidden" name="admission_id" value="{{ admission.pk }}">
+
+    {% if form.non_field_errors %}<div class="msg error">{{ form.non_field_errors }}</div>{% endif %}
+
+    <div style="margin-bottom:14px;">
+      <span style="font-weight:600; font-size:13px;">Direction</span>
+      <div style="display:flex; gap:20px; margin-top:6px;">{{ form.direction }}</div>
+    </div>
+
+    <label style="display:block; margin-bottom:14px;">Type{{ form.kind }}</label>
+    <datalist id="fluid-kinds">
+      <option value="IV fluid"><option value="Oral"><option value="NG feed">
+      <option value="Urine"><option value="Drain"><option value="Vomit"><option value="Stool">
+    </datalist>
+
+    <label style="display:block; margin-bottom:14px;">Volume (mL){{ form.volume_ml }}</label>
+    <label style="display:block; margin-bottom:14px;">Time{{ form.recorded_at }}</label>
+    <label style="display:block; margin-bottom:14px;">Notes{{ form.notes }}</label>
+
+    <button class="btn" type="submit">Add entry</button>
+  </form>
+</div>
+{% endblock %}

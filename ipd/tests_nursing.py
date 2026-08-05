@@ -13,7 +13,8 @@ from accounts.models import User
 from saas.models import Hospital
 from patients.models import Patient
 from opd.models import Doctor
-from ipd.models import Ward, Bed, Admission, NurseShift, PatientAllocation
+from ipd.models import (Ward, Bed, Admission, NurseShift, PatientAllocation,
+                        VitalsObservation, FluidBalanceEntry, compute_mews, fluid_totals)
 
 
 class NursingWardManagementTest(TestCase):
@@ -83,3 +84,82 @@ class NursingWardManagementTest(TestCase):
         self.assertEqual(c.post('/ipd/roster/add/', {'ward': self.ward.pk, 'nurse': self.nurse.pk,
                                 'date': self.today, 'shift': 'NIGHT'}).status_code, 403)
         self.assertFalse(NurseShift.objects.filter(shift='NIGHT').exists())
+
+
+class MewsScoringTest(TestCase):
+    def test_normal_vitals_score_green(self):
+        m = compute_mews(temperature_f=98.6, pulse=78, respiratory_rate=16,
+                         systolic_bp=120, avpu='A')
+        self.assertEqual(m['score'], 0)
+        self.assertEqual(m['band'], 'GREEN')
+        self.assertTrue(m['complete'])
+
+    def test_deteriorating_vitals_score_red(self):
+        # fast RR (3) + low BP (2) + tachycardia + febrile → high total, RED
+        m = compute_mews(temperature_f=103.0, pulse=132, respiratory_rate=32,
+                         systolic_bp=85, avpu='V')
+        self.assertGreaterEqual(m['score'], 4)
+        self.assertEqual(m['band'], 'RED')
+
+    def test_a_single_worst_parameter_is_red(self):
+        # RR 32 alone scores 3 → RED even if everything else is normal
+        m = compute_mews(temperature_f=98.6, pulse=80, respiratory_rate=32,
+                         systolic_bp=120, avpu='A')
+        self.assertEqual(m['highest'], 3)
+        self.assertEqual(m['band'], 'RED')
+
+    def test_partial_set_is_marked_incomplete(self):
+        m = compute_mews(temperature_f=None, pulse=80, respiratory_rate=None,
+                         systolic_bp=120, avpu='A')
+        self.assertFalse(m['complete'])
+
+
+class VitalsAndFluidTest(TestCase):
+    def setUp(self):
+        self.h = Hospital.objects.create(name='H', slug='h',
+                                         expiry_date=date.today() + timedelta(days=365))
+        self.nurse = User.objects.create_user(email='n@a.com', password='pw',
+                                               role='NURSE', hospital=self.h)
+        self.doc = Doctor.objects.create(full_name='Dr X')
+        self.patient = Patient.objects.create(full_name='Zara', gender='F',
+                                              age_years=30, hospital=self.h)
+        self.ward = Ward.objects.create(name='W', ward_type='General Female',
+                                        daily_rate=500, hospital=self.h)
+        self.bed = Bed.objects.create(bed_number='1', ward=self.ward,
+                                      status='Occupied', hospital=self.h)
+        self.adm = Admission.objects.create(patient=self.patient, bed=self.bed,
+                                            admission_reason='x', attending_doctor=self.doc,
+                                            hospital=self.h)
+        self.c = Client(); self.c.login(email='n@a.com', password='pw')
+
+    def test_nurse_records_vitals_and_board_shows_mews(self):
+        r = self.c.post(f'/ipd/{self.adm.pk}/vitals/', {
+            'taken_at': timezone.now().strftime('%Y-%m-%dT%H:%M'),
+            'temperature': '103', 'pulse': '132', 'respiratory_rate': '32',
+            'systolic_bp': '85', 'diastolic_bp': '60', 'spo2': '90',
+            'consciousness': 'V', 'pain_score': '6', 'blood_glucose': '',
+            'notes': 'unwell',
+        })
+        self.assertEqual(VitalsObservation.objects.count(), 1)
+        obs = VitalsObservation.objects.first()
+        self.assertEqual(obs.taken_by, self.nurse)
+        self.assertEqual(obs.mews['band'], 'RED')
+        # the board surfaces the patient with the red score
+        board = self.c.get('/ipd/board/')
+        self.assertContains(board, 'Zara')
+        self.assertContains(board, 'RED')
+
+    def test_empty_vitals_are_rejected(self):
+        self.c.post(f'/ipd/{self.adm.pk}/vitals/', {
+            'taken_at': timezone.now().strftime('%Y-%m-%dT%H:%M'), 'consciousness': 'A'})
+        self.assertEqual(VitalsObservation.objects.count(), 0)
+
+    def test_fluid_balance_totals(self):
+        FluidBalanceEntry.objects.create(admission=self.adm, direction='IN',
+                                         kind='IV fluid', volume_ml=1000, hospital=self.h)
+        FluidBalanceEntry.objects.create(admission=self.adm, direction='OUT',
+                                         kind='Urine', volume_ml=600, hospital=self.h)
+        bal = fluid_totals(self.adm, timezone.localdate())
+        self.assertEqual(bal['intake'], 1000)
+        self.assertEqual(bal['output'], 600)
+        self.assertEqual(bal['balance'], 400)

@@ -174,6 +174,7 @@ SHELL_URL_NAMES = [
     'customer_list', 'customer_add',
     'ipd:admission_list', 'ipd:admission_create', 'ipd:ward_bed_list',
     'ipd:ward_create', 'ipd:bed_create',
+    'ipd:nursing_board', 'ipd:my_duties', 'ipd:duty_roster',
     'ot:surgery_list', 'ot:surgery_create', 'ot:procedure_list',
     'invoice_list', 'expense_list', 'expense_create', 'cash_closing_new',
 ]

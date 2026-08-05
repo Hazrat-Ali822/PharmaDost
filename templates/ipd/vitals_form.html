@@ -1,0 +1,54 @@
+{% extends 'partials/base.html' %}
+{% block title %}Record Vitals — {{ admission.patient.full_name }}{% endblock %}
+{% block page_title %}Record Vitals{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Record Vitals — {{ admission.patient.full_name }}</h2>
+  <a class="btn alt" href="{% url 'ipd:admission_detail' admission.pk %}">← Back to chart</a>
+</div>
+
+{% if admission.patient.allergies %}
+<div style="background:#fef2f2; border:1px solid #fecaca; border-left:4px solid #ef4444; padding:10px 14px; border-radius:8px; margin-bottom:16px;">
+  <strong style="color:#b91c1c;">⚠️ Allergies:</strong> <span style="color:#7f1d1d;">{{ admission.patient.allergies }}</span>
+</div>
+{% endif %}
+
+<div class="card" style="max-width:720px;">
+  {# Offline-capable: the handler needs the admission, carried as a hidden input. #}
+  <form method="post" data-offline-kind="vital">
+    {% csrf_token %}
+    <input type="hidden" name="admission_id" value="{{ admission.pk }}">
+
+    {% if form.non_field_errors %}<div class="msg error">{{ form.non_field_errors }}</div>{% endif %}
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:14px;">
+      <label>Temperature (°F){{ form.temperature }}</label>
+      <label>Pulse (bpm){{ form.pulse }}</label>
+      <label>Respiratory rate (/min){{ form.respiratory_rate }}</label>
+      <label>SpO₂ (%){{ form.spo2 }}</label>
+      <label>Systolic BP{{ form.systolic_bp }}</label>
+      <label>Diastolic BP{{ form.diastolic_bp }}</label>
+      <label>Pain score (0–10){{ form.pain_score }}</label>
+      <label>Blood glucose (mg/dL){{ form.blood_glucose }}</label>
+    </div>
+
+    <div style="margin-top:14px;">
+      <span style="font-weight:600; font-size:13px;">Consciousness (AVPU)</span>
+      <div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:6px;">{{ form.consciousness }}</div>
+    </div>
+
+    <label style="display:block; margin-top:14px;">Time taken{{ form.taken_at }}</label>
+    <label style="display:block; margin-top:14px;">Notes{{ form.notes }}</label>
+
+    <p class="muted" style="font-size:12.5px; margin-top:12px;">
+      A <strong>MEWS</strong> score is worked out from RR, SpO₂ is recorded alongside, pulse,
+      BP, temperature and consciousness. A red or amber score will tell you to escalate.
+      Record whatever you took — a partial set is fine.
+    </p>
+
+    <div style="margin-top:16px;">
+      <button class="btn" type="submit">Save vitals</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

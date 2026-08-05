@@ -235,6 +235,17 @@ class AllKindsBase(TestCase):
                 "medicine_name": "Panadol", "dosage": "500mg", "quantity": "2",
                 "source": "PHARMACY", "administered_at": now, "notes": "",
             },
+            "vital": {
+                "admission_id": self.admission.pk, "taken_at": now,
+                "temperature": "99.0", "pulse": "82", "respiratory_rate": "18",
+                "systolic_bp": "120", "diastolic_bp": "80", "spo2": "97",
+                "consciousness": "A", "pain_score": "2", "blood_glucose": "",
+                "notes": "resting",
+            },
+            "fluid": {
+                "admission_id": self.admission.pk, "recorded_at": now,
+                "direction": "IN", "kind": "IV fluid", "volume_ml": "500", "notes": "",
+            },
             "discharge": {"admission_id": self.admission.pk,
                           "discharge_notes": "Recovered, advised rest."},
             "surgery": {

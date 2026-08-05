@@ -690,6 +690,31 @@ def handle_medication(request, data):
             "warnings": res.warnings}
 
 
+def handle_vital(request, data):
+    """Record a nursing vitals set — mirrors ``ipd.views.vitals_add``. Bedside work
+    on a ward round is exactly what the outbox is for."""
+    from ipd.forms import VitalsObservationForm
+    from ipd.models import Admission
+    from ipd.services import record_vitals
+
+    _require(request.user, "ward")
+    admission = _parent(Admission, data.get("admission_id"), "admission")
+    obs = record_vitals(admission, _valid(VitalsObservationForm(data)), request.user)
+    return {"observation_id": obs.id, "mews": obs.mews["score"], "band": obs.mews["band"]}
+
+
+def handle_fluid(request, data):
+    """Record a fluid intake/output entry — mirrors ``ipd.views.fluid_add``."""
+    from ipd.forms import FluidBalanceEntryForm
+    from ipd.models import Admission
+    from ipd.services import record_fluid
+
+    _require(request.user, "ward")
+    admission = _parent(Admission, data.get("admission_id"), "admission")
+    entry = record_fluid(admission, _valid(FluidBalanceEntryForm(data)), request.user)
+    return {"fluid_id": entry.id, "direction": entry.direction, "volume_ml": entry.volume_ml}
+
+
 def handle_discharge(request, data):
     """Discharge and bill — mirrors ``ipd.views.admission_discharge``.
 
@@ -855,6 +880,8 @@ HANDLERS = {
     "admission_advise": handle_admission_advise,
     "round": handle_round,
     "medication": handle_medication,
+    "vital": handle_vital,
+    "fluid": handle_fluid,
     "discharge": handle_discharge,
     # OT
     "surgery": handle_surgery,

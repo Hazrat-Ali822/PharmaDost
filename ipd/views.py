@@ -12,7 +12,8 @@ from inventory.models import Medicine
 from inventory.safety import screen_medicines
 from patients.models import Patient
 from .models import Ward, Bed, Admission, DoctorRound, MedicationLog, AdmissionRequest
-from .forms import WardForm, BedForm, AdmissionForm, DoctorRoundForm, DischargeForm, MedicationLogForm
+from .forms import (WardForm, BedForm, AdmissionForm, DoctorRoundForm, DischargeForm,
+                    MedicationLogForm, VitalsObservationForm, FluidBalanceEntryForm)
 
 def _scoped_admissions(request):
     """Admissions this user is allowed to see.
@@ -115,6 +116,11 @@ def admission_detail(request, pk):
 
     medicine_total = sum((log.charge for log in medication_logs), Decimal('0.00'))
 
+    observations = list(admission.observations.select_related('taken_by')[:12])
+    latest_obs = observations[0] if observations else None
+    fluid_today = fluid_totals(admission, timezone.localdate())
+    fluid_entries = admission.fluid_entries.select_related('recorded_by')[:12]
+
     return render(request, 'ipd/admission_detail.html', {
         'admission': admission,
         'rounds': rounds,
@@ -123,6 +129,10 @@ def admission_detail(request, pk):
         'prescriptions': prescriptions,
         'lab_orders': lab_orders,
         'imaging_studies': imaging_studies,
+        'observations': observations,
+        'latest_obs': latest_obs,
+        'fluid_today': fluid_today,
+        'fluid_entries': fluid_entries,
     })
 
 @feature_required('ipd', 'ward')
@@ -443,7 +453,8 @@ def admission_request_cancel(request, pk):
 from datetime import date, timedelta                                    # noqa: E402
 from django.urls import reverse                                         # noqa: E402
 from accounts.models import User                                        # noqa: E402
-from .models import SHIFT_CHOICES, SHIFT_TIMES, NurseShift, PatientAllocation  # noqa: E402
+from .models import (SHIFT_CHOICES, SHIFT_TIMES, OBS_INTERVAL_HOURS, NurseShift,  # noqa: E402
+                     PatientAllocation, VitalsObservation, FluidBalanceEntry, fluid_totals)
 
 _SHIFT_KEYS = [k for k, _ in SHIFT_CHOICES]
 
@@ -595,4 +606,87 @@ def my_duties(request):
     return render(request, 'ipd/my_duties.html', {
         'upcoming': upcoming, 'my_alloc': my_alloc, 'today': today,
         'shift_times': SHIFT_TIMES, 'current_shift': _current_shift(),
+    })
+
+
+@feature_required('ipd', 'ward')
+def vitals_add(request, pk):
+    """Record a nursing vitals set (the TPR chart). Nurses do this; MEWS is scored
+    on save and a red/amber score warns the nurse to escalate."""
+    admission = get_object_or_404(_scoped_admissions(request), pk=pk)
+    if request.method == 'POST':
+        form = VitalsObservationForm(request.POST)
+        if form.is_valid():
+            from .services import record_vitals
+            m = record_vitals(admission, form, request.user).mews
+            if m['band'] == 'RED':
+                messages.warning(request, f"Vitals saved. MEWS {m['score']} — RED. {m['advice']}")
+            elif m['band'] == 'AMBER':
+                messages.info(request, f"Vitals saved. MEWS {m['score']} — AMBER. {m['advice']}")
+            else:
+                messages.success(request, f"Vitals saved. MEWS {m['score']} — routine.")
+            return redirect('ipd:admission_detail', pk=admission.pk)
+    else:
+        form = VitalsObservationForm()
+    return render(request, 'ipd/vitals_form.html', {'form': form, 'admission': admission})
+
+
+@feature_required('ipd', 'ward')
+def fluid_add(request, pk):
+    """Add an intake or output entry to the fluid balance chart."""
+    admission = get_object_or_404(_scoped_admissions(request), pk=pk)
+    if request.method == 'POST':
+        form = FluidBalanceEntryForm(request.POST)
+        if form.is_valid():
+            from .services import record_fluid
+            record_fluid(admission, form, request.user)
+            messages.success(request, "Fluid entry recorded.")
+            return redirect('ipd:admission_detail', pk=admission.pk)
+    else:
+        form = FluidBalanceEntryForm()
+    return render(request, 'ipd/fluid_form.html', {'form': form, 'admission': admission})
+
+
+@feature_required('ipd', 'ward')
+def nursing_board(request):
+    """The ward board: every inpatient with their latest MEWS, whether observations
+    are overdue, and who is looking after them this shift — sorted so the sickest
+    and the overdue rise to the top. The In-charge's 'who needs attention now'."""
+    admissions = (_scoped_admissions(request).filter(status='Admitted')
+                  .select_related('patient', 'bed__ward', 'attending_doctor')
+                  .prefetch_related('observations'))
+    ward_id = request.GET.get('ward')
+    if ward_id:
+        admissions = admissions.filter(bed__ward_id=ward_id)
+
+    now = timezone.now()
+    today = timezone.localdate()
+    shift = _current_shift()
+    allocs = {a.admission_id: a.nurse for a in
+              PatientAllocation.objects.filter(date=today, shift=shift, admission__in=admissions)
+              .select_related('nurse')}
+
+    rows = []
+    for adm in admissions:
+        obs_list = list(adm.observations.all())
+        obs = obs_list[0] if obs_list else None      # latest (Meta ordering -taken_at)
+        hours = (now - obs.taken_at).total_seconds() / 3600.0 if obs else None
+        overdue = obs is None or hours > OBS_INTERVAL_HOURS
+        rows.append({
+            'adm': adm, 'obs': obs, 'mews': obs.mews if obs else None,
+            'overdue': overdue, 'hours': hours, 'nurse': allocs.get(adm.pk),
+            'balance': fluid_totals(adm, today),
+        })
+
+    rank = {'RED': 0, 'AMBER': 1, 'GREEN': 2}
+
+    def sort_key(r):
+        band = r['mews']['band'] if r['mews'] else 'GREEN'
+        return (rank[band], not r['overdue'], -(r['mews']['score'] if r['mews'] else -1))
+    rows.sort(key=sort_key)
+
+    return render(request, 'ipd/nursing_board.html', {
+        'rows': rows, 'wards': list(Ward.objects.all().order_by('name')),
+        'ward_id': ward_id, 'shift_label': dict(SHIFT_CHOICES)[shift],
+        'interval': OBS_INTERVAL_HOURS, 'today': today,
     })

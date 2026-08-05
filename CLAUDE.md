@@ -228,6 +228,22 @@ senior nurse who runs the ward. Shifts are `MORNING/EVENING/NIGHT` (`ipd.models.
 times in `SHIFT_TIMES`); `_current_shift()` maps the clock to one. `roster_add` upserts on
 the unique `(nurse, date, shift)` so a re-add moves the nurse rather than duplicating.
 
+**Nursing vitals + MEWS + fluid balance** (the nurse's continuous-care layer, distinct from
+`DoctorRound`). `VitalsObservation` is the nursing TPR chart — it carries the parameters a
+temp/pulse/BP row omits (respiratory rate, SpO₂, AVPU consciousness, pain, blood glucose),
+all nullable so a partial set still saves. `ipd.models.compute_mews(...)` scores a **MEWS**
+off temp (taken in °F, converted to °C), pulse, RR, systolic BP and AVPU — each 0–3; band is
+GREEN (0–1) / AMBER (2–3) / RED (≥4 or any single 3), with escalation advice. RR uses NEWS2
+bands (12–20 → 0). `VitalsObservation.mews` is a derived property (never stored), so a
+threshold change re-scores old rows. `FluidBalanceEntry` is the intake/output chart;
+`fluid_totals(admission, date)` gives in/out/balance. Both are recorded by nurses
+(`feature_required('ipd','ward')`) through `vitals_add` / `fluid_add`, which reuse
+`ipd.services.record_vitals` / `record_fluid` — the same path the offline `vital` / `fluid`
+handlers call, so both forms are offline-capable (bedside round with no signal), carrying
+`admission_id` as a hidden input. `nursing_board` (`/ipd/board/`) lists every inpatient with
+their latest MEWS, whether obs are overdue (`OBS_INTERVAL_HOURS`, default 6) and this shift's
+allocated nurse, sorted sickest-first — the In-charge's "who needs attention now".
+
 ### What the admin is told
 
 Two channels, deliberately separated — mixing them makes the inbox unreadable:
@@ -573,12 +589,12 @@ Three things are load-bearing and must stay true:
    sync". `handlers._parent()` now turns a missing or dangling id into a permanent rejection;
    keep new handlers using it.
 
-**Coverage: all 36 kinds in `HANDLERS`** — visit, patient, patient_record, appointment,
+**Coverage: all 38 kinds in `HANDLERS`** — visit, patient, patient_record, appointment,
 department, doctor, payout, prescription, rx_preset, sale, medicine, adjustment,
 purchase_return, supplier, supplier_payment, customer, customer_payment, lab, lab_result,
 lab_test, imaging, imaging_report, scan_type, ward, bed, admission, admission_advise, round,
-medication, discharge, surgery, surgery_advise, surgery_category, procedure, expense,
-cash_closing.
+medication, vital, fluid, discharge, surgery, surgery_advise, surgery_category, procedure,
+expense, cash_closing.
 
 `offline_sync/tests_coverage.py::EveryKindAppliesTest` **walks `HANDLERS`**, so adding a kind
 without adding a payload there fails the suite — that is deliberate, because a broken handler

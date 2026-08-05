@@ -17,6 +17,84 @@ SHIFT_TIMES = {
     'NIGHT': '21:00 – 07:00',
 }
 
+# How often a ward patient should have observations taken before they count as
+# overdue on the nursing board. Advisory — a clinician sets the real frequency.
+OBS_INTERVAL_HOURS = 6
+
+
+def compute_mews(*, temperature_f=None, pulse=None, respiratory_rate=None,
+                 systolic_bp=None, avpu='A'):
+    """Modified Early Warning Score (MEWS).
+
+    Each parameter scores 0–3; the total and the single highest score decide the
+    escalation band. This is the ward's earliest signal that a patient is
+    deteriorating — a rising score, not one bad reading, is what it catches.
+
+    Temperature is taken in °F (what these wards use) and converted to °C for
+    scoring. A missing parameter scores 0 but marks the set incomplete, so the
+    board can show that obs were only partially taken.
+    """
+    def band_bp(v):
+        if v is None: return None
+        if v <= 70: return 3
+        if v <= 80: return 2
+        if v <= 100: return 1
+        if v <= 199: return 0
+        return 2
+
+    def band_pulse(v):
+        if v is None: return None
+        if v <= 40: return 2
+        if v <= 50: return 1
+        if v <= 100: return 0
+        if v <= 110: return 1
+        if v <= 129: return 2
+        return 3
+
+    def band_rr(v):
+        # NEWS2 respiratory-rate bands: a normal 12–20 scores 0.
+        if v is None: return None
+        if v <= 8: return 3
+        if v <= 11: return 1
+        if v <= 20: return 0
+        if v <= 24: return 2
+        return 3
+
+    def band_temp_c(c):
+        if c is None: return None
+        if c < 35: return 2
+        if c <= 38.4: return 0
+        return 2
+
+    temp_c = None
+    if temperature_f not in (None, ''):
+        try:
+            temp_c = (float(temperature_f) - 32) * 5.0 / 9.0
+        except (TypeError, ValueError):
+            temp_c = None
+
+    parts = {
+        'bp': band_bp(systolic_bp),
+        'pulse': band_pulse(pulse),
+        'rr': band_rr(respiratory_rate),
+        'temp': band_temp_c(temp_c),
+        'avpu': {'A': 0, 'V': 1, 'P': 2, 'U': 3}.get(avpu or 'A', 0),
+    }
+    present = [v for v in parts.values() if v is not None]
+    score = sum(present)
+    highest = max(present) if present else 0
+    # AVPU always has a value (defaults Alert); the four measured vitals decide completeness.
+    complete = all(parts[k] is not None for k in ('bp', 'pulse', 'rr', 'temp'))
+
+    if score >= 4 or highest >= 3:
+        band, color, advice = 'RED', '#ef4444', 'Urgent — inform the doctor now and increase monitoring.'
+    elif score >= 2:
+        band, color, advice = 'AMBER', '#f59e0b', 'Increase observation frequency; inform the nurse in-charge.'
+    else:
+        band, color, advice = 'GREEN', '#22c55e', 'Routine monitoring.'
+    return {'score': score, 'highest': highest, 'band': band, 'color': color,
+            'advice': advice, 'complete': complete, 'parts': parts}
+
 
 class Ward(models.Model):
     WARD_TYPE_CHOICES = [
@@ -251,3 +329,94 @@ class PatientAllocation(models.Model):
 
     def __str__(self):
         return f"{self.admission.patient.full_name} → {self.nurse.get_full_name() or self.nurse.email} ({self.date} {self.get_shift_display()})"
+
+
+class VitalsObservation(models.Model):
+    """One nursing observation set — the TPR/vitals chart, taken every few hours.
+
+    Separate from `DoctorRound`: the nurse owns this chart, and the **MEWS** score
+    computed off it (see `compute_mews`) is the ward's early-warning trigger.
+    Respiratory rate, SpO2, pain and consciousness live here because they are the
+    parameters a plain temp/pulse/BP row leaves out — and RR is the earliest sign
+    of deterioration. Numeric fields are nullable so a partial set is still saveable
+    (a dose already given, an obs half-taken), and MEWS marks it incomplete.
+    """
+    AVPU_CHOICES = [
+        ('A', 'Alert'), ('V', 'Responds to voice'),
+        ('P', 'Responds to pain'), ('U', 'Unresponsive'),
+    ]
+    admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name='observations')
+    taken_at = models.DateTimeField(default=timezone.now)
+    taken_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True,
+                                 blank=True, related_name='+')
+    temperature = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True,
+                                      verbose_name='Temperature (°F)')
+    pulse = models.PositiveIntegerField(null=True, blank=True, verbose_name='Pulse (bpm)')
+    respiratory_rate = models.PositiveIntegerField(null=True, blank=True,
+                                                   verbose_name='Respiratory rate (/min)')
+    systolic_bp = models.PositiveIntegerField(null=True, blank=True, verbose_name='Systolic BP')
+    diastolic_bp = models.PositiveIntegerField(null=True, blank=True, verbose_name='Diastolic BP')
+    spo2 = models.PositiveIntegerField(null=True, blank=True, verbose_name='SpO₂ (%)')
+    consciousness = models.CharField(max_length=1, choices=AVPU_CHOICES, default='A',
+                                     verbose_name='Consciousness (AVPU)')
+    pain_score = models.PositiveIntegerField(null=True, blank=True,
+                                             verbose_name='Pain score (0–10)')
+    blood_glucose = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True,
+                                        verbose_name='Blood glucose (mg/dL)')
+    notes = models.CharField(max_length=255, blank=True)
+    hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
+
+    objects = TenantManager()
+
+    class Meta:
+        ordering = ('-taken_at',)
+
+    @property
+    def mews(self):
+        return compute_mews(
+            temperature_f=self.temperature, pulse=self.pulse,
+            respiratory_rate=self.respiratory_rate, systolic_bp=self.systolic_bp,
+            avpu=self.consciousness)
+
+    @property
+    def bp_display(self):
+        if self.systolic_bp and self.diastolic_bp:
+            return f"{self.systolic_bp}/{self.diastolic_bp}"
+        return self.systolic_bp or '—'
+
+    def __str__(self):
+        return f"Obs {self.admission.patient.full_name} @ {self.taken_at:%Y-%m-%d %H:%M} (MEWS {self.mews['score']})"
+
+
+class FluidBalanceEntry(models.Model):
+    """One line of the intake–output chart. Fluids in (IV, oral, NG) and out
+    (urine, drain, vomit) are logged in millilitres; the running balance per day
+    is how overload and dehydration are managed on the ward."""
+    DIRECTION_CHOICES = [('IN', 'Intake'), ('OUT', 'Output')]
+    admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name='fluid_entries')
+    recorded_at = models.DateTimeField(default=timezone.now)
+    recorded_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True,
+                                    blank=True, related_name='+')
+    direction = models.CharField(max_length=3, choices=DIRECTION_CHOICES)
+    kind = models.CharField(max_length=40, help_text='e.g. IV fluid, Oral, NG feed, Urine, Drain, Vomit')
+    volume_ml = models.PositiveIntegerField(verbose_name='Volume (mL)')
+    notes = models.CharField(max_length=255, blank=True)
+    hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
+
+    objects = TenantManager()
+
+    class Meta:
+        ordering = ('-recorded_at',)
+        verbose_name_plural = 'Fluid balance entries'
+
+    def __str__(self):
+        return f"{self.get_direction_display()} {self.kind} {self.volume_ml}mL — {self.admission.patient.full_name}"
+
+
+def fluid_totals(admission, on_date):
+    """Intake, output and running balance (mL) for one admission on one date."""
+    from django.db.models import Sum
+    qs = FluidBalanceEntry.objects.filter(admission=admission, recorded_at__date=on_date)
+    intake = qs.filter(direction='IN').aggregate(s=Sum('volume_ml'))['s'] or 0
+    output = qs.filter(direction='OUT').aggregate(s=Sum('volume_ml'))['s'] or 0
+    return {'intake': intake, 'output': output, 'balance': intake - output}

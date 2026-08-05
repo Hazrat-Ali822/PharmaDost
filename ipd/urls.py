@@ -25,4 +25,7 @@ urlpatterns = [
     path('roster/<int:pk>/remove/', views.roster_remove, name='roster_remove'),
     path('allocation/', views.patient_allocation, name='patient_allocation'),
     path('my-duties/', views.my_duties, name='my_duties'),
+    path('board/', views.nursing_board, name='nursing_board'),
+    path('<int:pk>/vitals/', views.vitals_add, name='vitals_add'),
+    path('<int:pk>/fluid/', views.fluid_add, name='fluid_add'),
 ]

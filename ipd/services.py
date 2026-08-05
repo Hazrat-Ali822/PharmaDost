@@ -164,3 +164,23 @@ def discharge_patient(admission, user):
             admission.save(update_fields=['discharge_invoice'])
 
     return DischargeResult(admission, invoice, days, bed_charges, med_total)
+
+
+def record_vitals(admission, form, user):
+    """Save a bound VitalsObservationForm as a nursing observation. Same path for
+    the online view and offline replay; returns the saved VitalsObservation (whose
+    `.mews` the caller reads to decide the escalation message)."""
+    obs = form.save(commit=False)
+    obs.admission = admission
+    obs.taken_by = user
+    obs.save()
+    return obs
+
+
+def record_fluid(admission, form, user):
+    """Save a bound FluidBalanceEntryForm as one intake/output line."""
+    entry = form.save(commit=False)
+    entry.admission = admission
+    entry.recorded_by = user
+    entry.save()
+    return entry
