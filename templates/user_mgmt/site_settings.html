@@ -18,6 +18,13 @@
         <div><label>Primary Colour</label><br>{{ form.primary_color }}</div>
         <div><label>Accent Colour</label><br>{{ form.accent_color }}</div>
       </div>
+      <p style="margin-top:8px;">
+        <label style="display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-weight:500;">
+          <input type="checkbox" name="color_from_logo" value="1" style="width:auto;margin:0;">
+          🎨 Pick the theme colour from the logo when I save
+        </label>
+        <br><small class="muted">Ticks the app's colours to match your logo automatically (upload a logo first, or use the current one).</small>
+      </p>
 
       <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
       <h3>Printed Bill / Report Header</h3>

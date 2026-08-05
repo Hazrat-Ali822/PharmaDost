@@ -309,6 +309,18 @@ def site_settings(request):
             obj = form.save(commit=False)
             mods = [m for m in request.POST.getlist('modules') if m in MODULE_KEYS]
             obj.enabled_modules = mods if mods else None
+            # Pull the theme colour straight out of the logo when asked — one tick
+            # themes the whole app to match the hospital's own logo.
+            if request.POST.get('color_from_logo'):
+                from .color_utils import dominant_color, darker
+                src = request.FILES.get('logo_image') or (obj.logo_image or None)
+                color = dominant_color(src) if src else None
+                if color:
+                    obj.primary_color = color
+                    obj.accent_color = darker(color)
+                    messages.info(request, f'Theme colour picked from the logo: {color}.')
+                else:
+                    messages.warning(request, 'Could not read a colour from the logo — upload a clearer logo, or set the colour by hand.')
             obj.save()
             messages.success(request, 'Settings saved.')
             return redirect('user_mgmt:site_settings')

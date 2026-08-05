@@ -436,6 +436,8 @@ must agree.
 
 `user_mgmt.SiteSettings` is a per-hospital singleton (`OneToOneField` to `Hospital`, nullable) holding brand name, logo, colours, receipt header/footer, print theme, enabled modules, and `show_doctor_to_pharmacy`. `SiteSettings.load()` resolves it from `get_current_hospital()`, creating the row on first access; with no hospital it reuses the single hospital-less row.
 
+The settings screen can **theme the app from the logo**: ticking "Pick the theme colour from the logo" on save runs `user_mgmt.color_utils.dominant_color()` (Pillow — picks the most common vivid, non-white/black, non-transparent pixel) over the uploaded/current logo and sets `primary_color` + a `darker()` accent. It only fires when the box is ticked, so a hand-set colour is never overwritten silently.
+
 Two things here are load-bearing:
 
 - The template context key is **`branding`**, not `site` — Django's `LoginView` injects its own `site` variable which would shadow it.
