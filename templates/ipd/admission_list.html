@@ -6,8 +6,10 @@
   <h2>{% if request.user.role == 'DOCTOR' %}My Inpatients{% else %}Inpatient Department (IPD){% endif %}</h2>
   <div style="display:flex; gap:10px;">
     <a class="btn alt" href="{% url 'ipd:ward_bed_list' %}">Manage Wards &amp; Beds</a>
-    {# Admitting is reception's job — a doctor advises instead, and a nurse has no `ipd`
-       at all, so showing them this button would link straight into a 403. #}
+    {% comment %}
+    Admitting is reception's job — a doctor advises instead, and a nurse has no `ipd`
+    at all, so showing them this button would link straight into a 403.
+    {% endcomment %}
     {% if nav.ipd and request.user.role != 'DOCTOR' %}
     <a class="btn" href="{% url 'ipd:admission_create' %}">Admit Patient</a>
     {% endif %}

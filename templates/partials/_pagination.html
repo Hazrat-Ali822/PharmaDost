@@ -1,6 +1,8 @@
-{# Reusable pager. Needs `page_obj` (a Django Page) in context. Preserves every
-   other query param (search `q`, filters) so paging never drops the current view.
-   Renders nothing when there is only one page. #}
+{% comment %}
+Reusable pager. Needs `page_obj` (a Django Page) in context. Preserves every
+other query param (search `q`, filters) so paging never drops the current view.
+Renders nothing when there is only one page.
+{% endcomment %}
 {% if page_obj.paginator.num_pages > 1 %}
 {% spaceless %}
 <nav class="pagination" aria-label="Pagination">
