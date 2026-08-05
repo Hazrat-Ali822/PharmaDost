@@ -170,7 +170,7 @@
       return;
     }
     info.style.color = '#15803d';
-    info.textContent = `In stock: ${match.stock} · Rs ${match.price} each · will be billed at discharge`;
+    info.textContent = `In stock: ${match.stock} · {{ currency }} ${match.price} each · will be billed at discharge`;
   }
 
   nameInput.addEventListener('input', sync);

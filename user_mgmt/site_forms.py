@@ -8,7 +8,8 @@ class SiteSettingsForm(forms.ModelForm):
         fields = ["brand_name", "brand_tagline", "logo_text", "logo_image",
                   "primary_color", "accent_color", "default_theme",
                   "address", "phone", "email", "license_no", "receipt_footer",
-                  "print_theme", "show_doctor_to_pharmacy", "whatsapp_enabled",
+                  "print_theme", "currency_symbol",
+                  "show_doctor_to_pharmacy", "whatsapp_enabled",
                   "show_bill_qr", "mrn_prefix", "mrn_last_number",
                   "invoice_prefix", "invoice_year_in_number", "invoice_last_number"]
         widgets = {

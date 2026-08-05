@@ -16,7 +16,7 @@
         <td>{{ o.created_at|date:"Y-m-d H:i" }}</td>
         <td>{{ o.display_customer }}</td>
         <td>{{ o.item_count }} lines · {{ o.total_qty }} units</td>
-        <td>Rs {{ o.total }}</td>
+        <td>{{ currency }} {{ o.total }}</td>
         <td>
           {% if o.status == 'DRAFT' %}<span class="badge amber">Draft</span>
           {% elif o.status == 'BILLED' %}<span class="badge green">Billed</span>

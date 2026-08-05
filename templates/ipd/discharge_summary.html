@@ -63,7 +63,7 @@
       <td>{{ log.medicine_name }}</td>
       <td>{{ log.dosage }}</td>
       <td class="num">{{ log.quantity }}</td>
-      <td class="num">{% if log.charge %}Rs {{ log.charge|floatformat:0 }}{% else %}—{% endif %}</td>
+      <td class="num">{% if log.charge %}{{ currency }} {{ log.charge|floatformat:0 }}{% else %}—{% endif %}</td>
     </tr>
     {% endfor %}
   </tbody>
@@ -76,14 +76,14 @@
   <thead><tr><th>Description</th><th class="num">Amount</th></tr></thead>
   <tbody>
     {% for it in items %}
-    <tr><td>{{ it.description }}</td><td class="num">Rs {{ it.amount|floatformat:0 }}</td></tr>
+    <tr><td>{{ it.description }}</td><td class="num">{{ currency }} {{ it.amount|floatformat:0 }}</td></tr>
     {% endfor %}
   </tbody>
 </table>
 <table style="width:300px;margin-left:auto;margin-top:12px;font-size:14px">
-  <tr><td>Total</td><td class="num">Rs {{ invoice.total|floatformat:0 }}</td></tr>
-  <tr><td>Paid</td><td class="num">Rs {{ invoice.paid|floatformat:0 }}</td></tr>
-  <tr style="font-size:16px;font-weight:800;color:var(--pri)"><td>Balance Due</td><td class="num">Rs {{ invoice.balance|floatformat:0 }}</td></tr>
+  <tr><td>Total</td><td class="num">{{ currency }} {{ invoice.total|floatformat:0 }}</td></tr>
+  <tr><td>Paid</td><td class="num">{{ currency }} {{ invoice.paid|floatformat:0 }}</td></tr>
+  <tr style="font-size:16px;font-weight:800;color:var(--pri)"><td>Balance Due</td><td class="num">{{ currency }} {{ invoice.balance|floatformat:0 }}</td></tr>
 </table>
 {% else %}
 <p style="font-size:13px;color:var(--soft)">No charges were raised for this admission.</p>

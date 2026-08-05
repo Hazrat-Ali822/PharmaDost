@@ -99,7 +99,7 @@
             {{ doctor.department.name|default:doctor.specialty|default:"General" }}
           </span>
           <span style="font-size:12px; color:#15803d; font-weight:700;">● {{ state.label }}</span>
-          <span class="muted" style="font-size:12px; display:block;">Fee Rs {{ doctor.opd_fee|floatformat:0 }}</span>
+          <span class="muted" style="font-size:12px; display:block;">Fee {{ currency }} {{ doctor.opd_fee|floatformat:0 }}</span>
         </span>
       </label>
       {% endfor %}
@@ -114,7 +114,7 @@
             {{ doctor.department.name|default:doctor.specialty|default:"General" }}
           </span>
           <span style="font-size:12px; color:#b45309; font-weight:700;">○ {{ state.label }}</span>
-          <span class="muted" style="font-size:12px; display:block;">Fee Rs {{ doctor.opd_fee|floatformat:0 }}</span>
+          <span class="muted" style="font-size:12px; display:block;">Fee {{ currency }} {{ doctor.opd_fee|floatformat:0 }}</span>
         </span>
       </label>
       {% endfor %}

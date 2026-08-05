@@ -18,7 +18,7 @@
 <div class="card">
   <div class="page-head">
     <h3>{% if q %}Search results for “{{ q }}”{% else %}Patients with outstanding balance{% endif %}</h3>
-    {% if not q %}<span class="badge amber">Total due: Rs {{ total_due }}</span>{% endif %}
+    {% if not q %}<span class="badge amber">Total due: {{ currency }} {{ total_due }}</span>{% endif %}
   </div>
   <table class="tbl">
     <thead><tr><th>Patient</th><th>MRN</th><th>Phone</th><th>Charged</th><th>Paid</th><th>Outstanding</th><th></th></tr></thead>
@@ -28,9 +28,9 @@
         <td>{{ r.patient.full_name }}</td>
         <td class="muted">{{ r.patient.mrn }}</td>
         <td class="muted">{{ r.patient.phone|default:"—" }}</td>
-        <td>Rs {{ r.charged }}</td>
-        <td>Rs {{ r.paid }}</td>
-        <td>{% if r.outstanding > 0 %}<b class="danger">Rs {{ r.outstanding }}</b>{% else %}<span class="badge green">Clear</span>{% endif %}</td>
+        <td>{{ currency }} {{ r.charged }}</td>
+        <td>{{ currency }} {{ r.paid }}</td>
+        <td>{% if r.outstanding > 0 %}<b class="danger">{{ currency }} {{ r.outstanding }}</b>{% else %}<span class="badge green">Clear</span>{% endif %}</td>
         <td><a class="btn sm" href="{% url 'patient_bill' r.patient.pk %}">Bill / Collect</a></td>
       </tr>
       {% empty %}

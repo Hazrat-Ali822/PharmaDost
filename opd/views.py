@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from accounts.decorators import role_required, feature_required
+from user_mgmt.models import current_currency
 from reports.utils import resolve_range
 from .availability import doctors_with_availability, split_by_availability
 from .forms import (AppointmentForm, DepartmentForm, DoctorForm, DoctorPayoutForm,
@@ -383,7 +384,7 @@ def payout_doctor(request, pk):
             payout.doctor = doctor
             payout.paid_by = request.user
             payout.save()
-            messages.success(request, f'Payout of Rs {payout.amount} recorded for {doctor.full_name}.')
+            messages.success(request, f'Payout of {current_currency()} {payout.amount} recorded for {doctor.full_name}.')
             return redirect('payout_doctor', pk=doctor.pk)
     else:
         form = DoctorPayoutForm()

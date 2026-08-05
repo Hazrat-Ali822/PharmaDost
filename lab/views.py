@@ -9,6 +9,7 @@ from django.contrib import messages
 from django.views.decorators.http import require_POST
 
 from accounts.decorators import role_required, feature_required
+from user_mgmt.models import current_currency
 from .models import TestOrder, LabTest, TestCategory
 from .forms import TestOrderCreateForm, TestResultFormSet
 from billing.models import PatientPayment
@@ -81,7 +82,7 @@ def order_create(request):
             # a doctor/receptionist who only *ordered* the test gets a clean confirmation
             # instead of being bounced to a lab-only page (which would 403).
             can_result = request.user.is_superuser or getattr(request.user, "role", None) in RESULT_ROLES
-            bill = f" Bill #{inv.id} raised (Rs {inv.total}, unpaid)." if inv else ""
+            bill = f" Bill {inv.display_no} raised ({current_currency()} {inv.total}, unpaid)." if inv else ""
             tail = "Add results now." if can_result else "Sent to the lab — they will enter the results."
             messages.success(request, f"Order #{order.id} created.{bill} {tail}")
             if can_result:

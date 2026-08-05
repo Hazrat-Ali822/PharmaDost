@@ -58,7 +58,7 @@
       <option value="CARD">Card</option>
       <option value="ONLINE">Online</option>
     </select>
-    <button class="btn success" type="submit">Mark Paid (Rs {{ invoice.balance }})</button>
+    <button class="btn success" type="submit">Mark Paid ({{ currency }} {{ invoice.balance }})</button>
   </form>
   {% else %}
   <div class="msg success" style="margin-top:14px">Fully paid via {{ invoice.payment_method }}.</div>

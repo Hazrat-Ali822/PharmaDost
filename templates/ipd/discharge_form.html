@@ -15,7 +15,7 @@
     <div style="border-top:1px solid rgba(239,68,68,0.1); padding-top:10px; margin-top:10px; font-size:13.5px;">
       <p style="margin:0 0 5px 0;"><span class="muted">Admission Date:</span> <strong>{{ admission.admission_date|date:"Y-m-d H:i" }}</strong></p>
       <p style="margin:0 0 5px 0;"><span class="muted">Total Days Stayed:</span> <strong>{{ days }} Day(s)</strong></p>
-      <p style="margin:0;"><span class="muted">Projected Bed Charges:</span> <strong style="color:#ef4444">Rs {{ est_bed_charges }}</strong> (Daily Rate: Rs {{ admission.bed.ward.daily_rate }})</p>
+      <p style="margin:0;"><span class="muted">Projected Bed Charges:</span> <strong style="color:#ef4444">{{ currency }} {{ est_bed_charges }}</strong> (Daily Rate: {{ currency }} {{ admission.bed.ward.daily_rate }})</p>
     </div>
   </div>
 

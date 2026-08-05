@@ -23,7 +23,7 @@
       <label style="display:block; font-weight:600; margin-bottom:6px;">Procedure (optional)</label>
       <select name="procedure" class="input">
         <option value="">— OT will decide / not listed —</option>
-        {% for p in procedures %}<option value="{{ p.id }}">{{ p.name }} (Rs {{ p.standard_charge }})</option>{% endfor %}
+        {% for p in procedures %}<option value="{{ p.id }}">{{ p.name }} ({{ currency }} {{ p.standard_charge }})</option>{% endfor %}
       </select>
     </div>
     <div style="margin-bottom:22px;">

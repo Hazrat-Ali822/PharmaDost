@@ -17,7 +17,21 @@ SITE_DEFAULTS = {
     "email": "",
     "license_no": "",
     "receipt_footer": "Thank you! Get well soon.",
+    "currency_symbol": "Rs",
 }
+
+
+def current_currency():
+    """The active tenant's currency symbol (falls back to 'Rs').
+
+    For flash messages and other Python-side strings where there is no `branding`
+    template variable to hand. It runs a query, so keep it to one-off actions —
+    never inside a loop or a hot path.
+    """
+    try:
+        return SiteSettings.load().currency_symbol or "Rs"
+    except Exception:
+        return "Rs"
 
 
 class SiteSettings(models.Model):
@@ -67,6 +81,11 @@ class SiteSettings(models.Model):
     # print a scannable QR of the bill summary on the printed bill (needs no internet)
     show_bill_qr = models.BooleanField(
         default=True, help_text="Print a scannable QR of the bill summary on printed bills")
+
+    # the currency symbol shown before every amount across the app and on prints
+    currency_symbol = models.CharField(
+        max_length=8, default="Rs",
+        help_text="Shown before every amount, e.g. Rs, ₨, PKR, $, ﷼. Just the symbol/text.")
 
     # show the prescribing doctor's name to pharmacy/POS staff (on the pending-Rx loader)
     show_doctor_to_pharmacy = models.BooleanField(

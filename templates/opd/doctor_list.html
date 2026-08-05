@@ -15,8 +15,8 @@
       <tr>
         <td>{{ doctor.full_name }}</td>
         <td>{{ doctor.specialty }}</td>
-        <td>Rs {{ doctor.opd_fee }}</td>
-        <td>Rs {{ doctor.followup_fee }}</td>
+        <td>{{ currency }} {{ doctor.opd_fee }}</td>
+        <td>{{ currency }} {{ doctor.followup_fee }}</td>
         <td>{{ doctor.share_percent }}%</td>
         <td><a class="btn sm alt" href="{% url 'doctor_edit' doctor.pk %}">Edit</a></td>
       </tr>

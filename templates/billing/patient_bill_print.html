@@ -40,9 +40,9 @@
   </div>
   {% else %}<div></div>{% endif %}
   <table style="width:320px;font-size:14px">
-    <tr><td>Total Charged</td><td class="num">Rs {{ s.charged }}</td></tr>
-    <tr><td>Total Paid</td><td class="num">Rs {{ s.paid }}</td></tr>
-    <tr style="font-size:16px;font-weight:800;color:var(--pri)"><td>Outstanding</td><td class="num">Rs {{ s.outstanding }}</td></tr>
+    <tr><td>Total Charged</td><td class="num">{{ currency }} {{ s.charged }}</td></tr>
+    <tr><td>Total Paid</td><td class="num">{{ currency }} {{ s.paid }}</td></tr>
+    <tr style="font-size:16px;font-weight:800;color:var(--pri)"><td>Outstanding</td><td class="num">{{ currency }} {{ s.outstanding }}</td></tr>
   </table>
 </div>
 {% endblock %}

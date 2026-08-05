@@ -7,6 +7,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 from accounts.decorators import feature_required, role_required
+from user_mgmt.models import current_currency
 from accounts.models import Notification
 from inventory.models import Medicine
 from inventory.safety import screen_medicines
@@ -165,7 +166,7 @@ def medication_log_add(request, pk):
                 messages.success(
                     request,
                     f"{log.medicine_name} x{log.quantity} recorded — stock reduced, "
-                    f"Rs {log.charge} added to the discharge bill."
+                    f"{current_currency()} {log.charge} added to the discharge bill."
                 )
             elif log.source != 'PHARMACY':
                 messages.success(
@@ -277,7 +278,7 @@ def admission_discharge(request, pk):
                 messages.success(
                     request,
                     f"Patient {adm.patient.full_name} discharged. Invoice generated: "
-                    f"bed charges Rs {est_bed_charges} + medicines Rs {med_total}."
+                    f"bed charges {current_currency()} {est_bed_charges} + medicines {current_currency()} {med_total}."
                 )
             else:
                 messages.success(request, f"Patient {adm.patient.full_name} has been discharged. Bed charges invoice generated.")

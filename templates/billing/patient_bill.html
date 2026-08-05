@@ -12,9 +12,9 @@
     {% if branding.whatsapp_enabled and patient.phone|wa_number %}
     <a class="btn" style="background:#25D366;color:#fff" target="_blank" rel="noopener"
        href="https://wa.me/{{ patient.phone|wa_number }}?text={% filter urlencode %}{{ branding.brand_name|default:'Sehatyar' }} — Bill for {{ patient.full_name }} (MRN {{ patient.mrn }})
-Total charged: Rs {{ s.charged }}
-Paid: Rs {{ s.paid }}
-Outstanding: Rs {{ s.outstanding }}{% if branding.phone %}
+Total charged: {{ currency }} {{ s.charged }}
+Paid: {{ currency }} {{ s.paid }}
+Outstanding: {{ currency }} {{ s.outstanding }}{% if branding.phone %}
 Contact: {{ branding.phone }}{% endif %}{% endfilter %}">💬 Send on WhatsApp</a>
     {% endif %}
     <a class="btn alt" href="{% url 'patient_bill_print' patient.pk %}" target="_blank">🖨️ Print Bill</a>

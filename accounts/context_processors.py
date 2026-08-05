@@ -47,6 +47,9 @@ def site_branding(request):
 
     return {
         'branding': branding,
+        # short handle for the currency symbol, used in front of every amount.
+        # Defaults to Rs so a template still renders when branding can't be loaded.
+        'currency': (branding.currency_symbol if branding else 'Rs') or 'Rs',
         'brand_icon_url': icon_url,
         'site_defaults': SITE_DEFAULTS,
         # Set only by the desktop build acting as a LAN server (see

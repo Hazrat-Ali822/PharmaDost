@@ -7,6 +7,7 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 
 from accounts.decorators import feature_required
+from user_mgmt.models import current_currency
 from customers.models import Customer
 from inventory.models import Medicine
 from .models import Sale, WholesaleOrder, WholesaleOrderItem
@@ -261,7 +262,7 @@ def order_convert(request, pk):
     order.status = WholesaleOrder.BILLED
     order.sale = sale
     order.save(update_fields=["status", "sale"])
-    messages.success(request, f"Order billed as Sale #{sale.id} (Rs {sale.total}). Stock updated.")
+    messages.success(request, f"Order billed as Sale #{sale.id} ({current_currency()} {sale.total}). Stock updated.")
     return redirect("sale_detail", pk=sale.id)
 
 

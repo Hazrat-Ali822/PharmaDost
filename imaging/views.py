@@ -7,6 +7,7 @@ from pharma_mgmt.pagination import paginate
 from django.views.decorators.http import require_POST
 
 from accounts.decorators import role_required, feature_required
+from user_mgmt.models import current_currency
 from .forms import ImagingReportForm, ImagingStudyCreateForm
 from .models import ImagingStudy, ScanType
 from billing.models import PatientPayment
@@ -73,7 +74,7 @@ def study_create(request):
             # Sonographer/admin goes to the report screen; a doctor/receptionist who only
             # referred the scan gets a clean confirmation (not a 403 on a report-only page).
             can_report = request.user.is_superuser or getattr(request.user, "role", None) in REPORT_ROLES
-            bill = f" Bill #{inv.id} raised (Rs {inv.total}, unpaid)." if inv else ""
+            bill = f" Bill {inv.display_no} raised ({current_currency()} {inv.total}, unpaid)." if inv else ""
             tail = "Add the report now." if can_report else "Sent to radiology — they will add the report."
             messages.success(request, f"Study #{study.id} registered.{bill} {tail}")
             if can_report:

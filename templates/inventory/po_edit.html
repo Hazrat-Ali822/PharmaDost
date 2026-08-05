@@ -21,7 +21,7 @@
 <div class="stat-grid">
   <div class="stat"><div class="meta"><span class="value">{{ req.item_count }}</span><span class="label">Line items</span></div></div>
   <div class="stat"><div class="meta"><span class="value">{{ req.total_qty }}</span><span class="label">Total units</span></div></div>
-  <div class="stat"><div class="meta"><span class="value">Rs {{ req.total }}</span><span class="label">Est. cost</span></div></div>
+  <div class="stat"><div class="meta"><span class="value">{{ currency }} {{ req.total }}</span><span class="label">Est. cost</span></div></div>
 </div>
 
 {% if req.status == 'DRAFT' %}
@@ -106,16 +106,16 @@
         <td><input name="qty_{{ it.id }}" type="number" min="1" value="{{ it.quantity }}" style="width:95px"></td>
         <td><input name="cost_{{ it.id }}" type="number" min="0" step="0.01" value="{{ it.cost_price }}" style="width:105px"></td>
         {% else %}
-        <td>{{ it.quantity }}</td><td>Rs {{ it.cost_price }}</td>
+        <td>{{ it.quantity }}</td><td>{{ currency }} {{ it.cost_price }}</td>
         {% endif %}
-        <td>Rs {{ it.line_total }}</td>
+        <td>{{ currency }} {{ it.line_total }}</td>
         {% if req.status == 'DRAFT' %}<td><a class="btn sm danger" href="{% url 'po_item_delete' req.id it.id %}">✕</a></td>{% endif %}
       </tr>
       {% empty %}
       <tr><td colspan="8" class="muted">No items yet — add some above.</td></tr>
       {% endfor %}
     </tbody>
-    <tfoot><tr><th colspan="6" style="text-align:right">Estimated total</th><th>Rs {{ req.total }}</th>{% if req.status == 'DRAFT' %}<th></th>{% endif %}</tr></tfoot>
+    <tfoot><tr><th colspan="6" style="text-align:right">Estimated total</th><th>{{ currency }} {{ req.total }}</th>{% if req.status == 'DRAFT' %}<th></th>{% endif %}</tr></tfoot>
   </table>
 </div>
 </form>

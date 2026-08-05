@@ -38,7 +38,7 @@ comments are single-line — a multi-line one prints, so use {% comment %} here.
   <span><b>Pulse</b> ……………</span>
   <span><b>Temp</b> ……………</span>
   <span><b>Wt</b> ……………</span>
-  <span><b>Fee</b> Rs {{ fee|floatformat:0 }}</span>
+  <span><b>Fee</b> {{ currency }} {{ fee|floatformat:0 }}</span>
 </div>
 
 {% if appointment.patient.allergies %}

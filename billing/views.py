@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from pharma_mgmt.pagination import paginate
 
 from accounts.decorators import role_required, feature_required
+from user_mgmt.models import current_currency
 from opd.models import Appointment
 from patients.models import Patient
 from .forms import InvoiceForm, ExpenseForm, CashClosingForm
@@ -90,7 +91,7 @@ def patient_bill(request, pk):
         if amount > 0:
             collect_patient_payment(patient=patient, amount=amount,
                                     method=method, user=request.user, note=note)
-            messages.success(request, f'Payment of Rs {amount} recorded for {patient.full_name}.')
+            messages.success(request, f'Payment of {current_currency()} {amount} recorded for {patient.full_name}.')
         else:
             messages.error(request, 'Enter an amount greater than zero.')
         return redirect('patient_bill', pk=patient.pk)
@@ -107,12 +108,13 @@ def patient_bill_print(request, pk):
     branding = SiteSettings.load()
     qr_text = ''
     if branding.show_bill_qr:
+        cur = branding.currency_symbol or 'Rs'
         qr_text = (
             f"{branding.brand_name or 'Sehatyar'}\n"
             f"Bill — {patient.full_name} (MRN {patient.mrn})\n"
-            f"Charged: Rs {summary['charged']}\n"
-            f"Paid: Rs {summary['paid']}\n"
-            f"Outstanding: Rs {summary['outstanding']}\n"
+            f"Charged: {cur} {summary['charged']}\n"
+            f"Paid: {cur} {summary['paid']}\n"
+            f"Outstanding: {cur} {summary['outstanding']}\n"
             f"Printed: {date.today():%d %b %Y}"
         )
     return render(request, 'billing/patient_bill_print.html',
@@ -136,7 +138,7 @@ def invoice_mark_paid(request, pk):
         invoice.paid = invoice.total
         invoice.payment_method = method
         invoice.save(update_fields=['paid', 'payment_method'])
-        messages.success(request, f'Invoice #{invoice.id} marked paid (Rs {invoice.total}).')
+        messages.success(request, f'Invoice {invoice.display_no} marked paid ({current_currency()} {invoice.total}).')
     return redirect('invoice_detail', pk=invoice.pk)
 
 
@@ -153,10 +155,10 @@ def invoice_void(request, pk):
         from accounts.models import Notification
         Notification.notify_admins(
             hospital=request.user.hospital,
-            message=(f"🧾 Invoice #{invoice.pk} (Rs {invoice.total}) voided by "
+            message=(f"🧾 Invoice {invoice.display_no} ({current_currency()} {invoice.total}) voided by "
                      f"{request.user.email} — {invoice.patient.full_name}."),
             link=f'/billing/invoices/{invoice.pk}/')
-        messages.success(request, f'Invoice #{invoice.pk} has been marked VOID.')
+        messages.success(request, f'Invoice {invoice.display_no} has been marked VOID.')
         return redirect('invoice_detail', pk=invoice.pk)
     return render(request, 'billing/invoice_confirm_void.html', {'invoice': invoice})
 
@@ -203,7 +205,7 @@ def expense_create(request):
             exp = form.save(commit=False)
             exp.recorded_by = request.user
             exp.save()
-            messages.success(request, f'Expense recorded (Rs {exp.amount}).')
+            messages.success(request, f'Expense recorded ({current_currency()} {exp.amount}).')
             return redirect('expense_list')
     else:
         form = ExpenseForm()
@@ -251,7 +253,7 @@ def cash_closing_new(request):
                 messages.error(request, f'{cc.date} is already closed.')
                 return redirect('cash_closing_list')
             cc.save()
-            messages.success(request, f'Cash closed for {cc.date}. Difference: Rs {cc.difference}.')
+            messages.success(request, f'Cash closed for {cc.date}. Difference: {current_currency()} {cc.difference}.')
             return redirect('cash_closing_list')
     else:
         form = CashClosingForm(initial={'date': day, 'opening': default_opening})

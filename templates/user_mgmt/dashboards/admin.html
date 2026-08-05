@@ -47,11 +47,11 @@ tenant-scoped by its own manager.
     <div class="tile"><span class="n">{{ today.admissions }}</span><span class="l">Admissions</span></div>
     <div class="tile"><span class="n">{{ today.discharges }}</span><span class="l">Discharges</span></div>
     {% if nav.pos %}
-    <div class="tile"><span class="n">Rs {{ today.sales_total|floatformat:0 }}</span><span class="l">Pharmacy sales ({{ today.sales_count }})</span></div>
+    <div class="tile"><span class="n">{{ currency }} {{ today.sales_total|floatformat:0 }}</span><span class="l">Pharmacy sales ({{ today.sales_count }})</span></div>
     {% endif %}
     {% if nav.billing %}
-    <div class="tile"><span class="n">Rs {{ today.invoices_paid|floatformat:0 }}</span><span class="l">Collected ({{ today.invoices_count }} bills)</span></div>
-    <div class="tile"><span class="n" style="color:#b45309;">Rs {{ today.invoices_due|floatformat:0 }}</span><span class="l">Billed but unpaid</span></div>
+    <div class="tile"><span class="n">{{ currency }} {{ today.invoices_paid|floatformat:0 }}</span><span class="l">Collected ({{ today.invoices_count }} bills)</span></div>
+    <div class="tile"><span class="n" style="color:#b45309;">{{ currency }} {{ today.invoices_due|floatformat:0 }}</span><span class="l">Billed but unpaid</span></div>
     {% endif %}
   </div>
 </div>

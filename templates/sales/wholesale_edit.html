@@ -21,7 +21,7 @@
 <div class="stat-grid">
   <div class="stat"><div class="meta"><span class="value">{{ order.item_count }}</span><span class="label">Line items</span></div></div>
   <div class="stat"><div class="meta"><span class="value">{{ order.total_qty }}</span><span class="label">Total units</span></div></div>
-  <div class="stat"><div class="meta"><span class="value">Rs {{ order.total }}</span><span class="label">Order value</span></div></div>
+  <div class="stat"><div class="meta"><span class="value">{{ currency }} {{ order.total }}</span><span class="label">Order value</span></div></div>
 </div>
 
 {% if order.status == 'DRAFT' %}
@@ -98,9 +98,9 @@
         <td><input name="qty_{{ it.id }}" type="number" min="1" value="{{ it.quantity }}" style="width:95px"></td>
         <td><input name="price_{{ it.id }}" type="number" min="0" step="0.01" value="{{ it.unit_price }}" style="width:105px"></td>
         {% else %}
-        <td>{{ it.quantity }}</td><td>Rs {{ it.unit_price }}</td>
+        <td>{{ it.quantity }}</td><td>{{ currency }} {{ it.unit_price }}</td>
         {% endif %}
-        <td>Rs {{ it.line_total }}</td>
+        <td>{{ currency }} {{ it.line_total }}</td>
         {% if order.status == 'DRAFT' %}
         <td><a class="btn sm danger" href="{% url 'wholesale_order_item_delete' order.id it.id %}">✕</a></td>
         {% endif %}
@@ -109,7 +109,7 @@
       <tr><td colspan="7" class="muted">No items yet — add some above.</td></tr>
       {% endfor %}
     </tbody>
-    <tfoot><tr><th colspan="5" style="text-align:right">Order total</th><th>Rs {{ order.total }}</th>{% if order.status == 'DRAFT' %}<th></th>{% endif %}</tr></tfoot>
+    <tfoot><tr><th colspan="5" style="text-align:right">Order total</th><th>{{ currency }} {{ order.total }}</th>{% if order.status == 'DRAFT' %}<th></th>{% endif %}</tr></tfoot>
   </table>
 </div>
 </form>

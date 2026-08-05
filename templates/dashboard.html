@@ -95,13 +95,13 @@
     <div class="ic green">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
     </div>
-    <div class="meta"><span class="value" style="font-size:20px; font-weight:800;">Rs {{ total_income_30d|floatformat:0 }}</span><span class="label">30-Day Revenue</span></div>
+    <div class="meta"><span class="value" style="font-size:20px; font-weight:800;">{{ currency }} {{ total_income_30d|floatformat:0 }}</span><span class="label">30-Day Revenue</span></div>
   </div>
   <div class="stat">
     <div class="ic red" style="background:rgba(239,68,68,0.1); color:#ef4444;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
     </div>
-    <div class="meta"><span class="value" style="font-size:20px; font-weight:800;">Rs {{ total_expense_30d|floatformat:0 }}</span><span class="label">30-Day Expenses</span></div>
+    <div class="meta"><span class="value" style="font-size:20px; font-weight:800;">{{ currency }} {{ total_expense_30d|floatformat:0 }}</span><span class="label">30-Day Expenses</span></div>
   </div>
 </div>
 

@@ -21,7 +21,7 @@
       <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Lead Surgeon</span><strong>Dr. {{ record.lead_surgeon.full_name }}</strong></p>
       <hr style="border:0; border-top:1px solid var(--border); margin:5px 0;" />
       <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Surgical Procedure</span><strong style="color:var(--primary); font-size:15px;">{{ record.procedure.name }}</strong></p>
-      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Procedure Fee</span><strong>Rs {{ record.procedure.standard_charge }}</strong></p>
+      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Procedure Fee</span><strong>{{ currency }} {{ record.procedure.standard_charge }}</strong></p>
       <hr style="border:0; border-top:1px solid var(--border); margin:5px 0;" />
       <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Start Time</span><strong>{{ record.start_time|date:"Y-m-d H:i" }}</strong></p>
       <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">End Time</span>
