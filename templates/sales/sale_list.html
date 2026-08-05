@@ -26,7 +26,7 @@
       <tr>
         <td>{{ rx.created_at|date:"Y-m-d H:i" }}</td>
         <td><strong>{{ rx.appointment.patient.full_name }}</strong></td>
-        <td>Dr. {{ rx.appointment.doctor.get_full_name|default:rx.appointment.doctor.user.email }}</td>
+        <td>Dr. {{ rx.appointment.doctor.full_name }}</td>
         <td>
           {% for item in rx.items.all %}
             {{ item.medicine.name|default:item.custom_medicine_name }}{% if not forloop.last %}, {% endif %}

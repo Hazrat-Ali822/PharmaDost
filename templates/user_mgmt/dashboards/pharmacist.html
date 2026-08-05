@@ -76,7 +76,7 @@
       <tr>
         <td>{{ rx.created_at|date:"Y-m-d H:i" }}</td>
         <td><strong>{{ rx.appointment.patient.full_name }}</strong></td>
-        <td>Dr. {{ rx.appointment.doctor.get_full_name|default:rx.appointment.doctor.user.email }}</td>
+        <td>Dr. {{ rx.appointment.doctor.full_name }}</td>
         <td>
           <ul style="margin:0; padding-left:16px; font-size:12.5px;">
             {% for item in rx.items.all %}
