@@ -144,6 +144,57 @@ def hospital_edit(request, pk):
     return render(request, 'saas/hospital_form.html', {'hospital': hospital, 'modules': MODULES})
 
 @superuser_required
+def hospital_delete(request, pk):
+    """Permanently delete a hospital and EVERYTHING under it. Superuser-only,
+    and guarded by a type-the-name confirmation because it cannot be undone.
+
+    Every tenant model's `hospital` FK is CASCADE, so `hospital.delete()` wipes
+    patients, bills, stock, appointments, the audit trail — the lot. The one
+    exception is `User.hospital` (SET_NULL): staff would otherwise be left as
+    orphaned accounts that can still sign in, so we capture their ids first and
+    delete them once the cascade has cleared everything that referenced them."""
+    from django.db import transaction
+    from patients.models import Patient
+    from sales.models import Sale
+    from billing.models import Invoice
+
+    hospital = get_object_or_404(Hospital, pk=pk)
+    stats = {
+        'patients': Patient.objects.filter(hospital=hospital).count(),
+        'staff': User.objects.filter(hospital=hospital, is_superuser=False).count(),
+        'sales': Sale.objects.filter(hospital=hospital).count(),
+        'invoices': Invoice.objects.filter(hospital=hospital).count(),
+    }
+
+    if request.method == 'POST':
+        typed = (request.POST.get('confirm_name') or '').strip()
+        if typed != hospital.name:
+            messages.error(request, "The name you typed does not match. Nothing was deleted.")
+            return render(request, 'saas/hospital_confirm_delete.html',
+                          {'hospital': hospital, 'stats': stats})
+
+        name = hospital.name
+        # Capture staff ids BEFORE the cascade nulls their hospital, and delete
+        # them AFTER, when no tenant rows reference them any more.
+        staff_ids = list(
+            User.objects.filter(hospital=hospital, is_superuser=False)
+            .values_list('id', flat=True))
+        from audit.middleware import suppress_audit
+        with transaction.atomic(), suppress_audit():
+            hospital.delete()
+            if staff_ids:
+                User.objects.filter(id__in=staff_ids).delete()
+
+        messages.success(
+            request,
+            f"Hospital '{name}' and all of its data ({stats['patients']} patients, "
+            f"{stats['staff']} staff, {stats['sales']} bills) were permanently deleted.")
+        return redirect('saas:dashboard')
+
+    return render(request, 'saas/hospital_confirm_delete.html',
+                  {'hospital': hospital, 'stats': stats})
+
+@superuser_required
 def payment_create(request):
     hospitals = Hospital.objects.all()
     if request.method == 'POST':

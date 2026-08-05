@@ -291,6 +291,17 @@ whose staff account is being guessed at never sees them. The filter dropdowns ar
 from the scoped queryset too — a list naming another tenant's staff leaks just as surely as
 the rows. Guarded by `tests/test_admin_awareness.py::AuditLogIsolationTest`.
 
+**Deleting a whole tenant suppresses audit logging** (`audit.middleware.suppress_audit`).
+The SaaS owner can hard-delete a hospital (`saas.views.hospital_delete`, superuser-only,
+type-the-name confirmation). Every tenant model's `hospital` FK is `CASCADE`, so
+`hospital.delete()` wipes all of it — **except `User.hospital`, which is `SET_NULL`**: the
+view captures the tenant's non-superuser staff ids first and deletes them after the cascade,
+or they linger as orphaned accounts that can still sign in. The delete runs inside
+`suppress_audit()` because the cascade's `post_delete` signals would otherwise file a DELETE
+`AuditLog` for every tracked row against the very hospital being removed — rows that
+`AuditLog.hospital`'s own CASCADE deletes again, and which crash on save as the hospital
+vanishes mid-cascade. Guarded by `saas/tests_delete.py`.
+
 ### Landing / dashboards
 
 `LOGIN_REDIRECT_URL` → `user_mgmt:post_login_redirect` → `user_mgmt.views.dashboard_router`, which sends superusers to the SaaS portal, ADMINs to `/`, and everyone else to a role template from `ROLE_TEMPLATES`.

@@ -86,6 +86,16 @@
       <li><strong>Modules limit:</strong> Enabling or disabling modules here controls what features are visible to this hospital. The hospital admin will not be able to delegate permissions to modules that are not enabled here.</li>
       <li><strong>Suspending:</strong> Unchecking "Active Subscription" blocks access immediately for all staff belonging to this hospital.</li>
     </ul>
+
+    {% if hospital %}
+    <hr style="border:none; border-top:1px solid var(--border); margin: 18px 0;">
+    <h3 style="color:var(--danger);">Danger Zone</h3>
+    <p class="muted" style="font-size:13px; line-height:1.6; margin:6px 0 12px;">
+      Permanently delete this hospital and <strong>all</strong> of its data. This cannot be undone —
+      prefer suspending (uncheck “Active Subscription”) unless you are sure.
+    </p>
+    <a class="btn danger" href="{% url 'saas:hospital_delete' hospital.pk %}">Delete this hospital…</a>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

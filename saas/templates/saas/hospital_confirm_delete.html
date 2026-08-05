@@ -1,0 +1,64 @@
+{% extends 'partials/base.html' %}
+{% block title %}Delete Hospital — Sehatyar{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h2>Delete Hospital</h2>
+  <a class="btn alt" href="{% url 'saas:hospital_edit' hospital.pk %}">Cancel</a>
+</div>
+
+<div class="card" style="max-width:640px; border:1px solid var(--danger);">
+  <h3 style="color:var(--danger); margin-top:0;">⚠ Permanently delete “{{ hospital.name }}”</h3>
+
+  <p style="color:var(--text); line-height:1.6;">
+    This <strong>cannot be undone</strong>. Deleting this hospital will permanently remove
+    <strong>everything</strong> that belongs to it — there is no recycle bin and no backup taken automatically.
+  </p>
+
+  <div style="background:var(--danger-bg); border:1px solid #fecaca; border-radius:10px; padding:14px 16px; margin:16px 0;">
+    <div style="font-weight:700; margin-bottom:8px; color:var(--text);">What will be erased forever:</div>
+    <ul style="margin:0; padding-left:20px; line-height:1.9; color:var(--text);">
+      <li><strong>{{ stats.patients }}</strong> patient record{{ stats.patients|pluralize }} (history, prescriptions, admissions)</li>
+      <li><strong>{{ stats.sales }}</strong> pharmacy bill{{ stats.sales|pluralize }} and all stock &amp; inventory</li>
+      <li><strong>{{ stats.invoices }}</strong> invoice{{ stats.invoices|pluralize }} and billing history</li>
+      <li><strong>{{ stats.staff }}</strong> staff login{{ stats.staff|pluralize }} for this hospital</li>
+      <li>All appointments, lab &amp; imaging orders, ward data, and the audit trail</li>
+    </ul>
+  </div>
+
+  <p style="color:var(--muted); font-size:13.5px;">
+    If you only want to stop this hospital from signing in, <a href="{% url 'saas:hospital_edit' hospital.pk %}">edit it and uncheck “Active Subscription”</a> instead — that suspends access but keeps every record safe.
+  </p>
+
+  <form method="post" style="margin-top:18px;">
+    {% csrf_token %}
+    <label style="display:block; font-weight:600; margin-bottom:8px; color:var(--text);">
+      To confirm, type the hospital name exactly: <code style="background:var(--bg); padding:2px 6px; border-radius:5px;">{{ hospital.name }}</code>
+    </label>
+    <input type="text" name="confirm_name" id="confirm_name" autocomplete="off"
+           placeholder="Type “{{ hospital.name }}” here"
+           style="width:100%; max-width:100%;">
+
+    <div class="btn-row" style="margin-top:18px;">
+      <button class="btn danger" type="submit" id="delete_btn" disabled
+              onclick="return confirm('Last chance: permanently delete {{ hospital.name|escapejs }} and ALL its data?');">
+        Permanently delete this hospital
+      </button>
+      <a class="btn alt" href="{% url 'saas:hospital_edit' hospital.pk %}">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<script>
+  (function () {
+    var input = document.getElementById('confirm_name');
+    var btn = document.getElementById('delete_btn');
+    var expected = "{{ hospital.name|escapejs }}";
+    function check() {
+      btn.disabled = input.value.trim() !== expected;
+    }
+    input.addEventListener('input', check);
+    check();
+  })();
+</script>
+{% endblock %}
