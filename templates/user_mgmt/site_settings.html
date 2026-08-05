@@ -103,6 +103,25 @@
       </p>
 
       <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
+      <h3>Tax, Discount &amp; Rounding</h3>
+      <p class="muted" style="font-size:13px;margin-bottom:10px">
+        All optional — leave at 0 / No rounding for no change. Tax applies to every
+        bill; the standing discount applies to pharmacy counter sales (a cashier can
+        still override it).
+      </p>
+      <div style="display:flex;gap:14px;flex-wrap:wrap">
+        <div style="flex:1;min-width:130px">
+          <label>Tax / GST (%)</label>{{ form.default_tax_percent }}
+        </div>
+        <div style="flex:1;min-width:130px">
+          <label>Standing discount (%)</label>{{ form.default_discount_percent }}
+        </div>
+        <div style="flex:1;min-width:130px">
+          <label>Round total to</label>{{ form.bill_rounding }}
+        </div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
       <h3>Invoice Numbering</h3>
       <p class="muted" style="font-size:13px;margin-bottom:10px">
         Service &amp; OPD invoices get an accounting number automatically, e.g.

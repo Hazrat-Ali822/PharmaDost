@@ -48,15 +48,15 @@
       {% if request.user.role != 'DOCTOR' %}
       <td>
         {% if o.payment_status == 'Paid' %}
-          <span class="badge green">Paid (Rs. {{ o.payment_amount }})</span>
+          <span class="badge green">Paid ({{ currency }} {{ o.payment_amount }})</span>
         {% else %}
           {% if request.user.role == 'LABTECH' or request.user.role == 'ADMIN' or request.user.is_superuser %}
             <form action="{% url 'lab:collect_payment' o.id %}" method="post" style="display:inline">
               {% csrf_token %}
-              <button class="btn sm success" type="submit" style="padding:4px 8px;font-size:11px;">Collect Rs. {{ o.total_price }}</button>
+              <button class="btn sm success" type="submit" style="padding:4px 8px;font-size:11px;">Collect {{ currency }} {{ o.total_price }}</button>
             </form>
           {% else %}
-            <span class="badge gray">Pending (Rs. {{ o.total_price }})</span>
+            <span class="badge gray">Pending ({{ currency }} {{ o.total_price }})</span>
           {% endif %}
         {% endif %}
       </td>

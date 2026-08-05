@@ -32,6 +32,7 @@ class Sale(models.Model):
 
     subtotal = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     discount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    tax = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     total = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))  # STORED
     paid = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     payment_method = models.CharField(max_length=10, choices=PAYMENT_CHOICES, default="CASH")

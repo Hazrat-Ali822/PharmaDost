@@ -39,7 +39,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:20px; height:20px; color:var(--primary);"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
       Departmental Revenue Summary
     </div>
-    <span style="font-size:18px; font-weight:800; color:var(--success);">Total Income: Rs. {{ total_income_range|floatformat:0 }}</span>
+    <span style="font-size:18px; font-weight:800; color:var(--success);">Total Income: {{ currency }} {{ total_income_range|floatformat:0 }}</span>
   </h3>
   <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px;">
     
@@ -47,7 +47,7 @@
     <div class="card" style="padding:15px; text-align:center; background:rgba(79, 70, 229, 0.05); border-color:rgba(79, 70, 229, 0.15);">
       <div style="font-size:24px; margin-bottom:8px;">🩺</div>
       <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">OPD Consultations</div>
-      <div style="font-size:20px; font-weight:800; margin-top:5px; color:#4f46e5;">Rs. {{ opd_rev|floatformat:0 }}</div>
+      <div style="font-size:20px; font-weight:800; margin-top:5px; color:#4f46e5;">{{ currency }} {{ opd_rev|floatformat:0 }}</div>
     </div>
     {% endif %}
 
@@ -55,7 +55,7 @@
     <div class="card" style="padding:15px; text-align:center; background:rgba(236, 72, 153, 0.05); border-color:rgba(236, 72, 153, 0.15);">
       <div style="font-size:24px; margin-bottom:8px;">🔬</div>
       <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Laboratory</div>
-      <div style="font-size:20px; font-weight:800; margin-top:5px; color:#ec4899;">Rs. {{ lab_rev|floatformat:0 }}</div>
+      <div style="font-size:20px; font-weight:800; margin-top:5px; color:#ec4899;">{{ currency }} {{ lab_rev|floatformat:0 }}</div>
     </div>
     {% endif %}
 
@@ -63,7 +63,7 @@
     <div class="card" style="padding:15px; text-align:center; background:rgba(59, 130, 246, 0.05); border-color:rgba(59, 130, 246, 0.15);">
       <div style="font-size:24px; margin-bottom:8px;">🩻</div>
       <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Radiology / Scans</div>
-      <div style="font-size:20px; font-weight:800; margin-top:5px; color:#3b82f6;">Rs. {{ imaging_rev|floatformat:0 }}</div>
+      <div style="font-size:20px; font-weight:800; margin-top:5px; color:#3b82f6;">{{ currency }} {{ imaging_rev|floatformat:0 }}</div>
     </div>
     {% endif %}
 
@@ -71,7 +71,7 @@
     <div class="card" style="padding:15px; text-align:center; background:rgba(16, 185, 129, 0.05); border-color:rgba(16, 185, 129, 0.15);">
       <div style="font-size:24px; margin-bottom:8px;">💊</div>
       <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Pharmacy Sales</div>
-      <div style="font-size:20px; font-weight:800; margin-top:5px; color:#10b981;">Rs. {{ pharmacy_rev|floatformat:0 }}</div>
+      <div style="font-size:20px; font-weight:800; margin-top:5px; color:#10b981;">{{ currency }} {{ pharmacy_rev|floatformat:0 }}</div>
     </div>
     {% endif %}
 
@@ -173,7 +173,7 @@
         labels: labels,
         datasets: [
           {
-            label: 'Income (Rs)',
+            label: 'Income ({{ currency }})',
             data: income,
             backgroundColor: '#4f46e5',
             borderColor: '#4f46e5',
@@ -182,7 +182,7 @@
             maxBarThickness: 24
           },
           {
-            label: 'Expenses (Rs)',
+            label: 'Expenses ({{ currency }})',
             data: expense,
             backgroundColor: '#ef4444',
             borderColor: '#ef4444',

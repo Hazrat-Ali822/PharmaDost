@@ -119,7 +119,7 @@
   <h3>Convert to wholesale bill</h3>
   <p class="muted" style="font-size:13px">This creates a real wholesale sale and deducts stock (FEFO). Needs a registered customer.</p>
   <form method="post" action="{% url 'wholesale_order_convert' order.id %}" style="display:flex;gap:10px;align-items:end;flex-wrap:wrap">{% csrf_token %}
-    <div style="width:150px"><label>Paid now (Rs)</label><input name="paid" type="number" min="0" step="0.01" value="0" placeholder="0 = credit"></div>
+    <div style="width:150px"><label>Paid now ({{ currency }})</label><input name="paid" type="number" min="0" step="0.01" value="0" placeholder="0 = credit"></div>
     <div style="width:150px"><label>Method</label>
       <select name="payment_method">
         <option value="CREDIT">Credit / Khata</option>

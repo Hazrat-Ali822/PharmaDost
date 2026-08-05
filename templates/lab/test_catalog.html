@@ -25,7 +25,7 @@
       <div><label>…or new category</label><input name="new_category" placeholder="e.g. Hormones"></div>
     </div>
     <div class="form-row">
-      <div><label>Price (Rs)</label><input name="price" type="number" step="0.01" min="0" value="0"></div>
+      <div><label>Price ({{ currency }})</label><input name="price" type="number" step="0.01" min="0" value="0"></div>
       <div><label>Unit</label><input name="unit" placeholder="e.g. mg/dL"></div>
       <div><label>Normal range</label><input name="normal_range" placeholder="e.g. 70–110"></div>
     </div>
@@ -39,7 +39,7 @@
   <div class="card" style="margin-bottom:14px">
     <h3>{{ category.name }}</h3>
     <table class="tbl">
-      <thead><tr><th style="width:32%">Test</th><th>Unit</th><th>Normal range <span class="muted" style="font-weight:400">(optional)</span></th><th style="width:130px">Price (Rs)</th></tr></thead>
+      <thead><tr><th style="width:32%">Test</th><th>Unit</th><th>Normal range <span class="muted" style="font-weight:400">(optional)</span></th><th style="width:130px">Price ({{ currency }})</th></tr></thead>
       <tbody>
         {% for t in tests %}
         <tr>

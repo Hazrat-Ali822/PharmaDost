@@ -11,7 +11,7 @@
 <div class="card" style="margin-bottom:14px">
   <div class="form-row">
     <div><label>Supplier invoice #</label><input name="invoice_number" placeholder="optional"></div>
-    <div><label>Paid now (Rs)</label><input name="paid" type="number" min="0" step="0.01" placeholder="blank = full"></div>
+    <div><label>Paid now ({{ currency }})</label><input name="paid" type="number" min="0" step="0.01" placeholder="blank = full"></div>
   </div>
   <p class="muted" style="font-size:13px">Leave “Paid” blank to mark the whole bill paid; enter a smaller amount to put the rest on the supplier's khata.</p>
 </div>

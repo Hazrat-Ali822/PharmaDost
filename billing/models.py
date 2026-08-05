@@ -21,6 +21,7 @@ class Invoice(models.Model):
     appointment = models.ForeignKey(Appointment, on_delete=models.SET_NULL, null=True, blank=True, related_name='invoices')
     subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     discount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    tax = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     total = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     paid = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     payment_method = models.CharField(max_length=20, default='CASH')

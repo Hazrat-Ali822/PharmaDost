@@ -87,6 +87,27 @@ class SiteSettings(models.Model):
         max_length=8, default="Rs",
         help_text="Shown before every amount, e.g. Rs, ₨, PKR, $, ﷼. Just the symbol/text.")
 
+    # Bill maths. All default to a no-op (0% / no rounding) so behaviour is
+    # unchanged until an admin opts in. Applied in sales.services.create_sale and
+    # billing.services (service/OPD/discharge invoices).
+    BILL_ROUNDING_CHOICES = (
+        ("none", "No rounding"),
+        ("1", "Nearest 1"),
+        ("5", "Nearest 5"),
+        ("10", "Nearest 10"),
+    )
+    default_tax_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0,
+        help_text="Tax/GST added to every bill, as a %. 0 = no tax.")
+    default_discount_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0,
+        help_text="A standing discount taken off every pharmacy sale, as a %. "
+                  "0 = none. A cashier can still override it on the counter.")
+    bill_rounding = models.CharField(
+        max_length=8, choices=BILL_ROUNDING_CHOICES, default="none",
+        help_text="Round the final payable to the nearest 1/5/10 (handy where small "
+                  "coins aren't used).")
+
     # show the prescribing doctor's name to pharmacy/POS staff (on the pending-Rx loader)
     show_doctor_to_pharmacy = models.BooleanField(
         default=True,
@@ -144,6 +165,24 @@ class SiteSettings(models.Model):
         # never desyncs the sequence. `load()` guarantees there is only one global
         # (hospital-less) row.
         super().save(*args, **kwargs)
+
+    def tax_on(self, base):
+        """The tax amount on `base` (an already-discounted subtotal). 0 when off."""
+        from decimal import Decimal
+        pct = Decimal(self.default_tax_percent or 0)
+        if pct <= 0:
+            return Decimal("0.00")
+        return (Decimal(str(base)) * pct / Decimal(100)).quantize(Decimal("0.01"))
+
+    def round_total(self, amount):
+        """Round the final payable to the configured step (nearest 1/5/10)."""
+        from decimal import Decimal, ROUND_HALF_UP
+        step = {"1": 1, "5": 5, "10": 10}.get(self.bill_rounding)
+        amount = Decimal(str(amount))
+        if not step:
+            return amount
+        step = Decimal(step)
+        return (amount / step).quantize(Decimal("1"), rounding=ROUND_HALF_UP) * step
 
     def reset_to_defaults(self):
         for field, value in SITE_DEFAULTS.items():

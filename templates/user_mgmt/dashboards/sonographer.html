@@ -62,7 +62,7 @@
           {% else %}
             <form action="{% url 'imaging:collect_payment' s.id %}" method="post" style="display:inline">
               {% csrf_token %}
-              <button class="btn sm success" type="submit" style="padding:4px 8px;font-size:11px;">Collect Rs. {{ s.price }}</button>
+              <button class="btn sm success" type="submit" style="padding:4px 8px;font-size:11px;">Collect {{ currency }} {{ s.price }}</button>
             </form>
           {% endif %}
         </td>

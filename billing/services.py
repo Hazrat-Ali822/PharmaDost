@@ -179,13 +179,18 @@ def create_service_invoice(*, patient, items, created_by, paid=Decimal('0.00'),
     items = [(d, Decimal(str(a))) for d, a in items if a and Decimal(str(a)) > 0]
     if not items:
         return None
+    from user_mgmt.models import SiteSettings
+    site = SiteSettings.load()
     subtotal = sum((amt for _, amt in items), Decimal('0.00'))
-    total = subtotal - discount
+    after_discount = subtotal - discount
+    tax = site.tax_on(after_discount)
+    total = site.round_total(after_discount + tax)
     invoice = Invoice.objects.create(
         patient=patient,
         appointment=appointment,
         subtotal=subtotal,
         discount=discount,
+        tax=tax,
         total=total,
         paid=paid,
         payment_method=payment_method,
@@ -197,14 +202,20 @@ def create_service_invoice(*, patient, items, created_by, paid=Decimal('0.00'),
 
 
 def create_opd_invoice(appointment, created_by, payment_method='CASH', discount=Decimal('0.00')):
+    from user_mgmt.models import SiteSettings
+    site = SiteSettings.load()
     fee = appointment.doctor.opd_fee if appointment.visit_type != 'FOLLOWUP' else appointment.doctor.followup_fee
+    after_discount = fee - discount
+    tax = site.tax_on(after_discount)
+    total = site.round_total(after_discount + tax)
     invoice = Invoice.objects.create(
         patient=appointment.patient,
         appointment=appointment,
         subtotal=fee,
         discount=discount,
-        total=fee - discount,
-        paid=fee - discount,
+        tax=tax,
+        total=total,
+        paid=total,
         payment_method=payment_method,
         created_by=created_by,
     )

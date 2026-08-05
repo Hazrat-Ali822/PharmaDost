@@ -15,7 +15,7 @@ def _dec(value, default="0.00"):
 
 @transaction.atomic
 def create_sale(*, items, sale_type=Sale.RETAIL, customer=None, customer_name="",
-                discount=0, paid=None, payment_method="CASH", cashier=None, patient=None,
+                discount=None, paid=None, payment_method="CASH", cashier=None, patient=None,
                 on_short="raise"):
     """
     Create a sale, dispensing stock FEFO (earliest expiry first) and recording the
@@ -42,8 +42,6 @@ def create_sale(*, items, sale_type=Sale.RETAIL, customer=None, customer_name=""
     if sale_type == Sale.WHOLESALE and customer is None:
         raise ValueError("Wholesale price is only for registered customers — please select a customer.")
 
-    order_discount = _dec(discount)
-
     if customer is not None:
         # lock the customer row for balance/credit-limit consistency
         from customers.models import Customer
@@ -58,7 +56,6 @@ def create_sale(*, items, sale_type=Sale.RETAIL, customer=None, customer_name=""
         customer_name=customer_name,
         payment_method=payment_method,
         cashier=cashier,
-        discount=order_discount,
     )
 
     gross = Decimal("0.00")
@@ -141,15 +138,34 @@ def create_sale(*, items, sale_type=Sale.RETAIL, customer=None, customer_name=""
             f"{name}: {n} unit(s) dispensed beyond recorded stock" for name, n in shortfalls)
 
     subtotal = gross
-    total = subtotal - total_line_discount - order_discount
-    if total < 0:
+    net_of_lines = subtotal - total_line_discount
+
+    # Order discount: an explicit amount from the caller (POS field) wins; when the
+    # caller passes nothing, fall back to the tenant's standing discount %. The POS
+    # always sends a value (0 when the box is empty), so this default only applies to
+    # callers that omit it entirely — never silently on top of a counter discount.
+    from user_mgmt.models import SiteSettings
+    site = SiteSettings.load()
+    if discount is None:
+        pct = site.default_discount_percent or 0
+        order_discount = (net_of_lines * pct / 100).quantize(Decimal("0.01")) if pct else Decimal("0.00")
+    else:
+        order_discount = _dec(discount)
+
+    after_discount = net_of_lines - order_discount
+    if after_discount < 0:
         raise ValueError("Discount cannot exceed the sale total.")
+
+    tax = site.tax_on(after_discount)
+    total = site.round_total(after_discount + tax)
 
     paid_amount = total if paid in (None, "") else _dec(paid)
     if paid_amount < 0:
         raise ValueError("Paid amount cannot be negative.")
 
     sale.subtotal = subtotal
+    sale.discount = order_discount
+    sale.tax = tax
     sale.total = total
     sale.paid = paid_amount
 
@@ -167,8 +183,8 @@ def create_sale(*, items, sale_type=Sale.RETAIL, customer=None, customer_name=""
         if payment_method != "CREDIT":
             sale.payment_method = "CREDIT"
 
-    sale.save(update_fields=["subtotal", "total", "paid", "payment_method",
-                             "needs_reconcile", "reconcile_note"])
+    sale.save(update_fields=["subtotal", "discount", "tax", "total", "paid",
+                             "payment_method", "needs_reconcile", "reconcile_note"])
     return sale
 
 

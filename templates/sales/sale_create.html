@@ -173,13 +173,25 @@
           Checkout Summary
         </h3>
         <div class="form-row">
-          <label>Order Discount (Rs)</label>
-          <input type="number" step="0.01" min="0" name="discount" id="discount" value="0">
+          <label>Order Discount ({{ currency }})</label>
+          <input type="number" step="0.01" min="0" name="discount" id="discount"
+                 value="{% if branding.default_discount_percent %}{% else %}0{% endif %}"
+                 placeholder="{% if branding.default_discount_percent %}auto {{ branding.default_discount_percent }}% — leave blank{% else %}0{% endif %}"
+                 data-default-pct="{{ branding.default_discount_percent|default:0 }}">
+        </div>
+        <div class="total-wrap" style="font-weight:400;font-size:14px" id="tax-row" hidden>
+          <span>Tax ({{ branding.default_tax_percent|default:0 }}%):</span>
+          <strong id="tax-amt">0</strong>
         </div>
         <div class="total-wrap">
           <span>Grand Total:</span>
           <strong id="grand-total">0</strong>
         </div>
+        <script>
+          window.BILL_TAX_PCT = parseFloat('{{ branding.default_tax_percent|default:0 }}') || 0;
+          window.BILL_DISC_PCT = parseFloat('{{ branding.default_discount_percent|default:0 }}') || 0;
+          window.BILL_ROUND = '{{ branding.bill_rounding|default:"none" }}';
+        </script>
         <div class="form-row">
           <label>Payment Method</label>
           <select name="payment_method" id="payment_method">
@@ -396,11 +408,23 @@
     recalc();
   }
 
+  function roundStep(v){
+    const step = {'1':1,'5':5,'10':10}[window.BILL_ROUND];
+    return step ? Math.round(v/step)*step : v;
+  }
   function recalcGrand(){
-    let g = 0;
-    [...tbody.querySelectorAll('.line-total')].forEach(td => g += parseFloat(td.textContent || '0'));
-    g -= parseFloat(discountEl.value || '0');
+    let lines = 0;
+    [...tbody.querySelectorAll('.line-total')].forEach(td => lines += parseFloat(td.textContent || '0'));
+    // Order discount: an explicit amount wins; a blank box uses the standing default %.
+    const raw = discountEl.value.trim();
+    let disc = raw === '' ? lines * (window.BILL_DISC_PCT || 0) / 100 : parseFloat(raw || '0');
+    let g = lines - disc;
     if (g < 0) g = 0;
+    // Tax, then rounding — mirrors the server (sales.services.create_sale).
+    const tax = g * (window.BILL_TAX_PCT || 0) / 100;
+    const taxRow = document.getElementById('tax-row');
+    if (window.BILL_TAX_PCT > 0) { taxRow.hidden = false; document.getElementById('tax-amt').textContent = tax.toFixed(2); }
+    g = roundStep(g + tax);
     totalEl.textContent = g.toFixed(2);
     recalcBalance();
   }

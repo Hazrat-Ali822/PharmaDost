@@ -123,8 +123,14 @@ function printReceipt() {
       <span>-{{ currency }} {{ sale.discount }}</span>
     </div>
     {% endif %}
+    {% if sale.tax > 0 %}
+    <div class="receipt-summary-row">
+      <span>Tax:</span>
+      <span>{{ currency }} {{ sale.tax }}</span>
+    </div>
+    {% endif %}
     <div class="receipt-summary-row total">
-      <span>Total Paid:</span>
+      <span>Total:</span>
       <span>{{ currency }} {{ sale.total }}</span>
     </div>
     <div class="receipt-summary-row" style="margin-top:4px;">

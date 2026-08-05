@@ -41,6 +41,7 @@
     <tfoot>
       <tr><td style="text-align:right">Subtotal</td><td style="text-align:right">{{ invoice.subtotal }}</td></tr>
       {% if invoice.discount %}<tr><td style="text-align:right">Discount</td><td style="text-align:right">-{{ invoice.discount }}</td></tr>{% endif %}
+      {% if invoice.tax %}<tr><td style="text-align:right">Tax</td><td style="text-align:right">{{ invoice.tax }}</td></tr>{% endif %}
       <tr><td style="text-align:right"><strong>Total</strong></td><td style="text-align:right"><strong>{{ invoice.total }}</strong></td></tr>
       <tr><td style="text-align:right">Paid</td><td style="text-align:right">{{ invoice.paid }}</td></tr>
       <tr><td style="text-align:right"><strong>Balance</strong></td><td style="text-align:right"><strong>{{ invoice.balance }}</strong></td></tr>

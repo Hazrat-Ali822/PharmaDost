@@ -50,15 +50,15 @@
       {% if request.user.role != 'DOCTOR' %}
       <td>
         {% if s.payment_status == 'Paid' %}
-          <span class="badge green">Paid (Rs. {{ s.payment_amount }})</span>
+          <span class="badge green">Paid ({{ currency }} {{ s.payment_amount }})</span>
         {% else %}
           {% if request.user.role == 'SONOGRAPHER' or request.user.role == 'ADMIN' or request.user.is_superuser %}
             <form action="{% url 'imaging:collect_payment' s.id %}" method="post" style="display:inline">
               {% csrf_token %}
-              <button class="btn sm success" type="submit" style="padding:4px 8px;font-size:11px;">Collect Rs. {{ s.price }}</button>
+              <button class="btn sm success" type="submit" style="padding:4px 8px;font-size:11px;">Collect {{ currency }} {{ s.price }}</button>
             </form>
           {% else %}
-            <span class="badge gray">Pending (Rs. {{ s.price }})</span>
+            <span class="badge gray">Pending ({{ currency }} {{ s.price }})</span>
           {% endif %}
         {% endif %}
       </td>

@@ -64,7 +64,10 @@ def sale_create(request):
         patient_id = request.POST.get('patient_id') or None
         customer_name = request.POST.get('customer_name', '').strip()
         payment_method = request.POST.get('payment_method', 'CASH')
-        order_discount = request.POST.get('discount') or 0
+        # Blank box → fall back to the tenant's standing discount % (create_sale
+        # applies it); any typed number (including 0) is explicit and wins.
+        _raw_discount = request.POST.get('discount', '')
+        order_discount = None if _raw_discount.strip() == '' else _raw_discount
         paid = request.POST.get('paid')
 
         med_ids = request.POST.getlist('medicine_id[]')
