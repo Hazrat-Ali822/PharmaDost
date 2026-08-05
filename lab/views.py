@@ -2,6 +2,8 @@
 from decimal import Decimal, InvalidOperation
 
 from django.shortcuts import render, redirect, get_object_or_404
+
+from pharma_mgmt.pagination import paginate
 from django.urls import reverse
 from django.contrib import messages
 from django.views.decorators.http import require_POST
@@ -59,7 +61,9 @@ def order_list(request):
     elif show == 'completed':
         orders = orders.exclude(status='Pending')
         
-    return render(request, "lab/order_list.html", {"orders": orders, "show": show})
+    page = paginate(request, orders)
+    return render(request, "lab/order_list.html",
+                  {"orders": page, "page_obj": page, "show": show})
 
 
 # Ward staff can raise an order for an admitted patient (on the doctor's

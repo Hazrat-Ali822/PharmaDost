@@ -4,6 +4,8 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
+from pharma_mgmt.pagination import paginate
+
 from accounts.decorators import role_required, feature_required
 from .forms import PatientForm, ClinicalRecordForm
 from .models import Patient
@@ -40,8 +42,9 @@ def patient_list(request):
             Q(cnic__icontains=q)
         )
     is_doctor = getattr(request.user, 'role', None) == 'DOCTOR' and not request.user.is_superuser
+    page = paginate(request, patients)
     return render(request, 'patients/patient_list.html',
-                  {'patients': patients, 'q': q, 'is_doctor': is_doctor})
+                  {'patients': page, 'page_obj': page, 'q': q, 'is_doctor': is_doctor})
 
 
 @feature_required('patients')

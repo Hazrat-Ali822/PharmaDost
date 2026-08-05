@@ -1,0 +1,37 @@
+{# Reusable pager. Needs `page_obj` (a Django Page) in context. Preserves every
+   other query param (search `q`, filters) so paging never drops the current view.
+   Renders nothing when there is only one page. #}
+{% if page_obj.paginator.num_pages > 1 %}
+{% spaceless %}
+<nav class="pagination" aria-label="Pagination">
+  <span class="pagination-info">
+    Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}
+  </span>
+  <div class="pagination-links">
+    {% if page_obj.has_previous %}
+      <a class="page-btn" href="?page={{ page_obj.previous_page_number }}{% for k, v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v|urlencode }}{% endif %}{% endfor %}" rel="prev">‹ Prev</a>
+    {% else %}
+      <span class="page-btn disabled">‹ Prev</span>
+    {% endif %}
+
+    {% for num in page_obj.paginator.page_range %}
+      {% if num == page_obj.number %}
+        <span class="page-btn current" aria-current="page">{{ num }}</span>
+      {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+        <a class="page-btn" href="?page={{ num }}{% for k, v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v|urlencode }}{% endif %}{% endfor %}">{{ num }}</a>
+      {% elif num == 1 or num == page_obj.paginator.num_pages %}
+        <a class="page-btn" href="?page={{ num }}{% for k, v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v|urlencode }}{% endif %}{% endfor %}">{{ num }}</a>
+      {% elif num == page_obj.number|add:'-3' or num == page_obj.number|add:'3' %}
+        <span class="page-ellipsis">…</span>
+      {% endif %}
+    {% endfor %}
+
+    {% if page_obj.has_next %}
+      <a class="page-btn" href="?page={{ page_obj.next_page_number }}{% for k, v in request.GET.items %}{% if k != 'page' %}&{{ k }}={{ v|urlencode }}{% endif %}{% endfor %}" rel="next">Next ›</a>
+    {% else %}
+      <span class="page-btn disabled">Next ›</span>
+    {% endif %}
+  </div>
+</nav>
+{% endspaceless %}
+{% endif %}

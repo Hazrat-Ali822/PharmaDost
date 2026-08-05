@@ -2,6 +2,8 @@ from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
+
+from pharma_mgmt.pagination import paginate
 from django.views.decorators.http import require_POST
 
 from accounts.decorators import role_required, feature_required
@@ -48,10 +50,11 @@ def study_list(request):
     modality = request.GET.get("modality", "").strip()
     if modality:
         studies = studies.filter(modality=modality)
+    page = paginate(request, studies)
     return render(
         request,
         "imaging/study_list.html",
-        {"studies": studies, "modality": modality,
+        {"studies": page, "page_obj": page, "modality": modality,
          "modalities": ImagingStudy.MODALITY_CHOICES},
     )
 

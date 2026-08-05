@@ -2,6 +2,8 @@ from django.contrib import messages
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 
+from pharma_mgmt.pagination import paginate
+
 from accounts.decorators import role_required, feature_required
 from customers.models import Customer
 from inventory.models import Medicine
@@ -161,15 +163,17 @@ def sale_list(request):
         Sale.objects
         .select_related('customer', 'cashier')
         .prefetch_related('items', 'items__medicine')
-        .order_by('-created_at')[:200]
+        .order_by('-created_at')
     )
     pending_rx = Prescription.objects.filter(status__in=['PENDING', 'PARTIAL']).select_related('appointment__patient', 'appointment__doctor__user').prefetch_related('items__medicine')
     if not request.user.is_superuser:
         pending_rx = pending_rx.filter(appointment__patient__hospital=request.user.hospital)
     pending_prescriptions = pending_rx.order_by('-created_at')[:15]
     
+    page = paginate(request, sales)
     return render(request, 'sales/sale_list.html', {
-        'sales': sales,
+        'sales': page,
+        'page_obj': page,
         'pending_prescriptions': pending_prescriptions,
     })
 

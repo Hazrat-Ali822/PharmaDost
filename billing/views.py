@@ -6,6 +6,8 @@ from django.db.models import Sum, Q
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404, redirect, render
 
+from pharma_mgmt.pagination import paginate
+
 from accounts.decorators import role_required, feature_required
 from opd.models import Appointment
 from patients.models import Patient
@@ -28,8 +30,9 @@ def invoice_list(request):
     status = request.GET.get('status', '').strip()
     if status == 'unpaid':
         invoices = [i for i in invoices if not i.is_paid]
+    page = paginate(request, invoices)
     return render(request, 'billing/invoice_list.html',
-                  {'invoices': invoices, 'status': status})
+                  {'invoices': page, 'page_obj': page, 'status': status})
 
 
 @feature_required('billing')
@@ -68,8 +71,9 @@ def patient_billing_list(request):
     else:
         rows = outstanding_by_patient()
     total_due = sum((r['outstanding'] for r in rows), Decimal('0.00'))
+    page = paginate(request, rows)
     return render(request, 'billing/patient_billing_list.html',
-                  {'rows': rows, 'q': q, 'total_due': total_due})
+                  {'rows': page, 'page_obj': page, 'q': q, 'total_due': total_due})
 
 
 @feature_required('billing')
@@ -170,8 +174,10 @@ def expense_list(request):
     by_cat = {}
     for e in expenses:
         by_cat[e.get_category_display()] = by_cat.get(e.get_category_display(), Decimal('0.00')) + e.amount
+    # total and by_cat above cover the whole filtered range; the page is display only.
+    page = paginate(request, expenses)
     return render(request, 'billing/expense_list.html', {
-        'expenses': expenses, 'total': total, 'by_cat': by_cat,
+        'expenses': page, 'page_obj': page, 'total': total, 'by_cat': by_cat,
         'start': start, 'end': end,
     })
 

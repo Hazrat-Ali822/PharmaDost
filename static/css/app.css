@@ -235,10 +235,29 @@ h3 { font-size: 16px; }
 .hamburger svg { width: 20px; height: 20px; }
 
 .content {
-  padding: 24px; max-width: 1280px; width: 100%; margin: 0 auto;
+  padding: 24px; width: 100%; max-width: none; margin: 0;
   animation: pageIn .45s var(--ease) both;
 }
 @keyframes pageIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ---------- Pagination --------------------------------------------------- */
+.pagination {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px; margin-top: 16px;
+}
+.pagination-info { color: var(--muted); font-size: 13px; }
+.pagination-links { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.page-btn {
+  min-width: 38px; height: 38px; padding: 0 12px; border-radius: 9px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  font-size: 14px; font-weight: 600; display: inline-flex; align-items: center;
+  justify-content: center; text-decoration: none; transition: background .15s var(--ease), border-color .15s var(--ease);
+}
+.page-btn:hover { background: var(--bg); border-color: var(--primary); text-decoration: none; }
+.page-btn.current { background: var(--primary); border-color: var(--primary); color: #fff; }
+.page-btn.disabled { opacity: .45; pointer-events: none; }
+.page-ellipsis { padding: 0 4px; color: var(--muted); }
+@media (hover: none) { .page-btn:hover { background: var(--surface); border-color: var(--border); } }
 
 /* ---------- Page head ---------------------------------------------------- */
 .page-head {

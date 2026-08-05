@@ -1,4 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
+
+from pharma_mgmt.pagination import paginate
 from django.contrib import messages
 from django.db.models import Q
 from django.utils import timezone
@@ -172,7 +174,9 @@ def medicine_list(request):
             Q(name__icontains=q) | Q(generic_name__icontains=q) |
             Q(brand__icontains=q) | Q(barcode__icontains=q)
         )
-    return render(request, 'inventory/medicine_list.html', {'meds': meds, 'q': q})
+    page = paginate(request, meds)
+    return render(request, 'inventory/medicine_list.html',
+                  {'meds': page, 'page_obj': page, 'q': q})
 
 
 @feature_required('inventory')
