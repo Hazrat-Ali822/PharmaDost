@@ -45,6 +45,8 @@ class Sale(models.Model):
     # receivable owed by the panel (not a customer khata), tracked in the panel
     # ledger. Set from the patient's panel when the cashier bills to it at the POS.
     panel = models.ForeignKey('panels.Panel', on_delete=models.PROTECT, null=True, blank=True, related_name='sales')
+    # How much of this sale the panel has settled (FIFO allocation of panel payments).
+    panel_settled = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
     # Set when an offline sale was replayed against short stock: the goods left
     # the shelf while the device was offline, so the sale is recorded and billed
     # in full and the pharmacist verifies the physical count. See create_sale's

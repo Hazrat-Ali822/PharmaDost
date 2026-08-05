@@ -160,13 +160,22 @@ def create_sale(*, items, sale_type=Sale.RETAIL, customer=None, customer_name=""
     tax = site.tax_on(after_discount)
     total = site.round_total(after_discount + tax)
 
+    # Coverage limit (Phase 2): the panel owes at most the patient's remaining
+    # coverage; any excess falls to the patient, and an exhausted limit drops the
+    # panel entirely. Re-stamp sale.panel with the effective payer.
+    from panels.services import apply_coverage
+    panel, floor = apply_coverage(patient, total, panel)
+    sale.panel = panel
+
     # A panel sale is owed by the panel, so it defaults to unpaid (the panel
-    # settles it later); the cashier can still enter a co-pay. A normal sale
-    # defaults to paid-in-full.
+    # settles it later); the cashier can still enter a co-pay, but never below the
+    # coverage excess (`floor`). A normal sale defaults to paid-in-full.
     if paid in (None, ""):
-        paid_amount = Decimal("0.00") if panel is not None else total
+        paid_amount = (floor if panel is not None else total)
     else:
         paid_amount = _dec(paid)
+        if panel is not None:
+            paid_amount = max(paid_amount, floor)
     if paid_amount < 0:
         raise ValueError("Paid amount cannot be negative.")
 
@@ -194,7 +203,7 @@ def create_sale(*, items, sale_type=Sale.RETAIL, customer=None, customer_name=""
     # customer, no stored balance; the panel ledger computes it from sale.panel.
 
     sale.save(update_fields=["subtotal", "discount", "tax", "total", "paid",
-                             "payment_method", "needs_reconcile", "reconcile_note"])
+                             "payment_method", "needs_reconcile", "reconcile_note", "panel"])
     return sale
 
 

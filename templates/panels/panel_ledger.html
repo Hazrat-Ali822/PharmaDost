@@ -24,7 +24,7 @@
     <thead>
       <tr>
         <th>Date</th><th>Type</th><th>Reference</th><th>Claim status</th>
-        <th class="num">Billed</th><th class="num">Co-pay / Paid</th><th class="num">Running balance</th>
+        <th class="num">Billed</th><th class="num">Co-pay / Paid</th><th class="num">Panel settled</th><th class="num">Running balance</th>
       </tr>
     </thead>
     <tbody>
@@ -49,10 +49,11 @@
         </td>
         <td class="num">{% if e.debit %}{{ currency }} {{ e.debit|floatformat:0 }}{% endif %}</td>
         <td class="num">{% if e.credit %}{{ currency }} {{ e.credit|floatformat:0 }}{% endif %}</td>
+        <td class="num">{% if e.settled %}{{ currency }} {{ e.settled|floatformat:0 }}{% endif %}</td>
         <td class="num">{{ currency }} {{ e.running|floatformat:0 }}</td>
       </tr>
       {% empty %}
-      <tr><td colspan="7" class="muted text-center" style="padding:20px;">No claims or payments yet for this panel.</td></tr>
+      <tr><td colspan="8" class="muted text-center" style="padding:20px;">No claims or payments yet for this panel.</td></tr>
       {% endfor %}
     </tbody>
   </table>

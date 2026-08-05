@@ -490,19 +490,33 @@ billed to it are debits it owes, `PanelPayment`s are credits.
   `credit_amount > 0` branch requires a customer only when `panel is None`.
 - **What the panel owes is `invoice.balance`** (`total − paid`); `paid` is the
   co-pay collected from the patient at the counter. `Invoice` gained `panel`
-  (PROTECT), `claim_status` (PENDING/SUBMITTED/APPROVED/PAID/REJECTED) and
-  `claim_number`.
+  (PROTECT), `claim_status` (PENDING/SUBMITTED/APPROVED/PAID/REJECTED),
+  `claim_number` and `panel_settled`.
+- **Coverage limits (per patient).** `Patient.panel_coverage_limit` (0 = unlimited)
+  caps what the panel covers for that patient — e.g. a Sehat Card annual limit.
+  `panels.services.apply_coverage(patient, total, panel)` is called from all three
+  billing paths and returns `(effective_panel, floor)`: the panel owes at most the
+  patient's **remaining** coverage (`coverage_used` = the panel-owed portion of
+  their prior panel bills — payments do *not* restore it), any excess is a `floor`
+  the patient must pay, and an **exhausted** limit drops the panel entirely so the
+  patient is billed normally. `floor` never lowers a co-pay the caller already set
+  (`paid = max(paid, floor)`).
 - **Outstanding is computed, never stored** (`panels.services.outstanding_for` /
   `outstanding_map`) — billed − co-pay − panel payments, over **both** service
   invoices and non-returned pharmacy sales — so it cannot drift the way the stored
   `Customer.balance` can. `outstanding_map` uses grouped aggregates keyed by
-  `panel_id` (no query per panel in the list loop). The panel ledger
-  (`/panels/<pk>/ledger/`) lists claims, pharmacy sales and payments with a running
-  balance and an inline per-claim status/number update (`panel_claim_update`).
-- Not offline in v1 (panels are config + receivables; add kinds later if needed),
-  and per-claim payment allocation is deferred — the ledger runs on running
-  balance. No coverage-rule enforcement (package rates / limits per scheme); it is
-  accounting, not eligibility. Guarded by `panels/tests.py`.
+  `panel_id` (no query per panel in the list loop).
+- **Per-claim payment allocation.** `record_payment` FIFO-allocates each panel
+  payment across the panel's open claims oldest-first (`allocate_payment` →
+  `_open_claims`, tie-broken by pk), filling each claim's `panel_settled` and
+  flipping a fully-settled invoice's `claim_status` to `PAID`. A `linked_invoice`
+  on the payment is settled first. The panel ledger (`/panels/<pk>/ledger/`) lists
+  invoice claims, pharmacy sales and payments with a running balance, per-claim
+  settled amount, and an inline claim status/number update (`panel_claim_update`).
+- Not offline in v1 (panels are config + receivables; add kinds later if needed).
+  Package-rate catalogues per scheme (fixed price per covered procedure) are still
+  out — coverage is enforced as a money limit, not a covered-services list.
+  Guarded by `panels/tests.py`.
 
 ### Install-as-app (PWA)
 

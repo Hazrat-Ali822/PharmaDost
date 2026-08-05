@@ -44,6 +44,9 @@ class Invoice(models.Model):
     panel = models.ForeignKey('panels.Panel', on_delete=models.PROTECT, null=True, blank=True, related_name='invoices')
     claim_status = models.CharField(max_length=12, choices=CLAIM_STATUS_CHOICES, blank=True, default='')
     claim_number = models.CharField(max_length=60, blank=True)
+    # How much of this claim the panel has settled (via FIFO allocation of panel
+    # payments). When it reaches the panel-owed balance the claim is marked PAID.
+    panel_settled = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
 
     class Meta:
         ordering = ('-created_at',)

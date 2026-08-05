@@ -21,7 +21,7 @@ class PatientForm(forms.ModelForm):
         fields = [
             'mrn', 'full_name', 'guardian_name', 'cnic', 'phone',
             'dob', 'age_years', 'gender', 'address', 'blood_group', 'allergies',
-            'panel', 'panel_member_id',
+            'panel', 'panel_member_id', 'panel_coverage_limit',
         ]
         # Declared fields (age_months/age_days) otherwise land at the very bottom
         # of the form, far from the Years box they belong with.
@@ -29,7 +29,7 @@ class PatientForm(forms.ModelForm):
             'mrn', 'full_name', 'guardian_name', 'cnic', 'phone',
             'dob', 'age_years', 'age_months', 'age_days',
             'gender', 'blood_group', 'address', 'allergies',
-            'panel', 'panel_member_id',
+            'panel', 'panel_member_id', 'panel_coverage_limit',
         ]
         widgets = {
             # Typed as DD/MM/YYYY rather than a native <input type="date">: that
@@ -73,6 +73,13 @@ class PatientForm(forms.ModelForm):
         # The MRN is issued by the system and shown, never typed. Reception must
         # not be able to edit it — a hand-changed number breaks the link to every
         # bill, report and card already printed with it.
+        # Panel cover is optional everywhere (registration, reception, offline
+        # replay). The coverage limit especially must not be required — offline
+        # patient/visit payloads never carry it. clean_panel_coverage_limit coerces
+        # a blank to 0 so the non-null column is satisfied.
+        for name in ('panel', 'panel_member_id', 'panel_coverage_limit'):
+            if name in self.fields:
+                self.fields[name].required = False
         self.fields['mrn'].required = False
         self.fields['mrn'].disabled = True
         self.fields['mrn'].label = 'MRN (auto)'
@@ -86,6 +93,10 @@ class PatientForm(forms.ModelForm):
             nxt = f"{prefix}-{(row.mrn_last_number or 0) + 1:0{MRN_DIGITS}d}"
             self.initial['mrn'] = nxt
             self.fields['mrn'].help_text = 'Allocated automatically when you save.'
+
+    def clean_panel_coverage_limit(self):
+        from decimal import Decimal
+        return self.cleaned_data.get('panel_coverage_limit') or Decimal('0.00')
 
     def clean_mrn(self):
         """`disabled=True` already makes Django ignore whatever is posted and fall

@@ -105,6 +105,12 @@ inside, which is exactly how this file rendered the whole form twice.
     <small>e.g. the Sehat Card or insurance policy number.</small>
     {% for e in form.panel_member_id.errors %}<div class="pf-err">{{ e }}</div>{% endfor %}
   </div>
+  <div class="pf-field">
+    <label for="{{ form.panel_coverage_limit.id_for_label }}">Coverage limit</label>
+    {{ form.panel_coverage_limit }}
+    <small>Max the panel will cover for this patient. 0 = unlimited; excess is charged to the patient.</small>
+    {% for e in form.panel_coverage_limit.errors %}<div class="pf-err">{{ e }}</div>{% endfor %}
+  </div>
   {% endif %}
 </div>
 

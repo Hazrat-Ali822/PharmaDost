@@ -75,6 +75,7 @@ def panel_ledger(request, pk):
             'claim_number': inv.claim_number,
             'debit': inv.total or 0,
             'credit': inv.paid or 0,   # co-pay collected from the patient
+            'settled': inv.panel_settled or 0,
             'invoice_id': inv.pk,
         })
     # Pharmacy (POS) sales billed to the panel — same debit/credit shape as a claim,
@@ -88,6 +89,7 @@ def panel_ledger(request, pk):
             'status': '', 'claim_status': '', 'claim_number': '',
             'debit': s.total or 0,
             'credit': s.paid or 0,
+            'settled': s.panel_settled or 0,
             'invoice_id': None,
         })
     # Credits: payments received from the panel.
@@ -99,6 +101,7 @@ def panel_ledger(request, pk):
             'status': '',
             'debit': 0,
             'credit': p.amount,
+            'settled': '',
             'invoice_id': None,
         })
     entries.sort(key=lambda e: e['when'])

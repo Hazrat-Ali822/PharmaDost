@@ -131,6 +131,59 @@ class PanelBillingTest(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'Sehat Card Plus')
 
+    # --- Phase 2: coverage limits -----------------------------------------
+    def _covered_with_limit(self, limit):
+        return Patient.objects.create(full_name='Limited', gender='M', hospital=self.h,
+                                      panel=self.panel, panel_coverage_limit=Decimal(limit))
+
+    def test_coverage_fully_within_limit(self):
+        p = self._covered_with_limit('2000')
+        inv = create_service_invoice(patient=p, created_by=self.admin,
+                                     items=[('X', Decimal('800'))])
+        self.assertEqual(inv.panel_id, self.panel.pk)
+        self.assertEqual(inv.paid, Decimal('0.00'))       # fully covered
+        self.assertEqual(inv.balance, Decimal('800.00'))  # panel owes
+
+    def test_coverage_partial_charges_excess_to_patient(self):
+        p = self._covered_with_limit('1000')
+        inv = create_service_invoice(patient=p, created_by=self.admin,
+                                     items=[('X', Decimal('1500'))])
+        self.assertEqual(inv.panel_id, self.panel.pk)
+        self.assertEqual(inv.paid, Decimal('500.00'))     # patient pays excess
+        self.assertEqual(inv.balance, Decimal('1000.00')) # panel owes the remaining cover
+
+    def test_coverage_exhausted_drops_panel(self):
+        p = self._covered_with_limit('1000')
+        create_service_invoice(patient=p, created_by=self.admin, items=[('A', Decimal('1000'))])
+        inv2 = create_service_invoice(patient=p, created_by=self.admin, items=[('B', Decimal('500'))])
+        self.assertIsNone(inv2.panel_id)                  # limit used up
+
+    # --- Phase 3: payment allocation --------------------------------------
+    def test_payment_allocation_marks_claim_paid(self):
+        inv = create_service_invoice(patient=self.covered, created_by=self.admin,
+                                     items=[('X', Decimal('1000'))])
+        record_payment(self.panel, Decimal('600'), received_by=self.admin)
+        inv.refresh_from_db()
+        self.assertEqual(inv.panel_settled, Decimal('600.00'))
+        self.assertNotEqual(inv.claim_status, 'PAID')
+        record_payment(self.panel, Decimal('400'), received_by=self.admin)
+        inv.refresh_from_db()
+        self.assertEqual(inv.panel_settled, Decimal('1000.00'))
+        self.assertEqual(inv.claim_status, 'PAID')
+        self.assertEqual(outstanding_for(self.panel), Decimal('0.00'))
+
+    def test_payment_allocation_fifo_across_claims(self):
+        i1 = create_service_invoice(patient=self.covered, created_by=self.admin,
+                                    items=[('A', Decimal('500'))])
+        i2 = create_service_invoice(patient=self.covered, created_by=self.admin,
+                                    items=[('B', Decimal('500'))])
+        record_payment(self.panel, Decimal('700'), received_by=self.admin)
+        i1.refresh_from_db(); i2.refresh_from_db()
+        self.assertEqual(i1.panel_settled, Decimal('500.00'))
+        self.assertEqual(i1.claim_status, 'PAID')          # oldest cleared first
+        self.assertEqual(i2.panel_settled, Decimal('200.00'))
+        self.assertNotEqual(i2.claim_status, 'PAID')
+
     def test_panel_scoped_to_hospital(self):
         other = Hospital.objects.create(name='O', slug='o', expiry_date=_future())
         set_current_hospital(other)

@@ -190,6 +190,14 @@ def create_service_invoice(*, patient, items, created_by, paid=Decimal('0.00'),
     tax = site.tax_on(after_discount)
     total = site.round_total(after_discount + tax)
     panel = panel or getattr(patient, 'panel', None)
+    # Coverage limit: the panel owes at most the patient's remaining coverage; any
+    # excess is the patient's. `floor` is the minimum the patient must pay (0 when
+    # fully covered/unlimited) — it never lowers a co-pay the caller already set.
+    # An exhausted limit drops the panel (floor None).
+    from panels.services import apply_coverage
+    panel, floor = apply_coverage(patient, total, panel)
+    if panel is not None:
+        paid = max(paid, floor)
     invoice = Invoice.objects.create(
         patient=patient,
         appointment=appointment,
@@ -215,9 +223,13 @@ def create_opd_invoice(appointment, created_by, payment_method='CASH', discount=
     after_discount = fee - discount
     tax = site.tax_on(after_discount)
     total = site.round_total(after_discount + tax)
-    # A covered patient's consultation is owed by the panel (paid=0, a claim);
-    # an uncovered patient pays the OPD fee upfront (paid=total), as before.
+    # A covered patient's consultation is owed by the panel (a claim); an uncovered
+    # patient — or one whose coverage is exhausted — pays the OPD fee upfront.
+    # Under a coverage limit the panel owes up to the remaining cover, the patient
+    # pays any excess upfront.
     panel = panel or getattr(appointment.patient, 'panel', None)
+    from panels.services import apply_coverage
+    panel, patient_pays = apply_coverage(appointment.patient, total, panel)
     invoice = Invoice.objects.create(
         patient=appointment.patient,
         appointment=appointment,
@@ -225,7 +237,7 @@ def create_opd_invoice(appointment, created_by, payment_method='CASH', discount=
         discount=discount,
         tax=tax,
         total=total,
-        paid=Decimal('0.00') if panel else total,
+        paid=(patient_pays if panel is not None else total),
         payment_method=payment_method,
         created_by=created_by,
         panel=panel,

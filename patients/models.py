@@ -1,4 +1,5 @@
 import calendar
+from decimal import Decimal
 
 from django.db import models
 from django.db.models import Q, UniqueConstraint
@@ -31,6 +32,10 @@ class Patient(models.Model):
     # panel only unlinks patients, never deletes them.
     panel = models.ForeignKey('panels.Panel', on_delete=models.SET_NULL, null=True, blank=True, related_name='patients')
     panel_member_id = models.CharField(max_length=50, blank=True)   # card / policy no
+    # Cap on what the panel will cover for this patient (e.g. Sehat Card annual
+    # limit). 0 = unlimited. Enforced at billing: the panel owes at most the
+    # remaining coverage, any excess falls to the patient (panels.services).
+    panel_coverage_limit = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
     created_at = models.DateTimeField(default=timezone.now)
     hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
     is_active = models.BooleanField(default=True)
