@@ -1,0 +1,25 @@
+{% extends 'partials/base.html' %}
+{% block title %}Handover — {{ admission.patient.full_name }}{% endblock %}
+{% block page_title %}Shift Handover (SBAR){% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Handover — {{ admission.patient.full_name }}</h2>
+  <a class="btn alt" href="{% url 'ipd:handover_board' %}">← Handover board</a>
+</div>
+<div class="card" style="max-width:680px;">
+  <form method="post" data-offline-kind="handover">
+    {% csrf_token %}
+    <input type="hidden" name="admission_id" value="{{ admission.pk }}">
+    {% if form.non_field_errors %}<div class="msg error">{{ form.non_field_errors }}</div>{% endif %}
+    <div style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:8px;">
+      <label>Date{{ form.date }}</label>
+      <label>Shift handed over{{ form.shift }}</label>
+    </div>
+    <label style="display:block; margin-top:8px;"><strong>S</strong> — Situation{{ form.situation }}</label>
+    <label style="display:block; margin-top:10px;"><strong>B</strong> — Background{{ form.background }}</label>
+    <label style="display:block; margin-top:10px;"><strong>A</strong> — Assessment{{ form.assessment }}</label>
+    <label style="display:block; margin-top:10px;"><strong>R</strong> — Recommendation{{ form.recommendation }}</label>
+    <div style="margin-top:16px;"><button class="btn" type="submit">Save handover</button></div>
+  </form>
+</div>
+{% endblock %}

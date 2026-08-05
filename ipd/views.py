@@ -13,7 +13,8 @@ from inventory.safety import screen_medicines
 from patients.models import Patient
 from .models import Ward, Bed, Admission, DoctorRound, MedicationLog, AdmissionRequest
 from .forms import (WardForm, BedForm, AdmissionForm, DoctorRoundForm, DischargeForm,
-                    MedicationLogForm, VitalsObservationForm, FluidBalanceEntryForm)
+                    MedicationLogForm, VitalsObservationForm, FluidBalanceEntryForm,
+                    NursingNoteForm, ShiftHandoverForm, CareTaskForm)
 
 def _scoped_admissions(request):
     """Admissions this user is allowed to see.
@@ -120,6 +121,8 @@ def admission_detail(request, pk):
     latest_obs = observations[0] if observations else None
     fluid_today = fluid_totals(admission, timezone.localdate())
     fluid_entries = admission.fluid_entries.select_related('recorded_by')[:12]
+    nursing_notes = admission.nursing_notes.select_related('noted_by')[:10]
+    care_tasks = admission.care_tasks.select_related('done_by')[:12]
 
     return render(request, 'ipd/admission_detail.html', {
         'admission': admission,
@@ -133,6 +136,8 @@ def admission_detail(request, pk):
         'latest_obs': latest_obs,
         'fluid_today': fluid_today,
         'fluid_entries': fluid_entries,
+        'nursing_notes': nursing_notes,
+        'care_tasks': care_tasks,
     })
 
 @feature_required('ipd', 'ward')
@@ -454,7 +459,8 @@ from datetime import date, timedelta                                    # noqa: 
 from django.urls import reverse                                         # noqa: E402
 from accounts.models import User                                        # noqa: E402
 from .models import (SHIFT_CHOICES, SHIFT_TIMES, OBS_INTERVAL_HOURS, NurseShift,  # noqa: E402
-                     PatientAllocation, VitalsObservation, FluidBalanceEntry, fluid_totals)
+                     PatientAllocation, VitalsObservation, FluidBalanceEntry, fluid_totals,
+                     NursingNote, ShiftHandover, CareTask, ward_census)
 
 _SHIFT_KEYS = [k for k, _ in SHIFT_CHOICES]
 
@@ -689,4 +695,116 @@ def nursing_board(request):
         'rows': rows, 'wards': list(Ward.objects.all().order_by('name')),
         'ward_id': ward_id, 'shift_label': dict(SHIFT_CHOICES)[shift],
         'interval': OBS_INTERVAL_HOURS, 'today': today,
+    })
+
+
+@feature_required('ipd', 'ward')
+def nursing_note_add(request, pk):
+    """Add a nurse's shift progress note."""
+    admission = get_object_or_404(_scoped_admissions(request), pk=pk)
+    if request.method == 'POST':
+        form = NursingNoteForm(request.POST)
+        if form.is_valid():
+            from .services import record_nursing_note
+            record_nursing_note(admission, form, request.user)
+            messages.success(request, "Nursing note saved.")
+            return redirect('ipd:admission_detail', pk=admission.pk)
+    else:
+        form = NursingNoteForm(initial={'shift': _current_shift()})
+    return render(request, 'ipd/nursing_note_form.html', {'form': form, 'admission': admission})
+
+
+@feature_required('ipd', 'ward')
+def care_task_add(request, pk):
+    """Log a routine care task (turning, hygiene, catheter care…)."""
+    admission = get_object_or_404(_scoped_admissions(request), pk=pk)
+    if request.method == 'POST':
+        form = CareTaskForm(request.POST)
+        if form.is_valid():
+            from .services import record_care_task
+            record_care_task(admission, form, request.user)
+            messages.success(request, "Care task logged.")
+            return redirect('ipd:admission_detail', pk=admission.pk)
+    else:
+        form = CareTaskForm()
+    return render(request, 'ipd/care_task_form.html', {'form': form, 'admission': admission})
+
+
+@feature_required('ipd', 'ward')
+def handover_add(request, pk):
+    """Write an SBAR end-of-shift handover for one patient."""
+    admission = get_object_or_404(_scoped_admissions(request), pk=pk)
+    if request.method == 'POST':
+        form = ShiftHandoverForm(request.POST)
+        if form.is_valid():
+            from .services import record_handover
+            record_handover(admission, form, request.user)
+            messages.success(request, "Handover recorded.")
+            return redirect('ipd:handover_board')
+    else:
+        form = ShiftHandoverForm(initial={'shift': _current_shift(),
+                                          'date': timezone.localdate()})
+    return render(request, 'ipd/handover_form.html', {'form': form, 'admission': admission})
+
+
+@feature_required('ipd', 'ward')
+def handover_ack(request, pk):
+    """Incoming nurse acknowledges a handover. Online-only — it records who took
+    over and when, against live server state."""
+    ho = get_object_or_404(ShiftHandover, pk=pk)
+    # tenant safety: the handover's admission must be in the caller's scope
+    get_object_or_404(_scoped_admissions(request), pk=ho.admission_id)
+    if request.method == 'POST' and ho.acknowledged_by is None:
+        ho.acknowledged_by = request.user
+        ho.acknowledged_at = timezone.now()
+        ho.save(update_fields=['acknowledged_by', 'acknowledged_at'])
+        messages.success(request, "Handover acknowledged.")
+    return redirect('ipd:handover_board')
+
+
+@feature_required('ipd', 'ward')
+def handover_board(request):
+    """The shift handover screen: every inpatient with their most recent handover,
+    for the nurse coming on. Unacknowledged handovers rise to the top."""
+    admissions = (_scoped_admissions(request).filter(status='Admitted')
+                  .select_related('patient', 'bed__ward')
+                  .prefetch_related('handovers__from_nurse'))
+    ward_id = request.GET.get('ward')
+    if ward_id:
+        admissions = admissions.filter(bed__ward_id=ward_id)
+    rows = []
+    for adm in admissions:
+        hos = list(adm.handovers.all())
+        rows.append({'adm': adm, 'handover': hos[0] if hos else None})
+    rows.sort(key=lambda r: (r['handover'] is not None and r['handover'].acknowledged_by is not None,
+                             r['handover'] is None))
+    return render(request, 'ipd/handover_board.html', {
+        'rows': rows, 'wards': list(Ward.objects.all().order_by('name')),
+        'ward_id': ward_id, 'today': timezone.localdate(),
+    })
+
+
+@feature_required('ipd', 'ward')
+def ward_census_view(request):
+    """The daily ward census — admissions, discharges and occupancy for a date,
+    per ward and hospital-wide. Computed from the admission records."""
+    d = _parse_date(request.GET.get('date'), timezone.localdate())
+    scoped = _scoped_admissions(request)
+    overall = ward_census(scoped, d)
+    wards = list(Ward.objects.all().order_by('name'))
+    total_beds = Bed.objects.count()
+    overall['total_beds'] = total_beds
+    overall['occupancy_pct'] = round(100 * overall['currently_admitted'] / total_beds) if total_beds else 0
+
+    per_ward = []
+    for w in wards:
+        ward_adm = scoped.filter(bed__ward=w)
+        c = ward_census(ward_adm, d)
+        beds = w.beds.count()
+        c.update({'ward': w, 'beds': beds,
+                  'occupancy_pct': round(100 * c['currently_admitted'] / beds) if beds else 0})
+        per_ward.append(c)
+    return render(request, 'ipd/ward_census.html', {
+        'date': d, 'overall': overall, 'per_ward': per_ward,
+        'prev_day': d - timedelta(days=1), 'next_day': d + timedelta(days=1),
     })

@@ -287,6 +287,14 @@
         <a href="{% url 'ipd:nursing_board' %}" class="{% if '/ipd/board' in request.path %}active{% endif %}" style="display:flex; align-items:center; width:100%; padding-left:44px;">
           <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px;">Nursing Board</span>
         </a>
+        <a href="{% url 'ipd:handover_board' %}" class="{% if '/ipd/handover' in request.path %}active{% endif %}" style="display:flex; align-items:center; width:100%; padding-left:44px;">
+          <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px;">Shift Handover</span>
+        </a>
+        {% if nav.ipd %}
+        <a href="{% url 'ipd:ward_census' %}" class="{% if '/ipd/census' in request.path %}active{% endif %}" style="display:flex; align-items:center; width:100%; padding-left:44px;">
+          <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px;">Ward Census</span>
+        </a>
+        {% endif %}
         <a href="{% url 'ipd:duty_roster' %}" class="{% if '/ipd/roster' in request.path %}active{% endif %}" style="display:flex; align-items:center; width:100%; padding-left:44px;">
           <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px;">Duty Roster</span>
         </a>

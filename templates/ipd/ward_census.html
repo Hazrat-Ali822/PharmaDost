@@ -1,0 +1,42 @@
+{% extends 'partials/base.html' %}
+{% block title %}Ward Census{% endblock %}
+{% block page_title %}Daily Ward Census{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Ward Census</h2>
+  <span style="display:inline-flex; gap:8px; align-items:center;">
+    <a class="btn sm alt" href="?date={{ prev_day|date:'Y-m-d' }}">‹ Prev</a>
+    <strong>{{ date|date:'D, d/m/Y' }}</strong>
+    <a class="btn sm alt" href="?date={{ next_day|date:'Y-m-d' }}">Next ›</a>
+  </span>
+</div>
+
+<div class="stat-grid" style="margin-bottom:18px;">
+  <div class="stat"><span class="muted">Currently admitted</span><strong style="font-size:26px;">{{ overall.currently_admitted }}</strong></div>
+  <div class="stat"><span class="muted">Admitted this day</span><strong style="font-size:26px; color:#15803d;">{{ overall.admitted_today }}</strong></div>
+  <div class="stat"><span class="muted">Discharged this day</span><strong style="font-size:26px; color:#b45309;">{{ overall.discharged_today }}</strong></div>
+  <div class="stat"><span class="muted">Occupancy</span><strong style="font-size:26px;">{{ overall.occupancy_pct }}%</strong><span class="muted" style="font-size:12px;">{{ overall.currently_admitted }} / {{ overall.total_beds }} beds</span></div>
+</div>
+
+<div class="card">
+  <table class="tbl">
+    <thead>
+      <tr><th>Ward</th><th>Admitted (day)</th><th>Discharged (day)</th><th>Occupied now</th><th>Beds</th><th>Occupancy</th></tr>
+    </thead>
+    <tbody>
+      {% for w in per_ward %}
+      <tr>
+        <td><strong>{{ w.ward.name }}</strong> <span class="muted" style="font-size:12px;">{{ w.ward.get_ward_type_display }}</span></td>
+        <td style="color:#15803d;">{{ w.admitted_today }}</td>
+        <td style="color:#b45309;">{{ w.discharged_today }}</td>
+        <td>{{ w.currently_admitted }}</td>
+        <td>{{ w.beds }}</td>
+        <td><strong>{{ w.occupancy_pct }}%</strong></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="muted">No wards yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -244,6 +244,21 @@ handlers call, so both forms are offline-capable (bedside round with no signal),
 their latest MEWS, whether obs are overdue (`OBS_INTERVAL_HOURS`, default 6) and this shift's
 allocated nurse, sorted sickest-first — the In-charge's "who needs attention now".
 
+**Nursing records, handover and census** (the documentation + shift-change layer).
+`NursingNote` is the nurse's own shift progress note (narrative, offline kind `nursing_note`),
+kept separate from `DoctorRound` because a ward note is a record in its own right. `CareTask`
+logs routine care — turning, hygiene, catheter/IV/wound care, mobilisation, feeding (offline
+`care_task`) — the chart a vitals/med row doesn't hold. `ShiftHandover` is a per-patient
+**SBAR** (Situation/Background/Assessment/Recommendation) written at end of shift (offline
+`handover`); `handover_board` (`/ipd/handover/`) lists every inpatient's latest handover for
+the incoming nurse, unacknowledged first, and `handover_ack` records who took over — that
+acknowledgement is online-only (it writes against live state). All three recording forms
+reuse `ipd.services.record_nursing_note` / `record_care_task` / `record_handover` and carry
+`admission_id`. `ward_census` (`/ipd/census/`, `ward_census(qs, date)` in models) is the
+daily census — admissions, discharges and occupancy for a date, per ward and hospital-wide,
+computed from the admission records (no snapshot model). All of these gate on
+`feature_required('ipd','ward')`; the census link is `nav.ipd` only.
+
 ### What the admin is told
 
 Two channels, deliberately separated — mixing them makes the inbox unreadable:
@@ -589,12 +604,12 @@ Three things are load-bearing and must stay true:
    sync". `handlers._parent()` now turns a missing or dangling id into a permanent rejection;
    keep new handlers using it.
 
-**Coverage: all 38 kinds in `HANDLERS`** — visit, patient, patient_record, appointment,
+**Coverage: all 41 kinds in `HANDLERS`** — visit, patient, patient_record, appointment,
 department, doctor, payout, prescription, rx_preset, sale, medicine, adjustment,
 purchase_return, supplier, supplier_payment, customer, customer_payment, lab, lab_result,
 lab_test, imaging, imaging_report, scan_type, ward, bed, admission, admission_advise, round,
-medication, vital, fluid, discharge, surgery, surgery_advise, surgery_category, procedure,
-expense, cash_closing.
+medication, vital, fluid, nursing_note, care_task, handover, discharge, surgery,
+surgery_advise, surgery_category, procedure, expense, cash_closing.
 
 `offline_sync/tests_coverage.py::EveryKindAppliesTest` **walks `HANDLERS`**, so adding a kind
 without adding a payload there fails the suite — that is deliberate, because a broken handler

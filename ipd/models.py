@@ -420,3 +420,101 @@ def fluid_totals(admission, on_date):
     intake = qs.filter(direction='IN').aggregate(s=Sum('volume_ml'))['s'] or 0
     output = qs.filter(direction='OUT').aggregate(s=Sum('volume_ml'))['s'] or 0
     return {'intake': intake, 'output': output, 'balance': intake - output}
+
+
+class NursingNote(models.Model):
+    """A nurse's shift progress note — the narrative of what was observed and done.
+
+    The nurse's own contemporaneous record, kept separate from `DoctorRound`: a
+    ward note is a legal document in its own right, and folding it into the doctor's
+    round would erase who wrote what.
+    """
+    admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name='nursing_notes')
+    noted_at = models.DateTimeField(default=timezone.now)
+    noted_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True,
+                                 blank=True, related_name='+')
+    shift = models.CharField(max_length=10, choices=SHIFT_CHOICES, blank=True)
+    note = models.TextField()
+    hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
+
+    objects = TenantManager()
+
+    class Meta:
+        ordering = ('-noted_at',)
+
+    def __str__(self):
+        return f"Note {self.admission.patient.full_name} @ {self.noted_at:%Y-%m-%d %H:%M}"
+
+
+class ShiftHandover(models.Model):
+    """End-of-shift **SBAR** handover for one patient, from the outgoing nurse to
+    the next shift. Situation / Background / Assessment / Recommendation is the
+    standard structure; the incoming nurse acknowledges it."""
+    admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name='handovers')
+    date = models.DateField(default=timezone.localdate)
+    shift = models.CharField(max_length=10, choices=SHIFT_CHOICES,
+                             help_text='The shift being handed over')
+    from_nurse = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True,
+                                   blank=True, related_name='+')
+    situation = models.TextField(help_text='Why the patient is here / current problem')
+    background = models.TextField(blank=True)
+    assessment = models.TextField(blank=True, help_text='How they are now — obs, concerns')
+    recommendation = models.TextField(blank=True, help_text='What the next shift must do')
+    acknowledged_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True,
+                                        blank=True, related_name='+')
+    acknowledged_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
+
+    objects = TenantManager()
+
+    class Meta:
+        ordering = ('-created_at',)
+
+    def __str__(self):
+        return f"Handover {self.admission.patient.full_name} — {self.date} {self.get_shift_display()}"
+
+
+class CareTask(models.Model):
+    """A logged nursing care task — turning, hygiene, catheter care and the rest of
+    the routine ward work that a vitals/med chart does not capture. A simple 'done
+    at this time by this nurse' record; the ward's task chart."""
+    TASK_CHOICES = [
+        ('TURN', 'Positioning / turning'),
+        ('HYGIENE', 'Hygiene / bed bath'),
+        ('CATHETER', 'Catheter care'),
+        ('IV', 'IV site care'),
+        ('WOUND', 'Wound / dressing'),
+        ('MOBILISE', 'Mobilisation'),
+        ('FEED', 'Feeding / NG'),
+        ('OTHER', 'Other'),
+    ]
+    admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name='care_tasks')
+    task = models.CharField(max_length=12, choices=TASK_CHOICES)
+    done_at = models.DateTimeField(default=timezone.now)
+    done_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True,
+                                blank=True, related_name='+')
+    notes = models.CharField(max_length=255, blank=True)
+    hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
+
+    objects = TenantManager()
+
+    class Meta:
+        ordering = ('-done_at',)
+
+    def __str__(self):
+        return f"{self.get_task_display()} — {self.admission.patient.full_name} @ {self.done_at:%H:%M}"
+
+
+def ward_census(admissions_qs, on_date):
+    """A day's ward census from the admission records: how many were admitted and
+    discharged on `on_date`, and the current occupancy. `admissions_qs` is an
+    already-scoped Admission queryset (tenant + role)."""
+    admitted_today = admissions_qs.filter(admission_date__date=on_date).count()
+    discharged_today = admissions_qs.filter(discharge_date__date=on_date).count()
+    currently_admitted = admissions_qs.filter(status='Admitted').count()
+    return {
+        'admitted_today': admitted_today,
+        'discharged_today': discharged_today,
+        'currently_admitted': currently_admitted,
+    }

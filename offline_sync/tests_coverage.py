@@ -246,6 +246,20 @@ class AllKindsBase(TestCase):
                 "admission_id": self.admission.pk, "recorded_at": now,
                 "direction": "IN", "kind": "IV fluid", "volume_ml": "500", "notes": "",
             },
+            "nursing_note": {
+                "admission_id": self.admission.pk, "noted_at": now,
+                "shift": "MORNING", "note": "Patient comfortable, ate breakfast.",
+            },
+            "care_task": {
+                "admission_id": self.admission.pk, "done_at": now,
+                "task": "TURN", "notes": "left lateral",
+            },
+            "handover": {
+                "admission_id": self.admission.pk,
+                "date": now.split("T")[0], "shift": "MORNING",
+                "situation": "Post-op day 1", "background": "", "assessment": "Stable",
+                "recommendation": "Continue IV antibiotics",
+            },
             "discharge": {"admission_id": self.admission.pk,
                           "discharge_notes": "Recovered, advised rest."},
             "surgery": {

@@ -184,3 +184,27 @@ def record_fluid(admission, form, user):
     entry.recorded_by = user
     entry.save()
     return entry
+
+
+def record_nursing_note(admission, form, user):
+    note = form.save(commit=False)
+    note.admission = admission
+    note.noted_by = user
+    note.save()
+    return note
+
+
+def record_handover(admission, form, user):
+    ho = form.save(commit=False)
+    ho.admission = admission
+    ho.from_nurse = user
+    ho.save()
+    return ho
+
+
+def record_care_task(admission, form, user):
+    task = form.save(commit=False)
+    task.admission = admission
+    task.done_by = user
+    task.save()
+    return task

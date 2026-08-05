@@ -1,0 +1,22 @@
+{% extends 'partials/base.html' %}
+{% block title %}Nursing Note — {{ admission.patient.full_name }}{% endblock %}
+{% block page_title %}Nursing Note{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Nursing Note — {{ admission.patient.full_name }}</h2>
+  <a class="btn alt" href="{% url 'ipd:admission_detail' admission.pk %}">← Back to chart</a>
+</div>
+<div class="card" style="max-width:680px;">
+  <form method="post" data-offline-kind="nursing_note">
+    {% csrf_token %}
+    <input type="hidden" name="admission_id" value="{{ admission.pk }}">
+    {% if form.non_field_errors %}<div class="msg error">{{ form.non_field_errors }}</div>{% endif %}
+    <div style="display:flex; gap:14px; flex-wrap:wrap;">
+      <label>Time{{ form.noted_at }}</label>
+      <label>Shift{{ form.shift }}</label>
+    </div>
+    <label style="display:block; margin-top:14px;">Note{{ form.note }}</label>
+    <div style="margin-top:16px;"><button class="btn" type="submit">Save note</button></div>
+  </form>
+</div>
+{% endblock %}

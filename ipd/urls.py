@@ -26,6 +26,12 @@ urlpatterns = [
     path('allocation/', views.patient_allocation, name='patient_allocation'),
     path('my-duties/', views.my_duties, name='my_duties'),
     path('board/', views.nursing_board, name='nursing_board'),
+    path('handover/', views.handover_board, name='handover_board'),
+    path('handover/<int:pk>/ack/', views.handover_ack, name='handover_ack'),
+    path('census/', views.ward_census_view, name='ward_census'),
     path('<int:pk>/vitals/', views.vitals_add, name='vitals_add'),
     path('<int:pk>/fluid/', views.fluid_add, name='fluid_add'),
+    path('<int:pk>/note/', views.nursing_note_add, name='nursing_note_add'),
+    path('<int:pk>/care-task/', views.care_task_add, name='care_task_add'),
+    path('<int:pk>/handover/', views.handover_add, name='handover_add'),
 ]

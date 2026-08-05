@@ -163,3 +163,66 @@ class VitalsAndFluidTest(TestCase):
         self.assertEqual(bal['intake'], 1000)
         self.assertEqual(bal['output'], 600)
         self.assertEqual(bal['balance'], 400)
+
+
+class NursingNotesHandoverCensusTest(TestCase):
+    def setUp(self):
+        self.h = Hospital.objects.create(name='H', slug='h',
+                                         expiry_date=date.today() + timedelta(days=365))
+        self.nurse = User.objects.create_user(email='n@a.com', password='pw',
+                                               role='NURSE', hospital=self.h)
+        self.nurse2 = User.objects.create_user(email='n2@a.com', password='pw',
+                                                role='NURSE', hospital=self.h)
+        self.doc = Doctor.objects.create(full_name='Dr Y')
+        self.patient = Patient.objects.create(full_name='Omar', gender='M',
+                                              age_years=50, hospital=self.h)
+        self.ward = Ward.objects.create(name='W', ward_type='Surgical',
+                                        daily_rate=800, hospital=self.h)
+        self.bed = Bed.objects.create(bed_number='3', ward=self.ward,
+                                      status='Occupied', hospital=self.h)
+        self.adm = Admission.objects.create(patient=self.patient, bed=self.bed,
+                                            admission_reason='post-op', attending_doctor=self.doc,
+                                            hospital=self.h)
+        self.c = Client(); self.c.login(email='n@a.com', password='pw')
+
+    def test_nurse_writes_a_progress_note(self):
+        from ipd.models import NursingNote
+        self.c.post(f'/ipd/{self.adm.pk}/note/', {
+            'noted_at': timezone.now().strftime('%Y-%m-%dT%H:%M'),
+            'shift': 'MORNING', 'note': 'Wound clean, no discharge.'})
+        self.assertEqual(NursingNote.objects.count(), 1)
+        self.assertEqual(NursingNote.objects.first().noted_by, self.nurse)
+
+    def test_care_task_is_logged(self):
+        from ipd.models import CareTask
+        self.c.post(f'/ipd/{self.adm.pk}/care-task/', {
+            'task': 'TURN', 'done_at': timezone.now().strftime('%Y-%m-%dT%H:%M'),
+            'notes': '2-hourly'})
+        self.assertEqual(CareTask.objects.count(), 1)
+        self.assertEqual(CareTask.objects.first().task, 'TURN')
+
+    def test_handover_written_then_acknowledged_by_next_nurse(self):
+        from ipd.models import ShiftHandover
+        self.c.post(f'/ipd/{self.adm.pk}/handover/', {
+            'date': timezone.localdate().strftime('%Y-%m-%d'), 'shift': 'MORNING',
+            'situation': 'Post-op day 1', 'background': '', 'assessment': 'Stable',
+            'recommendation': 'IV antibiotics'})
+        ho = ShiftHandover.objects.get()
+        self.assertIsNone(ho.acknowledged_by)
+        # the incoming nurse acknowledges
+        c2 = Client(); c2.login(email='n2@a.com', password='pw')
+        c2.post(f'/ipd/handover/{ho.pk}/ack/')
+        ho.refresh_from_db()
+        self.assertEqual(ho.acknowledged_by, self.nurse2)
+        self.assertIsNotNone(ho.acknowledged_at)
+
+    def test_ward_census_counts(self):
+        # discharge today, and one still admitted → census reflects both
+        other = Patient.objects.create(full_name='Sara', gender='F', age_years=25, hospital=self.h)
+        bed2 = Bed.objects.create(bed_number='4', ward=self.ward, status='Available', hospital=self.h)
+        adm2 = Admission.objects.create(patient=other, bed=bed2, admission_reason='x',
+                                        attending_doctor=self.doc, status='Discharged',
+                                        discharge_date=timezone.now(), hospital=self.h)
+        page = self.c.get('/ipd/census/')
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, 'Ward Census')

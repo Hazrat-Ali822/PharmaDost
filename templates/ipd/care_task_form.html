@@ -1,0 +1,20 @@
+{% extends 'partials/base.html' %}
+{% block title %}Care Task — {{ admission.patient.full_name }}{% endblock %}
+{% block page_title %}Log Care Task{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Care Task — {{ admission.patient.full_name }}</h2>
+  <a class="btn alt" href="{% url 'ipd:admission_detail' admission.pk %}">← Back to chart</a>
+</div>
+<div class="card" style="max-width:520px;">
+  <form method="post" data-offline-kind="care_task">
+    {% csrf_token %}
+    <input type="hidden" name="admission_id" value="{{ admission.pk }}">
+    {% if form.non_field_errors %}<div class="msg error">{{ form.non_field_errors }}</div>{% endif %}
+    <label style="display:block; margin-bottom:14px;">Task{{ form.task }}</label>
+    <label style="display:block; margin-bottom:14px;">Time done{{ form.done_at }}</label>
+    <label style="display:block; margin-bottom:14px;">Notes{{ form.notes }}</label>
+    <button class="btn" type="submit">Log task</button>
+  </form>
+</div>
+{% endblock %}

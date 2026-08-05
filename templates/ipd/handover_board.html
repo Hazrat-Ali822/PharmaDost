@@ -1,0 +1,55 @@
+{% extends 'partials/base.html' %}
+{% block title %}Shift Handover{% endblock %}
+{% block page_title %}Shift Handover{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Shift Handover <span class="muted" style="font-weight:400; font-size:14px;">· {{ today|date:'d/m/Y' }}</span></h2>
+  <a class="btn alt" href="{% url 'ipd:nursing_board' %}">Nursing Board</a>
+</div>
+
+<form class="search" method="get" style="gap:10px;">
+  <label>Ward
+    <select name="ward" onchange="this.form.submit()">
+      <option value="">All wards</option>
+      {% for w in wards %}<option value="{{ w.pk }}" {% if ward_id == w.pk|stringformat:'s' %}selected{% endif %}>{{ w.name }}</option>{% endfor %}
+    </select>
+  </label>
+  <span class="muted" style="font-size:12.5px; align-self:center;">Unacknowledged first</span>
+</form>
+
+<div style="display:flex; flex-direction:column; gap:14px; margin-top:14px;">
+  {% for r in rows %}
+  <div class="card" style="padding:16px 18px; {% if r.handover and not r.handover.acknowledged_by %}border-left:4px solid #f59e0b;{% endif %}">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+      <div>
+        <strong>{{ r.adm.patient.full_name }}</strong>
+        <span class="muted" style="font-size:12.5px;">· Bed {{ r.adm.bed.bed_number }} · {{ r.adm.bed.ward.name }}</span>
+      </div>
+      <a class="btn sm" href="{% url 'ipd:handover_add' r.adm.pk %}">+ Handover</a>
+    </div>
+    {% if r.handover %}
+    <div style="margin-top:10px; font-size:13.5px; line-height:1.6;">
+      <p style="margin:0;"><strong>S:</strong> {{ r.handover.situation }}</p>
+      {% if r.handover.background %}<p style="margin:2px 0 0;"><strong>B:</strong> {{ r.handover.background }}</p>{% endif %}
+      {% if r.handover.assessment %}<p style="margin:2px 0 0;"><strong>A:</strong> {{ r.handover.assessment }}</p>{% endif %}
+      {% if r.handover.recommendation %}<p style="margin:2px 0 0;"><strong>R:</strong> {{ r.handover.recommendation }}</p>{% endif %}
+    </div>
+    <div style="margin-top:10px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <span class="muted" style="font-size:12px;">{{ r.handover.get_shift_display }} · {{ r.handover.from_nurse.get_full_name|default:r.handover.from_nurse.email }} · {{ r.handover.created_at|date:'d/m H:i' }}</span>
+      {% if r.handover.acknowledged_by %}
+        <span class="badge success" style="background:#22c55e; color:#fff;">✓ acknowledged by {{ r.handover.acknowledged_by.get_full_name|default:r.handover.acknowledged_by.email }}</span>
+      {% else %}
+        <form method="post" action="{% url 'ipd:handover_ack' r.handover.pk %}" style="display:inline;">{% csrf_token %}
+          <button class="btn sm success" type="submit" style="background:#22c55e; color:#fff;">Acknowledge</button>
+        </form>
+      {% endif %}
+    </div>
+    {% else %}
+    <p class="muted" style="margin:10px 0 0; font-size:13px;">No handover written yet for this patient.</p>
+    {% endif %}
+  </div>
+  {% empty %}
+  <div class="card"><p class="muted" style="margin:0;">No patients currently admitted.</p></div>
+  {% endfor %}
+</div>
+{% endblock %}

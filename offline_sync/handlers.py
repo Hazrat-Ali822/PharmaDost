@@ -715,6 +715,42 @@ def handle_fluid(request, data):
     return {"fluid_id": entry.id, "direction": entry.direction, "volume_ml": entry.volume_ml}
 
 
+def handle_nursing_note(request, data):
+    """Record a nurse's shift note — mirrors ``ipd.views.nursing_note_add``."""
+    from ipd.forms import NursingNoteForm
+    from ipd.models import Admission
+    from ipd.services import record_nursing_note
+
+    _require(request.user, "ward")
+    admission = _parent(Admission, data.get("admission_id"), "admission")
+    note = record_nursing_note(admission, _valid(NursingNoteForm(data)), request.user)
+    return {"note_id": note.id, "admission_id": admission.id}
+
+
+def handle_care_task(request, data):
+    """Log a routine care task — mirrors ``ipd.views.care_task_add``."""
+    from ipd.forms import CareTaskForm
+    from ipd.models import Admission
+    from ipd.services import record_care_task
+
+    _require(request.user, "ward")
+    admission = _parent(Admission, data.get("admission_id"), "admission")
+    task = record_care_task(admission, _valid(CareTaskForm(data)), request.user)
+    return {"task_id": task.id, "task": task.task}
+
+
+def handle_handover(request, data):
+    """Record an SBAR shift handover — mirrors ``ipd.views.handover_add``."""
+    from ipd.forms import ShiftHandoverForm
+    from ipd.models import Admission
+    from ipd.services import record_handover
+
+    _require(request.user, "ward")
+    admission = _parent(Admission, data.get("admission_id"), "admission")
+    ho = record_handover(admission, _valid(ShiftHandoverForm(data)), request.user)
+    return {"handover_id": ho.id, "admission_id": admission.id}
+
+
 def handle_discharge(request, data):
     """Discharge and bill — mirrors ``ipd.views.admission_discharge``.
 
@@ -882,6 +918,9 @@ HANDLERS = {
     "medication": handle_medication,
     "vital": handle_vital,
     "fluid": handle_fluid,
+    "nursing_note": handle_nursing_note,
+    "care_task": handle_care_task,
+    "handover": handle_handover,
     "discharge": handle_discharge,
     # OT
     "surgery": handle_surgery,

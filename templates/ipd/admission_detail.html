@@ -9,6 +9,9 @@
     {% if admission.status == 'Admitted' %}
       <a class="btn success" href="{% url 'ipd:vitals_add' admission.pk %}" style="display:inline-flex; align-items:center; background:#0ea5e9; color:white;">➕ Record Vitals</a>
       <a class="btn alt" href="{% url 'ipd:fluid_add' admission.pk %}">💧 Fluid I/O</a>
+      <a class="btn alt" href="{% url 'ipd:nursing_note_add' admission.pk %}">📝 Nursing Note</a>
+      <a class="btn alt" href="{% url 'ipd:care_task_add' admission.pk %}">✔ Care Task</a>
+      <a class="btn alt" href="{% url 'ipd:handover_add' admission.pk %}">🔄 Handover</a>
       <a class="btn success" href="{% url 'ipd:doctor_round_add' admission.pk %}" style="display:inline-flex; align-items:center; background:#22c55e; color:white;">Record Round</a>
       <a class="btn" href="{% url 'ipd:medication_log_add' admission.pk %}" style="display:inline-flex; align-items:center; background:var(--primary); color:white;">Record Medication</a>
       <a class="btn alt" href="{% url 'lab:order_create' %}?patient={{ admission.patient.pk }}">🧪 Order Lab Test</a>
@@ -126,6 +129,32 @@
       {% else %}
       <p class="muted" style="margin:0;">No fluid entries yet. <a href="{% url 'ipd:fluid_add' admission.pk %}">Add one →</a></p>
       {% endif %}
+    </div>
+
+    {# Nursing notes (nurse's own progress notes) + care tasks. #}
+    <div class="card" style="padding:25px; border-radius:12px; border:1px solid var(--border);">
+      <h3 style="margin-top:0; font-weight:700; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:16px;">Nursing Notes</h3>
+      {% for n in nursing_notes %}
+      <div style="border-left:3px solid #0ea5e9; padding-left:14px; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; font-size:12px;" class="muted">
+          <span>{{ n.noted_by.get_full_name|default:n.noted_by.email }}{% if n.shift %} · {{ n.get_shift_display }}{% endif %}</span>
+          <span>{{ n.noted_at|date:'d/m H:i' }}</span>
+        </div>
+        <p style="margin:4px 0 0; font-size:13.5px; white-space:pre-wrap;">{{ n.note }}</p>
+      </div>
+      {% empty %}
+      <p class="muted" style="margin:0;">No nursing notes yet.</p>
+      {% endfor %}
+
+      <h4 style="margin:18px 0 10px; font-size:13px; text-transform:uppercase; letter-spacing:.5px; color:var(--primary);">Care tasks</h4>
+      {% for t in care_tasks %}
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed var(--border); font-size:13px;">
+        <span>✔ {{ t.get_task_display }}{% if t.notes %} <span class="muted">— {{ t.notes }}</span>{% endif %}</span>
+        <span class="muted" style="font-size:12px;">{{ t.done_by.get_full_name|default:t.done_by.email }} · {{ t.done_at|date:'d/m H:i' }}</span>
+      </div>
+      {% empty %}
+      <p class="muted" style="margin:0; font-size:13px;">No care tasks logged.</p>
+      {% endfor %}
     </div>
 
     <div class="card" style="padding:25px; border-radius:12px; border:1px solid var(--border);">

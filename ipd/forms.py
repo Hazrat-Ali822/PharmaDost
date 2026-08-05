@@ -1,5 +1,6 @@
 from django import forms
-from .models import Ward, Bed, Admission, DoctorRound, VitalsObservation, FluidBalanceEntry
+from .models import (Ward, Bed, Admission, DoctorRound, VitalsObservation,
+                    FluidBalanceEntry, NursingNote, ShiftHandover, CareTask)
 from patients.models import Patient
 from opd.models import Doctor
 
@@ -146,5 +147,39 @@ class FluidBalanceEntryForm(forms.ModelForm):
             'direction': forms.RadioSelect(),
             'kind': forms.TextInput(attrs={'list': 'fluid-kinds',
                                            'placeholder': 'IV fluid, Oral, Urine…'}),
+            'notes': forms.TextInput(attrs={'placeholder': 'optional'}),
+        }
+
+
+class NursingNoteForm(forms.ModelForm):
+    class Meta:
+        model = NursingNote
+        fields = ['noted_at', 'shift', 'note']
+        widgets = {
+            'noted_at': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'note': forms.Textarea(attrs={'rows': 4,
+                     'placeholder': 'What you observed, what you did, how the patient responded…'}),
+        }
+
+
+class ShiftHandoverForm(forms.ModelForm):
+    class Meta:
+        model = ShiftHandover
+        fields = ['date', 'shift', 'situation', 'background', 'assessment', 'recommendation']
+        widgets = {
+            'date': forms.DateInput(attrs={'type': 'date'}),
+            'situation': forms.Textarea(attrs={'rows': 2, 'placeholder': 'Current problem / why here'}),
+            'background': forms.Textarea(attrs={'rows': 2, 'placeholder': 'Relevant history'}),
+            'assessment': forms.Textarea(attrs={'rows': 2, 'placeholder': 'How they are now — obs, concerns'}),
+            'recommendation': forms.Textarea(attrs={'rows': 2, 'placeholder': 'What the next shift must do'}),
+        }
+
+
+class CareTaskForm(forms.ModelForm):
+    class Meta:
+        model = CareTask
+        fields = ['task', 'done_at', 'notes']
+        widgets = {
+            'done_at': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
             'notes': forms.TextInput(attrs={'placeholder': 'optional'}),
         }
