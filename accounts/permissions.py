@@ -26,6 +26,8 @@ FEATURES = {
     # ADMIN only; the admin promotes a senior nurse to In-charge by granting this.
     'ward_manage':   {'ADMIN'},
     'ot':            {'ADMIN', 'DOCTOR'},
+    # Emergency / Casualty — triage, casualty board, MLC. Front-line staff.
+    'emergency':     {'ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'},
     # Pharmacy
     'pos':           {'ADMIN', 'PHARMACIST', 'WHOLESALE'},
     'inventory':     {'ADMIN', 'PHARMACIST'},
@@ -65,6 +67,7 @@ FEATURE_GROUPS = [
         ('ward', 'Ward / Nursing (medication & rounds)'),
         ('ward_manage', 'Ward In-charge (roster & patient allocation)'),
         ('ot', 'OT / Surgery Management'),
+        ('emergency', 'Emergency / Casualty'),
     ]),
     ('Pharmacy', [
         ('pos', 'Point of Sale / Bills'),
@@ -108,6 +111,8 @@ MODULES = [
      ['ipd', 'ward', 'ward_manage']),
     ('ot', 'Operation Theatre (OT)', 'Surgery booking, team scheduling and logs management',
      ['ot']),
+    ('emergency', 'Emergency / Casualty', 'Triage board, casualty registration & medico-legal cases',
+     ['emergency']),
     ('lab', 'Laboratory', 'Lab test orders & printed reports',
      ['lab']),
     ('imaging', 'Imaging / Radiology', 'Ultrasound, X-ray, CT, MRI studies & reports',

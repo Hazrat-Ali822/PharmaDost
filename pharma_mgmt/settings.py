@@ -100,6 +100,7 @@ INSTALLED_APPS = [
     "sales.apps.SalesConfig",
     "ipd",
     "ot",
+    "emergency",
     "offline_sync",
 ]
 

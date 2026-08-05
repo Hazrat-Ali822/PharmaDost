@@ -332,6 +332,23 @@ and `@page`/`@media print` geometry. Do not hand-roll a print stylesheet — ext
 department, and only that department's doctors are offered. `VisitForm.clean` rejects a
 doctor/department mismatch, so the JS filter is convenience, not the guard.
 
+### Emergency / Casualty
+
+The `emergency` app (`/emergency/`, feature `emergency`, module `emergency`; roles
+ADMIN/DOCTOR/NURSE/RECEPTIONIST) is the casualty desk — deliberately lighter than an
+OPD appointment or an IPD admission. `EmergencyCase` records a **triage** level
+(RED/YELLOW/GREEN/BLACK, `TRIAGE_ORDER` sorts the board sickest-first), chief
+complaint, mode of arrival, the **MLC** (medico-legal) flag every police/RTA case
+needs, free-text triage vitals, and a **disposition** (waiting → in-treatment →
+admitted/discharged/referred/LAMA/expired). Intake (`emergency.services.register_case`)
+either takes a registered patient or **quick-registers a new one from a name alone**
+(the ER registers first, completes paperwork later), and raises an optional
+consultation invoice via `create_service_invoice`. `emergency_board` lists open cases
+by triage rank; a disposition that leaves the active set stamps `disposed_at`. Doctors
+in the intake dropdown are scoped the app's usual way for the manager-less `Doctor`
+model — `Q(user__hospital=...) | Q(user__isnull=True)`. Guarded by `emergency/tests.py`.
+Not offline in v1.
+
 ### Doctor availability
 
 `Doctor.availability(at=None)` returns `{'available', 'state', 'label'}` from two layers,

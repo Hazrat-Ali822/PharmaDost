@@ -1,0 +1,49 @@
+{% extends 'partials/base.html' %}
+{% block title %}Casualty #{{ case.pk }}{% endblock %}
+{% block page_title %}Casualty Case{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Casualty #{{ case.pk }} — {{ case.patient.full_name }}
+      {% if case.triage == 'RED' %}<span class="badge" style="background:#dc2626;color:#fff;">RED</span>
+      {% elif case.triage == 'YELLOW' %}<span class="badge" style="background:#ca8a04;color:#fff;">YELLOW</span>
+      {% elif case.triage == 'GREEN' %}<span class="badge" style="background:#16a34a;color:#fff;">GREEN</span>
+      {% else %}<span class="badge" style="background:#111;color:#fff;">BLACK</span>{% endif %}
+      {% if case.is_mlc %}<span class="badge red">MLC{% if case.mlc_no %} {{ case.mlc_no }}{% endif %}</span>{% endif %}
+    </h2>
+    <div class="muted">
+      <a href="{% url 'patient_detail' case.patient.pk %}">{{ case.patient.full_name }}</a> · {{ case.patient.mrn }}
+      · Arrived {{ case.arrival_time|date:"d/m/Y H:i" }} · {{ case.get_mode_of_arrival_display }}
+    </div>
+  </div>
+  <a class="btn alt" href="{% url 'emergency_board' %}">Back to Board</a>
+</div>
+
+<div class="grid" style="grid-template-columns:1.4fr 1fr; gap:16px; align-items:start;">
+  <div class="card">
+    <h3 style="margin-top:0;">Details</h3>
+    <table class="tbl">
+      <tr><th>Chief complaint</th><td>{{ case.chief_complaint|default:"—" }}</td></tr>
+      <tr><th>Brought by</th><td>{{ case.brought_by|default:"—" }}</td></tr>
+      <tr><th>Triage vitals</th><td>
+        P: {{ case.pulse|default:"—" }} · BP: {{ case.bp|default:"—" }} · T: {{ case.temp|default:"—" }} · SpO₂: {{ case.spo2|default:"—" }}
+      </td></tr>
+      <tr><th>Attending doctor</th><td>{% if case.attending_doctor %}Dr. {{ case.attending_doctor.full_name }}{% else %}—{% endif %}</td></tr>
+      <tr><th>Disposition</th><td>{{ case.get_disposition_display }}{% if case.disposed_at %} · {{ case.disposed_at|date:"d/m/Y H:i" }}{% endif %}</td></tr>
+      {% if case.disposition_notes %}<tr><th>Notes</th><td>{{ case.disposition_notes|linebreaksbr }}</td></tr>{% endif %}
+      {% if case.invoice %}<tr><th>Bill</th><td><a href="{% url 'invoice_detail' case.invoice.pk %}">{{ case.invoice.display_no }}</a></td></tr>{% endif %}
+    </table>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0;">Update / Disposition</h3>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="btn-row" style="margin-top:10px;">
+        <button class="btn" type="submit">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

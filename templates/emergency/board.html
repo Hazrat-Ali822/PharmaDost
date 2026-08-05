@@ -1,0 +1,70 @@
+{% extends 'partials/base.html' %}
+{% block title %}Emergency / Casualty{% endblock %}
+{% block page_title %}Emergency / Casualty{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Casualty Board 🚑</h2>
+    <div class="muted">Open cases, most critical first.</div>
+  </div>
+  <a class="btn" href="{% url 'emergency_intake' %}">+ Register Emergency</a>
+</div>
+
+<div class="stat-grid" style="margin-bottom:18px;">
+  <div class="stat"><div class="ic" style="background:#fee2e2;color:#dc2626;"><strong>R</strong></div>
+    <div class="meta"><span class="value">{{ counts.RED }}</span><span class="label">Red — Immediate</span></div></div>
+  <div class="stat"><div class="ic" style="background:#fef9c3;color:#ca8a04;"><strong>Y</strong></div>
+    <div class="meta"><span class="value">{{ counts.YELLOW }}</span><span class="label">Yellow — Urgent</span></div></div>
+  <div class="stat"><div class="ic" style="background:#dcfce7;color:#16a34a;"><strong>G</strong></div>
+    <div class="meta"><span class="value">{{ counts.GREEN }}</span><span class="label">Green — Non-urgent</span></div></div>
+</div>
+
+<div class="card">
+  <table class="tbl">
+    <thead>
+      <tr><th>Triage</th><th>Patient</th><th>Complaint</th><th>Arrival</th><th>MLC</th><th>Doctor</th><th>Status</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for c in open_cases %}
+      <tr>
+        <td>
+          {% if c.triage == 'RED' %}<span class="badge" style="background:#dc2626;color:#fff;">RED</span>
+          {% elif c.triage == 'YELLOW' %}<span class="badge" style="background:#ca8a04;color:#fff;">YELLOW</span>
+          {% elif c.triage == 'GREEN' %}<span class="badge" style="background:#16a34a;color:#fff;">GREEN</span>
+          {% else %}<span class="badge" style="background:#111;color:#fff;">BLACK</span>{% endif %}
+        </td>
+        <td><strong>{{ c.patient.full_name }}</strong><br><small class="muted">{{ c.patient.mrn }}</small></td>
+        <td>{{ c.chief_complaint|default:"—" }}</td>
+        <td>{{ c.arrival_time|date:"d/m H:i" }}<br><small class="muted">{{ c.get_mode_of_arrival_display }}</small></td>
+        <td>{% if c.is_mlc %}<span class="badge red">MLC{% if c.mlc_no %} {{ c.mlc_no }}{% endif %}</span>{% endif %}</td>
+        <td>{% if c.attending_doctor %}Dr. {{ c.attending_doctor.full_name }}{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td><span class="badge amber">{{ c.get_disposition_display }}</span></td>
+        <td><a class="btn sm" href="{% url 'emergency_detail' c.pk %}">Open</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8" class="muted text-center" style="padding:20px;">No open emergency cases. 🎉</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if recent %}
+<h3 style="margin-top:22px;">Disposed today</h3>
+<div class="card">
+  <table class="tbl">
+    <thead><tr><th>Patient</th><th>Triage</th><th>Outcome</th><th>Time</th><th></th></tr></thead>
+    <tbody>
+      {% for c in recent %}
+      <tr>
+        <td>{{ c.patient.full_name }}</td>
+        <td>{{ c.get_triage_display }}</td>
+        <td>{{ c.get_disposition_display }}</td>
+        <td>{{ c.disposed_at|date:"d/m H:i"|default:"—" }}</td>
+        <td><a class="btn sm alt" href="{% url 'emergency_detail' c.pk %}">View</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends 'partials/base.html' %}
+{% block title %}Register Emergency{% endblock %}
+{% block page_title %}Register Emergency{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Register Emergency / Casualty</h2>
+  <a class="btn alt" href="{% url 'emergency_board' %}">Back to Board</a>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="error-box" style="color:var(--danger);margin-bottom:12px;">{{ form.non_field_errors }}</div>{% endif %}
+
+  <div class="card" style="margin-bottom:16px;">
+    <h3 style="margin-top:0;">Patient</h3>
+    <p class="muted" style="font-size:13px;">Pick a registered patient, or just enter a name to register a new one fast.</p>
+    <div class="pf-grid">
+      <div class="pf-field pf-span2"><label>Existing patient</label>{{ form.existing_patient }}</div>
+      <div class="pf-field"><label>New patient name</label>{{ form.new_name }}</div>
+      <div class="pf-field"><label>Gender</label>{{ form.new_gender }}</div>
+      <div class="pf-field"><label>Age (years)</label>{{ form.new_age }}</div>
+      <div class="pf-field"><label>Phone</label>{{ form.new_phone }}</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px;">
+    <h3 style="margin-top:0;">Triage &amp; arrival</h3>
+    <div class="pf-grid">
+      <div class="pf-field"><label>Triage priority</label>{{ form.triage }}</div>
+      <div class="pf-field"><label>Mode of arrival</label>{{ form.mode_of_arrival }}</div>
+      <div class="pf-field pf-span2"><label>Chief complaint</label>{{ form.chief_complaint }}</div>
+      <div class="pf-field"><label>Brought by</label>{{ form.brought_by }}</div>
+      <div class="pf-field"><label>Attending doctor</label>{{ form.attending_doctor }}</div>
+      <div class="pf-field"><label style="display:flex;gap:8px;align-items:center;">{{ form.is_mlc }} Medico-legal case (MLC)</label></div>
+      <div class="pf-field"><label>MLC number</label>{{ form.mlc_no }}</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px;">
+    <h3 style="margin-top:0;">Triage vitals (optional)</h3>
+    <div class="pf-grid">
+      <div class="pf-field"><label>Pulse</label>{{ form.pulse }}</div>
+      <div class="pf-field"><label>BP</label>{{ form.bp }}</div>
+      <div class="pf-field"><label>Temp</label>{{ form.temp }}</div>
+      <div class="pf-field"><label>SpO₂</label>{{ form.spo2 }}</div>
+      <div class="pf-field"><label>Consultation fee ({{ currency }})</label>{{ form.consultation_fee }}
+        <small>Optional — raises a pending bill if entered.</small></div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn" type="submit">Register Case</button>
+    <a class="btn alt" href="{% url 'emergency_board' %}">Cancel</a>
+  </div>
+</form>
+
+<style>
+  .pf-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; }
+  .pf-span2 { grid-column:1 / -1; }
+  .pf-field label { display:block; font-weight:600; margin-bottom:5px; font-size:13.5px; }
+  .pf-field small { display:block; color:var(--muted); margin-top:3px; font-size:12px; }
+  .pf-grid input, .pf-grid select { width:100%; padding:9px 11px; border:1px solid var(--border);
+    border-radius:8px; background:var(--card-bg); color:var(--text); font-size:14px; }
+</style>
+{% endblock %}

@@ -203,7 +203,7 @@
       </a>
       {% endif %}
 
-      {% if nav.patients or nav.opd or nav.prescriptions or nav.lab or nav.imaging or nav.ipd or nav.ward or nav.ot %}
+      {% if nav.patients or nav.opd or nav.prescriptions or nav.lab or nav.imaging or nav.ipd or nav.ward or nav.ot or nav.emergency %}
       <div class="nav-group">
         <div class="nav-group-title">Clinical</div>
         {% if nav.patients and request.user.role != 'LABTECH' and request.user.role != 'SONOGRAPHER' %}
@@ -332,6 +332,12 @@
           {% if surgery_request_count > 0 %}
             <span class="sidebar-badge" style="background:#f59e0b; color:white; font-size:10px; font-weight:700; padding:2px 6px; border-radius:10px; line-height:1; flex-shrink:0; margin-left:6px;">{{ surgery_request_count }}</span>
           {% endif %}
+        </a>
+        {% endif %}
+        {% if nav.emergency %}
+        <a href="{% url 'emergency_board' %}" class="{% if '/emergency/' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 0 0-2 2v6H4a2 2 0 0 0-2 2v0a2 2 0 0 0 2 2h6v6a2 2 0 0 0 2 2v0a2 2 0 0 0 2-2v-6h6a2 2 0 0 0 2-2v0a2 2 0 0 0-2-2h-6V4a2 2 0 0 0-2-2Z"/></svg>
+          Emergency / Casualty
         </a>
         {% endif %}
       </div>
