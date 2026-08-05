@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=1.8">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=1.9">
 
   {# Install-as-app (PWA). The manifest and icon are per-tenant, so an install #}
   {# carries this hospital's own name, logo and colour. #}
@@ -994,6 +994,41 @@
     // Screens that build their rows in JS (the POS cart, the PO builder) add
     // tables after load; re-wrap when the content changes.
     window.wrapContentTables = wrapTables;
+  })();
+
+  // Collapsible sidebar groups (accordion). Each group starts collapsed except
+  // the one holding the current page; a click expands/collapses it and the state
+  // is remembered per group across pages.
+  (function () {
+    function initNavGroups() {
+      var groups = document.querySelectorAll('aside.sidebar .nav-group');
+      groups.forEach(function (g) {
+        var title = g.querySelector('.nav-group-title');
+        if (!title) return;
+        var key = 'navgrp:' + (title.textContent || '').trim();
+        var hasActive = !!g.querySelector('a.active');
+        var saved = null;
+        try { saved = localStorage.getItem(key); } catch (e) {}
+        // Open when it holds the current page or was explicitly opened before;
+        // otherwise collapsed (the clean default).
+        var open = hasActive || saved === 'open';
+        g.classList.toggle('collapsed', !open);
+        title.setAttribute('tabindex', '0');
+        function toggle() {
+          var nowCollapsed = g.classList.toggle('collapsed');
+          try { localStorage.setItem(key, nowCollapsed ? 'closed' : 'open'); } catch (e) {}
+        }
+        title.addEventListener('click', toggle);
+        title.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+        });
+      });
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initNavGroups);
+    } else {
+      initNavGroups();
+    }
   })();
 </script>
 

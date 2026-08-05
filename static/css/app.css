@@ -145,11 +145,25 @@ h3 { font-size: 16px; }
 .brand small { display: block; font-size: 11px; font-weight: 500; color: var(--sidebar-muted); letter-spacing: .02em; }
 
 .nav { padding: 6px 12px 22px; }
-.nav-group { margin-top: 16px; animation: navIn .4s var(--ease) both; }
+.nav-group { margin-top: 12px; animation: navIn .4s var(--ease) both; }
+/* Collapsible group header: click to expand/collapse its links (JS in base.html). */
 .nav-group-title {
   font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em;
-  color: #7c8aa5; padding: 8px 10px 6px; font-weight: 700;
+  color: #7c8aa5; padding: 9px 10px; font-weight: 700;
+  display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer; user-select: none; border-radius: 9px;
+  transition: background .2s var(--ease), color .2s var(--ease);
 }
+.nav-group-title:hover { background: rgba(255,255,255,.06); color: #aab6cc; }
+.nav-group-title::after {
+  content: ""; width: 7px; height: 7px; margin-left: 8px; flex-shrink: 0;
+  border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: rotate(45deg); transition: transform .2s var(--ease); opacity: .65;
+}
+.nav-group.collapsed .nav-group-title::after { transform: rotate(-45deg); }
+/* Many nav links carry an inline `display:flex`, which beats a plain class rule —
+   so the collapse must be !important to actually hide them. */
+.nav-group.collapsed > a { display: none !important; }
 .nav a {
   position: relative;
   display: flex; align-items: center; gap: 12px;
