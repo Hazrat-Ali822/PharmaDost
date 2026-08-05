@@ -427,14 +427,13 @@ a.stat { text-decoration: none; color: inherit; }
 .form-row { display: flex; gap: 12px; align-items: center; margin-bottom: 13px; }
 .form-row label { min-width: 130px; font-weight: 600; color: var(--muted); }
 
-/* `input:not([type]...)` matters: an <input> with NO type attribute (e.g. the
-   Unit / Normal-range boxes in the price tables) defaults to text but is NOT
-   matched by `input[type=text]`, so it would fall back to raw browser styling
-   and look inconsistent. The negative selector catches every text-like input —
-   typed or not — while leaving checkbox/radio/file/button/color alone. */
-input[type=text], input[type=number], input[type=email], input[type=password],
-input[type=date], input[type=time], input[type=tel], input[type=search],
-input[type=url], input:not([type]),
+/* Style EVERY text-like input with one negative selector instead of a list of
+   types. Listing types (`input[type=text]`, …) left gaps — a typeless input, or
+   a `datetime-local` / `month` / `week`, wasn't matched and fell back to raw
+   browser styling, looking inconsistent. This matches every input EXCEPT the
+   ones that must keep their native look (checkbox/radio/file/button/color/range),
+   so no input type is ever missed again. */
+input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=submit]):not([type=button]):not([type=reset]):not([type=color]):not([type=range]):not([type=image]),
 select, textarea,
 .form-row input, .form-row select, .search input {
   width: 100%; padding: 10px 13px; border: 1px solid var(--border-strong);
