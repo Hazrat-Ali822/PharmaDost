@@ -89,6 +89,34 @@ class PanelBillingTest(TestCase):
         with self.assertRaises(ValueError):
             record_payment(self.panel, Decimal('0'))
 
+    def test_pharmacy_sale_billed_to_panel_adds_to_outstanding(self):
+        """A POS sale billed to the panel defaults to unpaid and its balance is
+        the panel's receivable — counted in outstanding alongside invoices."""
+        from decimal import Decimal as D
+
+        from inventory.models import Medicine
+        from sales.services import create_sale
+        med = Medicine.objects.create(name='Paracetamol', price=D('50'),
+                                      quantity=100, expiry_date=_future(), hospital=self.h)
+        sale = create_sale(items=[{'medicine_id': med.id, 'quantity': 4}],
+                           patient=self.covered, panel=self.panel, cashier=self.admin)
+        self.assertEqual(sale.panel_id, self.panel.pk)
+        self.assertEqual(sale.paid, D('0.00'))            # panel owes it
+        self.assertEqual(sale.total, D('200.00'))
+        self.assertEqual(outstanding_for(self.panel), D('200.00'))
+
+    def test_pharmacy_sale_without_panel_still_paid_in_full(self):
+        from decimal import Decimal as D
+
+        from inventory.models import Medicine
+        from sales.services import create_sale
+        med = Medicine.objects.create(name='Brufen', price=D('30'),
+                                      quantity=100, expiry_date=_future(), hospital=self.h)
+        sale = create_sale(items=[{'medicine_id': med.id, 'quantity': 2}],
+                           patient=self.uncovered, cashier=self.admin)
+        self.assertIsNone(sale.panel_id)
+        self.assertEqual(sale.paid, sale.total)           # normal cash sale unchanged
+
     # --- access + isolation ----------------------------------------------
     def test_panel_list_requires_feature(self):
         self.assertEqual(self._client().get(reverse('panel_list')).status_code, 200)

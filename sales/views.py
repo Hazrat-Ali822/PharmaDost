@@ -23,7 +23,13 @@ def sale_create(request):
     meds = Medicine.objects.all().order_by('name', 'brand')
     customers = Customer.objects.filter(is_active=True).order_by('name')
     patients = Patient.objects.order_by('full_name')
-    
+    # {patient_id: panel name} for patients on a panel — the POS shows a
+    # "bill to panel" option only when the selected patient has one.
+    panel_patients = {
+        str(r['id']): r['panel__name']
+        for r in Patient.objects.filter(panel__isnull=False).values('id', 'panel__name')
+    }
+
     prescription_id = request.GET.get('prescription_id') or request.POST.get('prescription_id')
     prescription = None
     rx_items_json = None
@@ -100,6 +106,7 @@ def sale_create(request):
             'meds': meds, 'customers': customers, 'patients': patients,
             'prescription_id': prescription_id, 'rx_items_json': rx_items_json,
             'preselected_patient_id': preselected_patient_id,
+            'panel_patients': panel_patients,
             'pending_prescriptions': pending_prescriptions
         }
         if not items:
@@ -113,12 +120,17 @@ def sale_create(request):
         if patient_id:
             patient = get_object_or_404(Patient, pk=patient_id)
 
+        # Bill this sale to the patient's panel when the cashier ticked the box.
+        bill_to_panel = request.POST.get('bill_to_panel') == 'on'
+        panel = patient.panel if (patient and patient.panel_id and bill_to_panel) else None
+
         try:
             sale = create_sale(
                 items=items,
                 sale_type=sale_type,
                 customer=customer,
                 patient=patient,
+                panel=panel,
                 customer_name=customer_name,
                 discount=order_discount,
                 paid=paid,
@@ -155,6 +167,7 @@ def sale_create(request):
         'meds': meds, 'customers': customers, 'patients': patients,
         'prescription_id': prescription_id, 'rx_items_json': rx_items_json,
         'preselected_patient_id': preselected_patient_id,
+        'panel_patients': panel_patients,
         'pending_prescriptions': pending_prescriptions
     })
 

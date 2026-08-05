@@ -41,6 +41,10 @@ class Sale(models.Model):
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name="sales"
     )
     is_returned = models.BooleanField(default=False)
+    # Panel / Insurance / Sehat Card: when set, the unpaid amount of this sale is a
+    # receivable owed by the panel (not a customer khata), tracked in the panel
+    # ledger. Set from the patient's panel when the cashier bills to it at the POS.
+    panel = models.ForeignKey('panels.Panel', on_delete=models.PROTECT, null=True, blank=True, related_name='sales')
     # Set when an offline sale was replayed against short stock: the goods left
     # the shelf while the device was offline, so the sale is recorded and billed
     # in full and the pharmacist verifies the physical count. See create_sale's

@@ -16,7 +16,7 @@ def _dec(value, default="0.00"):
 @transaction.atomic
 def create_sale(*, items, sale_type=Sale.RETAIL, customer=None, customer_name="",
                 discount=None, paid=None, payment_method="CASH", cashier=None, patient=None,
-                on_short="raise"):
+                panel=None, on_short="raise"):
     """
     Create a sale, dispensing stock FEFO (earliest expiry first) and recording the
     exact batch each line came from.
@@ -53,6 +53,7 @@ def create_sale(*, items, sale_type=Sale.RETAIL, customer=None, customer_name=""
         sale_type=sale_type,
         customer=customer,
         patient=patient,
+        panel=panel,
         customer_name=customer_name,
         payment_method=payment_method,
         cashier=cashier,
@@ -159,7 +160,13 @@ def create_sale(*, items, sale_type=Sale.RETAIL, customer=None, customer_name=""
     tax = site.tax_on(after_discount)
     total = site.round_total(after_discount + tax)
 
-    paid_amount = total if paid in (None, "") else _dec(paid)
+    # A panel sale is owed by the panel, so it defaults to unpaid (the panel
+    # settles it later); the cashier can still enter a co-pay. A normal sale
+    # defaults to paid-in-full.
+    if paid in (None, ""):
+        paid_amount = Decimal("0.00") if panel is not None else total
+    else:
+        paid_amount = _dec(paid)
     if paid_amount < 0:
         raise ValueError("Paid amount cannot be negative.")
 
@@ -170,7 +177,8 @@ def create_sale(*, items, sale_type=Sale.RETAIL, customer=None, customer_name=""
     sale.paid = paid_amount
 
     credit_amount = total - paid_amount
-    if credit_amount > 0:
+    if credit_amount > 0 and panel is None:
+        # Unpaid balance on a non-panel sale is a customer khata debt.
         if customer is None:
             raise ValueError("Credit / partial-payment sale requires a customer.")
         new_balance = customer.balance + credit_amount
@@ -182,6 +190,8 @@ def create_sale(*, items, sale_type=Sale.RETAIL, customer=None, customer_name=""
         customer.save(update_fields=["balance"])
         if payment_method != "CREDIT":
             sale.payment_method = "CREDIT"
+    # When `panel` is set the unpaid balance is the panel's receivable — no
+    # customer, no stored balance; the panel ledger computes it from sale.panel.
 
     sale.save(update_fields=["subtotal", "discount", "tax", "total", "paid",
                              "payment_method", "needs_reconcile", "reconcile_note"])

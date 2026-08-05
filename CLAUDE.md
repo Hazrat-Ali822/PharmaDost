@@ -481,19 +481,28 @@ billed to it are debits it owes, `PanelPayment`s are credits.
   covered patient all become claims with no extra step. For OPD specifically, a
   covered patient's consultation is left **unpaid** (`paid=0`, owed by the panel)
   where an uncovered patient still pays upfront (`paid=total`).
+- **Pharmacy POS sells to a panel too** (`Sale.panel` FK). Unlike the invoice
+  paths, the POS does **not** auto-attribute — the cashier ticks *Bill to panel*
+  (shown only when the linked patient has one; the view maps `patient_id → panel`
+  in `panel_patients`). `sales.services.create_sale(panel=...)` then defaults the
+  sale to unpaid (panel owes it, any co-pay via the `paid` box) and, crucially,
+  **routes the unpaid balance to the panel instead of a customer khata** — the
+  `credit_amount > 0` branch requires a customer only when `panel is None`.
 - **What the panel owes is `invoice.balance`** (`total − paid`); `paid` is the
   co-pay collected from the patient at the counter. `Invoice` gained `panel`
   (PROTECT), `claim_status` (PENDING/SUBMITTED/APPROVED/PAID/REJECTED) and
   `claim_number`.
 - **Outstanding is computed, never stored** (`panels.services.outstanding_for` /
-  `outstanding_map`) — billed − co-pay − panel payments — so it cannot drift the
-  way the stored `Customer.balance` can. `outstanding_map` uses grouped aggregates
-  keyed by `panel_id` (no query per panel in the list loop). The panel ledger
-  (`/panels/<pk>/ledger/`) lists claims and payments with a running balance and an
-  inline per-claim status/number update (`panel_claim_update`).
+  `outstanding_map`) — billed − co-pay − panel payments, over **both** service
+  invoices and non-returned pharmacy sales — so it cannot drift the way the stored
+  `Customer.balance` can. `outstanding_map` uses grouped aggregates keyed by
+  `panel_id` (no query per panel in the list loop). The panel ledger
+  (`/panels/<pk>/ledger/`) lists claims, pharmacy sales and payments with a running
+  balance and an inline per-claim status/number update (`panel_claim_update`).
 - Not offline in v1 (panels are config + receivables; add kinds later if needed),
-  and pharmacy-POS panel billing / per-claim payment allocation are deliberately
-  deferred — the ledger runs on running balance. Guarded by `panels/tests.py`.
+  and per-claim payment allocation is deferred — the ledger runs on running
+  balance. No coverage-rule enforcement (package rates / limits per scheme); it is
+  accounting, not eligibility. Guarded by `panels/tests.py`.
 
 ### Install-as-app (PWA)
 

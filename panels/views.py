@@ -77,6 +77,19 @@ def panel_ledger(request, pk):
             'credit': inv.paid or 0,   # co-pay collected from the patient
             'invoice_id': inv.pk,
         })
+    # Pharmacy (POS) sales billed to the panel — same debit/credit shape as a claim,
+    # but not an invoice, so no editable claim status.
+    for s in panel.sales.filter(is_returned=False).select_related('patient').all():
+        who = s.patient.full_name if s.patient else (s.customer_name or 'Walk-in')
+        entries.append({
+            'when': s.created_at,
+            'kind': 'Pharmacy',
+            'ref': f'Sale #{s.id} · {who}',
+            'status': '', 'claim_status': '', 'claim_number': '',
+            'debit': s.total or 0,
+            'credit': s.paid or 0,
+            'invoice_id': None,
+        })
     # Credits: payments received from the panel.
     for p in panel.payments.all():
         entries.append({

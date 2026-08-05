@@ -41,13 +41,20 @@
       <label>Walk-in Name</label>
       <input type="text" name="customer_name" placeholder="Optional (for walk-in)">
       <label>Patient (optional)</label>
-      <select name="patient_id">
+      <select name="patient_id" id="patient_id">
         <option value="">-- link to patient --</option>
         {% for p in patients %}
         <option value="{{ p.id }}" data-allergies="{{ p.allergies|escapejs }}" {% if p.id == preselected_patient_id %}selected{% endif %}>{{ p.full_name }} ({{ p.mrn }})</option>
         {% endfor %}
       </select>
+      <div id="panel-bill-row" style="display:none; margin-top:8px; padding:8px 10px; background:var(--danger-bg); border:1px solid var(--border); border-radius:8px;">
+        <label style="display:flex; gap:8px; align-items:center; margin:0; font-size:13px;">
+          <input type="checkbox" name="bill_to_panel" id="bill_to_panel" checked>
+          <span>Bill to panel: <strong id="panel-bill-name"></strong> — patient pays only co-pay (leave “Paid” blank), the rest is owed by the panel.</span>
+        </label>
+      </div>
     </div>
+    {{ panel_patients|json_script:"panel-patients-data" }}
     <div id="ws-hint" class="muted" style="font-size:12px;margin-top:2px"></div>
   </div>
   <div id="safety-warn" role="alert" style="display:none; margin:10px 0; padding:10px 12px; border-radius:8px; background:#fef2f2; border:1px solid #ef4444; color:#991b1b; font-size:13px; font-weight:600;"></div>
@@ -279,6 +286,24 @@
   const _itemsTable = document.getElementById('items');
   if (_itemsTable) new MutationObserver(checkSafety).observe(_itemsTable, {childList: true, subtree: true});
   setTimeout(checkSafety, 300);
+
+  // ---- panel billing: offer "bill to panel" when the chosen patient has one ----
+  (function(){
+    const dataEl = document.getElementById('panel-patients-data');
+    const panelMap = dataEl ? JSON.parse(dataEl.textContent) : {};
+    const psel = document.getElementById('patient_id');
+    const row = document.getElementById('panel-bill-row');
+    const nameEl = document.getElementById('panel-bill-name');
+    const chk = document.getElementById('bill_to_panel');
+    if (!psel || !row || !chk) return;
+    function sync(){
+      const name = panelMap[psel.value];
+      if (name){ nameEl.textContent = name; row.style.display = 'block'; chk.checked = true; }
+      else { row.style.display = 'none'; chk.checked = false; }
+    }
+    psel.addEventListener('change', sync);
+    sync();
+  })();
 
   const tbody = document.querySelector('#items tbody');
   const addBtn = document.getElementById('add-row');

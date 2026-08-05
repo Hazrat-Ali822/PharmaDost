@@ -30,30 +30,41 @@ def record_payment(panel, amount, method="BANK", reference="", notes="",
 
 
 def outstanding_for(panel):
-    """What this one panel still owes: billed − collected-at-counter − panel paid."""
+    """What this one panel still owes: billed − collected-at-counter − panel paid.
+    Counts both service invoices and pharmacy (POS) sales billed to the panel."""
     from billing.models import Invoice
+    from sales.models import Sale
     inv = (Invoice.objects.filter(panel=panel)
            .aggregate(billed=Sum('total'), copay=Sum('paid')))
+    sal = (Sale.objects.filter(panel=panel, is_returned=False)
+           .aggregate(billed=Sum('total'), copay=Sum('paid')))
     paid = panel.payments.aggregate(s=Sum('amount'))['s'] or Decimal('0.00')
-    billed = inv['billed'] or Decimal('0.00')
-    copay = inv['copay'] or Decimal('0.00')
+    billed = (inv['billed'] or Decimal('0.00')) + (sal['billed'] or Decimal('0.00'))
+    copay = (inv['copay'] or Decimal('0.00')) + (sal['copay'] or Decimal('0.00'))
     return billed - copay - paid
 
 
 def outstanding_map(panels):
     """Outstanding per panel in a fixed number of queries (no per-panel query in
-    a loop) — the same grouped-aggregate shape the SaaS portal uses. Returns
-    {panel_id: Decimal}."""
+    a loop) — the same grouped-aggregate shape the SaaS portal uses. Counts service
+    invoices AND pharmacy sales. Returns {panel_id: Decimal}."""
     from billing.models import Invoice
+    from sales.models import Sale
     ids = [p.pk for p in panels]
-    billed = {r['panel_id']: (r['b'] or Decimal('0.00'))
-              for r in Invoice.objects.filter(panel_id__in=ids)
-              .values('panel_id').annotate(b=Sum('total'))}
-    copay = {r['panel_id']: (r['c'] or Decimal('0.00'))
-             for r in Invoice.objects.filter(panel_id__in=ids)
-             .values('panel_id').annotate(c=Sum('paid'))}
-    paid = {r['panel_id']: (r['p'] or Decimal('0.00'))
-            for r in PanelPayment.objects.filter(panel_id__in=ids)
-            .values('panel_id').annotate(p=Sum('amount'))}
-    return {pid: billed.get(pid, Decimal('0.00')) - copay.get(pid, Decimal('0.00'))
-            - paid.get(pid, Decimal('0.00')) for pid in ids}
+
+    def _grouped(qs, field):
+        return {r['panel_id']: (r['v'] or Decimal('0.00'))
+                for r in qs.filter(panel_id__in=ids).values('panel_id').annotate(v=Sum(field))}
+
+    inv_billed = _grouped(Invoice.objects, 'total')
+    inv_copay = _grouped(Invoice.objects, 'paid')
+    sal_billed = _grouped(Sale.objects.filter(is_returned=False), 'total')
+    sal_copay = _grouped(Sale.objects.filter(is_returned=False), 'paid')
+    paid = _grouped(PanelPayment.objects, 'amount')
+
+    def owed(pid):
+        billed = inv_billed.get(pid, Decimal('0.00')) + sal_billed.get(pid, Decimal('0.00'))
+        copay = inv_copay.get(pid, Decimal('0.00')) + sal_copay.get(pid, Decimal('0.00'))
+        return billed - copay - paid.get(pid, Decimal('0.00'))
+
+    return {pid: owed(pid) for pid in ids}
