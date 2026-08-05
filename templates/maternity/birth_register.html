@@ -1,0 +1,33 @@
+{% extends 'partials/base.html' %}
+{% block title %}Birth Register{% endblock %}
+{% block page_title %}Birth Register{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Birth Register</h2>
+    <div class="muted">Every recorded birth, newest first.</div>
+  </div>
+  <a class="btn" href="{% url 'maternity_delivery_new' %}">+ Record Delivery</a>
+</div>
+
+<div class="card">
+  <table class="tbl">
+    <thead><tr><th>Date &amp; time</th><th>Mother</th><th>Sex</th><th class="num">Weight</th><th>Status</th><th>Delivery</th><th>Conducted by</th></tr></thead>
+    <tbody>
+      {% for b in births %}
+      <tr>
+        <td>{{ b.delivery.delivered_at|date:"d/m/Y H:i" }}{% if b.birth_time %} · {{ b.birth_time|time:"H:i" }}{% endif %}</td>
+        <td>{{ b.delivery.mother.full_name }}</td>
+        <td>{{ b.get_sex_display }}</td>
+        <td class="num">{% if b.weight_kg %}{{ b.weight_kg }} kg{% else %}—{% endif %}</td>
+        <td>{% if b.status == 'ALIVE' %}<span class="badge green">Alive</span>{% else %}<span class="badge red">Deceased</span>{% endif %}</td>
+        <td>{{ b.delivery.get_delivery_type_display }}</td>
+        <td>{% if b.delivery.conducted_by %}Dr. {{ b.delivery.conducted_by.full_name }}{% else %}—{% endif %}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="muted text-center" style="padding:20px;">No births recorded yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

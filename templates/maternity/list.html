@@ -1,0 +1,38 @@
+{% extends 'partials/base.html' %}
+{% block title %}Maternity / ANC{% endblock %}
+{% block page_title %}Maternity / ANC{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Maternity / Antenatal Care 🤰</h2>
+    <div class="muted">Ongoing pregnancies under care.</div>
+  </div>
+  <div class="btn-row">
+    <a class="btn alt" href="{% url 'maternity_birth_register' %}">Birth Register</a>
+    <a class="btn alt" href="{% url 'maternity_delivery_new' %}">Record Delivery</a>
+    <a class="btn" href="{% url 'maternity_register' %}">+ Register ANC</a>
+  </div>
+</div>
+
+<div class="card">
+  <table class="tbl">
+    <thead><tr><th>Mother</th><th>Husband</th><th>G / P / A</th><th>LMP</th><th>EDD</th><th class="num">Weeks</th><th>Risk</th><th></th></tr></thead>
+    <tbody>
+      {% for p in pregnancies %}
+      <tr>
+        <td><strong>{{ p.mother.full_name }}</strong><br><small class="muted">{{ p.mother.mrn }}</small></td>
+        <td>{{ p.husband_name|default:"—" }}</td>
+        <td>{{ p.gravida }} / {{ p.para }} / {{ p.abortions }}</td>
+        <td>{{ p.lmp|date:"d/m/Y"|default:"—" }}</td>
+        <td>{{ p.edd|date:"d/m/Y"|default:"—" }}</td>
+        <td class="num">{{ p.gestation_weeks|default:"—" }}</td>
+        <td>{% if p.high_risk %}<span class="badge red">High risk</span>{% endif %}</td>
+        <td><a class="btn sm" href="{% url 'maternity_pregnancy' p.pk %}">Open</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8" class="muted text-center" style="padding:20px;">No ongoing pregnancies. Register one to start ANC.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

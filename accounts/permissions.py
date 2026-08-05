@@ -28,6 +28,8 @@ FEATURES = {
     'ot':            {'ADMIN', 'DOCTOR'},
     # Emergency / Casualty — triage, casualty board, MLC. Front-line staff.
     'emergency':     {'ADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST'},
+    # Maternity / Obstetrics — ANC, deliveries, birth register.
+    'maternity':     {'ADMIN', 'DOCTOR', 'NURSE'},
     # Pharmacy
     'pos':           {'ADMIN', 'PHARMACIST', 'WHOLESALE'},
     'inventory':     {'ADMIN', 'PHARMACIST'},
@@ -70,6 +72,7 @@ FEATURE_GROUPS = [
         ('ward_manage', 'Ward In-charge (roster & patient allocation)'),
         ('ot', 'OT / Surgery Management'),
         ('emergency', 'Emergency / Casualty'),
+        ('maternity', 'Maternity / Obstetrics'),
     ]),
     ('Pharmacy', [
         ('pos', 'Point of Sale / Bills'),
@@ -118,6 +121,8 @@ MODULES = [
      ['ot']),
     ('emergency', 'Emergency / Casualty', 'Triage board, casualty registration & medico-legal cases',
      ['emergency']),
+    ('maternity', 'Maternity / Obstetrics', 'Antenatal care, deliveries & the birth register',
+     ['maternity']),
     ('lab', 'Laboratory', 'Lab test orders & printed reports',
      ['lab']),
     ('imaging', 'Imaging / Radiology', 'Ultrasound, X-ray, CT, MRI studies & reports',

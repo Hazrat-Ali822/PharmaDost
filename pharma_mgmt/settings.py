@@ -102,6 +102,7 @@ INSTALLED_APPS = [
     "ot",
     "emergency",
     "hr",
+    "maternity",
     "offline_sync",
 ]
 

@@ -1,0 +1,19 @@
+{% extends 'partials/base.html' %}
+{% block title %}Register ANC{% endblock %}
+{% block page_title %}Register ANC{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Register Pregnancy / ANC</h2>
+  <a class="btn alt" href="{% url 'maternity_list' %}">Back</a>
+</div>
+<div class="card" style="max-width:640px;">
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div class="btn-row" style="margin-top:10px;">
+      <button class="btn" type="submit">Register</button>
+      <a class="btn alt" href="{% url 'maternity_list' %}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

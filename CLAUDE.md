@@ -349,6 +349,20 @@ in the intake dropdown are scoped the app's usual way for the manager-less `Doct
 model — `Q(user__hospital=...) | Q(user__isnull=True)`. Guarded by `emergency/tests.py`.
 Not offline in v1.
 
+### Maternity / Obstetrics
+
+The `maternity` app (`/maternity/`, feature `maternity`; roles ADMIN/DOCTOR/NURSE)
+is ANC + deliveries + the birth register. `Pregnancy` is the antenatal record (LMP,
+gravida/para/abortions, high-risk flag); **EDD and gestational weeks are derived from
+the LMP** (Naegele's rule, LMP + 280 days) and never stored, so a corrected LMP
+re-derives them. `AntenatalVisit` is the checkup chart (BP/weight/fundal height/FHR),
+its `weeks` derived from the pregnancy LMP. `Delivery` records the event (type, outcome,
+who conducted it) and, on save, sets its pregnancy `DELIVERED` and raises an optional
+delivery charge; `Birth` is **one row per baby** (twins → two), so the delivery form
+posts parallel `baby_sex[]`/`baby_weight[]`/`baby_status[]` arrays and a live delivery
+with no baby row still writes one. `birth_register` is the register view. Guarded by
+`maternity/tests.py`.
+
 ### Doctor availability
 
 `Doctor.availability(at=None)` returns `{'available', 'state', 'label'}` from two layers,

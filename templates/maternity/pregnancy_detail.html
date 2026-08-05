@@ -1,0 +1,65 @@
+{% extends 'partials/base.html' %}
+{% block title %}ANC — {{ preg.mother.full_name }}{% endblock %}
+{% block page_title %}Antenatal Care{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>{{ preg.mother.full_name }}
+      {% if preg.high_risk %}<span class="badge red">High risk</span>{% endif %}
+      {% if preg.status != 'ONGOING' %}<span class="badge">{{ preg.get_status_display }}</span>{% endif %}
+    </h2>
+    <div class="muted">
+      G{{ preg.gravida }} P{{ preg.para }} A{{ preg.abortions }} ·
+      LMP {{ preg.lmp|date:"d/m/Y"|default:"—" }} · EDD {{ preg.edd|date:"d/m/Y"|default:"—" }} ·
+      {{ preg.gestation_weeks|default:"—" }} weeks
+    </div>
+  </div>
+  <div class="btn-row">
+    {% if preg.status == 'ONGOING' %}<a class="btn" href="{% url 'maternity_delivery' preg.pk %}">Record Delivery</a>{% endif %}
+    <a class="btn alt" href="{% url 'maternity_list' %}">Back</a>
+  </div>
+</div>
+
+<div class="grid" style="grid-template-columns:1.5fr 1fr; gap:16px; align-items:start;">
+  <div class="card">
+    <h3 style="margin-top:0;">Antenatal visits</h3>
+    <table class="tbl">
+      <thead><tr><th>Date</th><th class="num">Weeks</th><th>Weight</th><th>BP</th><th>FH</th><th>FHR</th><th>Complaints</th></tr></thead>
+      <tbody>
+        {% for v in visits %}
+        <tr>
+          <td>{{ v.date|date:"d/m/Y" }}</td>
+          <td class="num">{{ v.weeks|default:"—" }}</td>
+          <td>{{ v.weight|default:"—" }}</td>
+          <td>{{ v.bp|default:"—" }}</td>
+          <td>{{ v.fundal_height|default:"—" }}</td>
+          <td>{{ v.fhr|default:"—" }}</td>
+          <td>{{ v.complaints|default:"—" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="muted text-center" style="padding:14px;">No visits yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% if deliveries %}
+    <h3>Deliveries</h3>
+    <ul>
+      {% for d in deliveries %}
+      <li>{{ d.delivered_at|date:"d/m/Y H:i" }} — {{ d.get_delivery_type_display }} ({{ d.get_outcome_display }}), {{ d.births.count }} baby(ies)</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </div>
+
+  {% if preg.status == 'ONGOING' %}
+  <div class="card">
+    <h3 style="margin-top:0;">Add antenatal visit</h3>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="btn-row" style="margin-top:8px;"><button class="btn" type="submit">Save Visit</button></div>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -52,6 +52,7 @@ urlpatterns = [
     path('ot/', include('ot.urls')),
     path('emergency/', include('emergency.urls')),
     path('hr/', include('hr.urls')),
+    path('maternity/', include('maternity.urls')),
     path('manage/audit/', include('audit.urls')),
     path('accounts/', include('accounts.urls')),
     path('accounts/', include('django.contrib.auth.urls')),
