@@ -20,7 +20,8 @@ class PatientForm(forms.ModelForm):
         model = Patient
         fields = [
             'mrn', 'full_name', 'guardian_name', 'cnic', 'phone',
-            'dob', 'age_years', 'gender', 'address', 'blood_group', 'allergies'
+            'dob', 'age_years', 'gender', 'address', 'blood_group', 'allergies',
+            'panel', 'panel_member_id',
         ]
         # Declared fields (age_months/age_days) otherwise land at the very bottom
         # of the form, far from the Years box they belong with.
@@ -28,6 +29,7 @@ class PatientForm(forms.ModelForm):
             'mrn', 'full_name', 'guardian_name', 'cnic', 'phone',
             'dob', 'age_years', 'age_months', 'age_days',
             'gender', 'blood_group', 'address', 'allergies',
+            'panel', 'panel_member_id',
         ]
         widgets = {
             # Typed as DD/MM/YYYY rather than a native <input type="date">: that

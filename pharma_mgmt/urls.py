@@ -39,6 +39,7 @@ urlpatterns = [
     path('suppliers/', include('suppliers.urls')),
     path('sales/', include('sales.urls')),
     path('customers/', include('customers.urls')),
+    path('panels/', include('panels.urls')),
     path('reports/', include('reports.urls')),
     path('patients/', include('patients.urls')),
     path('opd/', include('opd.urls')),

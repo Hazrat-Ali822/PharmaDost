@@ -1,0 +1,60 @@
+{% extends 'partials/base.html' %}
+{% block title %}Panels / Insurance{% endblock %}
+{% block page_title %}Panels / Insurance{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Panels / Insurance</h2>
+    <div class="muted">Insurance companies, corporate panels &amp; the Govt Sehat Card that pay for covered patients.</div>
+  </div>
+  <a class="btn" href="{% url 'panel_add' %}">+ Add Panel</a>
+</div>
+
+<div class="stat-grid" style="margin-bottom:18px;">
+  <div class="stat">
+    <div class="ic amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+    <div class="meta"><span class="value">{{ currency }} {{ total_outstanding|floatformat:0 }}</span><span class="label">Total outstanding from panels</span></div>
+  </div>
+</div>
+
+<form class="search" method="get" style="margin-bottom:14px;">
+  <input type="text" name="q" value="{{ q }}" placeholder="Search by name, contact or phone">
+  <select name="type">
+    <option value="">All types</option>
+    {% for val, label in type_choices %}
+      <option value="{{ val }}" {% if ptype == val %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn" type="submit">Search</button>
+</form>
+
+<div class="card">
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th>Name</th><th>Type</th><th>Contact</th><th>Phone</th>
+        <th class="num">Co-pay %</th><th class="num">Outstanding</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in panels %}
+      <tr>
+        <td><strong>{{ p.name }}</strong>{% if not p.is_active %} <span class="badge">Inactive</span>{% endif %}</td>
+        <td>{{ p.get_type_display }}</td>
+        <td>{{ p.contact_person }}</td>
+        <td>{{ p.phone }}</td>
+        <td class="num">{{ p.copay_percent }}</td>
+        <td class="num {% if p.outstanding > 0 %}danger{% endif %}">{{ currency }} {{ p.outstanding|floatformat:0 }}</td>
+        <td>
+          <a class="btn sm" href="{% url 'panel_ledger' p.pk %}">Ledger</a>
+          <a class="btn sm alt" href="{% url 'panel_payment_add' p.pk %}">Payment</a>
+          <a class="btn sm alt" href="{% url 'panel_edit' p.pk %}">Edit</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="muted text-center" style="padding:20px;">No panels yet. Add your first insurance company or Sehat Card panel.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

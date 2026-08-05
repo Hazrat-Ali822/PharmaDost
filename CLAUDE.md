@@ -465,6 +465,36 @@ Two things here are load-bearing:
 - The template context key is **`branding`**, not `site` — Django's `LoginView` injects its own `site` variable which would shadow it.
 - **Never force `pk=1`** when saving. Inserting an explicit primary key on PostgreSQL desyncs the id sequence and the next tenant's row collides with `duplicate key ... (id)=(1)`. Migration `user_mgmt/0008` resyncs the sequence.
 
+### Panel / Insurance / Sehat Card billing
+
+The `panels` app (`/panels/`, feature `panel`, bundled in the `finance` module;
+roles ADMIN/ACCOUNTANT/RECEPTIONIST) handles institutional payers — private
+insurance, corporate panels, and the govt **Sehat Card** (Sehat Sahulat). A
+`Panel` is a per-tenant ledger the same shape as a `customers` khata: invoices
+billed to it are debits it owes, `PanelPayment`s are credits.
+
+- **A patient is linked to a panel** via `Patient.panel` (+ `panel_member_id`, the
+  card/policy number), set at registration/reception. From then on **every invoice
+  path auto-attributes**: `billing.services.create_service_invoice` and
+  `create_opd_invoice` default `invoice.panel = patient.panel` and stamp
+  `claim_status='PENDING'`. So lab, imaging, IPD-discharge and OPD bills for a
+  covered patient all become claims with no extra step. For OPD specifically, a
+  covered patient's consultation is left **unpaid** (`paid=0`, owed by the panel)
+  where an uncovered patient still pays upfront (`paid=total`).
+- **What the panel owes is `invoice.balance`** (`total − paid`); `paid` is the
+  co-pay collected from the patient at the counter. `Invoice` gained `panel`
+  (PROTECT), `claim_status` (PENDING/SUBMITTED/APPROVED/PAID/REJECTED) and
+  `claim_number`.
+- **Outstanding is computed, never stored** (`panels.services.outstanding_for` /
+  `outstanding_map`) — billed − co-pay − panel payments — so it cannot drift the
+  way the stored `Customer.balance` can. `outstanding_map` uses grouped aggregates
+  keyed by `panel_id` (no query per panel in the list loop). The panel ledger
+  (`/panels/<pk>/ledger/`) lists claims and payments with a running balance and an
+  inline per-claim status/number update (`panel_claim_update`).
+- Not offline in v1 (panels are config + receivables; add kinds later if needed),
+  and pharmacy-POS panel billing / per-claim payment allocation are deliberately
+  deferred — the ledger runs on running balance. Guarded by `panels/tests.py`.
+
 ### Install-as-app (PWA)
 
 The site installs as an app (phone home screen, desktop) carrying **each tenant's own**

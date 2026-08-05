@@ -169,12 +169,16 @@ def cash_position(day):
 
 def create_service_invoice(*, patient, items, created_by, paid=Decimal('0.00'),
                            payment_method='CASH', discount=Decimal('0.00'),
-                           appointment=None):
+                           appointment=None, panel=None):
     """Create an invoice for one or more chargeable services (lab tests, imaging
     scans, procedures...). `items` is a list of (description, amount) tuples.
 
     Defaults to paid=0 (a pending payable) so reception / accounts can collect it.
     Returns None if there is nothing to charge.
+
+    If the patient is covered by a panel (or one is passed), the bill is filed as
+    a claim against it — the unpaid balance becomes the panel's receivable. `paid`
+    then represents any co-pay collected from the patient at the counter.
     """
     items = [(d, Decimal(str(a))) for d, a in items if a and Decimal(str(a)) > 0]
     if not items:
@@ -185,6 +189,7 @@ def create_service_invoice(*, patient, items, created_by, paid=Decimal('0.00'),
     after_discount = subtotal - discount
     tax = site.tax_on(after_discount)
     total = site.round_total(after_discount + tax)
+    panel = panel or getattr(patient, 'panel', None)
     invoice = Invoice.objects.create(
         patient=patient,
         appointment=appointment,
@@ -195,19 +200,24 @@ def create_service_invoice(*, patient, items, created_by, paid=Decimal('0.00'),
         paid=paid,
         payment_method=payment_method,
         created_by=created_by,
+        panel=panel,
+        claim_status='PENDING' if panel else '',
     )
     for desc, amt in items:
         InvoiceItem.objects.create(invoice=invoice, description=desc, amount=amt)
     return invoice
 
 
-def create_opd_invoice(appointment, created_by, payment_method='CASH', discount=Decimal('0.00')):
+def create_opd_invoice(appointment, created_by, payment_method='CASH', discount=Decimal('0.00'), panel=None):
     from user_mgmt.models import SiteSettings
     site = SiteSettings.load()
     fee = appointment.doctor.opd_fee if appointment.visit_type != 'FOLLOWUP' else appointment.doctor.followup_fee
     after_discount = fee - discount
     tax = site.tax_on(after_discount)
     total = site.round_total(after_discount + tax)
+    # A covered patient's consultation is owed by the panel (paid=0, a claim);
+    # an uncovered patient pays the OPD fee upfront (paid=total), as before.
+    panel = panel or getattr(appointment.patient, 'panel', None)
     invoice = Invoice.objects.create(
         patient=appointment.patient,
         appointment=appointment,
@@ -215,9 +225,11 @@ def create_opd_invoice(appointment, created_by, payment_method='CASH', discount=
         discount=discount,
         tax=tax,
         total=total,
-        paid=total,
+        paid=Decimal('0.00') if panel else total,
         payment_method=payment_method,
         created_by=created_by,
+        panel=panel,
+        claim_status='PENDING' if panel else '',
     )
     InvoiceItem.objects.create(invoice=invoice, description='OPD Consultation', amount=fee)
     return invoice

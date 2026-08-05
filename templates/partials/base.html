@@ -396,7 +396,7 @@
       </div>
       {% endif %}
 
-      {% if nav.billing or nav.reports or nav.profit or nav.expenses or nav.daybook %}
+      {% if nav.billing or nav.panel or nav.reports or nav.profit or nav.expenses or nav.daybook %}
       <div class="nav-group">
         <div class="nav-group-title">Finance</div>
         {% if nav.billing %}
@@ -407,6 +407,12 @@
         <a href="{% url 'invoice_list' %}" class="{% if request.path == '/billing/' or '/billing/' in request.path and '/billing/patient' not in request.path and '/billing/expenses' not in request.path and '/billing/cash' not in request.path %}active{% endif %}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>
           Invoices
+        </a>
+        {% endif %}
+        {% if nav.panel %}
+        <a href="{% url 'panel_list' %}" class="{% if '/panels/' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 9h20M7 14h4"/></svg>
+          Panels / Insurance
         </a>
         {% endif %}
         {% if nav.expenses %}

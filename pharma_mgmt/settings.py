@@ -94,6 +94,7 @@ INSTALLED_APPS = [
     "billing",
     "prescriptions",
     "customers",
+    "panels",
     "user_mgmt",
     "audit",
     "sales.apps.SalesConfig",

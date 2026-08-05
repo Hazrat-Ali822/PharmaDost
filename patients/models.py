@@ -26,6 +26,11 @@ class Patient(models.Model):
     address = models.TextField(blank=True)
     blood_group = models.CharField(max_length=10, blank=True)
     allergies = models.TextField(blank=True)
+    # Panel / Insurance / Sehat Card cover. When set, the patient's bills are
+    # attributed to this payer (see billing.services). SET_NULL so removing a
+    # panel only unlinks patients, never deletes them.
+    panel = models.ForeignKey('panels.Panel', on_delete=models.SET_NULL, null=True, blank=True, related_name='patients')
+    panel_member_id = models.CharField(max_length=50, blank=True)   # card / policy no
     created_at = models.DateTimeField(default=timezone.now)
     hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
     is_active = models.BooleanField(default=True)

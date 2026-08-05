@@ -33,6 +33,9 @@ FEATURES = {
     'suppliers':     {'ADMIN', 'PHARMACIST', 'ACCOUNTANT'},
     # Finance
     'billing':       {'ADMIN', 'RECEPTIONIST', 'ACCOUNTANT'},
+    # Panels / Insurance / Sehat Card — setup & receivables (ADMIN/ACCOUNTANT),
+    # and reception, who marks a patient as panel-covered at registration.
+    'panel':         {'ADMIN', 'ACCOUNTANT', 'RECEPTIONIST'},
     'expenses':      {'ADMIN', 'ACCOUNTANT'},
     'cashclosing':   {'ADMIN', 'ACCOUNTANT'},
     'payouts':       {'ADMIN', 'ACCOUNTANT'},
@@ -71,6 +74,7 @@ FEATURE_GROUPS = [
     ]),
     ('Finance', [
         ('billing', 'Billing / Invoices'),
+        ('panel', 'Panels / Insurance / Sehat Card'),
         ('expenses', 'Expenses'),
         ('cashclosing', 'Cash Closing'),
         ('payouts', 'Doctor Payouts'),
@@ -108,8 +112,8 @@ MODULES = [
      ['lab']),
     ('imaging', 'Imaging / Radiology', 'Ultrasound, X-ray, CT, MRI studies & reports',
      ['imaging']),
-    ('finance', 'Billing & Finance', 'Invoices, expenses, cash closing & doctor payouts',
-     ['billing', 'expenses', 'cashclosing', 'payouts']),
+    ('finance', 'Billing & Finance', 'Invoices, panels/insurance, expenses, cash closing & doctor payouts',
+     ['billing', 'panel', 'expenses', 'cashclosing', 'payouts']),
     ('reports', 'Reports & Analytics', 'Sales, profit, inventory & day-book reports',
      ['reports', 'profit', 'daybook']),
 ]

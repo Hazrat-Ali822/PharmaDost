@@ -1,0 +1,24 @@
+{% extends 'partials/base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}Receive Panel Payment{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>{{ title }}</h2>
+  <a class="btn alt" href="{% url 'panel_ledger' panel.pk %}">Back to Ledger</a>
+</div>
+
+<div class="card" style="max-width:560px;">
+  <p style="margin:0 0 12px;">
+    Current outstanding from <strong>{{ panel.name }}</strong>:
+    <strong class="{% if outstanding > 0 %}danger{% endif %}">{{ currency }} {{ outstanding|floatformat:0 }}</strong>
+  </p>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div class="btn-row" style="margin-top:12px;">
+      <button class="btn" type="submit">Record Payment</button>
+      <a class="btn alt" href="{% url 'panel_ledger' panel.pk %}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

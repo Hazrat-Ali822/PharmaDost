@@ -17,6 +17,15 @@
       <a href="{% url 'patient_detail' invoice.patient.pk %}">{{ invoice.patient.full_name }}</a>
       · {{ invoice.created_at|date:"Y-m-d H:i" }} · by {{ invoice.created_by.get_full_name|default:invoice.created_by.email }}
     </div>
+    {% if invoice.panel %}
+    <div style="margin-top:6px;">
+      <span class="badge amber">Panel claim</span>
+      Billed to <a href="{% url 'panel_ledger' invoice.panel.pk %}"><strong>{{ invoice.panel.name }}</strong></a>
+      {% if invoice.patient.panel_member_id %}· Card/Policy: {{ invoice.patient.panel_member_id }}{% endif %}
+      {% if invoice.claim_status %}· Claim: {{ invoice.get_claim_status_display }}{% endif %}
+      {% if invoice.claim_number %}· #{{ invoice.claim_number }}{% endif %}
+    </div>
+    {% endif %}
   </div>
   <div style="display:flex; gap:8px;">
     {% if invoice.status != 'VOID' %}

@@ -91,6 +91,21 @@ inside, which is exactly how this file rendered the whole form twice.
     {{ form.allergies }}
     <small>Shown as a red banner wherever a drug is about to be given.</small>
   </div>
+
+  {% if form.panel %}
+  <div class="pf-field">
+    <label for="{{ form.panel.id_for_label }}">Panel / Insurance (optional)</label>
+    {{ form.panel }}
+    <small>If set, this patient's bills are billed to the panel.</small>
+    {% for e in form.panel.errors %}<div class="pf-err">{{ e }}</div>{% endfor %}
+  </div>
+  <div class="pf-field">
+    <label for="{{ form.panel_member_id.id_for_label }}">Card / Policy number</label>
+    {{ form.panel_member_id }}
+    <small>e.g. the Sehat Card or insurance policy number.</small>
+    {% for e in form.panel_member_id.errors %}<div class="pf-err">{{ e }}</div>{% endfor %}
+  </div>
+  {% endif %}
 </div>
 
 <style>

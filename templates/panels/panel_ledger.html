@@ -1,0 +1,63 @@
+{% extends 'partials/base.html' %}
+{% block title %}Ledger — {{ panel.name }}{% endblock %}
+{% block page_title %}Panel Ledger{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>{{ panel.name }}</h2>
+    <div class="muted">{{ panel.get_type_display }}{% if panel.contact_person %} · {{ panel.contact_person }}{% endif %}{% if panel.phone %} · {{ panel.phone }}{% endif %}</div>
+  </div>
+  <div class="btn-row">
+    <a class="btn" href="{% url 'panel_payment_add' panel.pk %}">+ Receive Payment</a>
+    <a class="btn alt" href="{% url 'panel_edit' panel.pk %}">Edit</a>
+    <a class="btn alt" href="{% url 'panel_list' %}">Back</a>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:14px;">
+  <strong>Outstanding (owed by panel):</strong>
+  <span class="{% if outstanding > 0 %}danger{% endif %}" style="font-size:18px; font-weight:800;">{{ currency }} {{ outstanding|floatformat:0 }}</span>
+</div>
+
+<div class="card">
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th>Date</th><th>Type</th><th>Reference</th><th>Claim status</th>
+        <th class="num">Billed</th><th class="num">Co-pay / Paid</th><th class="num">Running balance</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in entries %}
+      <tr>
+        <td>{{ e.when|date:"d/m/Y H:i" }}</td>
+        <td>{{ e.kind }}</td>
+        <td>{{ e.ref }}</td>
+        <td>
+          {% if e.invoice_id %}
+          <form method="post" action="{% url 'panel_claim_update' e.invoice_id %}" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+            {% csrf_token %}
+            <select name="claim_status" style="width:auto; padding:5px 8px;">
+              {% for val, label in claim_status_choices %}
+                <option value="{{ val }}" {% if e.claim_status == val %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+            <input type="text" name="claim_number" value="{{ e.claim_number }}" placeholder="Claim #" style="width:110px; padding:5px 8px;">
+            <button class="btn sm alt" type="submit">Save</button>
+          </form>
+          {% else %}—{% endif %}
+        </td>
+        <td class="num">{% if e.debit %}{{ currency }} {{ e.debit|floatformat:0 }}{% endif %}</td>
+        <td class="num">{% if e.credit %}{{ currency }} {{ e.credit|floatformat:0 }}{% endif %}</td>
+        <td class="num">{{ currency }} {{ e.running|floatformat:0 }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="muted text-center" style="padding:20px;">No claims or payments yet for this panel.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="muted" style="font-size:12.5px; margin-top:10px;">
+  “Billed” is the full bill; “Co-pay / Paid” is what the patient paid at the counter. The running balance is what the panel still owes.
+</p>
+{% endblock %}

@@ -30,6 +30,21 @@ class Invoice(models.Model):
     hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
     status = models.CharField(max_length=20, default='ACTIVE', choices=[('ACTIVE', 'Active'), ('VOID', 'Void / Cancelled')])
 
+    # Panel / Insurance / Sehat Card billing. When `panel` is set the bill is a
+    # claim against that payer: the amount it owes is `balance` (total minus any
+    # co-pay collected from the patient via `paid`). PROTECT so a panel with claims
+    # cannot be deleted out from under its history.
+    CLAIM_STATUS_CHOICES = [
+        ('PENDING', 'Pending Submission'),
+        ('SUBMITTED', 'Submitted'),
+        ('APPROVED', 'Approved'),
+        ('PAID', 'Paid by Panel'),
+        ('REJECTED', 'Rejected'),
+    ]
+    panel = models.ForeignKey('panels.Panel', on_delete=models.PROTECT, null=True, blank=True, related_name='invoices')
+    claim_status = models.CharField(max_length=12, choices=CLAIM_STATUS_CHOICES, blank=True, default='')
+    claim_number = models.CharField(max_length=60, blank=True)
+
     class Meta:
         ordering = ('-created_at',)
         constraints = [
