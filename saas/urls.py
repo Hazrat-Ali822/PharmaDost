@@ -13,4 +13,5 @@ urlpatterns = [
     path('payment/new/', views.payment_create, name='payment_create'),
     path('payment/<int:pk>/invoice/', views.payment_invoice, name='payment_invoice'),
     path('expense/new/', views.expense_create, name='expense_create'),
+    path('desktop-license/', views.desktop_license, name='desktop_license'),
 ]

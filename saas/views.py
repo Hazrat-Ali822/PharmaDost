@@ -1,3 +1,4 @@
+import os
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import user_passes_test
 from django.contrib import messages
@@ -312,6 +313,60 @@ def payment_invoice(request, pk):
     """Printable subscription invoice / receipt for one HospitalPayment."""
     payment = get_object_or_404(HospitalPayment.objects.select_related('hospital'), pk=pk)
     return render(request, 'saas/payment_invoice.html', {'payment': payment})
+
+
+def _load_license_private_key():
+    """The private signing key for desktop/LAN licences. Read from a JSON file next
+    to the licensing tools, or (on the hosted host, where the repo file is not
+    present) the env var DESKTOP_LICENSE_PRIVATE_KEY. Returns None if neither is set
+    — the page then explains how to install it rather than crashing."""
+    import json
+    from pathlib import Path
+    from django.conf import settings as dj_settings
+
+    env = os.getenv("DESKTOP_LICENSE_PRIVATE_KEY")
+    if env:
+        try:
+            return json.loads(env)
+        except Exception:
+            return None
+    for p in (Path(dj_settings.BASE_DIR) / "licensing" / "private_key.json",
+              Path(dj_settings.DATA_DIR) / "private_key.json"):
+        try:
+            return json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+    return None
+
+
+@superuser_required
+def desktop_license(request):
+    """Generate an offline desktop/LAN licence key from the hosted owner portal —
+    the same key `licensing/sign_license.py` prints, but from the web so the owner
+    can issue one per install without a shell. Signing needs the PRIVATE key, which
+    lives on this host only (env or file, never in the repo)."""
+    from user_mgmt.licensing import make_token
+
+    priv = _load_license_private_key()
+    token = clinic = None
+    months = 1
+    if request.method == 'POST':
+        if priv is None:
+            messages.error(request, "No signing key installed on this server. Set "
+                           "DESKTOP_LICENSE_PRIVATE_KEY, or upload private_key.json.")
+        else:
+            clinic = (request.POST.get('clinic') or '').strip() or 'Clinic'
+            try:
+                months = max(1, min(int(request.POST.get('months') or 1), 60))
+            except (TypeError, ValueError):
+                months = 1
+            today = timezone.localdate()
+            token = make_token(clinic, _add_months(today, months), today, priv)
+
+    return render(request, 'saas/desktop_license.html', {
+        'have_key': priv is not None, 'token': token,
+        'clinic': clinic, 'months': months,
+    })
 
 
 def render_hospital_login(request, hospital):
