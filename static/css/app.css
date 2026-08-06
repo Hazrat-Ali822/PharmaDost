@@ -346,6 +346,17 @@ a.btn.danger, a.btn.primary, a.btn.success, button.btn.danger, button.btn.primar
 .card + .card { margin-top: 16px; }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 
+/* ---------- Layout utilities -------------------------------------------- */
+/* Generic grid used across many screens (bloodbank, certificates, emergency,
+   maternity, reports, …). Templates supply their own grid-template-columns
+   inline; this just turns on grid + a default gap. Without this rule those
+   templates fell back to block flow and their columns stacked. On narrow
+   screens every multi-column grid collapses to one column so nothing overflows. */
+.grid { display: grid; gap: 16px; }
+@media (max-width: 720px) {
+  .grid { grid-template-columns: 1fr !important; }
+}
+
 /* ---------- Stat tiles --------------------------------------------------- */
 .stat-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));

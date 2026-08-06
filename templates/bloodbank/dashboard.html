@@ -17,11 +17,11 @@
 
 <div class="card">
   <h3 style="margin-top:0;">Available stock by group</h3>
-  <div class="grid" style="grid-template-columns:repeat(4,1fr); gap:12px;">
+  <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(84px,1fr)); gap:12px;">
     {% for s in stock %}
     <a href="{% url 'bloodbank_units' %}?group={{ s.group|urlencode }}&status=AVAILABLE"
        class="card" style="text-align:center; text-decoration:none; padding:16px;">
-      <div style="font-size:26px; font-weight:800; color:var(--pri);">{{ s.group }}</div>
+      <div style="font-size:26px; font-weight:800; color:var(--primary);">{{ s.group }}</div>
       <div style="font-size:22px; font-weight:700;">{{ s.count }}</div>
       <div class="muted" style="font-size:12px;">unit{{ s.count|pluralize }}</div>
     </a>
