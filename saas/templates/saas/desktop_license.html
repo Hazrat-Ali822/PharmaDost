@@ -28,10 +28,21 @@
   </p>
   <form method="post">
     {% csrf_token %}
+    <div class="field" style="margin-bottom:12px;">
+      <label>Hospital</label>
+      <select name="hospital">
+        <option value="">— choose a hospital (recommended) —</option>
+        {% for h in hospitals %}
+        <option value="{{ h.pk }}">{{ h.name }} (/{{ h.slug }}/)</option>
+        {% endfor %}
+      </select>
+      <div class="muted" style="font-size:11.5px; margin-top:3px;">Picking one ties the
+        key (and its backups) to that tenant. Or type a name below instead.</div>
+    </div>
     <div style="display:grid; grid-template-columns:2fr 1fr; gap:12px; align-items:end;">
       <div class="field">
-        <label>Clinic / install name</label>
-        <input type="text" name="clinic" value="{{ clinic|default:'' }}" required
+        <label>Clinic / install name (if no hospital picked)</label>
+        <input type="text" name="clinic" value="{{ clinic|default:'' }}"
                placeholder="e.g. Shaheen Clinic">
       </div>
       <div class="field">

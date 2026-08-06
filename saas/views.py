@@ -395,22 +395,32 @@ def desktop_license(request):
             messages.error(request, "No signing key installed on this server. Set "
                            "DESKTOP_LICENSE_PRIVATE_KEY, or upload private_key.json.")
         else:
-            clinic = (request.POST.get('clinic') or '').strip() or 'Clinic'
             try:
                 months = max(1, min(int(request.POST.get('months') or 1), 60))
             except (TypeError, ValueError):
                 months = 1
-            today = timezone.localdate()
             extra = {}
+            # Pick a hospital from the dropdown -> its name + slug bind the key to it;
+            # otherwise fall back to a typed name.
+            hospital_id = request.POST.get('hospital')
+            if hospital_id:
+                h = Hospital.objects.filter(pk=hospital_id).first()
+                if h:
+                    clinic = h.name
+                    extra['slug'] = h.slug
+            if not clinic:
+                clinic = (request.POST.get('clinic') or '').strip() or 'Clinic'
             machine = (request.POST.get('machine') or '').strip()
             if machine:
                 extra['machine'] = machine
+            today = timezone.localdate()
             token = make_token(clinic, _add_months(today, months), today, priv,
                                extra=extra or None)
 
     return render(request, 'saas/desktop_license.html', {
         'have_key': priv is not None, 'token': token,
         'clinic': clinic, 'months': months,
+        'hospitals': Hospital.objects.all().order_by('name'),
     })
 
 
