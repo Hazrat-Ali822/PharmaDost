@@ -1,0 +1,47 @@
+{% extends 'partials/base.html' %}
+{% block title %}Install Signing Key{% endblock %}
+{% block page_title %}Install Signing Key{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <h2>Install the licence signing key</h2>
+  <a class="btn alt" href="{% url 'saas:desktop_license' %}">← Back</a>
+</div>
+
+<div class="card" style="max-width:680px;">
+  {% if have_key %}
+  <p style="margin-top:0;"><span class="badge green">Installed</span>
+     A signing key is already on this server. Uploading again replaces it.</p>
+  {% else %}
+  <p style="margin-top:0;"><span class="badge amber">Not installed</span>
+     Install your signing key once, then you can generate licences from the portal.</p>
+  {% endif %}
+
+  <p class="muted" style="font-size:13.5px;">
+    Upload the <code>private_key.json</code> that this project's <code>licensing/keygen.py</code>
+    produced (it is on your own computer at <code>PharmaDost\licensing\private_key.json</code>).
+    It is checked against this build's public key, then stored on the server — never in the
+    code repository.
+  </p>
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="field" style="margin-bottom:12px;">
+      <label>private_key.json file</label>
+      <input type="file" name="keyfile" accept=".json,application/json">
+    </div>
+    <div class="field" style="margin-bottom:12px;">
+      <label>…or paste its contents</label>
+      <textarea name="keytext" rows="3" placeholder='{"n": …, "e": 65537, "d": …}'
+                style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; background:var(--card-bg); color:var(--text); font-family:monospace; font-size:12px;"></textarea>
+    </div>
+    <button class="btn success" type="submit">Install key</button>
+  </form>
+
+  <p class="muted" style="font-size:12px; margin-top:14px; color:#b45309;">
+    ⚠️ This is your signing secret — with it, anyone can issue valid licences. It stays
+    on this server only; never commit it or share it.
+  </p>
+</div>
+
+{% endblock %}

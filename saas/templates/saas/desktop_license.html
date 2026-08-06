@@ -11,12 +11,11 @@
 {% if not have_key %}
 <div class="card" style="max-width:680px; border-left:4px solid #dc2626;">
   <h3 style="margin-top:0;">No signing key on this server</h3>
-  <p>To issue keys from here, install your private signing key on this host (never in
-     the repo). Either set an environment variable:</p>
-  <pre style="background:#f3f4f6; padding:10px; border-radius:8px; overflow:auto;">DESKTOP_LICENSE_PRIVATE_KEY='{"n":…,"e":65537,"d":…}'</pre>
-  <p class="muted" style="font-size:13px;">…or upload <code>licensing/private_key.json</code>
-     (the file <code>keygen.py</code> made) to the app folder. Until then, keep using
-     <code>python licensing/sign_license.py "Clinic" &lt;months&gt;</code> on your own machine.</p>
+  <p>Install your signing key once, right here — then generate licences from the portal.</p>
+  <a class="btn success" href="{% url 'saas:install_signing_key' %}">Install signing key</a>
+  <p class="muted" style="font-size:12.5px; margin-top:12px;">Upload the
+     <code>private_key.json</code> that <code>keygen.py</code> made (it's on your computer
+     at <code>PharmaDost\licensing\private_key.json</code>).</p>
 </div>
 {% else %}
 

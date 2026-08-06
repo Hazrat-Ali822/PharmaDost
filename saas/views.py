@@ -424,6 +424,54 @@ def desktop_license(request):
     })
 
 
+@superuser_required
+def install_signing_key(request):
+    """Install the licence signing key straight from the portal — no cPanel needed.
+
+    The superuser uploads (or pastes) the `private_key.json` that this project's
+    `licensing/keygen.py` produced; it is verified to match THIS build's public key
+    (so the licences it signs will actually activate), then written to
+    ``DATA_DIR/private_key.json`` where `_load_license_private_key` finds it. Stored
+    outside any web-served path, and never in the repo."""
+    import json
+    from datetime import date
+    from pathlib import Path
+    from django.conf import settings as dj_settings
+    from user_mgmt.licensing import make_token, read_token
+
+    if request.method == 'POST':
+        f = request.FILES.get('keyfile')
+        pasted = (request.POST.get('keytext') or '').strip()
+        try:
+            if f:
+                data = json.loads(f.read().decode('utf-8'))
+            elif pasted:
+                data = json.loads(pasted)
+            else:
+                raise ValueError("choose the private_key.json file, or paste its contents")
+            if not all(k in data for k in ('n', 'e', 'd')):
+                raise ValueError("this is not a private key (it needs n, e and d)")
+            # Prove it is the private half of THIS build's public key: sign a probe
+            # and verify it with the embedded PUBLIC_KEY. A mismatched key would sign
+            # licences the app then rejects.
+            probe = make_token('probe', date.today(), date.today(),
+                               {'n': int(data['n']), 'e': int(data['e']), 'd': int(data['d'])})
+            if read_token(probe) is None:
+                raise ValueError("this key does not match this build — licences it signs "
+                                 "would not activate. Upload the private_key.json made by "
+                                 "this project's keygen.")
+            dest = Path(dj_settings.DATA_DIR) / 'private_key.json'
+            dest.write_text(json.dumps({'n': int(data['n']), 'e': int(data['e']),
+                                        'd': int(data['d'])}), encoding='utf-8')
+            messages.success(request, "Signing key installed. You can generate licences now.")
+            return redirect('saas:desktop_license')
+        except Exception as exc:
+            messages.error(request, f"Could not install that key: {exc}")
+
+    return render(request, 'saas/install_signing_key.html',
+                  {'have_key': _load_license_private_key() is not None})
+
+
 MAX_BACKUP_BYTES = 200 * 1024 * 1024      # 200 MB — a clinic SQLite + media, zipped
 # Keep only the newest snapshot per install: the client uploads a full copy each time
 # and only when the data has changed, so one file per clinic is all the host needs —

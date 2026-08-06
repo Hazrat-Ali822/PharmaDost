@@ -4,9 +4,11 @@ The upload endpoint authenticates by the install's signed licence, so — as wit
 licensing tests — CI mints its own keypair and patches the app's PUBLIC_KEY to it.
 """
 import io
+import json
 import shutil
 import tempfile
 import zipfile
+from unittest import mock
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -87,9 +89,37 @@ class BackupPortalTest(TestCase):
         self.assertEqual(self.client.get("/saas/backups/").status_code, 200)
 
 
+class InstallSigningKeyTest(TestCase):
+    def setUp(self):
+        self.kp = keygen.generate(1024)
+        self._orig = core.PUBLIC_KEY
+        core.PUBLIC_KEY = {"e": self.kp["e"], "n": self.kp["n"]}
+        self.owner = User.objects.create_superuser(email="o@t.com", password="pw")
+        self.client.force_login(self.owner)
+        self.dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        core.PUBLIC_KEY = self._orig
+        shutil.rmtree(self.dir, ignore_errors=True)
+
+    def test_matching_key_installs(self):
+        f = SimpleUploadedFile("private_key.json", json.dumps(self.kp).encode(),
+                               content_type="application/json")
+        with override_settings(DATA_DIR=Path(self.dir)):
+            resp = self.client.post("/saas/signing-key/", {"keyfile": f})
+            self.assertEqual(resp.status_code, 302)          # redirected to generator
+            self.assertTrue((Path(self.dir) / "private_key.json").exists())
+
+    def test_mismatched_key_rejected(self):
+        other = keygen.generate(1024)
+        f = SimpleUploadedFile("private_key.json", json.dumps(other).encode())
+        with override_settings(DATA_DIR=Path(self.dir)):
+            self.client.post("/saas/signing-key/", {"keyfile": f})
+            self.assertFalse((Path(self.dir) / "private_key.json").exists())
+
+
 class HospitalLicenseGenTest(TestCase):
     def setUp(self):
-        from unittest import mock
         self.mock = mock
         self.kp = keygen.generate(1024)
         self._orig = core.PUBLIC_KEY

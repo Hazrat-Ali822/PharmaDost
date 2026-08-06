@@ -32,7 +32,8 @@ e2e-artifacts/
 
 # licence signing secret — the private half of the desktop-licence keypair.
 # NEVER commit this; with it anyone can mint valid licences for a public build.
-licensing/private_key.json
+# Matches wherever it lands: licensing/ (keygen), or DATA_DIR (portal upload).
+private_key.json
 
 # per-machine Claude settings (see CLAUDE.md — must never be committed)
 .claude/settings.local.json
