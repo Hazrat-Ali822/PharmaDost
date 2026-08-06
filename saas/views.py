@@ -148,11 +148,13 @@ def hospital_delete(request, pk):
     """Permanently delete a hospital and EVERYTHING under it. Superuser-only,
     and guarded by a type-the-name confirmation because it cannot be undone.
 
-    Every tenant model's `hospital` FK is CASCADE, so `hospital.delete()` wipes
-    patients, bills, stock, appointments, the audit trail — the lot. The one
-    exception is `User.hospital` (SET_NULL): staff would otherwise be left as
-    orphaned accounts that can still sign in, so we capture their ids first and
-    delete them once the cascade has cleared everything that referenced them."""
+    `purge_tenant` wipes every hospital-scoped row first, in dependency-safe
+    passes — a bare `hospital.delete()` cannot, because child rows hold PROTECT
+    FKs to their parents (SaleItem→Medicine, Invoice→Patient, Sale→Customer, …)
+    and the cascade raises `ProtectedError` on any tenant that has actually
+    traded. `User.hospital` is SET_NULL, so staff would otherwise linger as
+    orphaned accounts that can still sign in: we capture their ids first and
+    delete them once everything that referenced them is gone."""
     from django.db import transaction
     from patients.models import Patient
     from sales.models import Sale
@@ -180,7 +182,9 @@ def hospital_delete(request, pk):
             User.objects.filter(hospital=hospital, is_superuser=False)
             .values_list('id', flat=True))
         from audit.middleware import suppress_audit
+        from saas.services import purge_tenant
         with transaction.atomic(), suppress_audit():
+            purge_tenant(hospital)
             hospital.delete()
             if staff_ids:
                 User.objects.filter(id__in=staff_ids).delete()

@@ -293,14 +293,25 @@ the rows. Guarded by `tests/test_admin_awareness.py::AuditLogIsolationTest`.
 
 **Deleting a whole tenant suppresses audit logging** (`audit.middleware.suppress_audit`).
 The SaaS owner can hard-delete a hospital (`saas.views.hospital_delete`, superuser-only,
-type-the-name confirmation). Every tenant model's `hospital` FK is `CASCADE`, so
-`hospital.delete()` wipes all of it — **except `User.hospital`, which is `SET_NULL`**: the
-view captures the tenant's non-superuser staff ids first and deletes them after the cascade,
-or they linger as orphaned accounts that can still sign in. The delete runs inside
-`suppress_audit()` because the cascade's `post_delete` signals would otherwise file a DELETE
-`AuditLog` for every tracked row against the very hospital being removed — rows that
-`AuditLog.hospital`'s own CASCADE deletes again, and which crash on save as the hospital
-vanishes mid-cascade. Guarded by `saas/tests_delete.py`.
+type-the-name confirmation). Every tenant model's `hospital` FK is `CASCADE`, but a bare
+`hospital.delete()` **still fails on any tenant that has traded** — child rows hold `PROTECT`
+FKs to their parents (`SaleItem`→`Medicine`/`StockBatch`, `Invoice`→`Patient`, `Sale`→
+`Customer`/`Panel`, `EmergencyCase`/`Pregnancy`/`Delivery`→`Patient`, `VaccinationRecord`→
+`Vaccine`, `StockAdjustment`→`StockBatch`, …), so the cascade raises `ProtectedError`. Both
+the delete view **and** the demo `--reset` (`seed_public_demo._reset`) therefore call
+**`saas.services.purge_tenant(hospital)`** first: it deletes every hospital-scoped row in
+repeated passes — each pass removes the rows no longer protected (a `Sale` carries its
+`SaleItem`s off by cascade, unprotecting the `Medicine`), unblocking their parents next pass —
+converging with **no hard-coded order**, so a new model with a `hospital` FK is handled
+automatically. It skips `User` and `Hospital` for the caller. Then `hospital.delete()` on the
+now-childless row, and **`User.hospital` (`SET_NULL`)**: the view captures the tenant's
+non-superuser staff ids first and deletes them after, or they linger as orphaned accounts that
+can still sign in. The whole thing runs inside `suppress_audit()` because the deletes'
+`post_delete` signals would otherwise file a DELETE `AuditLog` for every tracked row against
+the very hospital being removed — rows that `AuditLog.hospital`'s own CASCADE deletes again,
+and which crash on save as the hospital vanishes. Guarded by `saas/tests_delete.py`
+(`test_delete_tenant_that_has_traded` seeds the protecting rows — do not drop it, or the
+regression is unguarded again).
 
 ### Login front door (host-aware) — who may sign in where
 

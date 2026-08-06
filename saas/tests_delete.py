@@ -77,6 +77,42 @@ class HospitalDeleteTest(TestCase):
         # The owner's own account survives.
         self.assertTrue(User.objects.filter(email='owner@sehatyar.online').exists())
 
+    def test_delete_tenant_that_has_traded(self):
+        """Regression: a tenant with sales/invoices/stock has child rows holding
+        PROTECT FKs to Medicine/Patient/Customer, so a bare hospital.delete()
+        raised ProtectedError. purge_tenant must clear it in passes and the
+        delete must succeed — leaving the other tenant untouched."""
+        from decimal import Decimal
+
+        from inventory.models import Medicine
+        from billing.models import Invoice
+        from billing.services import create_service_invoice
+        from sales.models import Sale
+        from sales.services import create_sale
+
+        h = self.doomed
+        set_current_hospital(h)
+        patient = Patient.objects.get(full_name='Patient D')
+        med = Medicine.objects.create(name='Panadol', price=Decimal('10'), quantity=100,
+                                      expiry_date=_future(), hospital=h)
+        sale = create_sale(items=[{'medicine_id': med.id, 'quantity': 2}],
+                           cashier=self.owner)          # SaleItem → Medicine (PROTECT)
+        inv = create_service_invoice(patient=patient, created_by=self.owner,
+                                     items=[('Consult', Decimal('50'))])  # Invoice → Patient
+        clear_current_hospital()
+
+        c = self._client()
+        resp = c.post(reverse('saas:hospital_delete', args=[h.pk]),
+                      {'confirm_name': 'Doomed Clinic'}, follow=True)
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(Hospital.objects.filter(pk=h.pk).exists())
+        self.assertFalse(Medicine.objects.filter(pk=med.pk).exists())
+        self.assertFalse(Sale.objects.filter(pk=sale.pk).exists())
+        self.assertFalse(Invoice.objects.filter(pk=inv.pk).exists())
+        # Other tenant survives intact.
+        self.assertTrue(Hospital.objects.filter(pk=self.keep.pk).exists())
+        self.assertTrue(Patient.objects.filter(full_name='Patient K').exists())
+
     def test_confirm_page_lists_counts(self):
         c = self._client()
         resp = c.get(reverse('saas:hospital_delete', args=[self.doomed.pk]))

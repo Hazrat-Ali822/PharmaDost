@@ -155,14 +155,18 @@ class Command(BaseCommand):
             self.stdout.write(f"  {role:12} {email}")
 
     def _reset(self, demo):
-        """Best-effort wipe of the demo tenant (only on --reset)."""
+        """Best-effort wipe of the demo tenant (only on --reset).
+
+        `purge_tenant` clears every hospital-scoped row in dependency-safe passes
+        (a plain `demo.delete()` can't — child rows hold PROTECT FKs to Medicine,
+        Patient, Customer, …). Then the now-childless hospital, the demo doctors
+        (no hospital FK) and the demo user accounts are removed."""
         from accounts.models import User
         from opd.models import Doctor, DoctorPayout
+        from saas.services import purge_tenant
         with transaction.atomic():
-            # Hospital delete cascades every hospital-scoped row (patients ->
-            # appointments/prescriptions, sales, invoices, wards -> beds ->
-            # admissions -> nursing, etc.) and SET_NULLs the users.
             DoctorPayout.objects.filter(doctor__pmdc_no__startswith="DEMO-").delete()
+            purge_tenant(demo)
             demo.delete()
             Doctor.objects.filter(pmdc_no__startswith="DEMO-").delete()
             User.objects.filter(email__in=DEMO_EMAILS).delete()
