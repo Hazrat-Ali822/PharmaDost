@@ -134,6 +134,30 @@ class FailClosedTest(TwoTenantSetup):
         resp = self.client.get(reverse('prescription_detail', args=[self.rx2.pk]))
         self.assertIn(resp.status_code, (403, 404))
 
+    # These three lists sit on models with no hospital column (TestOrder,
+    # ImagingStudy, Appointment) and were left on the fail-OPEN
+    # `if request.user.hospital:` guard, so a hospital-less user read every
+    # tenant's clinical records. Regression guard for that leak.
+    def test_hospital_less_user_sees_no_appointments(self):
+        resp = self.client.get(reverse('appointment_list'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, 'Beta Patient')
+
+    def test_hospital_less_user_sees_no_lab_orders(self):
+        from lab.models import TestOrder
+        TestOrder.objects.create(patient=self.patient2)
+        resp = self.client.get(reverse('lab:order_list'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, 'Beta Patient')
+
+    def test_hospital_less_user_sees_no_imaging_studies(self):
+        from imaging.models import ImagingStudy
+        ImagingStudy.objects.create(patient=self.patient2, study_name='Beta Scan',
+                                    modality='XRAY', price=Decimal('0'))
+        resp = self.client.get(reverse('imaging:study_list'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, 'Beta Patient')
+
 
 class AuthenticationRequiredTest(TwoTenantSetup):
     """Anonymous users get bounced to login — never served data."""

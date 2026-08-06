@@ -45,17 +45,16 @@ def _scoped_orders(request):
 
 @feature_required('lab')
 def order_list(request):
+    # Fail-closed tenant scope (TestOrder has no hospital column) — and the DOCTOR
+    # narrowing — both live in _scoped_orders. Using `if request.user.hospital:`
+    # here would leak every tenant's orders to a hospital-less non-superuser.
     orders = (
-        TestOrder.objects
+        _scoped_orders(request)
         .select_related("patient", "ordered_by")
         .prefetch_related("results")
         .order_by("-order_date")
     )
-    if request.user.hospital:
-        orders = orders.filter(patient__hospital=request.user.hospital)
-    if getattr(request.user, 'role', None) == 'DOCTOR':
-        orders = orders.filter(ordered_by=request.user)
-        
+
     show = request.GET.get('show', 'pending')
     if show == 'pending':
         orders = orders.filter(status='Pending')

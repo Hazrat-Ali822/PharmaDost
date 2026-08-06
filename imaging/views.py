@@ -40,14 +40,14 @@ def _scoped_studies(request):
 
 @feature_required('imaging')
 def study_list(request):
+    # Fail-closed tenant scope + DOCTOR narrowing both live in _scoped_studies;
+    # `if request.user.hospital:` here would leak every tenant's studies to a
+    # hospital-less non-superuser.
     studies = (
-        ImagingStudy.objects.select_related("patient", "referred_by", "performed_by")
+        _scoped_studies(request)
+        .select_related("patient", "referred_by", "performed_by")
         .order_by("-study_date")
     )
-    if request.user.hospital:
-        studies = studies.filter(patient__hospital=request.user.hospital)
-    if getattr(request.user, 'role', None) == 'DOCTOR':
-        studies = studies.filter(referred_by=request.user)
     modality = request.GET.get("modality", "").strip()
     if modality:
         studies = studies.filter(modality=modality)

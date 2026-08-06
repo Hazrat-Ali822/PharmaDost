@@ -188,11 +188,13 @@ def doctor_delete(request, pk):
 @feature_required('appointments', 'opd')
 def appointment_list(request):
     appointments = Appointment.objects.select_related('patient', 'doctor').order_by('appointment_date', 'token_no')
-    
-    # Filter by hospital
-    if request.user.hospital:
+
+    # Fail closed: Appointment has no hospital column, so scope through the
+    # patient. Keying on is_superuser (not `if user.hospital`) stops a
+    # hospital-less non-superuser from reading every tenant's appointments.
+    if not request.user.is_superuser:
         appointments = appointments.filter(patient__hospital=request.user.hospital)
-        
+
     role = getattr(request.user, 'role', None)
     is_doctor = role == 'DOCTOR' and not request.user.is_superuser
     is_unlinked_doctor = False

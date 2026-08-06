@@ -35,6 +35,17 @@ def _scoped_appointments(request):
     return qs
 
 
+def _scoped_presets(request):
+    """RxPreset has a hospital FK but no TenantManager, so it is not auto-scoped.
+    Fail CLOSED here — key on is_superuser, never `if request.user.hospital` — or a
+    hospital-less non-superuser reads (list) and even edits/deletes (by pk) another
+    tenant's preset templates."""
+    qs = RxPreset.objects.all()
+    if not request.user.is_superuser:
+        qs = qs.filter(hospital=request.user.hospital)
+    return qs
+
+
 @feature_required('prescriptions')
 def prescription_create(request, appointment_id):
     appointment = get_object_or_404(_scoped_appointments(request), pk=appointment_id)
@@ -63,9 +74,7 @@ def prescription_create(request, appointment_id):
         med_formset = PrescriptionItemFormSet(prefix='meds')
 
     # Get presets
-    presets = RxPreset.objects.all()
-    if request.user.hospital:
-        presets = presets.filter(hospital=request.user.hospital)
+    presets = _scoped_presets(request)
 
     import json
     presets_data = []
@@ -220,9 +229,7 @@ def prescription_edit(request, pk):
         med_formset = PrescriptionItemFormSet(instance=prescription, prefix='meds')
         
     # Get presets
-    presets = RxPreset.objects.all()
-    if request.user.hospital:
-        presets = presets.filter(hospital=request.user.hospital)
+    presets = _scoped_presets(request)
 
     import json
     presets_data = []
@@ -259,9 +266,7 @@ def prescription_edit(request, pk):
 
 @feature_required('prescriptions')
 def preset_list(request):
-    presets = RxPreset.objects.all()
-    if request.user.hospital:
-        presets = presets.filter(hospital=request.user.hospital)
+    presets = _scoped_presets(request)
     return render(request, 'prescriptions/preset_list.html', {'presets': presets})
 
 
@@ -295,7 +300,7 @@ def preset_create(request):
 
 @feature_required('prescriptions')
 def preset_edit(request, pk):
-    preset = get_object_or_404(RxPreset, pk=pk)
+    preset = get_object_or_404(_scoped_presets(request), pk=pk)
     if request.method == 'POST':
         form = RxPresetForm(request.POST, instance=preset)
         formset = RxPresetItemFormSet(request.POST, instance=preset, prefix='items')
@@ -317,7 +322,7 @@ def preset_edit(request, pk):
 
 @feature_required('prescriptions')
 def preset_delete(request, pk):
-    preset = get_object_or_404(RxPreset, pk=pk)
+    preset = get_object_or_404(_scoped_presets(request), pk=pk)
     if request.method == 'POST':
         preset.delete()
         messages.success(request, "Rx Preset deleted.")

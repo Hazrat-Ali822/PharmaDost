@@ -177,7 +177,7 @@ if request.user.hospital:
     qs = qs.filter(patient__hospital=request.user.hospital)
 ```
 
-Apps follow this with module-local helpers: `_scoped_prescriptions` / `_scoped_appointments` (prescriptions), `_scoped_orders` (lab), `_scoped_studies` (imaging), `_scoped_admissions` (ipd), `_get_scoped_patient` (patients). Reuse them rather than re-rolling the filter. The sidebar badge counts in `accounts/context_processors.py` use the same `scope_by_hospital = not user.is_superuser` flag.
+Apps follow this with module-local helpers: `_scoped_prescriptions` / `_scoped_appointments` / `_scoped_presets` (prescriptions), `_scoped_orders` (lab), `_scoped_studies` (imaging), `_scoped_admissions` (ipd), `_get_scoped_patient` (patients). Reuse them rather than re-rolling the filter — in **list** views too, not just detail views: `lab.order_list`, `imaging.study_list` and `opd.appointment_list` once filtered on the fail-**open** `if request.user.hospital:` form and leaked every tenant's clinical records to a hospital-less non-superuser (the sibling detail views were already fail-closed). `RxPreset` has a `hospital` FK but **no `TenantManager`**, so its edit/delete-by-pk paths must go through `_scoped_presets` or they are cross-tenant writes. `tests/test_security.py::FailClosedTest` now covers all three lists — keep it that way. The sidebar badge counts in `accounts/context_processors.py` use the same `scope_by_hospital = not user.is_superuser` flag.
 
 On top of tenant scoping, a **doctor is narrowed to their own patients**: lab orders they
 placed, imaging they referred, and admissions where they are the `attending_doctor` **or**
