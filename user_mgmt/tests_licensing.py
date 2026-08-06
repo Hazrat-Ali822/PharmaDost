@@ -97,6 +97,28 @@ class LicenseStateTest(TestCase):
         st = core.license_state(self.dir, date(2026, 8, 1))  # wind the clock back
         self.assertEqual(st["days_left"], core.TRIAL_DAYS)   # trial did not reset
 
+    def test_machine_locked_key_runs_on_its_own_machine(self):
+        tok = core.make_token("C", date.today() + timedelta(days=30), date.today(),
+                              self.kp, extra={"machine": core.machine_id()})
+        core.save_license(self.dir, tok)
+        st = core.license_state(self.dir)
+        self.assertTrue(st["ok"])
+        self.assertEqual(st["status"], "licensed")
+
+    def test_machine_locked_key_refused_on_another_machine(self):
+        tok = core.make_token("C", date.today() + timedelta(days=30), date.today(),
+                              self.kp, extra={"machine": "some-other-computer-id"})
+        core.save_license(self.dir, tok)
+        st = core.license_state(self.dir)
+        self.assertFalse(st["ok"])
+        self.assertEqual(st["status"], "wrong_machine")
+
+    def test_unlocked_key_runs_anywhere(self):
+        tok = core.make_token("C", date.today() + timedelta(days=30), date.today(),
+                              self.kp)                        # no machine field
+        core.save_license(self.dir, tok)
+        self.assertTrue(core.license_state(self.dir)["ok"])
+
 
 class LicenseLockMiddlewareTest(TestCase):
     def setUp(self):

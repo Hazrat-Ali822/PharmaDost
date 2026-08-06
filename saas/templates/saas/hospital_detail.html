@@ -83,18 +83,27 @@
     </p>
     {% endif %}
 
-    <form method="post" action="{% url 'saas:hospital_desktop_license' hospital.pk %}" style="display:flex; gap:10px; align-items:end;">
+    <form method="post" action="{% url 'saas:hospital_desktop_license' hospital.pk %}">
       {% csrf_token %}
-      <div class="field" style="margin:0;">
-        <label>Months</label>
-        <select name="months">
-          <option value="1">1 month</option>
-          <option value="3">3 months</option>
-          <option value="6">6 months</option>
-          <option value="12">12 months</option>
-        </select>
+      <div style="display:flex; gap:10px; align-items:end; flex-wrap:wrap;">
+        <div class="field" style="margin:0;">
+          <label>Months</label>
+          <select name="months">
+            <option value="1">1 month</option>
+            <option value="3">3 months</option>
+            <option value="6">6 months</option>
+            <option value="12">12 months</option>
+          </select>
+        </div>
+        <button class="btn success" type="submit">Generate licence key</button>
       </div>
-      <button class="btn success" type="submit">Generate licence key</button>
+      <div class="field" style="margin:10px 0 0 0;">
+        <label>Lock to one computer (optional)</label>
+        <input type="text" name="machine" placeholder="Paste the clinic's Machine ID — leave blank to allow any computer">
+        <div class="muted" style="font-size:11.5px; margin-top:3px;">The clinic sees their
+          Machine ID in their app at Settings → Licence. With it filled, the key runs on
+          <strong>only that computer</strong>; blank = any computer.</div>
+      </div>
     </form>
   </div>
 

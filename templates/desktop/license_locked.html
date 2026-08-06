@@ -26,6 +26,9 @@
     {% if license.status == 'expired' %}
       <p>This installation's licence expired on <strong>{{ license.exp|date:"d M Y" }}</strong>.
          Enter a new key to continue.</p>
+    {% elif license.status == 'wrong_machine' %}
+      <p>This licence was issued for a <strong>different computer</strong>. It cannot be
+         used here. Ask your provider for a key for this computer.</p>
     {% else %}
       <p>The free trial has ended. Enter a licence key to continue using
          {{ branding.brand_name|default:"Sehatyar" }}.</p>

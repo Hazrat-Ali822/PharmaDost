@@ -299,8 +299,12 @@ def hospital_desktop_license(request, pk):
                        "DESKTOP_LICENSE_PRIVATE_KEY or upload licensing/private_key.json.")
     else:
         today = timezone.localdate()
+        extra = {'slug': hospital.slug}
+        machine = (request.POST.get('machine') or '').strip()
+        if machine:
+            extra['machine'] = machine       # lock the key to that one computer
         token = make_token(hospital.name, _add_months(today, months), today, priv,
-                           extra={'slug': hospital.slug})
+                           extra=extra)
     return render(request, 'saas/hospital_detail.html',
                   _hospital_detail_context(hospital, gen_token=token, gen_months=months))
 
@@ -397,7 +401,12 @@ def desktop_license(request):
             except (TypeError, ValueError):
                 months = 1
             today = timezone.localdate()
-            token = make_token(clinic, _add_months(today, months), today, priv)
+            extra = {}
+            machine = (request.POST.get('machine') or '').strip()
+            if machine:
+                extra['machine'] = machine
+            token = make_token(clinic, _add_months(today, months), today, priv,
+                               extra=extra or None)
 
     return render(request, 'saas/desktop_license.html', {
         'have_key': priv is not None, 'token': token,

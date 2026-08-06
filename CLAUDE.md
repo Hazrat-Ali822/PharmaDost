@@ -960,7 +960,14 @@ own licence. The **private** key lives in `licensing/private_key.json` (**git-ig
 commit it**); the owner tools `licensing/keygen.py` (run once) and `licensing/sign_license.py`
 (run per clinic per period) are the only things that sign. A fresh install gets a `TRIAL_DAYS`
 trial; `license_state` also blunts clock-rollback via a stored `last_seen` (`today =
-max(today, last_seen)`). The core lives **inside the `user_mgmt` app**, not a top-level
+max(today, last_seen)`). A key **may be locked to one computer**: if the owner issues it with
+a `machine` field (the clinic's `licensing.machine_id()` — Windows MachineGuid hashed, shown
+to them at Settings → Licence), `license_state` returns `wrong_machine`/`ok=False` on any
+other PC, so a copied install or a shared key will not run. Blank `machine` = runs anywhere
+(default, backward compatible). Data restore is unaffected — only the key is machine-bound,
+so moving PCs means re-issuing a key, not losing data. Per-tenant keys are generated one-click
+from `saas.views.hospital_desktop_license` on the tenant page (clinic name + slug baked into
+the token via `make_token(..., extra=)`), or ad-hoc at `saas.views.desktop_license`. The core lives **inside the `user_mgmt` app**, not a top-level
 package, specifically so the PyInstaller build bundles it with every other app module (the
 `.spec` is git-ignored and cannot be relied on to pick up a new top-level package). Guarded
 by `user_mgmt/tests_licensing.py` (crypto, state machine, and the lock middleware — CI has

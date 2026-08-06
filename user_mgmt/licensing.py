@@ -88,6 +88,31 @@ def read_token(token: str, pub: dict = None) -> dict:
         return None
 
 
+# ------------------------------------------------------------------- machine id
+def machine_id() -> str:
+    """A stable fingerprint of THIS computer, so a licence can be locked to one
+    machine — a copied install on another PC computes a different id and the key,
+    which is signed with that id inside it, no longer matches.
+
+    Windows: the OS crypto MachineGuid (survives reinstalls of the app, changes only
+    on an OS reinstall). Elsewhere / on failure: the hardware MAC + hostname. Hashed
+    to a short hex so it is easy to read out to the provider and reveals nothing."""
+    raw = None
+    try:
+        import winreg
+        k = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
+                           r"SOFTWARE\Microsoft\Cryptography")
+        raw, _ = winreg.QueryValueEx(k, "MachineGuid")
+        winreg.CloseKey(k)
+    except Exception:
+        raw = None
+    if not raw:
+        import platform
+        import uuid
+        raw = platform.node() + "-" + str(uuid.getnode())
+    return hashlib.sha256(("sehatyar-machine:" + str(raw)).encode()).hexdigest()[:20]
+
+
 # ---------------------------------------------------------------------- state
 def _state_path(data_dir):
     from pathlib import Path
@@ -146,19 +171,29 @@ def license_state(data_dir, today: date = None) -> dict:
     today = today or date.today()
     eff = _effective_today(data_dir, today)
     state = _load_state(data_dir)
+    mid = machine_id()
 
     token = state.get("token")
     if token:
         data = read_token(token)
         if data:
+            # A machine-locked key (issued with a "machine" field) only runs on the
+            # computer it was made for. A copy on another PC has a different id, so it
+            # is refused here — the key cannot be shared or the install cloned.
+            bound = data.get("machine")
+            if bound and bound != mid:
+                return {"ok": False, "status": "wrong_machine", "days_left": 0,
+                        "exp": None, "clinic": data.get("clinic", ""),
+                        "warn": True, "machine": mid}
             exp = date.fromisoformat(data["exp"])
             days = (exp - eff).days
             if days >= 0:
                 return {"ok": True, "status": "licensed", "days_left": days,
                         "exp": exp, "clinic": data.get("clinic", ""),
-                        "warn": days <= WARN_DAYS}
+                        "warn": days <= WARN_DAYS, "machine": mid}
             return {"ok": False, "status": "expired", "days_left": days,
-                    "exp": exp, "clinic": data.get("clinic", ""), "warn": True}
+                    "exp": exp, "clinic": data.get("clinic", ""),
+                    "warn": True, "machine": mid}
         # A stored key that no longer verifies (corrupt / wrong build) falls through
         # to the trial rather than locking outright.
 
@@ -175,6 +210,6 @@ def license_state(data_dir, today: date = None) -> dict:
     left = TRIAL_DAYS - (eff - start_date).days
     if left >= 0:
         return {"ok": True, "status": "trial", "days_left": left, "exp": None,
-                "clinic": "", "warn": True}
+                "clinic": "", "warn": True, "machine": mid}
     return {"ok": False, "status": "locked", "days_left": left, "exp": None,
-            "clinic": "", "warn": True}
+            "clinic": "", "warn": True, "machine": mid}

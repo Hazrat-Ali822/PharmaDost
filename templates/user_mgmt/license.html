@@ -27,9 +27,22 @@
     <p><span class="badge red">Expired</span></p>
     <p class="muted" style="font-size:13px;">Expired on <strong>{{ license.exp|date:"d M Y" }}</strong>.
        Enter a new key to reactivate.</p>
+  {% elif license.status == 'wrong_machine' %}
+    <p><span class="badge red">Wrong computer</span></p>
+    <p class="muted" style="font-size:13px;">This licence was issued for a different
+       computer. Send your Machine ID below to your provider to get a key for this one.</p>
   {% else %}
     <p><span class="badge red">Locked</span></p>
     <p class="muted" style="font-size:13px;">The trial has ended. Enter a licence key to unlock.</p>
+  {% endif %}
+
+  {% if license.machine %}
+  <div style="margin-top:12px; padding:10px 12px; background:var(--surface); border:1px solid var(--border); border-radius:8px;">
+    <div class="muted" style="font-size:12px;">This computer's Machine ID</div>
+    <div style="font-family:monospace; font-size:13px; word-break:break-all;" id="mid">{{ license.machine }}</div>
+    <div class="muted" style="font-size:11.5px; margin-top:4px;">Give this to your provider
+      if they issue a key locked to one computer.</div>
+  </div>
   {% endif %}
 </div>
 
