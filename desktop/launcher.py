@@ -121,6 +121,9 @@ def pick_port(host: str, preferred: int = DEFAULT_PORT) -> int:
     s.bind((host, 0))
     port = s.getsockname()[1]
     s.close()
+    print(f"[{BRAND}] WARNING: ports 8000/8080/8800/5000 are all in use — using "
+          f"{port} this time. Phones bookmarked to the old address will need the "
+          f"new one (shown below and on the Connect a Device page).", flush=True)
     return port
 
 
@@ -154,7 +157,10 @@ def open_firewall(port: int) -> str:
         result = subprocess.run(
             ["netsh", "advfirewall", "firewall", "add", "rule",
              f"name={FIREWALL_RULE}", "dir=in", "action=allow", "protocol=TCP",
-             f"localport={port}", "profile=private,domain"],
+             # profile=any covers Public too: Windows marks a new/unknown clinic
+             # wifi Public by default, and a rule scoped to private,domain would
+             # silently not apply — phones time out while the banner says "allowed".
+             f"localport={port}", "profile=any"],
             capture_output=True, timeout=15, **flags)
         if result.returncode == 0:
             return f"allowed on port {port}"
@@ -214,11 +220,14 @@ def prepare_database() -> None:
     print(f"[{BRAND}] Preparing database ...", flush=True)
     call_command("migrate", interactive=False, verbosity=1)
 
-    # Collect static once so WhiteNoise can serve it. Re-running is cheap/idempotent.
-    try:
-        call_command("collectstatic", interactive=False, verbosity=0)
-    except Exception as exc:  # never block startup on a static hiccup
-        print(f"[{BRAND}] collectstatic skipped: {exc}", flush=True)
+    # Static is already collected into the bundle at build time; re-collecting on a
+    # frozen install would only try to write into the read-only install dir and fail.
+    # Collect only in dev, where BASE_DIR is writable.
+    if not getattr(sys, "frozen", False):
+        try:
+            call_command("collectstatic", interactive=False, verbosity=0)
+        except Exception as exc:  # never block startup on a static hiccup
+            print(f"[{BRAND}] collectstatic skipped: {exc}", flush=True)
 
 
 def serve(bind_host: str, port: int) -> None:
@@ -230,7 +239,14 @@ def serve(bind_host: str, port: int) -> None:
     """
     from waitress import serve as waitress_serve
     from pharma_mgmt.wsgi import application
-    waitress_serve(application, host=bind_host, port=port, threads=16, _quiet=True)
+    try:
+        waitress_serve(application, host=bind_host, port=port, threads=16, _quiet=True)
+    except Exception as exc:
+        # This runs in a daemon thread, so an unhandled bind error would otherwise
+        # die silently and the window would open onto a dead address. Say so loudly.
+        print(f"\n[{BRAND}] SERVER FAILED TO START on {bind_host}:{port} — {exc}\n"
+              f"Close the app and try again; if it persists another program may be "
+              f"using the port.", flush=True)
 
 
 def wait_until_up(url: str, timeout: float = 20.0) -> bool:
@@ -277,7 +293,10 @@ def main() -> None:
     use_lan = lan_enabled()
     ips = lan_addresses() if use_lan else []
     bind_host = "0.0.0.0" if use_lan else LOCALHOST
-    port = pick_port(LOCALHOST, int(os.getenv("PHARMADOST_PORT", DEFAULT_PORT)))
+    # Probe the port on the interface we will actually bind (0.0.0.0 in LAN mode),
+    # not loopback — a port free on localhost but held on another interface would
+    # otherwise pass the check and then fail when the real server binds.
+    port = pick_port(bind_host, int(os.getenv("PHARMADOST_PORT", DEFAULT_PORT)))
 
     hosts = [LOCALHOST, "localhost"] + ips
     try:
@@ -298,7 +317,10 @@ def main() -> None:
     firewall = open_firewall(port) if use_lan else "LAN mode off"
 
     threading.Thread(target=serve, args=(bind_host, port), daemon=True).start()
-    wait_until_up(local_url)
+    if not wait_until_up(local_url):
+        print(f"[{BRAND}] WARNING: the server did not come up within 20s. The window "
+              f"may show an error page — check any message printed above for the cause.",
+              flush=True)
 
     banner(dd, local_url, lan_url, ips, port, firewall)
 
