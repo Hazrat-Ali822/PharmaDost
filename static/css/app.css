@@ -668,3 +668,52 @@ kbd {
 
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes scaleIn { from { transform: scale(.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+/* ==========================================================================
+   Accessibility & touch polish — ui-ux-pro-max checklist
+   Generated design system: design-system/sehatyar/MASTER.md. CSS-only and
+   token-driven, so tenant colours, dark mode, phone layout and offline all keep
+   working. Covers the three checklist items the shell only partly met: visible
+   keyboard focus, 44px touch targets, and a pointer cursor on every clickable.
+   ========================================================================== */
+
+/* 1. Visible keyboard focus on EVERY interactive element (WCAG 2.4.7).
+   `:focus-visible` fires for keyboard/AT only — a mouse click never shows a ring.
+   `.btn` and text inputs already carry their own richer ring and win on
+   specificity; this catches everything else the shell left on the browser
+   default: links, nav items, chips, icon buttons, checkboxes, radios, and
+   anything with role=button or a tabindex. */
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible,
+summary:focus-visible,
+.nav a:focus-visible,
+.page-btn:focus-visible,
+.user-chip:focus-visible,
+.hamburger:focus-visible,
+.kbd-btn:focus-visible,
+.kbd-close:focus-visible,
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+/* The brand primary can be low-contrast against the navy sidebar — use white so
+   the focused nav item is unmistakable for keyboard users. */
+.nav a:focus-visible { outline-color: #fff; }
+
+/* 2. Touch targets >= 44x44px on COARSE pointers (finger, not mouse). Guarded by
+   `pointer: coarse` so desktop density is untouched — only phones/tablets get the
+   larger hit areas the checklist flags as CRITICAL. */
+@media (pointer: coarse) {
+  .btn, .page-btn, .hamburger, .kbd-btn, .kbd-close { min-height: 44px; }
+  .btn.sm { min-height: 40px; }          /* dense table actions: comfortable, not bloated */
+  .nav a { min-height: 44px; }
+  input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; }
+}
+
+/* 3. Pointer affordance on clickables the browser leaves as a text cursor —
+   a <label> wired to a control, a <summary>, anything role=button. */
+[role="button"], summary, label[for] { cursor: pointer; }
