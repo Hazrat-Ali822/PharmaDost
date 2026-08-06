@@ -14,4 +14,7 @@ urlpatterns = [
     path('payment/<int:pk>/invoice/', views.payment_invoice, name='payment_invoice'),
     path('expense/new/', views.expense_create, name='expense_create'),
     path('desktop-license/', views.desktop_license, name='desktop_license'),
+    path('backups/', views.backup_list, name='backup_list'),
+    path('backups/<int:pk>/download/', views.backup_download_file, name='backup_download_file'),
+    path('backup/upload/', views.backup_upload, name='backup_upload'),
 ]

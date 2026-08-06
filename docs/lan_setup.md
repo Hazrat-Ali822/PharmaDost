@@ -95,6 +95,34 @@ Things worth knowing before you rely on it:
   somewhere other than on top of the computer, so one theft does not take both. The
   in-app **Backup** button still works for an on-demand copy.
 
+## Cloud backup to the provider, and restore after a loss
+
+Beyond the local/USB backups above, a **licensed** install also sends a copy of its data
+to the hosted site whenever it has internet — so the provider always holds a recent
+snapshot, even if the clinic never sets up a USB.
+
+- **Automatic, in the background.** On every launch, once the app is licensed, it uploads
+  its latest backup to `https://sehatyar.online` (override with `PHARMADOST_CLOUD_URL`, or
+  set it empty to turn cloud backup off). No internet → it just tries again next time.
+- **Authenticated by the licence key** — no extra password to set up. The provider sees
+  each install's uploads at **Owner Portal → Desktop Backups**, and keeps the last 5.
+
+**Restoring after a lost / stolen / dead computer:**
+
+1. The provider downloads the clinic's latest backup from **Desktop Backups** and sends
+   the `.zip` file to them.
+2. On the new computer, install and open the app, then go to **Restore Data** (sidebar) →
+   choose that `.zip` → **Restore**.
+3. The app asks them to **close and reopen** it — the data is put back on restart, and the
+   install is exactly as it was when that backup was taken.
+
+> The clinic's own automatic backups (in `%LOCALAPPDATA%\PharmaDost\backups` or the USB
+> folder) restore the same way — Restore Data accepts any of them.
+
+**This is backup and restore, not live sync.** Entering a patient on the LAN server does
+not put them on the hosted website; the uploaded file is stored as-is for safekeeping and
+handed back on request.
+
 ## Monthly subscription (offline licence)
 
 The desktop / LAN build enforces its monthly subscription **on the device**, with no

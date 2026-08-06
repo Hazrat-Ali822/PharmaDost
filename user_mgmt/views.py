@@ -434,3 +434,59 @@ def license_manage(request):
     state = core.license_state(settings.DATA_DIR)
     return render(request, 'user_mgmt/license.html',
                   {'license': state, 'desktop_build': settings.DESKTOP_BUILD})
+
+
+def _safe_backup_members(zf):
+    """Reject a zip that tries to escape the data folder (zip-slip): no absolute
+    paths, no '..'. Returns the member names, or raises ValueError."""
+    for name in zf.namelist():
+        p = Path(name)
+        if p.is_absolute() or '..' in p.parts or (len(name) > 1 and name[1] == ':'):
+            raise ValueError(f"unsafe path in archive: {name}")
+    return zf.namelist()
+
+
+@role_required(["ADMIN"])
+def restore_upload(request):
+    """Restore the whole install from a backup zip (the reverse of the Backup
+    button) — for putting a clinic's data back on a fresh computer after loss.
+
+    Desktop build only: a running SQLite DB cannot be swapped mid-flight, so this
+    only **stages** the upload and drops a marker; `desktop.launcher.apply_pending_
+    restore` does the swap on the next launch. The user is told to restart.
+    """
+    import shutil
+    import zipfile
+
+    if not settings.DESKTOP_BUILD:
+        messages.error(request, "Restore is only available in the desktop app.")
+        return redirect('user_mgmt:site_settings')
+
+    if request.method == 'POST':
+        f = request.FILES.get('backup')
+        if not f:
+            messages.error(request, "Choose a backup .zip file first.")
+            return redirect('user_mgmt:restore')
+
+        staging = Path(settings.DATA_DIR) / "_restore_pending"
+        shutil.rmtree(staging, ignore_errors=True)
+        staging.mkdir(parents=True, exist_ok=True)
+        try:
+            with zipfile.ZipFile(f) as z:
+                names = _safe_backup_members(z)
+                if 'db.sqlite3' not in names:
+                    raise ValueError("this is not a Sehatyar backup (no db.sqlite3)")
+                z.extractall(staging)
+        except Exception as exc:
+            shutil.rmtree(staging, ignore_errors=True)
+            messages.error(request, f"That backup could not be read: {exc}")
+            return redirect('user_mgmt:restore')
+
+        (Path(settings.DATA_DIR) / "RESTORE_PENDING").write_text("1", encoding="utf-8")
+        messages.success(
+            request, "Backup loaded. Now CLOSE the app completely and open it again — "
+                     "the data is put back on restart. (Nothing is lost until you do.)")
+        return redirect('user_mgmt:restore')
+
+    return render(request, 'user_mgmt/restore.html',
+                  {'desktop_build': settings.DESKTOP_BUILD})

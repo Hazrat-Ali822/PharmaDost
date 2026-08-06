@@ -1,10 +1,11 @@
 import os
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import user_passes_test
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.db import models
 from django.utils.text import slugify
-from .models import Hospital, HospitalPayment, PlatformExpense
+from .models import Hospital, HospitalPayment, PlatformExpense, DesktopBackup
 from accounts.models import User
 from accounts.permissions import MODULES
 
@@ -367,6 +368,75 @@ def desktop_license(request):
         'have_key': priv is not None, 'token': token,
         'clinic': clinic, 'months': months,
     })
+
+
+MAX_BACKUP_BYTES = 200 * 1024 * 1024      # 200 MB — a clinic SQLite + media, zipped
+KEEP_BACKUPS_PER_INSTALL = 5
+
+
+@csrf_exempt
+def backup_upload(request):
+    """Receive a full-data backup zip from an offline desktop/LAN install.
+
+    Called by `desktop.launcher`, not a browser — so it is CSRF-exempt and
+    session-less. Authentication is the install's **signed licence key**: only a
+    token signed by the owner's private key verifies, which proves it is a real
+    licensed install (expiry is *not* required — we want a lapsed clinic's data
+    too). The clinic name in the token labels the backup. Kept to the last few per
+    install so the host disk stays bounded. This stores the file as-is; it is never
+    merged into the hosted database (that would be live sync, a separate thing)."""
+    from django.http import JsonResponse
+    from user_mgmt.licensing import read_token
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST only'}, status=405)
+    data = read_token(request.POST.get('token') or '')
+    if data is None:
+        return JsonResponse({'error': 'invalid or missing licence'}, status=403)
+    upload = request.FILES.get('file')
+    if not upload:
+        return JsonResponse({'error': 'no file'}, status=400)
+    if upload.size > MAX_BACKUP_BYTES:
+        return JsonResponse({'error': 'file too large'}, status=413)
+
+    install = (data.get('clinic') or 'Unknown').strip()[:255]
+    backup = DesktopBackup.objects.create(
+        install_name=install, file=upload, size_bytes=upload.size)
+
+    # Rotate: keep only the most recent few for this install, deleting the file too.
+    old = DesktopBackup.objects.filter(install_name=install) \
+        .order_by('-uploaded_at')[KEEP_BACKUPS_PER_INSTALL:]
+    for b in list(old):
+        b.file.delete(save=False)
+        b.delete()
+    return JsonResponse({'ok': True, 'id': backup.pk})
+
+
+@superuser_required
+def backup_list(request):
+    """SaaS owner view of every desktop/LAN install's uploaded backups, grouped by
+    install, newest first — the copies to hand back if a clinic loses its computer."""
+    backups = list(DesktopBackup.objects.all())
+    groups = {}
+    for b in backups:
+        groups.setdefault(b.install_name, []).append(b)
+    installs = [{'name': name, 'backups': items,
+                 'latest': items[0].uploaded_at if items else None}
+                for name, items in sorted(groups.items())]
+    return render(request, 'saas/backup_list.html',
+                  {'installs': installs, 'total': len(backups)})
+
+
+@superuser_required
+def backup_download_file(request, pk):
+    """Download one stored backup zip to hand back to a clinic for restore."""
+    from django.http import FileResponse, Http404
+    backup = get_object_or_404(DesktopBackup, pk=pk)
+    try:
+        return FileResponse(backup.file.open('rb'), as_attachment=True,
+                            filename=backup.file.name.split('/')[-1])
+    except FileNotFoundError:
+        raise Http404("Backup file is missing on the server.")
 
 
 def render_hospital_login(request, hospital):

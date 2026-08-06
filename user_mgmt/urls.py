@@ -14,6 +14,7 @@ urlpatterns = [
   path('settings/', views.site_settings, name='site_settings'),
   path('backup/', views.backup_download, name='backup_download'),
   path('license/', views.license_manage, name='license'),
+  path('restore/', views.restore_upload, name='restore'),
   path('users/', views.user_list, name='user_list'),
   path('users/new/', views.user_create, name='user_create'),
   path('users/<int:pk>/edit/', views.user_edit, name='user_edit'),

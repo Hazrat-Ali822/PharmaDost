@@ -1,0 +1,45 @@
+{% extends 'partials/base.html' %}
+{% block title %}Restore Data{% endblock %}
+{% block page_title %}Restore Data{% endblock %}
+{% block content %}
+
+<div class="page-head"><h2>Restore from a backup</h2></div>
+
+{% if not desktop_build %}
+<div class="card" style="max-width:640px;">
+  <p style="margin:0;">Restore is only available in the <strong>desktop app</strong>,
+  where it replaces this computer's data with a backup file.</p>
+</div>
+{% else %}
+
+<div class="card" style="max-width:640px; border-left:4px solid #b45309;">
+  <h3 style="margin-top:0;">⚠️ This replaces ALL current data</h3>
+  <p class="muted" style="font-size:13.5px;">
+    Use this to put a clinic's data back on a fresh computer after loss or theft.
+    Choose the backup <code>.zip</code> your provider gave you (or one from
+    <code>%LOCALAPPDATA%\PharmaDost\backups</code>). Everything currently on this
+    computer will be overwritten with what is in that file.
+  </p>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="file" name="backup" accept=".zip" required
+           style="display:block; margin:12px 0; font-size:14px;">
+    <button class="btn danger" type="submit"
+            onclick="return confirm('Replace ALL current data with this backup? This cannot be undone.');">
+      Restore this backup
+    </button>
+  </form>
+  <p class="muted" style="font-size:12.5px; margin-top:12px;">
+    After you choose the file, the app asks you to <strong>close and reopen</strong> it —
+    the data is put back on restart, so nothing changes until then.
+  </p>
+</div>
+
+<p class="muted" style="max-width:640px; font-size:12.5px; margin-top:14px;">
+  Backups are made automatically every time the app starts, and (with a licence and
+  internet) a copy is also sent to your provider — so a lost computer never means lost
+  records.
+</p>
+{% endif %}
+
+{% endblock %}

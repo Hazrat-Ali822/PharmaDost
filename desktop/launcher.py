@@ -35,6 +35,7 @@ a phone once and bookmark it, and a new port every morning would break that.
 This same file is the PyInstaller entry point (see PharmaDost.spec).
 """
 import os
+import shutil
 import socket
 import subprocess
 import sys
@@ -254,7 +255,7 @@ def backup_on_start(dd: Path) -> None:
 
     db = dd / "db.sqlite3"
     if not db.exists():
-        return       # first run, nothing to back up yet
+        return None       # first run, nothing to back up yet
     media = dd / "media"
     name = f"sehatyar-backup-{datetime.now().strftime('%Y%m%d-%H%M%S')}.zip"
 
@@ -282,6 +283,108 @@ def backup_on_start(dd: Path) -> None:
         extra = f"  (+{len(made) - 1} off-machine)" if len(made) > 1 else \
                 "  (set PHARMADOST_BACKUP_DIR to a USB/cloud folder for an off-machine copy)"
         print(f"[{BRAND}] Backup saved: {made[0]}{extra}", flush=True)
+    return made[0] if made else None
+
+
+def apply_pending_restore(dd: Path) -> None:
+    """Finish a restore the user staged in the app (Settings -> Restore).
+
+    A running SQLite database cannot be swapped out from under the server on
+    Windows, so the web view only *stages* the uploaded backup (into
+    `_restore_pending/`) and drops a `RESTORE_PENDING` marker; the actual swap
+    happens here, at the next launch, **before Django opens the database**. After
+    it, the install is byte-for-byte what it was when that backup was taken.
+    """
+    marker = dd / "RESTORE_PENDING"
+    staging = dd / "_restore_pending"
+    if not marker.exists():
+        return
+    try:
+        staged_db = staging / "db.sqlite3"
+        if staged_db.exists():
+            target = dd / "db.sqlite3"
+            # Drop the WAL/SHM sidecars too, or they'd overlay the restored file.
+            for ext in ("", "-wal", "-shm"):
+                p = Path(str(target) + ext)
+                if p.exists():
+                    p.unlink()
+            shutil.copy2(staged_db, target)
+        staged_media = staging / "media"
+        if staged_media.exists():
+            target_media = dd / "media"
+            shutil.rmtree(target_media, ignore_errors=True)
+            shutil.copytree(staged_media, target_media)
+        print(f"[{BRAND}] Restore applied from staged backup.", flush=True)
+    except Exception as exc:
+        print(f"[{BRAND}] Restore FAILED: {exc}", flush=True)
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
+        try:
+            marker.unlink()
+        except Exception:
+            pass
+
+
+def cloud_url() -> str:
+    """The hosted site this install uploads its backups to. Defaults to the product
+    host; override with PHARMADOST_CLOUD_URL (or set it empty to turn cloud backup off)."""
+    return os.getenv("PHARMADOST_CLOUD_URL", "https://sehatyar.online").rstrip("/")
+
+
+def _multipart_body(token: str, filename: str, filedata: bytes, boundary: str) -> bytes:
+    crlf = b"\r\n"
+    b = boundary.encode()
+    disp = ('Content-Disposition: form-data; name="file"; filename="%s"' % filename)
+    return b"".join([
+        b"--" + b + crlf,
+        b'Content-Disposition: form-data; name="token"' + crlf + crlf,
+        token.encode() + crlf,
+        b"--" + b + crlf,
+        disp.encode() + crlf,
+        b"Content-Type: application/zip" + crlf + crlf,
+        filedata + crlf,
+        b"--" + b + b"--" + crlf,
+    ])
+
+
+def upload_backup_to_cloud(dd: Path, zip_path) -> None:
+    """Best-effort: send the just-made backup to the hosted site so the owner holds a
+    copy the clinic can be handed back if its computer is lost (see
+    `saas.views.backup_upload`). Authenticated by this install's signed licence key.
+
+    Skips silently when there is no licence yet, no internet, or the host cannot be
+    reached — the local/off-machine backup has already been written, so this is a
+    bonus, never a blocker. Runs in a daemon thread so it never delays startup.
+    """
+    import json
+    import secrets
+    import urllib.request
+
+    if not zip_path or not Path(zip_path).exists():
+        return
+    base = cloud_url()
+    if not base:
+        return                          # cloud backup turned off
+    try:
+        state = json.loads((dd / "license.json").read_text(encoding="utf-8"))
+        token = state.get("token")
+    except Exception:
+        token = None
+    if not token:
+        return                          # unlicensed: no cloud copy until activated
+
+    try:
+        filedata = Path(zip_path).read_bytes()
+        boundary = "----sehatyar" + secrets.token_hex(12)
+        body = _multipart_body(token, Path(zip_path).name, filedata, boundary)
+        req = urllib.request.Request(
+            base + "/saas/backup/upload/", data=body, method="POST",
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
+        with urllib.request.urlopen(req, timeout=90) as resp:
+            resp.read()
+        print(f"[{BRAND}] Backup uploaded to {base}", flush=True)
+    except Exception:
+        pass       # offline or host down — try again next launch
 
 
 def serve(bind_host: str, port: int) -> None:
@@ -359,6 +462,7 @@ def main() -> None:
         pass
 
     dd = configure_environment(hosts, port)
+    apply_pending_restore(dd)       # must run before Django opens the database
 
     local_url = f"http://{LOCALHOST}:{port}/"
     lan_url = f"http://{ips[0]}:{port}/" if ips else ""
@@ -367,7 +471,11 @@ def main() -> None:
     os.environ["PHARMADOST_LAN_IPS"] = ",".join(ips)
 
     prepare_database()
-    backup_on_start(dd)
+    backup_zip = backup_on_start(dd)
+    # Push that snapshot to the hosted site too (best-effort, in the background), so
+    # the owner holds a copy if this computer is lost. No-op with no licence/internet.
+    threading.Thread(target=upload_backup_to_cloud, args=(dd, backup_zip),
+                     daemon=True).start()
 
     firewall = open_firewall(port) if use_lan else "LAN mode off"
 

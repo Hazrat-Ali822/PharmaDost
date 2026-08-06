@@ -973,6 +973,25 @@ too. Only that off-machine copy survives the computer being stolen or its disk f
 the doc steers the clinic to set it. The in-app `backup_download` button remains for
 on-demand copies.
 
+**Cloud backup to the host + restore** (LAN install → hosted, *not* live sync). On every
+launch `desktop.launcher.upload_backup_to_cloud` also POSTs the snapshot to the hosted site
+(`PHARMADOST_CLOUD_URL`, default `https://sehatyar.online`) at `saas.views.backup_upload` —
+best-effort in a daemon thread, a no-op with no licence or no internet. **Auth is the
+install's signed licence token** (the host verifies its signature with the public key;
+expiry is *not* required — a lapsed clinic's data is still wanted), which also labels the
+backup by clinic name. The endpoint is CSRF-exempt and in `LoginRequiredMiddleware.ALLOWED_NAMES`
+(it is called by the launcher, not a browser). `saas.models.DesktopBackup` stores the zip
+(not tenant-scoped — external installs, superuser-only), keeping the last 5 per install. The
+owner sees/downloads them at `/saas/backups/` and hands one back after a loss. The clinic
+**restores** at Settings → Restore (`user_mgmt.views.restore_upload`, desktop-only, ADMIN):
+because a live SQLite file can't be swapped on Windows, the view only *stages* the uploaded
+zip into `DATA_DIR/_restore_pending/` + a `RESTORE_PENDING` marker, and
+`desktop.launcher.apply_pending_restore` does the swap on the next launch, **before Django
+opens the DB**. Uploads are zip-slip guarded (`_safe_backup_members`) and must contain
+`db.sqlite3`. This is **backup/restore, never merge** — the file is stored and handed back
+as-is; true two-way LAN↔hosted sync remains the separate large project warned about above.
+Guarded by `saas/tests_backup.py`.
+
 Add a new kind by: writing a handler that reuses the online view's form/service, registering
 it in `HANDLERS`, marking the form `data-offline-kind` **with any parent id as a hidden
 input**, adding its page to `pwa_views.SHELL_URL_NAMES`, and adding a payload to
