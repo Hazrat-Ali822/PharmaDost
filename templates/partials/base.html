@@ -613,6 +613,14 @@
           Connect a Device
         </a>
         {% endif %}
+        {# Desktop/LAN build only — request.license_state is set by the licence #}
+        {# middleware, which no-ops on the hosted site. Admins renew here. #}
+        {% if request.license_state and user.role == 'ADMIN' or request.license_state and user.is_superuser %}
+        <a href="{% url 'user_mgmt:license' %}" class="{% if '/manage/license' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Licence{% if not request.license_state.ok %} <span style="color:#dc2626;">●</span>{% endif %}
+        </a>
+        {% endif %}
       </div>
     </nav>
     {% endif %}
@@ -674,6 +682,18 @@
       {% if request.subscription_warning %}
       <div class="msg warning" style="background:#fffbeb; color:#b45309; border:1px solid #fde68a; border-radius:8px; padding:12px; margin-bottom:15px; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
         <span>⚠️ Subscription Alert: Your subscription is expiring in {{ request.subscription_days_left }} days. Please clear your payment to prevent access disruption.</span>
+      </div>
+      {% endif %}
+
+      {% if request.license_state.warn %}
+      <div class="msg warning" style="background:#fffbeb; color:#b45309; border:1px solid #fde68a; border-radius:8px; padding:12px; margin-bottom:15px; font-weight:600;">
+        {% if request.license_state.status == 'trial' %}
+          ⏳ Free trial — {{ request.license_state.days_left }} day{{ request.license_state.days_left|pluralize }} left.
+          <a href="{% url 'user_mgmt:license' %}">Enter your licence key</a> to keep using {{ branding.brand_name|default:"Sehatyar" }}.
+        {% else %}
+          ⚠️ Your licence expires in {{ request.license_state.days_left }} day{{ request.license_state.days_left|pluralize }}.
+          <a href="{% url 'user_mgmt:license' %}">Renew now</a> to avoid interruption.
+        {% endif %}
       </div>
       {% endif %}
 

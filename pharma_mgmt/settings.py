@@ -23,6 +23,12 @@ load_dotenv(BASE_DIR / ".env")
 # A per-user .env in the data dir can override (used by the desktop app).
 load_dotenv(DATA_DIR / ".env", override=True)
 
+# The desktop / clinic-LAN build sets this (see desktop/launcher.py). It switches on
+# offline licence enforcement (licensing/, DesktopLicenseMiddleware): the hosted SaaS
+# site gates tenants by Hospital.expiry_date instead and leaves this False, so the
+# licence middleware is a no-op there.
+DESKTOP_BUILD = os.getenv("PHARMADOST_DESKTOP", "0").lower() in ("1", "true", "yes", "on")
+
 _INSECURE_SECRET_KEY = "dev-secret-key-change-me"
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", _INSECURE_SECRET_KEY)
 
@@ -234,6 +240,9 @@ if _WHITENOISE:
 MIDDLEWARE += [
     'user_mgmt.middleware.SetupMiddleware',
     'user_mgmt.middleware.LoginRequiredMiddleware',
+    # Offline licence lock — active only on the desktop/LAN build (DESKTOP_BUILD).
+    # A no-op on the hosted site, so it is harmless in the list everywhere.
+    'user_mgmt.middleware.DesktopLicenseMiddleware',
 ]
 ROOT_URLCONF = "pharma_mgmt.urls"
 

@@ -76,8 +76,60 @@ Things worth knowing before you rely on it:
 - **It is not on the internet.** Only devices on your wifi can reach it. That is a
   security feature, not a limitation.
 - **Back it up.** Everything lives in `%LOCALAPPDATA%\PharmaDost` on the clinic
-  computer. Use the in-app Backup button, or copy that folder to a USB stick weekly.
-  One failed hard disk with no backup is the whole hospital's records.
+  computer. The app **backs itself up automatically on every launch** — a snapshot
+  (database + uploaded files) is zipped into `%LOCALAPPDATA%\PharmaDost\backups`,
+  keeping the last 14. A computer started each morning is therefore backed up daily
+  with no one having to remember.
+
+  That local copy does **not** survive the computer being **stolen or its disk
+  dying** — for that you need an **off-machine** copy. Set one folder and it is
+  written there too, every launch:
+
+  ```bat
+  set PHARMADOST_BACKUP_DIR=E:\SehatyarBackups     REM a USB stick that stays plugged in
+  PharmaDost.exe
+  ```
+
+  Point it at a **USB stick, a second drive, or a cloud-synced folder** (OneDrive /
+  Google Drive — those upload the backup whenever the internet is up). Keep the USB
+  somewhere other than on top of the computer, so one theft does not take both. The
+  in-app **Backup** button still works for an on-demand copy.
+
+## Monthly subscription (offline licence)
+
+The desktop / LAN build enforces its monthly subscription **on the device**, with no
+internet — through a signed **licence key**. (The hosted site does this differently,
+through the online SaaS portal.)
+
+**How it works**
+
+- A fresh install runs on a **14-day free trial** so the clinic can start at once.
+- Before the trial ends, the clinic pastes a **licence key** in the app: sidebar →
+  **Licence** (or Settings → Licence), which unlocks it for the paid period.
+- When the licence (or the trial) lapses, **every screen locks** — on the server
+  computer *and* on every phone on the wifi, because they all go through this one
+  server — until a fresh key is entered. A warning banner shows for the last 5 days.
+
+**Issuing keys (provider side)** — you keep the signing key; nobody else can make a
+valid licence, even though the code is open:
+
+```bat
+REM once, ever — creates your private signing key (keep it safe, never share it):
+python licensing\keygen.py
+REM   (paste the printed PUBLIC_KEY into user_mgmt/licensing.py, commit that)
+
+REM then each month, per clinic — prints a key to send them (WhatsApp is fine):
+python licensing\sign_license.py "Shaheen Clinic" 1
+python licensing\sign_license.py "Al-Shifa Hospital" 12    REM a full year
+```
+
+The clinic copy-pastes that key into **Licence**. It is verified on the device, so
+activation needs no internet. Renewing early is fine — issue a new key any time; the
+clinic keeps working until the old date, then the new one takes over.
+
+> **Keep `licensing/private_key.json` secret and off the internet.** It is the one
+> thing that lets a licence be signed; it is git-ignored so it is never committed.
+> Losing it means generating a new keypair (and re-issuing everyone's keys).
 
 ## Turning LAN mode off
 

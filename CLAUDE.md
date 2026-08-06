@@ -940,6 +940,39 @@ must never hard-depend on it. Setup and troubleshooting for the clinic: `docs/la
 them. Do not build a feature that assumes otherwise without first building real two-way
 sync (per-row versioning and conflict resolution) — a much larger piece of work.
 
+**Offline subscription licence (desktop/LAN only).** The hosted site gates tenants by
+`Hospital.expiry_date` server-side; the desktop build has no server to check against, so
+it enforces its monthly subscription **on the device** with a signed licence key. The
+launcher sets `PHARMADOST_DESKTOP=1` → `settings.DESKTOP_BUILD` → `user_mgmt.middleware.
+DesktopLicenseMiddleware` runs (a **no-op on the hosted site**, so it is harmless in the
+`MIDDLEWARE` list everywhere). It reads `user_mgmt.licensing.license_state(DATA_DIR)` every
+request: within licence/trial the app runs (the middleware stamps `request.license_state`,
+which `base.html` renders as a banner in the last `WARN_DAYS`); once expired or the trial
+is over it returns the full-screen `desktop/license_locked.html` (HTTP 402) for every path
+except static/media/`/accounts/`, login/logout and the licence page itself — so **every
+phone on the LAN locks too**, since they all go through this one server. An admin unlocks
+at Settings → Licence (`user_mgmt:license`, sidebar shown only on the desktop build).
+
+The crypto is **asymmetric and pure-stdlib** (RSA via built-in `pow`, no bundled crypto
+dep). `user_mgmt/licensing.py` carries only the **public** key and can *verify* a key but
+never *mint* one — so the public repo leaks nothing that lets a clinic forge or extend its
+own licence. The **private** key lives in `licensing/private_key.json` (**git-ignored — never
+commit it**); the owner tools `licensing/keygen.py` (run once) and `licensing/sign_license.py`
+(run per clinic per period) are the only things that sign. A fresh install gets a `TRIAL_DAYS`
+trial; `license_state` also blunts clock-rollback via a stored `last_seen` (`today =
+max(today, last_seen)`). The core lives **inside the `user_mgmt` app**, not a top-level
+package, specifically so the PyInstaller build bundles it with every other app module (the
+`.spec` is git-ignored and cannot be relied on to pick up a new top-level package). Guarded
+by `user_mgmt/tests_licensing.py` (crypto, state machine, and the lock middleware — CI has
+no private key, so the tests mint their own keypair, which *is* the security property).
+
+**The desktop build backs itself up on every launch** (`desktop.launcher.backup_on_start`):
+a zip of the DB + media into `DATA_DIR/backups` (last 14 kept), and — if
+`PHARMADOST_BACKUP_DIR` is set (a USB stick / second drive / cloud-synced folder) — there
+too. Only that off-machine copy survives the computer being stolen or its disk failing, so
+the doc steers the clinic to set it. The in-app `backup_download` button remains for
+on-demand copies.
+
 Add a new kind by: writing a handler that reuses the online view's form/service, registering
 it in `HANDLERS`, marking the form `data-offline-kind` **with any parent id as a hidden
 input**, adding its page to `pwa_views.SHELL_URL_NAMES`, and adding a payload to

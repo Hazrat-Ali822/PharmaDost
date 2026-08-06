@@ -182,6 +182,7 @@ def configure_environment(host_names, port) -> Path:
     dd = data_dir()
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "pharma_mgmt.settings")
     os.environ["PHARMADOST_DATA_DIR"] = str(dd)
+    os.environ["PHARMADOST_DESKTOP"] = "1"           # turns on offline licence enforcement
     os.environ.setdefault("DJANGO_DEBUG", "False")   # no tracebacks to the end user
     os.environ.setdefault("DJANGO_SSL", "false")     # plain http on the LAN — secure-only cookies would break login
 
@@ -228,6 +229,59 @@ def prepare_database() -> None:
             call_command("collectstatic", interactive=False, verbosity=0)
         except Exception as exc:  # never block startup on a static hiccup
             print(f"[{BRAND}] collectstatic skipped: {exc}", flush=True)
+
+
+def _rotate_backups(folder: Path, keep: int) -> None:
+    for old in sorted(folder.glob("sehatyar-backup-*.zip"))[:-keep]:
+        try:
+            old.unlink()
+        except Exception:
+            pass
+
+
+def backup_on_start(dd: Path) -> None:
+    """Snapshot the database + uploaded files on every launch, so a lost, stolen or
+    failed clinic computer does not take the records with it. A PC started each
+    morning is therefore backed up daily.
+
+    Copies go to ``<data>/backups`` and, if ``PHARMADOST_BACKUP_DIR`` is set (a USB
+    stick, a second disk, or a cloud-synced folder like OneDrive/Google Drive), to
+    there as well. That off-machine copy is the one that survives the computer being
+    stolen — the local one does not, so setting an external folder is the point.
+    """
+    import zipfile
+    from datetime import datetime
+
+    db = dd / "db.sqlite3"
+    if not db.exists():
+        return       # first run, nothing to back up yet
+    media = dd / "media"
+    name = f"sehatyar-backup-{datetime.now().strftime('%Y%m%d-%H%M%S')}.zip"
+
+    targets = [dd / "backups"]
+    external = os.getenv("PHARMADOST_BACKUP_DIR")
+    if external:
+        targets.append(Path(external))
+
+    made = []
+    for folder in targets:
+        try:
+            folder.mkdir(parents=True, exist_ok=True)
+            out = folder / name
+            with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
+                z.write(db, "db.sqlite3")
+                if media.exists():
+                    for f in media.rglob("*"):
+                        if f.is_file():
+                            z.write(f, str(Path("media") / f.relative_to(media)))
+            _rotate_backups(folder, keep=14)
+            made.append(out)
+        except Exception as exc:
+            print(f"[{BRAND}] backup to {folder} skipped: {exc}", flush=True)
+    if made:
+        extra = f"  (+{len(made) - 1} off-machine)" if len(made) > 1 else \
+                "  (set PHARMADOST_BACKUP_DIR to a USB/cloud folder for an off-machine copy)"
+        print(f"[{BRAND}] Backup saved: {made[0]}{extra}", flush=True)
 
 
 def serve(bind_host: str, port: int) -> None:
@@ -313,6 +367,7 @@ def main() -> None:
     os.environ["PHARMADOST_LAN_IPS"] = ",".join(ips)
 
     prepare_database()
+    backup_on_start(dd)
 
     firewall = open_firewall(port) if use_lan else "LAN mode off"
 

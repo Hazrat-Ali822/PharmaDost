@@ -1,0 +1,57 @@
+{% extends 'partials/base.html' %}
+{% block title %}Licence{% endblock %}
+{% block page_title %}Licence{% endblock %}
+{% block content %}
+
+<div class="page-head"><h2>Licence &amp; Subscription</h2></div>
+
+{% if not desktop_build %}
+<div class="card" style="max-width:640px;">
+  <p style="margin:0;">This is the <strong>hosted</strong> installation. Its subscription
+  is managed by the provider through the online portal — there is no key to enter here.</p>
+</div>
+{% else %}
+
+<div class="card" style="max-width:640px; margin-bottom:18px;">
+  <h3 style="margin-top:0;">Current status</h3>
+  {% if license.status == 'licensed' %}
+    <p><span class="badge green">Active</span>
+       {% if license.clinic %}<span class="muted"> · {{ license.clinic }}</span>{% endif %}</p>
+    <p class="muted" style="font-size:13px;">Valid until <strong>{{ license.exp|date:"d M Y" }}</strong>
+       — {{ license.days_left }} day{{ license.days_left|pluralize }} left.</p>
+  {% elif license.status == 'trial' %}
+    <p><span class="badge amber">Free trial</span></p>
+    <p class="muted" style="font-size:13px;">{{ license.days_left }} day{{ license.days_left|pluralize }} left.
+       Enter a licence key below to continue after the trial.</p>
+  {% elif license.status == 'expired' %}
+    <p><span class="badge red">Expired</span></p>
+    <p class="muted" style="font-size:13px;">Expired on <strong>{{ license.exp|date:"d M Y" }}</strong>.
+       Enter a new key to reactivate.</p>
+  {% else %}
+    <p><span class="badge red">Locked</span></p>
+    <p class="muted" style="font-size:13px;">The trial has ended. Enter a licence key to unlock.</p>
+  {% endif %}
+</div>
+
+<div class="card" style="max-width:640px;">
+  <h3 style="margin-top:0;">Enter licence key</h3>
+  <p class="muted" style="font-size:13px; margin-top:0;">
+    Paste the key your provider sent you (WhatsApp/email). Copy the whole thing.
+  </p>
+  <form method="post">
+    {% csrf_token %}
+    <textarea name="token" rows="4" required placeholder="Paste licence key here…"
+              style="width:100%; padding:11px 12px; border:1px solid var(--border); border-radius:8px; background:var(--card-bg); color:var(--text); font-family:monospace; font-size:12.5px; word-break:break-all;"></textarea>
+    <div style="margin-top:12px;">
+      <button class="btn success" type="submit">Activate</button>
+    </div>
+  </form>
+</div>
+
+<p class="muted" style="max-width:640px; font-size:12.5px; margin-top:14px;">
+  This licence unlocks the app on this computer and every phone on the clinic wifi
+  connected to it. It is verified on the device — no internet is needed to activate.
+</p>
+{% endif %}
+
+{% endblock %}

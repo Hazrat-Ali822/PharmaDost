@@ -57,3 +57,52 @@ class LoginRequiredMiddleware:
 		if request.user.is_authenticated:
 			return self.get_response(request)
 		return redirect(settings.LOGIN_URL)
+
+
+class DesktopLicenseMiddleware:
+	"""Offline monthly-subscription lock for the desktop / clinic-LAN build.
+
+	A no-op on the hosted SaaS site (``DESKTOP_BUILD`` is False there) — hosted
+	tenants are gated by ``Hospital.expiry_date`` in ``HospitalSubscriptionMiddleware``.
+	On the desktop build it checks the signed licence (``licensing.core``) every
+	request: inside the licence or the trial the app runs (a banner shows when the
+	end is near); once expired or the trial is over, every screen is replaced with a
+	lock page until an admin pastes a fresh key in Settings → Licence. Because every
+	phone on the clinic LAN goes through this one server, the lock reaches them all.
+	"""
+
+	_allow_prefixes = ('/static/', '/media/', '/accounts/')
+
+	def __init__(self, get_response):
+		self.get_response = get_response
+		self._license_path = None
+
+	def _license_url(self):
+		if self._license_path is None:
+			from django.urls import reverse
+			try:
+				self._license_path = reverse('user_mgmt:license')
+			except Exception:
+				self._license_path = '/manage/license/'
+		return self._license_path
+
+	def __call__(self, request):
+		if not getattr(settings, 'DESKTOP_BUILD', False):
+			return self.get_response(request)
+
+		from user_mgmt import licensing as core
+		state = core.license_state(settings.DATA_DIR)
+		request.license_state = state       # base.html reads this for the banner
+		if state['ok']:
+			return self.get_response(request)
+
+		# Locked: allow only what an admin needs to sign back in and paste a key.
+		path = request.path
+		if (path.startswith(self._allow_prefixes)
+				or path == self._license_url()
+				or path.endswith('/login/') or path.endswith('/logout/')):
+			return self.get_response(request)
+
+		from django.shortcuts import render
+		return render(request, 'desktop/license_locked.html',
+					  {'license': state}, status=402)

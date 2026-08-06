@@ -13,6 +13,7 @@ urlpatterns = [
   path('help/', views.help_center, name='help_center'),
   path('settings/', views.site_settings, name='site_settings'),
   path('backup/', views.backup_download, name='backup_download'),
+  path('license/', views.license_manage, name='license'),
   path('users/', views.user_list, name='user_list'),
   path('users/new/', views.user_create, name='user_create'),
   path('users/<int:pk>/edit/', views.user_edit, name='user_edit'),

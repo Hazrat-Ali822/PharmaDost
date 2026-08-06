@@ -410,3 +410,27 @@ def backup_download(request):
     resp = HttpResponse(buf.getvalue(), content_type='application/zip')
     resp['Content-Disposition'] = f'attachment; filename="{name}"'
     return resp
+
+
+@role_required(["ADMIN"])
+def license_manage(request):
+    """Settings → Licence: show the current subscription state of this desktop /
+    LAN install and let an admin paste the monthly key the provider sends.
+
+    Only meaningful on the desktop build (``DESKTOP_BUILD``); on the hosted site
+    subscription is handled by the SaaS portal instead, so the page says so.
+    """
+    from user_mgmt import licensing as core
+
+    if request.method == 'POST':
+        token = (request.POST.get('token') or '').strip()
+        if core.save_license(settings.DATA_DIR, token):
+            messages.success(request, 'Licence activated. Thank you.')
+        else:
+            messages.error(request, 'That licence key is not valid — check you '
+                                    'copied the whole thing, with no spaces.')
+        return redirect('user_mgmt:license')
+
+    state = core.license_state(settings.DATA_DIR)
+    return render(request, 'user_mgmt/license.html',
+                  {'license': state, 'desktop_build': settings.DESKTOP_BUILD})

@@ -29,6 +29,10 @@ e2e-artifacts/
 /scratch/
 *.bin
 
+# licence signing secret — the private half of the desktop-licence keypair.
+# NEVER commit this; with it anyone can mint valid licences for a public build.
+licensing/private_key.json
+
 # per-machine Claude settings (see CLAUDE.md — must never be committed)
 .claude/settings.local.json
 
