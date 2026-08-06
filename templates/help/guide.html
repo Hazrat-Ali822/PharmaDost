@@ -511,17 +511,35 @@
 
   <!-- ============================ OFFLINE ============================ -->
   <details class="guide" id="offline">
-    <summary><span class="ic">📶</span> Working offline</summary>
+    <summary><span class="ic">📶</span> Install the app &amp; work offline</summary>
     <div class="guide-body">
       <p class="who">Used by: everyone</p>
-      <p>The app keeps working when the internet drops — entries are saved on the device and sent to the server the moment it can be reached.</p>
+
+      <h4>1. Install it on your phone (do this once)</h4>
+      <p>Installing puts {{ branding.brand_name|default:"Sehatyar" }} on your home screen like a normal app — it opens instantly and keeps working when the internet drops. It is the same login, just quicker.</p>
       <ul>
-        <li>Keep working normally. A form saved offline is queued, not lost.</li>
-        <li>The <b>Offline Queue</b> (App → Offline Queue) shows what is waiting to sync, and anything that was rejected with the reason.</li>
-        <li>A visit registered offline prints a <b>provisional slip</b> the patient carries to the doctor. The real MRN and token are issued once it syncs.</li>
-        <li>Numbers (MRN, token, bill numbers) are always given by the server at sync — never guessed on the device.</li>
+        <li><b>Android (Chrome):</b> open the site → tap the <b>⋮</b> menu (top-right) → <b>Add to Home screen</b> → <b>Install</b>. An icon appears on your home screen.</li>
+        <li><b>iPhone (Safari):</b> open the site → tap <b>Share</b> (the □↑ box) → <b>Add to Home Screen</b> → <b>Add</b>.</li>
+        <li><b>Computer (Chrome/Edge):</b> an <b>Install</b> icon appears at the right of the address bar — click it.</li>
+        <li>Not sure? Open <b>App → Get the App</b> in the menu — it checks your device and shows a button to save every screen for offline.</li>
       </ul>
-      <div class="tip">For a clinic with no internet at all, the desktop build can act as a <b>LAN server</b>: every phone on the same wifi runs the whole system live, with no internet. Ask your admin.</div>
+      <div class="tip">Open the app once while you <b>do</b> have internet, and tap through the screens you use (reception, POS, etc.). That saves them so they still open when the internet is gone.</div>
+
+      <h4>2. When the internet drops</h4>
+      <p>Just keep working — nothing stops.</p>
+      <ul>
+        <li>A form you save offline is <b>queued on your device, not lost</b>, and sent to the server automatically the moment the internet is back.</li>
+        <li>The <b>Offline Queue</b> (App → Offline Queue) shows what is waiting to sync, and anything that was rejected — with the reason, and a Try again / Discard button.</li>
+        <li>A visit registered offline prints a <b>provisional slip</b> the patient carries to the doctor. The real MRN and token are issued once it syncs.</li>
+        <li>Numbers (MRN, token, bill numbers) are always given by the server at sync — never guessed on the device, so two phones can never clash.</li>
+      </ul>
+
+      <h4>Good to know</h4>
+      <ul>
+        <li>Each phone keeps <b>its own</b> queue. While the internet is down, what reception enters on their phone reaches the doctor's phone <b>after</b> it syncs, not instantly.</li>
+        <li>You can only open screens you visited at least once while online — that is why step 1's "tap through your screens" matters.</li>
+      </ul>
+      <div class="tip">For a clinic with <b>no internet at all</b>, the desktop build can act as a <b>LAN server</b>: every phone on the same wifi runs the whole system live — including instant notifications between phones — with no internet. Ask your admin.</div>
     </div>
   </details>
 
