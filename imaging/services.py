@@ -17,7 +17,7 @@ def create_study(form, user):
         invoice = create_service_invoice(
             patient=study.patient,
             items=[(f"{study.get_modality_display()}: {study.study_name}", study.price)],
-            created_by=user)
+            created_by=user, service='IMAGING')
         if invoice:
             study.invoice = invoice
             study.save()

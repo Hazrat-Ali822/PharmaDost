@@ -523,29 +523,75 @@ class Command(BaseCommand):
         return True
 
     def _panels(self, patients, users):
+        """Four cards with deliberately different covered-service mixes, so the
+        demo shows the whole range: one covers everything, one is an inpatient
+        Sehat Card that does NOT cover OPD/pharmacy, one is an outpatient panel,
+        one covers OPD only. Each linked patient then gets both a covered bill
+        (becomes a panel claim) and, where relevant, an uncovered bill (falls to
+        the patient) — so the behaviour is visible on the ledger, not just told."""
         from panels.models import Panel, PanelPayment
         from billing.services import create_service_invoice
         acct = users["ACCOUNTANT"]
-        p_ins = Panel.objects.create(
+
+        p_full = Panel.objects.create(
             name="State Life Insurance", type=Panel.INSURANCE,
             contact_person="Claims Desk", phone="042-111-111-111",
-            copay_percent=Decimal("10"), notes="Corporate health cover")
+            copay_percent=Decimal("10"), covered_services=[],      # empty = everything
+            notes="Full corporate cover — all services")
         p_sehat = Panel.objects.create(
             name="Sehat Sahulat (Sehat Card)", type=Panel.SEHAT_CARD,
             contact_person="Sehat Card Facilitation", phone="0800-09009",
-            notes="Govt Sehat Card — annual family limit")
-        # link two patients so their bills auto-attribute as panel claims
-        p1, p2 = patients[1], patients[4]
-        p1.panel = p_ins; p1.panel_member_id = "SL-88231"
-        p1.save(update_fields=["panel", "panel_member_id"])
-        p2.panel = p_sehat; p2.panel_member_id = "SEHAT-3300-1122"
-        p2.panel_coverage_limit = Decimal("120000")
-        p2.save(update_fields=["panel", "panel_member_id", "panel_coverage_limit"])
-        create_service_invoice(patient=p1, created_by=acct,
-                               items=[("Consultation + Dressing", Decimal("1500"))])
-        create_service_invoice(patient=p2, created_by=acct,
-                               items=[("ER treatment + X-ray", Decimal("4500"))])
-        PanelPayment.objects.create(panel=p_ins, amount=Decimal("1350"), method="BANK",
+            covered_services=[Panel.SVC_IPD, Panel.SVC_LAB,
+                              Panel.SVC_IMAGING, Panel.SVC_PROCEDURE],
+            notes="Govt inpatient package — no OPD/pharmacy; annual family limit")
+        p_opd = Panel.objects.create(
+            name="Al-Khidmat OPD Panel", type=Panel.CORPORATE,
+            contact_person="HR Desk", phone="042-222-222-222",
+            covered_services=[Panel.SVC_OPD, Panel.SVC_PHARMACY, Panel.SVC_LAB],
+            notes="Outpatient panel — OPD, pharmacy & lab only")
+        p_only = Panel.objects.create(
+            name="NRSP Microhealth", type=Panel.INSURANCE,
+            contact_person="Member Services", phone="051-333-333-333",
+            covered_services=[Panel.SVC_OPD],
+            notes="Consultation-only cover — OPD free, everything else patient-paid")
+
+        f, h, m, b = patients[1], patients[4], patients[5], patients[6]
+        for pt, panel, card, limit in (
+            (f, p_full, "SL-88231", Decimal("0")),
+            (h, p_sehat, "SEHAT-3300-1122", Decimal("120000")),
+            (m, p_opd, "AK-4521", Decimal("0")),
+            (b, p_only, "NRSP-7788", Decimal("0")),
+        ):
+            pt.panel = panel
+            pt.panel_member_id = card
+            pt.panel_coverage_limit = limit
+            pt.save(update_fields=["panel", "panel_member_id", "panel_coverage_limit"])
+
+        # Covers everything → both bills become claims.
+        create_service_invoice(patient=f, created_by=acct, service="OPD",
+                               items=[("OPD Consultation", Decimal("1500"))])
+        create_service_invoice(patient=f, created_by=acct, service="LAB",
+                               items=[("Lab: LFT + CBC", Decimal("1800"))])
+        # Sehat Card: LAB/IPD covered (claims) but OPD/pharmacy are NOT — that OPD
+        # bill is paid by the patient, proving the per-service gate.
+        create_service_invoice(patient=h, created_by=acct, service="IPD",
+                               items=[("Admission + bed (2 days)", Decimal("9000"))])
+        create_service_invoice(patient=h, created_by=acct, service="LAB",
+                               items=[("Lab: Dengue NS1 + CBC", Decimal("1400"))])
+        create_service_invoice(patient=h, created_by=acct, service="OPD",
+                               items=[("OPD Consultation (not covered)", Decimal("1000"))])
+        # OPD panel: consultation + lab covered; an imaging bill is not.
+        create_service_invoice(patient=m, created_by=acct, service="OPD",
+                               items=[("OPD Consultation", Decimal("1200"))])
+        create_service_invoice(patient=m, created_by=acct, service="IMAGING",
+                               items=[("Ultrasound (not covered)", Decimal("2000"))])
+        # OPD-only card: consultation covered, X-ray not.
+        create_service_invoice(patient=b, created_by=acct, service="OPD",
+                               items=[("OPD Consultation", Decimal("800"))])
+        create_service_invoice(patient=b, created_by=acct, service="IMAGING",
+                               items=[("Chest X-ray (not covered)", Decimal("900"))])
+
+        PanelPayment.objects.create(panel=p_full, amount=Decimal("1350"), method="BANK",
                                     reference="TRX-556677", received_by=acct,
                                     notes="Partial settlement")
 

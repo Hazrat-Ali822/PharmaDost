@@ -35,7 +35,7 @@ def bill_and_notify(appointment, user):
         patient=appointment.patient,
         items=[(f"OPD Consultation — {doctor.full_name}",
                 _fee_for(doctor, appointment.visit_type))],
-        created_by=user, appointment=appointment)
+        created_by=user, appointment=appointment, service='OPD')
 
     if doctor.user:
         Notification.objects.create(

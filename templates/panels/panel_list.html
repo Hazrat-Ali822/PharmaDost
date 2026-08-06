@@ -32,7 +32,7 @@
   <table class="tbl">
     <thead>
       <tr>
-        <th>Name</th><th>Type</th><th>Contact</th><th>Phone</th>
+        <th>Name</th><th>Type</th><th>Covers</th><th>Phone</th>
         <th class="num">Co-pay %</th><th class="num">Outstanding</th><th></th>
       </tr>
     </thead>
@@ -41,7 +41,7 @@
       <tr>
         <td><strong>{{ p.name }}</strong>{% if not p.is_active %} <span class="badge">Inactive</span>{% endif %}</td>
         <td>{{ p.get_type_display }}</td>
-        <td>{{ p.contact_person }}</td>
+        <td>{% if p.covered_services %}<span class="badge">{{ p.covered_display }}</span>{% else %}<span class="badge ok">All services</span>{% endif %}</td>
         <td>{{ p.phone }}</td>
         <td class="num">{{ p.copay_percent }}</td>
         <td class="num {% if p.outstanding > 0 %}danger{% endif %}">{{ currency }} {{ p.outstanding|floatformat:0 }}</td>

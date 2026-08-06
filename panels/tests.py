@@ -184,6 +184,48 @@ class PanelBillingTest(TestCase):
         self.assertEqual(i2.panel_settled, Decimal('200.00'))
         self.assertNotEqual(i2.claim_status, 'PAID')
 
+    # --- per-service coverage --------------------------------------------
+    def test_covers_helper_empty_means_everything(self):
+        p = Panel.objects.create(name='Full', hospital=self.h, covered_services=[])
+        self.assertTrue(p.covers('OPD'))
+        self.assertTrue(p.covers('PHARMACY'))
+        self.assertTrue(p.covers(None))
+
+    def test_covers_helper_restricts_to_listed_services(self):
+        p = Panel.objects.create(name='OPD only', hospital=self.h,
+                                 covered_services=['OPD'])
+        self.assertTrue(p.covers('OPD'))
+        self.assertFalse(p.covers('LAB'))
+        self.assertTrue(p.covers(None))     # a generic charge is always covered
+
+    def test_service_not_covered_falls_to_patient(self):
+        """A patient on an OPD-only card: the OPD bill is a panel claim, but a lab
+        bill is not — it is paid by the patient, no claim raised."""
+        opd_card = Panel.objects.create(name='OPD Card', hospital=self.h,
+                                        covered_services=['OPD'])
+        pt = Patient.objects.create(full_name='Member', gender='M', hospital=self.h,
+                                    panel=opd_card, panel_member_id='X-1')
+        opd = create_service_invoice(patient=pt, created_by=self.admin, service='OPD',
+                                     items=[('OPD Consultation', Decimal('500'))])
+        self.assertEqual(opd.panel_id, opd_card.pk)         # covered → claim
+        self.assertEqual(opd.claim_status, 'PENDING')
+
+        lab = create_service_invoice(patient=pt, created_by=self.admin, service='LAB',
+                                     items=[('Lab: CBC', Decimal('800'))])
+        self.assertIsNone(lab.panel_id)                     # not covered → patient pays
+        self.assertEqual(lab.claim_status, '')
+
+    def test_no_service_tag_still_attributes(self):
+        """A bill with no service category (service=None) bypasses the gate, so a
+        restricted card still claims it — the generic path is unchanged."""
+        opd_card = Panel.objects.create(name='OPD Card 2', hospital=self.h,
+                                        covered_services=['OPD'])
+        pt = Patient.objects.create(full_name='Member2', gender='M', hospital=self.h,
+                                    panel=opd_card)
+        inv = create_service_invoice(patient=pt, created_by=self.admin,
+                                     items=[('Misc charge', Decimal('300'))])
+        self.assertEqual(inv.panel_id, opd_card.pk)
+
     def test_panel_scoped_to_hospital(self):
         other = Hospital.objects.create(name='O', slug='o', expiry_date=_future())
         set_current_hospital(other)

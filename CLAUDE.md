@@ -629,10 +629,25 @@ billed to it are debits it owes, `PanelPayment`s are credits.
   co-pay collected from the patient at the counter. `Invoice` gained `panel`
   (PROTECT), `claim_status` (PENDING/SUBMITTED/APPROVED/PAID/REJECTED),
   `claim_number` and `panel_settled`.
+- **Covered services (per panel).** `Panel.covered_services` (JSONField list of
+  `Panel.SERVICE_KEYS` — OPD / PHARMACY / LAB / IMAGING / IPD / PROCEDURE) says
+  which service categories the card pays for, so one card can be "OPD only",
+  another the inpatient package (IPD + lab + imaging, no pharmacy), another the
+  whole hospital. **Empty list = no restriction = covers everything** — that
+  default keeps every pre-existing panel (and every full-cover card) working with
+  no data migration. `Panel.covers(service)` is the gate (empty→True, `service`
+  None→True). Every billing path **tags its bill with a `service`**:
+  `create_opd_invoice`→`'OPD'`, `create_sale`→`'PHARMACY'`, and
+  `create_service_invoice(..., service=)` passed by its callers (lab→`LAB`,
+  imaging→`IMAGING`, ipd discharge→`IPD`, ot/maternity→`PROCEDURE`,
+  emergency→`OPD`). A bill for a service the card does not cover is billed to the
+  **patient** as normal (no claim). The panel form renders `covered_services` as
+  checkboxes; the panel list shows a "Covers" badge.
 - **Coverage limits (per patient).** `Patient.panel_coverage_limit` (0 = unlimited)
   caps what the panel covers for that patient — e.g. a Sehat Card annual limit.
-  `panels.services.apply_coverage(patient, total, panel)` is called from all three
-  billing paths and returns `(effective_panel, floor)`: the panel owes at most the
+  `panels.services.apply_coverage(patient, total, panel, service=None)` is called
+  from all three billing paths and returns `(effective_panel, floor)`: it first
+  drops the panel when `not panel.covers(service)`, then the panel owes at most the
   patient's **remaining** coverage (`coverage_used` = the panel-owed portion of
   their prior panel bills — payments do *not* restore it), any excess is a `floor`
   the patient must pay, and an **exhausted** limit drops the panel entirely so the
@@ -651,9 +666,10 @@ billed to it are debits it owes, `PanelPayment`s are credits.
   invoice claims, pharmacy sales and payments with a running balance, per-claim
   settled amount, and an inline claim status/number update (`panel_claim_update`).
 - Not offline in v1 (panels are config + receivables; add kinds later if needed).
-  Package-rate catalogues per scheme (fixed price per covered procedure) are still
-  out — coverage is enforced as a money limit, not a covered-services list.
-  Guarded by `panels/tests.py`.
+  Coverage is enforced two ways — a **covered-services list** (above) and a **money
+  limit** — but **not** as package rates: a fixed price per covered procedure per
+  scheme is still out (a covered service is billed at the hospital's own rate, then
+  gated/capped). Guarded by `panels/tests.py`.
 
 ### Staff HR (attendance, leave, payroll)
 

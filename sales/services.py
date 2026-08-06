@@ -164,7 +164,7 @@ def create_sale(*, items, sale_type=Sale.RETAIL, customer=None, customer_name=""
     # coverage; any excess falls to the patient, and an exhausted limit drops the
     # panel entirely. Re-stamp sale.panel with the effective payer.
     from panels.services import apply_coverage
-    panel, floor = apply_coverage(patient, total, panel)
+    panel, floor = apply_coverage(patient, total, panel, service='PHARMACY')
     sale.panel = panel
 
     # A panel sale is owed by the panel, so it defaults to unpaid (the panel

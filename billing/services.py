@@ -169,7 +169,7 @@ def cash_position(day):
 
 def create_service_invoice(*, patient, items, created_by, paid=Decimal('0.00'),
                            payment_method='CASH', discount=Decimal('0.00'),
-                           appointment=None, panel=None):
+                           appointment=None, panel=None, service=None):
     """Create an invoice for one or more chargeable services (lab tests, imaging
     scans, procedures...). `items` is a list of (description, amount) tuples.
 
@@ -195,7 +195,7 @@ def create_service_invoice(*, patient, items, created_by, paid=Decimal('0.00'),
     # fully covered/unlimited) — it never lowers a co-pay the caller already set.
     # An exhausted limit drops the panel (floor None).
     from panels.services import apply_coverage
-    panel, floor = apply_coverage(patient, total, panel)
+    panel, floor = apply_coverage(patient, total, panel, service=service)
     if panel is not None:
         paid = max(paid, floor)
     invoice = Invoice.objects.create(
@@ -229,7 +229,7 @@ def create_opd_invoice(appointment, created_by, payment_method='CASH', discount=
     # pays any excess upfront.
     panel = panel or getattr(appointment.patient, 'panel', None)
     from panels.services import apply_coverage
-    panel, patient_pays = apply_coverage(appointment.patient, total, panel)
+    panel, patient_pays = apply_coverage(appointment.patient, total, panel, service='OPD')
     invoice = Invoice.objects.create(
         patient=appointment.patient,
         appointment=appointment,

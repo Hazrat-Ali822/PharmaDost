@@ -21,7 +21,7 @@ def create_test_order(form, user):
         items = [(f"Lab: {r.lab_test.name}", r.lab_test.price)
                  for r in order.results.select_related("lab_test")]
         invoice = create_service_invoice(
-            patient=order.patient, items=items, created_by=user)
+            patient=order.patient, items=items, created_by=user, service='LAB')
         if invoice:
             order.invoice = invoice
             order.save()

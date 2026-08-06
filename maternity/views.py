@@ -95,7 +95,8 @@ def delivery_record(request, pregnancy_id=None):
                     label = dict(Delivery.TYPE_CHOICES).get(delivery.delivery_type, 'Delivery')
                     inv = create_service_invoice(
                         patient=delivery.mother, created_by=request.user,
-                        items=[(f'Delivery — {label}', Decimal(str(fee)))])
+                        items=[(f'Delivery — {label}', Decimal(str(fee)))],
+                        service='PROCEDURE')
                     if inv:
                         delivery.invoice = inv
                         delivery.save(update_fields=['invoice'])

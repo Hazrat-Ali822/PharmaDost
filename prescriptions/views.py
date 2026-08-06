@@ -111,6 +111,7 @@ def _order_lab_tests(patient, tests, user):
         patient=patient,
         items=[(f"Lab: {t.name}", t.price) for t in tests],
         created_by=user,
+        service='LAB',
     )
     if inv:
         order.invoice = inv
@@ -142,6 +143,7 @@ def _order_scans(scan_types, patient, user):
             patient=patient,
             items=[(f"{study.get_modality_display()}: {study.study_name}", study.price)],
             created_by=user,
+            service='IMAGING',
         )
         if inv:
             study.invoice = inv

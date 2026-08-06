@@ -19,6 +19,7 @@ def schedule_surgery(form, user, surgery_request=None):
                     record.procedure.standard_charge)],
             created_by=user,
             paid=0,
+            service='PROCEDURE',
         )
         if surgery_request:
             surgery_request.status = 'Scheduled'

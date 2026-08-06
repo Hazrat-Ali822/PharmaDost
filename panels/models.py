@@ -26,6 +26,27 @@ class Panel(models.Model):
         (SEHAT_CARD, "Govt Sehat Card"),
     )
 
+    # Which kinds of service this panel covers. Every billing path tags its bill
+    # with one of these keys and asks `covers()` before attributing it to the
+    # panel — so a card can cover "OPD only", another "everything", a Sehat Card
+    # the inpatient side but not the pharmacy counter, etc. Kept deliberately
+    # aligned with the billing service categories, not the fine feature keys.
+    SVC_OPD = "OPD"
+    SVC_PHARMACY = "PHARMACY"
+    SVC_LAB = "LAB"
+    SVC_IMAGING = "IMAGING"
+    SVC_IPD = "IPD"
+    SVC_PROCEDURE = "PROCEDURE"
+    SERVICE_CHOICES = (
+        (SVC_OPD, "OPD / Consultation"),
+        (SVC_PHARMACY, "Pharmacy / Medicines"),
+        (SVC_LAB, "Lab Tests"),
+        (SVC_IMAGING, "Imaging / Radiology"),
+        (SVC_IPD, "Admission / IPD"),
+        (SVC_PROCEDURE, "Procedures / Surgery"),
+    )
+    SERVICE_KEYS = [k for k, _ in SERVICE_CHOICES]
+
     name = models.CharField(max_length=255)
     type = models.CharField(max_length=15, choices=TYPE_CHOICES, default=INSURANCE)
     contact_person = models.CharField(max_length=255, blank=True)
@@ -34,6 +55,11 @@ class Panel(models.Model):
     # The patient's own share, kept for reference/printing; billing collects the
     # co-pay through the invoice's `paid` field, so this is advisory in v1.
     copay_percent = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0.00"))
+    # Covered service categories (subset of SERVICE_KEYS). **Empty = no
+    # restriction — the panel covers everything.** That default keeps every
+    # panel created before this field (and every "full cover" card) working with
+    # no migration data step.
+    covered_services = models.JSONField(default=list, blank=True)
     notes = models.CharField(max_length=255, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(default=timezone.now)
@@ -46,6 +72,21 @@ class Panel(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.get_type_display()})"
+
+    def covers(self, service):
+        """True if this panel covers `service` (a SERVICE_KEYS value). An empty
+        `covered_services` means no restriction (covers everything); a bill with
+        no service category (`None`) is always covered."""
+        if not self.covered_services or not service:
+            return True
+        return service in self.covered_services
+
+    @property
+    def covered_display(self):
+        if not self.covered_services:
+            return "All services"
+        labels = dict(self.SERVICE_CHOICES)
+        return ", ".join(labels.get(s, s) for s in self.covered_services)
 
 
 class PanelPayment(models.Model):

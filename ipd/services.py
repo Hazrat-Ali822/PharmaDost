@@ -158,7 +158,7 @@ def discharge_patient(admission, user):
                 med_total += log.charge
 
         invoice = create_service_invoice(
-            patient=admission.patient, items=items, created_by=user, paid=0)
+            patient=admission.patient, items=items, created_by=user, paid=0, service='IPD')
         if invoice:
             admission.discharge_invoice = invoice
             admission.save(update_fields=['discharge_invoice'])

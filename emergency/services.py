@@ -24,6 +24,7 @@ def register_case(*, patient, created_by, triage='YELLOW', chief_complaint='',
             patient=patient,
             items=[('Emergency Consultation', Decimal(str(consultation_fee)))],
             created_by=created_by,
+            service='OPD',
         )
         if invoice:
             case.invoice = invoice

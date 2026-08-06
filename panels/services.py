@@ -86,18 +86,26 @@ def coverage_remaining(patient):
     return limit - coverage_used(patient)
 
 
-def apply_coverage(patient, total, panel):
+def apply_coverage(patient, total, panel, service=None):
     """Given a new bill of `total` about to be billed to `panel`, apply the
-    patient's coverage limit. Returns (effective_panel, patient_pays):
+    panel's covered-service list and then the patient's coverage limit. Returns
+    (effective_panel, patient_pays):
 
-      * (None, None)            → don't attribute to the panel (no panel, or the
+      * (None, None)            → don't attribute to the panel (no panel, the
+                                   panel does not cover this `service`, or the
                                    limit is exhausted) — the caller bills normally.
       * (panel, Decimal('0'))   → fully covered; the panel owes it all.
       * (panel, excess)         → partially covered; the panel owes the remaining
                                    coverage, the patient pays `excess`.
+
+    `service` is a `Panel.SERVICE_KEYS` value naming what is being billed (OPD,
+    PHARMACY, LAB, …); None means "don't check the service list" (a generic
+    charge is always covered).
     """
     if panel is None or patient is None:
         return (panel, ZERO) if panel is not None else (None, None)
+    if not panel.covers(service):     # this panel does not cover this service
+        return (None, None)
     remaining = coverage_remaining(patient)
     if remaining is None:            # unlimited
         return (panel, ZERO)

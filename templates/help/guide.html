@@ -423,11 +423,12 @@
       <h4>Set up &amp; link</h4>
       <ol>
         <li>Add each payer under <b>Panels</b> (name, type, contact, co-pay %).</li>
-        <li>At registration, link a patient to their panel and card / policy number. A per-patient <b>coverage limit</b> (e.g. a Sehat Card annual limit) can be set.</li>
+        <li>Tick which <b>services this card covers</b> — OPD, Pharmacy, Lab, Imaging, IPD, Procedures. Leave all boxes unticked to cover <b>everything</b>. So one card can be "OPD only", another the inpatient package (IPD + lab + imaging but not the pharmacy counter), another the whole hospital.</li>
+        <li>At registration, link a patient to their panel and card / policy number. A per-patient <b>coverage limit</b> (e.g. a Sehat Card annual limit, in rupees) can also be set — the panel pays up to that amount, the rest is the patient's.</li>
       </ol>
       <h4>Claims &amp; payments</h4>
       <ul>
-        <li>Every bill for a covered patient — OPD, lab, imaging, discharge, pharmacy — becomes a <b>claim</b> the panel owes, automatically.</li>
+        <li>Every bill for a covered patient is checked against the card's covered services: a <b>covered</b> service becomes a <b>claim</b> the panel owes, automatically; anything the card does not cover is billed to the <b>patient</b> as normal. Nothing extra to tick at the counter.</li>
         <li>Record panel payments; the <b>ledger</b> shows every claim, payment and the running balance, and allocates each payment across the oldest open claims.</li>
       </ul>
     </div>
