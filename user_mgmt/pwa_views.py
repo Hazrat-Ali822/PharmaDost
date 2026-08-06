@@ -163,7 +163,7 @@ SHELL_URL_NAMES = [
     'dashboard', 'pwa_offline', 'offline_queue', 'offline_slip',
     'patient_list', 'patient_add',
     'sale_list', 'sale_create',
-    'appointment_list', 'appointment_add', 'visit_create',
+    'reception_desk', 'appointment_list', 'appointment_add', 'visit_create',
     'department_list', 'doctor_list', 'doctor_add', 'payout_list',
     'prescription_list', 'prescription_presets',
     'lab:order_list', 'lab:order_create', 'lab:test_catalog',
@@ -201,7 +201,7 @@ _CRITICAL_URL_NAMES = ['pwa_offline', 'dashboard']
 
 # Bump when the worker's own source changes, so returning devices drop the old
 # cache and re-warm instead of keeping a stale shell.
-_SW_REVISION = '4'
+_SW_REVISION = '5'
 
 
 def _reverse_all(names):
