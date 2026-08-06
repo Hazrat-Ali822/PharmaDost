@@ -371,7 +371,10 @@ def desktop_license(request):
 
 
 MAX_BACKUP_BYTES = 200 * 1024 * 1024      # 200 MB — a clinic SQLite + media, zipped
-KEEP_BACKUPS_PER_INSTALL = 5
+# Keep only the newest snapshot per install: the client uploads a full copy each time
+# and only when the data has changed, so one file per clinic is all the host needs —
+# older ones are dropped so the host disk does not grow with every launch.
+KEEP_BACKUPS_PER_INSTALL = 1
 
 
 @csrf_exempt

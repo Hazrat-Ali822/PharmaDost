@@ -67,10 +67,12 @@ class BackupUploadTest(TestCase):
         resp = self.client.post("/saas/backup/upload/", {"token": self.token})
         self.assertEqual(resp.status_code, 400)
 
-    def test_rotation_keeps_only_last_five(self):
-        for _ in range(7):
+    def test_only_latest_backup_is_kept(self):
+        for _ in range(4):
             self._post(self.token)
-        self.assertEqual(DesktopBackup.objects.filter(install_name="Clinic A").count(), 5)
+        # One file per install: older snapshots are rotated off so the host disk
+        # does not grow with every upload.
+        self.assertEqual(DesktopBackup.objects.filter(install_name="Clinic A").count(), 1)
 
 
 class BackupPortalTest(TestCase):

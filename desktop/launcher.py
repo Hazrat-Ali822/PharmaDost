@@ -256,6 +256,17 @@ def backup_on_start(dd: Path) -> None:
     db = dd / "db.sqlite3"
     if not db.exists():
         return None       # first run, nothing to back up yet
+
+    # Flush the WAL into the main file so the single-file snapshot is complete — a
+    # restore of db.sqlite3 alone would otherwise miss the previous session's writes.
+    try:
+        import sqlite3
+        con = sqlite3.connect(str(db))
+        con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        con.close()
+    except Exception:
+        pass
+
     media = dd / "media"
     name = f"sehatyar-backup-{datetime.now().strftime('%Y%m%d-%H%M%S')}.zip"
 
@@ -356,6 +367,7 @@ def upload_backup_to_cloud(dd: Path, zip_path) -> None:
     reached — the local/off-machine backup has already been written, so this is a
     bonus, never a blocker. Runs in a daemon thread so it never delays startup.
     """
+    import hashlib
     import json
     import secrets
     import urllib.request
@@ -373,6 +385,22 @@ def upload_backup_to_cloud(dd: Path, zip_path) -> None:
     if not token:
         return                          # unlicensed: no cloud copy until activated
 
+    # Only upload when the data actually changed since the last successful upload, so
+    # an idle clinic does not re-send the same database every launch and the host
+    # keeps one current copy, not a pile of identical ones.
+    db = dd / "db.sqlite3"
+    try:
+        db_hash = hashlib.sha256(db.read_bytes()).hexdigest() if db.exists() else None
+    except Exception:
+        db_hash = None
+    marker = dd / "cloud_backup.json"
+    try:
+        last_hash = json.loads(marker.read_text(encoding="utf-8")).get("last_hash")
+    except Exception:
+        last_hash = None
+    if db_hash and db_hash == last_hash:
+        return                          # nothing new to send
+
     try:
         filedata = Path(zip_path).read_bytes()
         boundary = "----sehatyar" + secrets.token_hex(12)
@@ -382,6 +410,8 @@ def upload_backup_to_cloud(dd: Path, zip_path) -> None:
             headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
         with urllib.request.urlopen(req, timeout=90) as resp:
             resp.read()
+        if db_hash:
+            marker.write_text(json.dumps({"last_hash": db_hash}), encoding="utf-8")
         print(f"[{BRAND}] Backup uploaded to {base}", flush=True)
     except Exception:
         pass       # offline or host down — try again next launch

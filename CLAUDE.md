@@ -976,13 +976,17 @@ on-demand copies.
 **Cloud backup to the host + restore** (LAN install → hosted, *not* live sync). On every
 launch `desktop.launcher.upload_backup_to_cloud` also POSTs the snapshot to the hosted site
 (`PHARMADOST_CLOUD_URL`, default `https://sehatyar.online`) at `saas.views.backup_upload` —
-best-effort in a daemon thread, a no-op with no licence or no internet. **Auth is the
-install's signed licence token** (the host verifies its signature with the public key;
-expiry is *not* required — a lapsed clinic's data is still wanted), which also labels the
-backup by clinic name. The endpoint is CSRF-exempt and in `LoginRequiredMiddleware.ALLOWED_NAMES`
-(it is called by the launcher, not a browser). `saas.models.DesktopBackup` stores the zip
-(not tenant-scoped — external installs, superuser-only), keeping the last 5 per install. The
-owner sees/downloads them at `/saas/backups/` and hands one back after a loss. The clinic
+best-effort in a daemon thread, a no-op with no licence or no internet — and **only when the
+DB changed** since the last upload (sha256 of `db.sqlite3` vs `cloud_backup.json`), so an
+idle clinic re-sends nothing. `backup_on_start` first `PRAGMA wal_checkpoint(TRUNCATE)`s so
+the single-file snapshot is complete. **Auth is the install's signed licence token** (the
+host verifies its signature with the public key; expiry is *not* required — a lapsed clinic's
+data is still wanted), which also labels the backup by clinic name. The endpoint is
+CSRF-exempt and in `LoginRequiredMiddleware.ALLOWED_NAMES` (it is called by the launcher, not
+a browser). `saas.models.DesktopBackup` stores the zip (not tenant-scoped — external
+installs, superuser-only), keeping only the **latest per install** (`KEEP_BACKUPS_PER_INSTALL
+= 1`, so the host disk does not grow). The owner sees/downloads it at `/saas/backups/` and
+hands it back after a loss. The clinic
 **restores** at Settings → Restore (`user_mgmt.views.restore_upload`, desktop-only, ADMIN):
 because a live SQLite file can't be swapped on Windows, the view only *stages* the uploaded
 zip into `DATA_DIR/_restore_pending/` + a `RESTORE_PENDING` marker, and

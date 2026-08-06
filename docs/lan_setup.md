@@ -101,11 +101,14 @@ Beyond the local/USB backups above, a **licensed** install also sends a copy of 
 to the hosted site whenever it has internet — so the provider always holds a recent
 snapshot, even if the clinic never sets up a USB.
 
-- **Automatic, in the background.** On every launch, once the app is licensed, it uploads
-  its latest backup to `https://sehatyar.online` (override with `PHARMADOST_CLOUD_URL`, or
-  set it empty to turn cloud backup off). No internet → it just tries again next time.
+- **Automatic, in the background.** On every launch, once the app is licensed and **only
+  when the data has changed since last time**, it uploads a fresh copy to
+  `https://sehatyar.online` (override with `PHARMADOST_CLOUD_URL`, or set it empty to turn
+  cloud backup off). No internet → it just tries again next time. An idle day sends nothing.
+- **One file per install.** Each upload replaces the previous one, so the provider always
+  holds exactly one current copy per clinic — the host does not fill up.
 - **Authenticated by the licence key** — no extra password to set up. The provider sees
-  each install's uploads at **Owner Portal → Desktop Backups**, and keeps the last 5.
+  each install's copy at **Owner Portal → Desktop Backups**.
 
 **Restoring after a lost / stolen / dead computer:**
 
