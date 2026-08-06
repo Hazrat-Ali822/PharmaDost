@@ -201,7 +201,7 @@ _CRITICAL_URL_NAMES = ['pwa_offline', 'dashboard']
 
 # Bump when the worker's own source changes, so returning devices drop the old
 # cache and re-warm instead of keeping a stale shell.
-_SW_REVISION = '3'
+_SW_REVISION = '4'
 
 
 def _reverse_all(names):
@@ -427,6 +427,8 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;  // leave cross-origin alone
   if (NO_CACHE.some((p) => url.pathname.startsWith(p))) return;
+  // also the path-form tenant login/logout: /<slug>/login/ , /<slug>/logout/
+  if (url.pathname.endsWith('/login/') || url.pathname.endsWith('/logout/')) return;
 
   // Static assets: cache-first. Templates link them with a ?v= cache-buster, so
   // an exact miss falls back to the same file without the query — after a
