@@ -210,15 +210,19 @@ def appointment_list(request):
     elif show == 'completed':
         appointments = appointments.filter(status='DONE')
         
+    from pharma_mgmt.pagination import paginate
+    page = paginate(request, appointments)
+
     if request.GET.get('ajax') == '1':
         return render(request, 'opd/partials/appointment_list_rows.html', {
-            'appointments': appointments,
+            'appointments': page,
             'show': show,
             'is_doctor': is_doctor
         })
-        
+
     return render(request, 'opd/appointment_list.html', {
-        'appointments': appointments,
+        'appointments': page,
+        'page_obj': page,
         'show': show,
         'is_doctor': is_doctor,
         'is_unlinked_doctor': is_unlinked_doctor

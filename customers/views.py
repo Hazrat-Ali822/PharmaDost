@@ -22,7 +22,9 @@ def customer_list(request):
         )
     if ctype in (Customer.RETAIL, Customer.WHOLESALE):
         customers = customers.filter(type=ctype)
-    return render(request, "customers/customer_list.html", {"customers": customers, "q": q, "ctype": ctype})
+    from pharma_mgmt.pagination import paginate
+    page = paginate(request, customers)
+    return render(request, "customers/customer_list.html", {"customers": page, "page_obj": page, "q": q, "ctype": ctype})
 
 
 @feature_required('customers')

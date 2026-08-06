@@ -84,8 +84,10 @@ def _add_item(order, med, qty):
 # ---------------------------------------------------------------------- views
 @feature_required('pos')
 def order_list(request):
+    from pharma_mgmt.pagination import paginate
     orders = WholesaleOrder.objects.select_related("customer", "sale").all()
-    return render(request, "sales/wholesale_list.html", {"orders": orders})
+    page = paginate(request, orders)
+    return render(request, "sales/wholesale_list.html", {"orders": page, "page_obj": page})
 
 
 @feature_required('pos')

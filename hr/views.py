@@ -94,8 +94,10 @@ def attendance_summary(request):
 
 @feature_required('hr')
 def leave_list(request):
+    from pharma_mgmt.pagination import paginate
     leaves = LeaveRequest.objects.select_related('user').all()
-    return render(request, 'hr/leave_list.html', {'leaves': leaves})
+    page = paginate(request, leaves)
+    return render(request, 'hr/leave_list.html', {'leaves': page, 'page_obj': page})
 
 
 @feature_required('hr')
@@ -124,8 +126,10 @@ def leave_decide(request, pk, decision):
 
 @feature_required('hr')
 def salary_list(request):
+    from pharma_mgmt.pagination import paginate
     payslips = SalaryPayment.objects.select_related('user').all()
-    return render(request, 'hr/salary_list.html', {'payslips': payslips})
+    page = paginate(request, payslips)
+    return render(request, 'hr/salary_list.html', {'payslips': page, 'page_obj': page})
 
 
 @feature_required('hr')

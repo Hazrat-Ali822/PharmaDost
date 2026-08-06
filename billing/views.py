@@ -224,7 +224,8 @@ def expense_create(request):
 @feature_required('cashclosing')
 def cash_closing_list(request):
     closings = CashClosing.objects.select_related('closed_by').all()
-    return render(request, 'billing/cash_closing_list.html', {'closings': closings})
+    page = paginate(request, closings)
+    return render(request, 'billing/cash_closing_list.html', {'closings': page, 'page_obj': page})
 
 
 @feature_required('cashclosing')

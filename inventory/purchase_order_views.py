@@ -47,8 +47,10 @@ def _add_item(req, med, qty, cost=None):
 
 @feature_required('inventory')
 def po_list(request):
+    from pharma_mgmt.pagination import paginate
     orders = PurchaseRequest.objects.select_related('supplier', 'purchase_order').all()
-    return render(request, 'inventory/po_list.html', {'orders': orders})
+    page = paginate(request, orders)
+    return render(request, 'inventory/po_list.html', {'orders': page, 'page_obj': page})
 
 
 @feature_required('inventory')

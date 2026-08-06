@@ -181,8 +181,11 @@ def prescription_list(request):
             Q(diagnosis__icontains=q)
         )
         
+    from pharma_mgmt.pagination import paginate
+    page = paginate(request, prescriptions)
     return render(request, 'prescriptions/prescription_list.html', {
-        'prescriptions': prescriptions,
+        'prescriptions': page,
+        'page_obj': page,
         'q': q
     })
 
