@@ -58,6 +58,47 @@
   </div>
 
   <div class="card">
+    <h3 style="margin-top:0;">Desktop / LAN Licence</h3>
+    <p class="muted" style="font-size:13px; margin-top:0;">
+      For a clinic running the offline desktop/LAN build. This key is tied to
+      <strong>{{ hospital.name }}</strong> — they paste it in their app (Settings → Licence).
+    </p>
+
+    {% if gen_token %}
+    <div style="border-left:4px solid #16a34a; padding:10px 12px; background:var(--card-bg); border-radius:8px; margin-bottom:12px;">
+      <div class="muted" style="font-size:12.5px; margin-bottom:6px;">Licence for
+        <strong>{{ hospital.name }}</strong> — {{ gen_months }} month{{ gen_months|pluralize }}. Copy and send it:</div>
+      <textarea readonly rows="4" id="genkey" onclick="this.select()"
+                style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text); font-family:monospace; font-size:11.5px; word-break:break-all;">{{ gen_token }}</textarea>
+      <button class="btn sm" type="button" style="margin-top:8px;"
+              onclick="navigator.clipboard.writeText(document.getElementById('genkey').value); this.textContent='Copied ✓';">Copy key</button>
+    </div>
+    {% endif %}
+
+    {% if not have_license_key %}
+    <p class="muted" style="font-size:12.5px; color:#b45309;">
+      ⚠️ No signing key installed on this server yet — set
+      <code>DESKTOP_LICENSE_PRIVATE_KEY</code> or upload <code>licensing/private_key.json</code>
+      to the app folder to generate keys here.
+    </p>
+    {% endif %}
+
+    <form method="post" action="{% url 'saas:hospital_desktop_license' hospital.pk %}" style="display:flex; gap:10px; align-items:end;">
+      {% csrf_token %}
+      <div class="field" style="margin:0;">
+        <label>Months</label>
+        <select name="months">
+          <option value="1">1 month</option>
+          <option value="3">3 months</option>
+          <option value="6">6 months</option>
+          <option value="12">12 months</option>
+        </select>
+      </div>
+      <button class="btn success" type="submit">Generate licence key</button>
+    </form>
+  </div>
+
+  <div class="card">
     <h3 style="margin-top:0;">Renewal &amp; payment history</h3>
     <div class="muted" style="font-size:13px;margin-bottom:8px;">Total received: <strong>Rs {{ total_paid|floatformat:0 }}</strong></div>
     <table class="tbl">

@@ -63,10 +63,11 @@ def sign(payload: bytes, priv: dict) -> str:
     return _b64e(sig.to_bytes((sig.bit_length() + 7) // 8, "big"))
 
 
-def make_token(clinic: str, exp: date, iss: date, priv: dict) -> str:
-    payload = json.dumps(
-        {"clinic": clinic, "exp": exp.isoformat(), "iss": iss.isoformat(), "v": 1},
-        separators=(",", ":"), sort_keys=True).encode()
+def make_token(clinic: str, exp: date, iss: date, priv: dict, extra: dict = None) -> str:
+    data = {"clinic": clinic, "exp": exp.isoformat(), "iss": iss.isoformat(), "v": 1}
+    if extra:
+        data.update(extra)      # e.g. {"slug": "shaheen"} to bind the key to one tenant
+    payload = json.dumps(data, separators=(",", ":"), sort_keys=True).encode()
     return _b64e(payload) + "." + sign(payload, priv)
 
 

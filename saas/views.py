@@ -256,18 +256,53 @@ def _add_months(d, months):
     return d.replace(year=year, month=month, day=day)
 
 
-@superuser_required
-def hospital_detail(request, pk):
-    """One tenant's subscription page: status + the full renewal/payment history."""
-    hospital = get_object_or_404(Hospital, pk=pk)
+def _hospital_detail_context(hospital, **extra):
     today = timezone.localdate()
     hospital.days_left = (hospital.expiry_date - today).days
     payments = hospital.payments.order_by('-payment_date', '-created_at')
     total_paid = payments.aggregate(t=models.Sum('amount'))['t'] or 0
-    return render(request, 'saas/hospital_detail.html', {
-        'hospital': hospital, 'payments': payments,
-        'total_paid': total_paid, 'today': today,
-    })
+    ctx = {'hospital': hospital, 'payments': payments,
+           'total_paid': total_paid, 'today': today,
+           'have_license_key': _load_license_private_key() is not None}
+    ctx.update(extra)
+    return ctx
+
+
+@superuser_required
+def hospital_detail(request, pk):
+    """One tenant's subscription page: status + renewal/payment history + a one-click
+    desktop/LAN licence generator bound to this tenant."""
+    hospital = get_object_or_404(Hospital, pk=pk)
+    return render(request, 'saas/hospital_detail.html',
+                  _hospital_detail_context(hospital))
+
+
+@superuser_required
+def hospital_desktop_license(request, pk):
+    """Generate a desktop/LAN licence key **for this tenant** — clinic name and slug
+    taken from the hospital, so the key (and the backups it later uploads) are tied to
+    it. Same signed key as `sign_license.py`, one click from the tenant's page."""
+    from user_mgmt.licensing import make_token
+
+    hospital = get_object_or_404(Hospital, pk=pk)
+    if request.method != 'POST':
+        return redirect('saas:hospital_detail', pk=pk)
+
+    priv = _load_license_private_key()
+    token = None
+    try:
+        months = max(1, min(int(request.POST.get('months') or 1), 60))
+    except (TypeError, ValueError):
+        months = 1
+    if priv is None:
+        messages.error(request, "No signing key on this server. Set "
+                       "DESKTOP_LICENSE_PRIVATE_KEY or upload licensing/private_key.json.")
+    else:
+        today = timezone.localdate()
+        token = make_token(hospital.name, _add_months(today, months), today, priv,
+                           extra={'slug': hospital.slug})
+    return render(request, 'saas/hospital_detail.html',
+                  _hospital_detail_context(hospital, gen_token=token, gen_months=months))
 
 
 @superuser_required

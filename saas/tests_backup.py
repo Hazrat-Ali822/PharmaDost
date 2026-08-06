@@ -87,6 +87,41 @@ class BackupPortalTest(TestCase):
         self.assertEqual(self.client.get("/saas/backups/").status_code, 200)
 
 
+class HospitalLicenseGenTest(TestCase):
+    def setUp(self):
+        from unittest import mock
+        self.mock = mock
+        self.kp = keygen.generate(1024)
+        self._orig = core.PUBLIC_KEY
+        core.PUBLIC_KEY = {"e": self.kp["e"], "n": self.kp["n"]}
+        self.owner = User.objects.create_superuser(email="o@t.com", password="pw")
+        self.client.force_login(self.owner)
+        from saas.models import Hospital
+        self.h = Hospital.objects.create(
+            name="Shaheen Clinic", slug="shaheen",
+            expiry_date=date.today() + timedelta(days=30))
+
+    def tearDown(self):
+        core.PUBLIC_KEY = self._orig
+
+    def test_generated_key_is_bound_to_this_tenant(self):
+        with self.mock.patch("saas.views._load_license_private_key", return_value=self.kp):
+            resp = self.client.post(
+                f"/saas/hospital/{self.h.pk}/desktop-license/", {"months": 3})
+        self.assertEqual(resp.status_code, 200)
+        token = resp.context["gen_token"]
+        data = core.read_token(token)          # verifies signature
+        self.assertEqual(data["clinic"], "Shaheen Clinic")
+        self.assertEqual(data["slug"], "shaheen")
+
+    def test_no_signing_key_shows_notice(self):
+        with self.mock.patch("saas.views._load_license_private_key", return_value=None):
+            resp = self.client.post(
+                f"/saas/hospital/{self.h.pk}/desktop-license/", {"months": 1})
+        self.assertEqual(resp.status_code, 200)
+        self.assertIsNone(resp.context["gen_token"])
+
+
 @override_settings(DESKTOP_BUILD=True)
 class RestoreStagingTest(TestCase):
     def setUp(self):
