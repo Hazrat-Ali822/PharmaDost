@@ -858,12 +858,20 @@ Three things are load-bearing and must stay true:
    sync". `handlers._parent()` now turns a missing or dangling id into a permanent rejection;
    keep new handlers using it.
 
-**Coverage: all 41 kinds in `HANDLERS`** — visit, patient, patient_record, appointment,
+**Coverage: all 48 kinds in `HANDLERS`** — visit, patient, patient_record, appointment,
 department, doctor, payout, prescription, rx_preset, sale, medicine, adjustment,
 purchase_return, supplier, supplier_payment, customer, customer_payment, lab, lab_result,
 lab_test, imaging, imaging_report, scan_type, ward, bed, admission, admission_advise, round,
 medication, vital, fluid, nursing_note, care_task, handover, discharge, surgery,
-surgery_advise, surgery_category, procedure, expense, cash_closing.
+surgery_advise, surgery_category, procedure, expense, cash_closing, and the clinical
+add-ons **antenatal_visit, vaccination, diagnosis, referral, consent, birth_certificate,
+death_certificate** (bedside/front-desk forms, no billing or stock, so replay is a straight
+form re-run; only `antenatal_visit` has a URL parent — `pregnancy_id` as a hidden input).
+Still deliberately **not** offline: **blood-unit issue** (two devices could issue the same
+physical bag — the stock-oversell problem, and it is a connected desk anyway), **HR**
+(attendance is a bespoke grid not a ModelForm, salary is a cash payout done at a desk), and
+the **delivery** record (billing + parallel baby-row arrays; the antenatal visit already
+covers the bedside maternity case).
 
 `offline_sync/tests_coverage.py::EveryKindAppliesTest` **walks `HANDLERS`**, so adding a kind
 without adding a payload there fails the suite — that is deliberate, because a broken handler

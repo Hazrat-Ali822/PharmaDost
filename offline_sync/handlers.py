@@ -877,6 +877,90 @@ def handle_cash_closing(request, data):
             "difference": str(closing.difference)}
 
 
+# --------------------------------------------------------------------------
+# Clinical add-ons — bedside / front-desk forms with no billing and no stock
+# movement, so replay is a straight re-run of the same form the online view
+# uses. Each stamps its actor from `request.user`, exactly as the view does.
+# --------------------------------------------------------------------------
+
+
+def handle_antenatal_visit(request, data):
+    """Record an antenatal (ANC) visit — mirrors ``maternity.views.pregnancy_detail``.
+    The pregnancy is the URL parent, so the form carries `pregnancy_id`."""
+    from maternity.forms import AntenatalVisitForm
+    from maternity.models import Pregnancy
+    _require(request.user, "maternity")
+    preg = _parent(Pregnancy, data.get("pregnancy_id"), "pregnancy")
+    visit = _valid(AntenatalVisitForm(data, user=request.user)).save(commit=False)
+    visit.pregnancy = preg
+    visit.save()
+    return {"visit_id": visit.id, "pregnancy_id": preg.pk}
+
+
+def handle_vaccination(request, data):
+    """Record a vaccine dose — mirrors ``vaccination.views.vaccination_list``. EPI
+    camps and bedside dosing are exactly the no-signal case."""
+    from vaccination.forms import VaccinationRecordForm
+    _require(request.user, "vaccination")
+    rec = _valid(VaccinationRecordForm(data, user=request.user)).save(commit=False)
+    rec.created_by = request.user
+    rec.save()
+    return {"record_id": rec.id, "patient": rec.patient.full_name}
+
+
+def handle_diagnosis(request, data):
+    """Record a coded diagnosis — mirrors ``diagnosis.views.diagnosis_list``."""
+    from diagnosis.forms import PatientDiagnosisForm
+    _require(request.user, "diagnosis")
+    dx = _valid(PatientDiagnosisForm(data, user=request.user)).save(commit=False)
+    dx.created_by = request.user
+    dx.save()
+    return {"diagnosis_id": dx.id, "patient": dx.patient.full_name}
+
+
+def handle_referral(request, data):
+    """Record a referral — mirrors ``referral.views.referral_create``."""
+    from referral.forms import ReferralForm
+    _require(request.user, "referral")
+    ref = _valid(ReferralForm(data, user=request.user)).save(commit=False)
+    ref.created_by = request.user
+    ref.save()
+    return {"referral_id": ref.id, "patient": ref.patient.full_name}
+
+
+def handle_consent(request, data):
+    """Record a signed consent form — mirrors ``consent.views.consent_create``. The
+    body is a frozen copy posted with the form, so nothing is referenced live."""
+    from consent.forms import ConsentRecordForm
+    _require(request.user, "consent")
+    rec = _valid(ConsentRecordForm(data, user=request.user)).save(commit=False)
+    rec.created_by = request.user
+    rec.save()
+    return {"consent_id": rec.id, "patient": rec.patient.full_name}
+
+
+def handle_birth_certificate(request, data):
+    """Issue a birth certificate — mirrors ``certificates.views.birth_create``.
+    `serial_no` is allocated server-side in ``save()`` at replay, like MRN/invoice
+    numbers — never guessed by the client."""
+    from certificates.forms import BirthCertificateForm
+    _require(request.user, "certificates")
+    cert = _valid(BirthCertificateForm(data)).save(commit=False)
+    cert.registered_by = request.user
+    cert.save()
+    return {"certificate_id": cert.id, "serial_no": cert.serial_no}
+
+
+def handle_death_certificate(request, data):
+    """Issue a death certificate — mirrors ``certificates.views.death_create``."""
+    from certificates.forms import DeathCertificateForm
+    _require(request.user, "certificates")
+    cert = _valid(DeathCertificateForm(data, user=request.user)).save(commit=False)
+    cert.registered_by = request.user
+    cert.save()
+    return {"certificate_id": cert.id, "serial_no": cert.serial_no}
+
+
 # kind -> handler. A form is offline-capable only once its `kind` is here AND the
 # template carries every id the handler needs (see the module docstring).
 HANDLERS = {
@@ -930,4 +1014,12 @@ HANDLERS = {
     # billing
     "expense": handle_expense,
     "cash_closing": handle_cash_closing,
+    # clinical add-ons (bedside / front-desk, no billing/stock)
+    "antenatal_visit": handle_antenatal_visit,
+    "vaccination": handle_vaccination,
+    "diagnosis": handle_diagnosis,
+    "referral": handle_referral,
+    "consent": handle_consent,
+    "birth_certificate": handle_birth_certificate,
+    "death_certificate": handle_death_certificate,
 }

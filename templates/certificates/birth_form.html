@@ -7,7 +7,7 @@
   <a class="btn alt" href="{% url 'certificate_list' %}">Back</a>
 </div>
 <div class="card" style="max-width:760px;">
-  <form method="post">
+  <form method="post" data-offline-kind="birth_certificate">
     {% csrf_token %}
     {{ form.as_p }}
     <div class="btn-row" style="margin-top:8px;">

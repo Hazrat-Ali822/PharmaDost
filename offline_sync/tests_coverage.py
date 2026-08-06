@@ -100,6 +100,15 @@ class AllKindsBase(TestCase):
             name="Appendectomy", category=self.surg_cat,
             standard_charge=Decimal("30000"), hospital=self.h)
 
+        # clinical add-ons (parents for the antenatal/vaccination/diagnosis kinds)
+        from maternity.models import Pregnancy
+        from vaccination.models import Vaccine
+        from diagnosis.models import DiagnosisCode
+        self.pregnancy = Pregnancy.objects.create(
+            mother=self.patient, lmp=date.today() - timedelta(days=90), hospital=self.h)
+        self.vaccine = Vaccine.objects.create(code="BCG", name="BCG")          # global
+        self.dx_code = DiagnosisCode.objects.create(code="J06.9", title="Acute URTI")  # global
+
     def tearDown(self):
         clear_current_hospital()
 
@@ -280,6 +289,26 @@ class AllKindsBase(TestCase):
                         "payment_method": "CASH"},
             "cash_closing": {"date": today, "opening": "1000", "counted": "1500",
                              "note": ""},
+            # clinical add-ons
+            "antenatal_visit": {"pregnancy_id": self.pregnancy.pk, "date": today,
+                                "weight": "62", "bp": "120/80", "complaints": ""},
+            "vaccination": {"patient": self.patient.pk, "vaccine": self.vaccine.pk,
+                            "dose_number": "1", "date_given": today, "batch_no": "B1",
+                            "given_by": "Nurse"},
+            "diagnosis": {"patient": self.patient.pk, "code": self.dx_code.pk,
+                          "diagnosed_on": today, "clinical_note": "URTI"},
+            "referral": {"patient": self.patient.pk, "direction": "OUT",
+                         "facility": "DHQ Hospital", "reason": "Specialist opinion",
+                         "urgency": "ROUTINE", "status": "PENDING", "referral_date": today},
+            "consent": {"patient": self.patient.pk, "consent_type": "SURGERY",
+                        "title": "Surgery Consent", "body": "I consent to the procedure.",
+                        "signed_by": "Patient", "signed_on": today},
+            "birth_certificate": {"sex": "M", "date_of_birth": today,
+                                  "mother_name": "Zainab Bibi", "child_name": "Baby Ali",
+                                  "registered_on": today},
+            "death_certificate": {"deceased_name": "Old Man", "sex": "M",
+                                  "date_of_death": today, "cause_of_death": "Cardiac arrest",
+                                  "registered_on": today},
         }
 
 

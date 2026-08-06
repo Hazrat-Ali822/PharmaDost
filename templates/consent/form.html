@@ -7,7 +7,7 @@
   <a class="btn alt" href="{% url 'consent_list' %}">Back</a>
 </div>
 <div class="card" style="max-width:780px;">
-  <form method="post">
+  <form method="post" data-offline-kind="consent">
     {% csrf_token %}
     {{ form.as_p }}
     <div class="btn-row" style="margin-top:8px;">

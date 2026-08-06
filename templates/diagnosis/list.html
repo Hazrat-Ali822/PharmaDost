@@ -35,7 +35,7 @@
 
   <div class="card">
     <h3 style="margin-top:0;">Add diagnosis</h3>
-    <form method="post">
+    <form method="post" data-offline-kind="diagnosis">
       {% csrf_token %}
       {{ form.as_p }}
       <div class="btn-row" style="margin-top:8px;"><button class="btn" type="submit">Save</button></div>

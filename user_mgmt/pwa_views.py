@@ -178,6 +178,11 @@ SHELL_URL_NAMES = [
     'ipd:handover_board', 'ipd:ward_census',
     'ot:surgery_list', 'ot:surgery_create', 'ot:procedure_list',
     'invoice_list', 'expense_list', 'expense_create', 'cash_closing_new',
+    # clinical add-ons now offline-capable (argless create/list pages; the
+    # maternity antenatal form lives on a pk page, so it is cached on first visit
+    # like the IPD bedside forms rather than pre-cached by name)
+    'maternity_list', 'vaccination_list', 'diagnosis_list', 'referral_create',
+    'consent_create', 'birth_create', 'death_create',
     'user_mgmt:help_center',
 ]
 

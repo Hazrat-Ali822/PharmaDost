@@ -54,8 +54,10 @@
   {% if preg.status == 'ONGOING' %}
   <div class="card">
     <h3 style="margin-top:0;">Add antenatal visit</h3>
-    <form method="post">
+    <form method="post" data-offline-kind="antenatal_visit">
       {% csrf_token %}
+      {# offline replay needs the parent pregnancy in the form (the online view takes it from the URL) #}
+      <input type="hidden" name="pregnancy_id" value="{{ preg.pk }}">
       {{ form.as_p }}
       <div class="btn-row" style="margin-top:8px;"><button class="btn" type="submit">Save Visit</button></div>
     </form>
