@@ -1,0 +1,32 @@
+{% extends 'print/base_print.html' %}
+{% block title %}Subscription Invoice{% endblock %}
+{% block doctitle %}Subscription Invoice{% endblock %}
+{% block headmeta %}
+  Invoice #: SUB-{{ payment.pk }}<br>
+  Date: {{ payment.payment_date|date:"d/m/Y" }}
+{% endblock %}
+{% block body %}
+<table style="width:100%; border-collapse:collapse; margin-bottom:16px;">
+  <tr><td style="padding:6px 0;"><strong>Billed to</strong></td><td style="text-align:right;">{{ payment.hospital.name }}</td></tr>
+  <tr><td style="padding:6px 0;">Portal</td><td style="text-align:right;">/{{ payment.hospital.slug }}/</td></tr>
+  <tr><td style="padding:6px 0;">Subscription valid until</td><td style="text-align:right;">{{ payment.hospital.expiry_date|date:"d M Y" }}</td></tr>
+</table>
+
+<table style="width:100%; border-collapse:collapse;">
+  <tr>
+    <td style="padding:8px 0; border-top:1px solid #ccc;">{{ payment.note|default:"Subscription payment" }}</td>
+    <td style="text-align:right; border-top:1px solid #ccc;">Rs {{ payment.amount|floatformat:0 }}</td>
+  </tr>
+  <tr>
+    <td style="padding:10px 0; border-top:2px solid #333; font-weight:800; font-size:16px;">Total paid</td>
+    <td style="text-align:right; border-top:2px solid #333; font-weight:800; font-size:16px;">Rs {{ payment.amount|floatformat:0 }}</td>
+  </tr>
+</table>
+
+<p style="margin-top:14px;">Received with thanks — this receipt confirms the subscription payment above.</p>
+
+<div style="margin-top:48px; display:flex; justify-content:space-between;">
+  <div>_______________________<br>{{ branding.brand_name|default:"Sehatyar" }}</div>
+  <div>_______________________<br>Received by</div>
+</div>
+{% endblock %}

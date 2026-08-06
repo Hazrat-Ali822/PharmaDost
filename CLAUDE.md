@@ -313,6 +313,20 @@ and which crash on save as the hospital vanishes. Guarded by `saas/tests_delete.
 (`test_delete_tenant_that_has_traded` seeds the protecting rows — do not drop it, or the
 regression is unguarded again).
 
+**Subscription / renewal (SaaS owner portal).** A tenant is gated by `Hospital.expiry_date`
++ `is_active`: `saas.middleware.HospitalSubscriptionMiddleware` shows `saas/suspended.html`
+once expired/inactive (and sets `request.subscription_warning` at ≤5 days, rendered as a
+banner in `base.html`). The middleware **skips superusers and hospital-less users** — which is
+why the **desktop/LAN build never expires**: its first-run admin is a superuser and the
+install is hospital-less, so no subscription check ever fires. Only hosted tenants (a
+hospital-scoped user) are gated. Renewal is one action: `saas.views.hospital_renew` extends
+`expiry_date` by N months (adding on top of time left when renewing early, from today when
+already expired), reactivates a suspended tenant, and **records a `HospitalPayment` in the same
+step** so the history builds itself — then redirects to `payment_invoice` (a printable
+receipt extending `print/base_print.html`, platform-branded, currency literal `Rs`).
+`hospital_detail` shows status + the full renewal history; the dashboard links each tenant to
+it with a Renew button. Guarded by `saas/tests.py::SubscriptionRenewalTest`.
+
 ### Login front door (host-aware) — who may sign in where
 
 The `/login/` route is `accounts.views.smart_login`, which dispatches **by host**:

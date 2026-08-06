@@ -242,6 +242,78 @@ def expense_create(request):
 from django.contrib.auth import authenticate, login as auth_login
 from django.utils import timezone
 
+
+def _add_months(d, months):
+    """Add whole months to a date, clamping the day to the target month's last day
+    (31 Jan + 1 month -> 28/29 Feb). No dateutil dependency."""
+    import calendar
+    m = d.month - 1 + months
+    year = d.year + m // 12
+    month = m % 12 + 1
+    day = min(d.day, calendar.monthrange(year, month)[1])
+    return d.replace(year=year, month=month, day=day)
+
+
+@superuser_required
+def hospital_detail(request, pk):
+    """One tenant's subscription page: status + the full renewal/payment history."""
+    hospital = get_object_or_404(Hospital, pk=pk)
+    today = timezone.localdate()
+    hospital.days_left = (hospital.expiry_date - today).days
+    payments = hospital.payments.order_by('-payment_date', '-created_at')
+    total_paid = payments.aggregate(t=models.Sum('amount'))['t'] or 0
+    return render(request, 'saas/hospital_detail.html', {
+        'hospital': hospital, 'payments': payments,
+        'total_paid': total_paid, 'today': today,
+    })
+
+
+@superuser_required
+def hospital_renew(request, pk):
+    """Extend a tenant's subscription by N months AND record the payment in one
+    step, so the renewal history builds itself. Renewing early adds on top of the
+    time left (never shortens it); after expiry it starts from today. Reactivates
+    a suspended tenant."""
+    hospital = get_object_or_404(Hospital, pk=pk)
+    if request.method != 'POST':
+        return redirect('saas:hospital_detail', pk=pk)
+    try:
+        months = int(request.POST.get('months') or 1)
+    except (TypeError, ValueError):
+        months = 1
+    months = max(1, min(months, 60))
+    today = timezone.localdate()
+    base = hospital.expiry_date if hospital.expiry_date > today else today
+    new_expiry = _add_months(base, months)
+
+    from decimal import Decimal, InvalidOperation
+    raw_amount = request.POST.get('amount')
+    try:
+        amount = Decimal(str(raw_amount)) if raw_amount not in (None, '') else None
+    except InvalidOperation:
+        amount = None
+    if amount is None:
+        amount = (hospital.monthly_price or Decimal('0')) * months
+    note = (request.POST.get('note') or '').strip() or \
+        f"Renewal — {months} month(s) → {new_expiry:%d %b %Y}"
+
+    payment = HospitalPayment.objects.create(
+        hospital=hospital, amount=amount, payment_date=today, note=note)
+    hospital.expiry_date = new_expiry
+    hospital.is_active = True                    # renewing lifts a suspension
+    hospital.save(update_fields=['expiry_date', 'is_active'])
+    messages.success(
+        request, f"{hospital.name} renewed to {new_expiry:%d %b %Y}. Payment recorded.")
+    return redirect('saas:payment_invoice', pk=payment.pk)
+
+
+@superuser_required
+def payment_invoice(request, pk):
+    """Printable subscription invoice / receipt for one HospitalPayment."""
+    payment = get_object_or_404(HospitalPayment.objects.select_related('hospital'), pk=pk)
+    return render(request, 'saas/payment_invoice.html', {'payment': payment})
+
+
 def render_hospital_login(request, hospital):
     """The tenant login page + POST handling for one hospital.
 

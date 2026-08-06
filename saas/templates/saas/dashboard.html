@@ -78,8 +78,8 @@
         {% for h in hospitals %}
         <tr data-name="{{ h.name|lower }} {{ h.slug }}">
           <td>
-            <div style="font-weight:700;">{{ h.name }}</div>
-            <a href="/{{ h.slug }}/" target="_blank" class="muted" style="font-size:12.5px; text-decoration:none;">/{{ h.slug }}/ ↗</a>
+            <a href="{% url 'saas:hospital_detail' h.pk %}" style="font-weight:700; text-decoration:none; color:var(--text);">{{ h.name }}</a>
+            <a href="/{{ h.slug }}/" target="_blank" class="muted" style="display:block; font-size:12.5px; text-decoration:none;">/{{ h.slug }}/ ↗</a>
           </td>
           <td>
             {% if h.status == 'active' %}
@@ -102,8 +102,9 @@
           <td class="muted" style="font-size:12.5px;">{% if h.last_sale %}{{ h.last_sale|timesince }} ago{% else %}—{% endif %}</td>
           <td style="font-size:13px;">Rs {{ h.monthly_price|floatformat:0 }}/mo</td>
           <td style="text-align:right; white-space:nowrap;">
+            <a href="{% url 'saas:hospital_detail' h.pk %}"
+               class="btn sm {% if h.status == 'expired' or h.status == 'expiring' or h.status == 'blocked' %}success{% else %}alt{% endif %}">Renew</a>
             <a href="{% url 'saas:hospital_edit' h.pk %}" class="btn alt sm">Edit</a>
-            <a href="/{{ h.slug }}/" target="_blank" class="btn sm">Enter ↗</a>
           </td>
         </tr>
         {% empty %}

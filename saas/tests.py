@@ -244,3 +244,55 @@ class SaasDashboardTest(TestCase):
         self.assertLessEqual(
             len(big.captured_queries) - len(small.captured_queries), 1,
             "dashboard query count grew with tenant count — an N+1 crept in")
+
+
+class SubscriptionRenewalTest(TestCase):
+    """Renewing a tenant extends its expiry AND records a payment in one step, so
+    the renewal history builds itself; the invoice prints."""
+
+    def setUp(self):
+        from saas.views import _add_months
+        self._add_months = _add_months
+        self.root = User.objects.create_superuser(email='root@t.com', password='pw')
+        self.client = Client()
+        self.client.force_login(self.root)
+
+    def test_renew_extends_expiry_and_records_payment(self):
+        from saas.models import HospitalPayment
+        expired = date.today() - timedelta(days=5)
+        h = Hospital.objects.create(name='Clinic', slug='clinic', expiry_date=expired,
+                                    monthly_price=Decimal('2000'), is_active=False)
+        resp = self.client.post(reverse('saas:hospital_renew', args=[h.pk]), {'months': '3'})
+        self.assertEqual(resp.status_code, 302)          # → invoice
+        h.refresh_from_db()
+        # expired → base is today, +3 months
+        self.assertEqual(h.expiry_date, self._add_months(date.today(), 3))
+        self.assertTrue(h.is_active)                     # renewing lifted the suspension
+        pay = HospitalPayment.objects.get(hospital=h)
+        self.assertEqual(pay.amount, Decimal('6000'))    # 2000 × 3, auto
+        # invoice renders
+        inv = self.client.get(reverse('saas:payment_invoice', args=[pay.pk]))
+        self.assertEqual(inv.status_code, 200)
+        self.assertContains(inv, 'Clinic')
+
+    def test_early_renew_adds_on_top_of_time_left(self):
+        future = date.today() + timedelta(days=20)
+        h = Hospital.objects.create(name='C2', slug='c2', expiry_date=future,
+                                    monthly_price=Decimal('1000'))
+        self.client.post(reverse('saas:hospital_renew', args=[h.pk]),
+                         {'months': '1', 'amount': '1200'})
+        h.refresh_from_db()
+        self.assertEqual(h.expiry_date, self._add_months(future, 1))   # not from today
+        from saas.models import HospitalPayment
+        self.assertEqual(HospitalPayment.objects.get(hospital=h).amount, Decimal('1200'))
+
+    def test_detail_page_lists_history_and_requires_superuser(self):
+        h = Hospital.objects.create(name='C3', slug='c3', expiry_date=_future(),
+                                    monthly_price=Decimal('500'))
+        resp = self.client.get(reverse('saas:hospital_detail', args=[h.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'C3')
+        # a non-superuser is bounced
+        staff = User.objects.create_user(email='s@t.com', password='pw', role='ADMIN', hospital=h)
+        c = Client(); c.force_login(staff)
+        self.assertNotEqual(c.get(reverse('saas:hospital_detail', args=[h.pk])).status_code, 200)

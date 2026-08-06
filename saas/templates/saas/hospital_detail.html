@@ -1,0 +1,80 @@
+{% extends 'partials/base.html' %}
+{% block title %}{{ hospital.name }} — Subscription{% endblock %}
+{% block page_title %}{{ hospital.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>{{ hospital.name }}</h2>
+    <div class="muted">/{{ hospital.slug }}/ · Rs {{ hospital.monthly_price|floatformat:0 }}/month</div>
+  </div>
+  <div class="btn-row">
+    <a class="btn alt" href="{% url 'saas:dashboard' %}">← Back</a>
+    <a class="btn alt" href="{% url 'saas:hospital_edit' hospital.pk %}">Edit</a>
+    <a class="btn" href="/{{ hospital.slug }}/" target="_blank">Enter ↗</a>
+  </div>
+</div>
+
+<div class="grid" style="grid-template-columns:1fr 1fr; align-items:start;">
+  <div class="card">
+    <h3 style="margin-top:0;">Subscription</h3>
+    {% if not hospital.is_active %}
+      <p><span class="badge gray">Blocked</span></p>
+    {% elif hospital.days_left < 0 %}
+      <p><span class="badge red">Expired {{ hospital.expiry_date|date:"d M Y" }}</span></p>
+    {% elif hospital.days_left <= 7 %}
+      <p><span class="badge amber">Expiring — {% if hospital.days_left == 0 %}today{% else %}{{ hospital.days_left }} day{{ hospital.days_left|pluralize }} left{% endif %}</span></p>
+    {% else %}
+      <p><span class="badge green">Active — {{ hospital.days_left }} days left</span></p>
+    {% endif %}
+    <p class="muted" style="font-size:13px;">Valid until <strong>{{ hospital.expiry_date|date:"d M Y" }}</strong></p>
+
+    <form method="post" action="{% url 'saas:hospital_renew' hospital.pk %}" style="margin-top:14px;">
+      {% csrf_token %}
+      <div class="field" style="margin-bottom:10px;">
+        <label>Renew for</label>
+        <select name="months" id="renewMonths">
+          <option value="1">1 month</option>
+          <option value="3">3 months</option>
+          <option value="6">6 months</option>
+          <option value="12">12 months</option>
+        </select>
+      </div>
+      <div class="field" style="margin-bottom:10px;">
+        <label>Amount (Rs)</label>
+        <input type="number" name="amount" step="0.01" min="0"
+               placeholder="Auto: Rs {{ hospital.monthly_price|floatformat:0 }} × months">
+      </div>
+      <div class="field" style="margin-bottom:10px;">
+        <label>Note (optional)</label>
+        <input type="text" name="note" placeholder="e.g. bank transfer, cash">
+      </div>
+      <button class="btn success" type="submit">Renew &amp; record payment</button>
+    </form>
+    <p class="muted" style="font-size:12px;margin-top:8px;">
+      Renewing early adds on top of the time left; renewing after expiry lifts the
+      suspension and starts from today. A payment is recorded and an invoice is
+      produced automatically.
+    </p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0;">Renewal &amp; payment history</h3>
+    <div class="muted" style="font-size:13px;margin-bottom:8px;">Total received: <strong>Rs {{ total_paid|floatformat:0 }}</strong></div>
+    <table class="tbl">
+      <thead><tr><th>Date</th><th>Note</th><th class="num">Amount</th><th></th></tr></thead>
+      <tbody>
+        {% for p in payments %}
+        <tr>
+          <td>{{ p.payment_date|date:"d M Y" }}</td>
+          <td style="font-size:12.5px;">{{ p.note|default:"—" }}</td>
+          <td class="num">Rs {{ p.amount|floatformat:0 }}</td>
+          <td><a class="btn sm alt" href="{% url 'saas:payment_invoice' p.pk %}" target="_blank">Invoice</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="muted text-center" style="padding:16px;">No payments yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
