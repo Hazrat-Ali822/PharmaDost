@@ -238,10 +238,17 @@ def expense_create(request):
 from django.contrib.auth import authenticate, login as auth_login
 from django.utils import timezone
 
-def hospital_login(request, hospital_slug):
+def render_hospital_login(request, hospital):
+    """The tenant login page + POST handling for one hospital.
+
+    Shared by the path route (`/<slug>/login/`) and the subdomain route
+    (`<slug>.<BASE_DOMAIN>/login/`), so both behave identically: branded with the
+    hospital's own name/logo/colour, and **isolated** — an account belonging to
+    another hospital is rejected here even with a correct password (only that
+    hospital's staff, or a superuser, may sign in on its portal).
+    """
     from user_mgmt.models import SiteSettings
-    hospital = get_object_or_404(Hospital, slug=hospital_slug)
-    
+
     # Check if subscription is active
     if not hospital.is_active or hospital.expiry_date < timezone.now().date():
         return render(request, 'saas/suspended.html', {'hospital': hospital})
@@ -274,3 +281,20 @@ def hospital_login(request, hospital_slug):
         'branding': branding,
         'error_message': error_message
     })
+
+
+def hospital_login(request, hospital_slug):
+    hospital = get_object_or_404(Hospital, slug=hospital_slug)
+    return render_hospital_login(request, hospital)
+
+
+def tenant_login_url(request, hospital):
+    """Absolute login URL for a hospital — its subdomain when a real base domain
+    is configured (`<slug>.<BASE_DOMAIN>/login/`), else the path form
+    (`/<slug>/login/`) for dev / LAN / hosts without wildcard DNS."""
+    from django.conf import settings
+    base = (getattr(settings, 'BASE_DOMAIN', '') or '').lower()
+    if base and '.' in base and base != 'localhost':
+        scheme = 'https' if request.is_secure() else 'http'
+        return f"{scheme}://{hospital.slug}.{base}/login/"
+    return request.build_absolute_uri(f"/{hospital.slug}/login/")

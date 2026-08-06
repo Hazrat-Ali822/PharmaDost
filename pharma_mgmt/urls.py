@@ -7,7 +7,7 @@ from user_mgmt import pwa_views
 from django.conf import settings
 from django.conf.urls.static import static
 from saas.views import hospital_login
-from accounts.views import demo_login
+from accounts.views import demo_login, smart_login
 
 
 urlpatterns = [
@@ -28,7 +28,10 @@ urlpatterns = [
     path('offline/', include('offline_sync.urls')),
     path('saas/', include('saas.urls')),
     path('setup/', setup_wizard, name='setup'),
-    path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
+    # Host-aware login: the bare platform domain shows the SaaS-owner sign-in
+    # (+ demo); a hospital subdomain (<slug>.<BASE_DOMAIN>) shows that tenant's
+    # branded, isolated login. See accounts.views.smart_login.
+    path('login/', smart_login, name='login'),
     # One-click public demo. Explicit route so it wins over the <hospital_slug>
     # catch-all at the bottom of this list.
     path('demo/', demo_login, name='demo_login'),
@@ -61,6 +64,13 @@ urlpatterns = [
     path('consent/', include('consent.urls')),
     path('manage/audit/', include('audit.urls')),
     path('accounts/', include('accounts.urls')),
+    # django.contrib.auth.urls ALSO registers a view named 'login' at
+    # /accounts/login/, and reverse('login') resolves there — so the login form
+    # (action="{% url 'login' %}") and LoginRequiredMiddleware would POST to the
+    # plain LoginView, bypassing the host-aware smart_login and its tenant
+    # isolation. Shadow it here (before the include) so /accounts/login/ is
+    # handled by smart_login too — now every login path routes through it.
+    path('accounts/login/', smart_login, name='login'),
     path('accounts/', include('django.contrib.auth.urls')),
     path('<slug:hospital_slug>/', hospital_login, name='hospital_login_landing'),
     path('<slug:hospital_slug>/login/', hospital_login, name='hospital_login'),

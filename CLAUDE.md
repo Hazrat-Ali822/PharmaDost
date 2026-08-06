@@ -302,6 +302,39 @@ or they linger as orphaned accounts that can still sign in. The delete runs insi
 `AuditLog.hospital`'s own CASCADE deletes again, and which crash on save as the hospital
 vanishes mid-cascade. Guarded by `saas/tests_delete.py`.
 
+### Login front door (host-aware) — who may sign in where
+
+The `/login/` route is `accounts.views.smart_login`, which dispatches **by host**:
+
+- **A hospital subdomain** (`<slug>.<BASE_DOMAIN>`, e.g. `shaheen-health-care.sehatyar.online`)
+  renders that hospital's **branded, isolated** login (`saas.views.render_hospital_login`) —
+  an account belonging to another hospital is rejected there even with a correct password;
+  only that tenant's staff (or a superuser) may sign in.
+- **The bare platform domain** (`sehatyar.online`) renders `RootLoginView` — **only the SaaS
+  owner (a superuser) may sign in**; a hospital's staff who try are not logged in and are shown
+  a link to their own hospital portal (`tenant_login_url`). The public demo button is unaffected
+  (it goes through `demo_login`, a separate view). This is the deliberate policy: the platform's
+  front door belongs to the owner; every tenant has its own address.
+
+Host → tenant resolution is `saas.utils.hospital_from_host` / `subdomain_slug`, keyed off
+`settings.BASE_DOMAIN` (env `PHARMADOST_BASE_DOMAIN`, default `sehatyar.online`). It returns
+None for the bare domain, `www`, a deeper label, localhost or an IP — so dev/LAN never resolves
+a tenant by host. The **path form `/<slug>/login/` still works** (`saas.views.hospital_login`
+→ same `render_hospital_login`) as a fallback for hosts without wildcard DNS yet.
+
+Two things are load-bearing:
+
+- **`reverse('login')` resolves to `/accounts/login/`, not `/login/`.** `django.contrib.auth.urls`
+  (included for password-reset etc.) also registers a view named `login` at `/accounts/login/`,
+  and with duplicate names Django's reverse picks that one — so the login form
+  (`action="{% url 'login' %}"`) and `LoginRequiredMiddleware` POST there. `pharma_mgmt/urls.py`
+  therefore **shadows `/accounts/login/` with `smart_login` too** (before the auth include), so
+  every login path routes through the host-aware view. Removing that shadow silently sends the
+  POST to the plain `LoginView`, bypassing all tenant isolation on submit (the bug this fixes).
+- Subdomains require **wildcard DNS (`*.<domain>`) and a wildcard TLS cert** on the host to
+  resolve in a browser; the app side (wildcard `ALLOWED_HOSTS`/`CSRF_TRUSTED_ORIGINS`, added
+  from `BASE_DOMAIN` in `settings.py`) is ready regardless. Guarded by `saas/tests_login.py`.
+
 ### Landing / dashboards
 
 `LOGIN_REDIRECT_URL` → `user_mgmt:post_login_redirect` → `user_mgmt.views.dashboard_router`, which sends superusers to the SaaS portal, ADMINs to `/`, and everyone else to a role template from `ROLE_TEMPLATES`.

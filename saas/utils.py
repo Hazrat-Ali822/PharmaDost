@@ -31,6 +31,47 @@ def clear_current_hospital():
             delattr(_thread_locals, attr)
 
 
+# ---------------------------------------------------------------------------
+# Multi-tenant subdomains: <slug>.<BASE_DOMAIN> maps to one hospital.
+# Used by the login dispatcher so each tenant has its own front door, while the
+# bare platform domain (sehatyar.online) is reserved for the SaaS owner + demo.
+# ---------------------------------------------------------------------------
+def subdomain_slug(host):
+    """Extract a tenant slug from a request host, or None.
+
+    'shaheen.sehatyar.online' -> 'shaheen'; the bare domain, 'www', a deeper
+    label, localhost or an IP -> None. The base domain comes from
+    settings.BASE_DOMAIN so dev/LAN (localhost, 192.168.x) never resolves a
+    tenant by host.
+    """
+    if not host:
+        return None
+    from django.conf import settings
+    host = host.split(':')[0].strip().lower().rstrip('.')
+    base = (getattr(settings, 'BASE_DOMAIN', '') or '').lower()
+    if not base or '.' not in base or base == 'localhost':
+        return None
+    if host == base or host == f"www.{base}":
+        return None
+    suffix = f".{base}"
+    if not host.endswith(suffix):
+        return None
+    sub = host[:-len(suffix)]
+    if not sub or '.' in sub or sub == 'www':
+        return None
+    return sub
+
+
+def hospital_from_host(host):
+    """The Hospital for a tenant subdomain host, or None. Lazy model import to
+    avoid a cycle (models import this module for TenantManager)."""
+    slug = subdomain_slug(host)
+    if not slug:
+        return None
+    from .models import Hospital
+    return Hospital.objects.filter(slug=slug).first()
+
+
 class TenantManager(models.Manager):
     """Scopes a model's default queryset to the hospital bound to this thread.
 

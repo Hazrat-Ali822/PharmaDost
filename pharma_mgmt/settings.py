@@ -60,6 +60,20 @@ if str(BASE_DIR).startswith("/home/"):
         CSRF_TRUSTED_ORIGINS.append(f"https://{username}.pythonanywhere.com")
         CSRF_TRUSTED_ORIGINS.append(f"https://*.pythonanywhere.com")
 
+# Multi-tenant subdomains — each hospital is reachable at <slug>.<BASE_DOMAIN>
+# (e.g. shaheen-health-care.sehatyar.online), while the bare platform domain is
+# reserved for the SaaS owner + public demo. The wildcard host/origin below let
+# every tenant subdomain answer and POST; wildcard DNS (*.<domain>) and a
+# wildcard TLS cert must be set up on the host for these to resolve in a browser.
+BASE_DOMAIN = os.getenv("PHARMADOST_BASE_DOMAIN", "sehatyar.online").strip().lower()
+if BASE_DOMAIN and "." in BASE_DOMAIN and BASE_DOMAIN != "localhost":
+    for _h in (BASE_DOMAIN, f".{BASE_DOMAIN}"):     # '.domain' matches all subdomains
+        if _h not in ALLOWED_HOSTS:
+            ALLOWED_HOSTS.append(_h)
+    for _o in (f"https://{BASE_DOMAIN}", f"https://*.{BASE_DOMAIN}"):
+        if _o not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(_o)
+
 # The key that signs session cookies and password-reset tokens. Running a server
 # on the published default lets anyone forge a cookie and sign in as any user, so
 # this refuses to start rather than serve.

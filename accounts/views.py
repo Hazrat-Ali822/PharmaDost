@@ -2,11 +2,56 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login as auth_login
+from django.contrib.auth.views import LoginView
 from django.contrib import messages
 from django.shortcuts import redirect
+from django.utils.safestring import mark_safe
 from .models import Notification
 
 DEMO_EMAIL = 'demo@sehatyar.online'
+
+
+class RootLoginView(LoginView):
+    """Sign-in on the bare platform domain (e.g. sehatyar.online).
+
+    Only the platform owner (a superuser) may sign in here. A hospital's own
+    staff are turned away with a link to their hospital portal — every tenant
+    signs in from its own address (`<slug>.<BASE_DOMAIN>`), so the front door of
+    the platform belongs to the owner alone. The public demo button below the
+    form is unaffected (it goes through `demo_login`, not this view).
+    """
+    template_name = 'registration/login.html'
+
+    def form_valid(self, form):
+        user = form.get_user()
+        if not user.is_superuser:
+            # Correct credentials, but this is not the owner: do NOT log in here.
+            from saas.views import tenant_login_url
+            if getattr(user, 'hospital_id', None):
+                link = tenant_login_url(self.request, user.hospital)
+                form.add_error(None, mark_safe(
+                    'This is the platform owner sign-in. Your hospital portal is at '
+                    f'<a href="{link}">{link}</a> — please sign in there.'))
+            else:
+                form.add_error(None, 'This sign-in is for the platform owner only.')
+            return self.form_invalid(form)
+        return super().form_valid(form)
+
+
+def smart_login(request, *args, **kwargs):
+    """The `/login/` route, dispatched by host.
+
+    A hospital subdomain (`<slug>.<BASE_DOMAIN>`) renders that hospital's
+    branded, isolated login; the bare platform domain renders the owner sign-in.
+    The path form `/<slug>/login/` still works too (a fallback for hosts without
+    wildcard DNS yet), via `saas.views.hospital_login`.
+    """
+    from saas.utils import hospital_from_host
+    hospital = hospital_from_host(request.get_host())
+    if hospital is not None:
+        from saas.views import render_hospital_login
+        return render_hospital_login(request, hospital)
+    return RootLoginView.as_view()(request, *args, **kwargs)
 
 
 def demo_login(request):
