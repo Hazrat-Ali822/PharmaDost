@@ -9,8 +9,11 @@ SITE_DEFAULTS = {
     "brand_name": "Sehatyar",
     "brand_tagline": "Hospital & Pharmacy",
     "logo_text": "P",
-    "primary_color": "#4f46e5",
-    "accent_color": "#0ea5a4",
+    # ui-ux-pro-max "Enterprise SaaS" default palette (calm cyan + health green).
+    # A tenant can still set its own brand colour; this is only the default and
+    # what "Reset to default" restores.
+    "primary_color": "#0891b2",
+    "accent_color": "#059669",
     # printed bill / receipt header
     "address": "",
     "phone": "",

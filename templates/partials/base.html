@@ -11,8 +11,8 @@
   <title>{% block title %}Sehatyar{% endblock %}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=2.3">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=2.4">
 
   {# Install-as-app (PWA). The manifest and icon are per-tenant, so an install #}
   {# carries this hospital's own name, logo and colour. #}
@@ -20,7 +20,7 @@
   {# NO cookies by default, so without it the tenant cannot be resolved and #}
   {# every install came out branded "Sehatyar" instead of the hospital's name. #}
   <link rel="manifest" href="{% url 'pwa_manifest' %}" crossorigin="use-credentials">
-  <meta name="theme-color" content="{{ branding.primary_color|default:'#4f46e5' }}">
+  <meta name="theme-color" content="{{ branding.primary_color|default:'#0891b2' }}">
   <link rel="apple-touch-icon" href="{{ brand_icon_url|default_if_none:'' }}">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="{{ branding.brand_name|default:'Sehatyar' }}">
@@ -70,7 +70,10 @@
     };
   </script>
   {# SaaS owner portal keeps the platform's own default theme — never a tenant's colours #}
-  {% if branding.primary_color and request.resolver_match.namespace != 'saas' %}<style>:root{ --primary: {{ branding.primary_color }}; --accent: {{ branding.accent_color }}; }</style>{% endif %}
+  {# Inject the tenant's OWN brand colour. Skip when it's still the old indigo
+     default (#4f46e5) so an un-customised tenant falls through to the new cyan
+     default in app.css :root — a hospital that picked its own colour keeps it. #}
+  {% if branding.primary_color and branding.primary_color != '#4f46e5' and request.resolver_match.namespace != 'saas' %}<style>:root{ --primary: {{ branding.primary_color }}; --accent: {{ branding.accent_color }}; }</style>{% endif %}
   <style>
     a.btn:hover, button.btn:hover { color: #ffffff !important; text-decoration: none; }
     a.btn.alt:hover, button.btn.alt:hover { color: var(--text) !important; }
@@ -89,7 +92,7 @@
     .toast-popup {
       background: var(--bg-card, #ffffff);
       color: var(--text, #1e293b);
-      border-left: 4px solid var(--primary, #4f46e5);
+      border-left: 4px solid var(--primary, #0891b2);
       border-radius: 8px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
       padding: 16px 20px;
@@ -155,7 +158,7 @@
   <aside class="sidebar">
     {% if request.path|slice:":6" == "/saas/" %}
       <div class="brand">
-        <span class="logo" style="background: linear-gradient(135deg, #4f46e5, #8b5cf6); color: white; display: flex; align-items: center; justify-content: center;">
+        <span class="logo" style="background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; display: flex; align-items: center; justify-content: center;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px; height:16px; color:white;"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>
         </span>
         <span>Sehatyar<small>SaaS Portal</small></span>
