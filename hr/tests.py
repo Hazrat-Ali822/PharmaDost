@@ -68,6 +68,17 @@ class HrTest(TestCase):
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(SalaryPayment.objects.filter(user=self.nurse).exists())
 
+    def test_staff_list_renders_with_a_profile(self):
+        """Regression: the staff list stashed each profile on `u.profile`, which
+        is the reverse OneToOne to user_mgmt.UserProfile — assigning a
+        StaffProfile there raised ValueError. It only surfaced once a StaffProfile
+        row existed (empty → None assigns fine), so the smoke test missed it."""
+        StaffProfile.objects.create(user=self.nurse, designation='Charge Nurse',
+                                    monthly_salary=Decimal('30000'), hospital=self.h)
+        resp = self._client().get(reverse('hr_staff_list'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Charge Nurse')
+
     def test_feature_gate(self):
         pharm = User.objects.create_user(email='p@h.com', password='pw', role='PHARMACIST', hospital=self.h)
         self.assertEqual(self._client(pharm).get(reverse('hr_staff_list')).status_code, 403)

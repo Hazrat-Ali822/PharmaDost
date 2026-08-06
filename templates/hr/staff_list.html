@@ -26,8 +26,8 @@
       <tr>
         <td><strong>{{ u.get_full_name|default:u.email }}</strong><br><small class="muted">{{ u.email }}</small></td>
         <td>{{ u.get_role_display }}</td>
-        <td>{{ u.profile.designation|default:"—" }}</td>
-        <td class="num">{% if u.profile %}{{ currency }} {{ u.profile.monthly_salary|floatformat:0 }}{% else %}<span class="muted">not set</span>{% endif %}</td>
+        <td>{{ u.hr_profile.designation|default:"—" }}</td>
+        <td class="num">{% if u.hr_profile %}{{ currency }} {{ u.hr_profile.monthly_salary|floatformat:0 }}{% else %}<span class="muted">not set</span>{% endif %}</td>
         <td>
           <a class="btn sm alt" href="{% url 'hr_profile_edit' u.id %}">Edit</a>
           <a class="btn sm" href="{% url 'hr_salary_create' %}?user_id={{ u.id }}">Pay</a>

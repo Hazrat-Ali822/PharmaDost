@@ -31,7 +31,10 @@ def staff_list(request):
     staff = list(_staff(request))
     profiles = {p.user_id: p for p in StaffProfile.objects.all()}
     for u in staff:
-        u.profile = profiles.get(u.id)
+        # NB: not `u.profile` — that name is the reverse OneToOne to
+        # user_mgmt.UserProfile, and assigning a StaffProfile to it raises
+        # ValueError (only surfaced once a StaffProfile row exists).
+        u.hr_profile = profiles.get(u.id)
     total_payroll = sum((p.monthly_salary for p in profiles.values()), 0)
     return render(request, 'hr/staff_list.html', {'staff': staff, 'total_payroll': total_payroll})
 
