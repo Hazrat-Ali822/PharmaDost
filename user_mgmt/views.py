@@ -172,25 +172,38 @@ def sonographer_dashboard(request):
 # templates/help/guide.html). Admin sees everything. Everyone can still scroll to
 # any section — this only powers the "Start here for your role" quick links.
 ROLE_GUIDE_SECTIONS = {
-    'ADMIN': ['start', 'reception', 'doctor', 'pharmacy', 'lab', 'imaging', 'ipd',
-              'ot', 'billing', 'reports', 'users', 'settings', 'offline'],
-    'RECEPTIONIST': ['start', 'reception', 'billing', 'offline'],
-    'DOCTOR': ['start', 'doctor', 'ipd', 'ot', 'offline'],
-    'NURSE': ['start', 'ipd', 'offline'],
+    'ADMIN': ['start', 'reception', 'doctor', 'emergency', 'maternity', 'diagnosis',
+              'referral', 'pharmacy', 'lab', 'imaging', 'bloodbank', 'vaccination',
+              'ipd', 'ot', 'billing', 'panels', 'reports', 'hr', 'certificates',
+              'consent', 'users', 'settings', 'offline'],
+    'RECEPTIONIST': ['start', 'reception', 'emergency', 'referral', 'billing',
+                     'panels', 'certificates', 'offline'],
+    'DOCTOR': ['start', 'doctor', 'emergency', 'maternity', 'diagnosis', 'referral',
+               'bloodbank', 'vaccination', 'ipd', 'ot', 'consent', 'certificates',
+               'offline'],
+    'NURSE': ['start', 'emergency', 'maternity', 'bloodbank', 'vaccination', 'ipd',
+              'consent', 'offline'],
     'PHARMACIST': ['start', 'pharmacy', 'offline'],
     'WHOLESALE': ['start', 'pharmacy', 'offline'],
-    'LABTECH': ['start', 'lab', 'offline'],
+    'LABTECH': ['start', 'lab', 'bloodbank', 'offline'],
     'SONOGRAPHER': ['start', 'imaging', 'offline'],
-    'ACCOUNTANT': ['start', 'billing', 'reports', 'offline'],
+    'ACCOUNTANT': ['start', 'billing', 'panels', 'reports', 'hr', 'offline'],
 }
 
 # Human labels for the anchors, so the role card can name them.
 GUIDE_SECTION_LABELS = {
     'start': 'Getting started', 'reception': 'Front desk / Reception',
-    'doctor': 'Doctor / OPD', 'pharmacy': 'Pharmacy', 'lab': 'Laboratory',
-    'imaging': 'Imaging / Radiology', 'ipd': 'Inpatient & Ward (IPD)',
-    'ot': 'Operation Theatre', 'billing': 'Billing & Finance',
-    'reports': 'Reports', 'users': 'Users & Access', 'settings': 'Settings & Branding',
+    'doctor': 'Doctor / OPD',
+    'emergency': 'Emergency / Casualty', 'maternity': 'Maternity / ANC',
+    'diagnosis': 'Diagnoses (ICD-10)', 'referral': 'Referrals',
+    'pharmacy': 'Pharmacy', 'lab': 'Laboratory',
+    'imaging': 'Imaging / Radiology',
+    'bloodbank': 'Blood Bank', 'vaccination': 'Vaccination / EPI',
+    'ipd': 'Inpatient & Ward (IPD)', 'ot': 'Operation Theatre',
+    'billing': 'Billing & Finance', 'panels': 'Panels / Insurance',
+    'reports': 'Reports', 'hr': 'Staff HR',
+    'certificates': 'Certificates', 'consent': 'Consent Forms',
+    'users': 'Users & Access', 'settings': 'Settings & Branding',
     'offline': 'Working offline',
 }
 

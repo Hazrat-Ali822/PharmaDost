@@ -101,10 +101,20 @@ class Command(BaseCommand):
 
         already_seeded = bool(demo and Patient.objects.filter(hospital=demo).exists())
         if already_seeded:
-            self._users(demo)  # just refresh passwords/roles
+            self._users(demo)  # refresh passwords/roles
+            # Top up modules added after the demo was first seeded (panels,
+            # emergency, HR, maternity, diagnosis, referral, certificates, blood
+            # bank, vaccination, consent). Idempotent — a no-op once present.
+            added = False
+            set_current_hospital(demo)
+            try:
+                with transaction.atomic():
+                    added = self._seed_addons(demo)
+            finally:
+                clear_current_hospital()
             self.stdout.write(self.style.WARNING(
-                "Demo already seeded — refreshed the logins only. "
-                "Use --reset to wipe and rebuild."))
+                "Demo already seeded — refreshed logins" +
+                (" and added the newer modules' data." if added else " only. Use --reset to rebuild.")))
             self._print_logins()
             return
 
@@ -129,6 +139,7 @@ class Command(BaseCommand):
                 self._ipd(patients, docs, users, meds, rnd)
                 self._ot(patients, docs)
                 self._finance(users, rnd)
+                self._seed_addons(demo)   # panels, emergency, HR, maternity, etc.
         finally:
             clear_current_hospital()
 
@@ -480,3 +491,227 @@ class Command(BaseCommand):
             DoctorPayout.objects.create(doctor=d1, date=yday, amount=Decimal("1000"),
                                         payment_method="CASH", note="Weekly settlement",
                                         paid_by=admin)
+
+    # ----------------------------------------------------------- newer modules
+    def _seed_addons(self, demo):
+        """Seed the modules added after the original demo (panels, emergency, HR,
+        maternity, diagnosis, referral, certificates, blood bank, vaccination,
+        consent). Idempotent — returns False and does nothing if already present,
+        so a plain re-run tops an old demo up exactly once. Runs under
+        set_current_hospital(demo), so rows auto-stamp to the demo tenant."""
+        from panels.models import Panel
+        if Panel.objects.filter(hospital=demo).exists():
+            return False
+        from accounts.models import User
+        from opd.models import Doctor
+        from patients.models import Patient
+        patients = list(Patient.objects.filter(hospital=demo).order_by("id"))
+        docs = list(Doctor.objects.filter(pmdc_no__startswith="DEMO-").order_by("pmdc_no"))
+        users = {u.role: u for u in User.objects.filter(email__in=DEMO_EMAILS)}
+        if not (patients and docs and users):
+            return False
+        self._panels(patients, users)
+        self._diagnosis(patients, docs, users)
+        self._emergency(patients, docs, users)
+        self._maternity(patients, docs, users)
+        self._hr(users)
+        self._referral(patients, docs, users)
+        self._certificates(patients, docs, users)
+        self._bloodbank(patients, users)
+        self._vaccination(patients, users)
+        self._consent(patients, docs, users)
+        return True
+
+    def _panels(self, patients, users):
+        from panels.models import Panel, PanelPayment
+        from billing.services import create_service_invoice
+        acct = users["ACCOUNTANT"]
+        p_ins = Panel.objects.create(
+            name="State Life Insurance", type=Panel.INSURANCE,
+            contact_person="Claims Desk", phone="042-111-111-111",
+            copay_percent=Decimal("10"), notes="Corporate health cover")
+        p_sehat = Panel.objects.create(
+            name="Sehat Sahulat (Sehat Card)", type=Panel.SEHAT_CARD,
+            contact_person="Sehat Card Facilitation", phone="0800-09009",
+            notes="Govt Sehat Card — annual family limit")
+        # link two patients so their bills auto-attribute as panel claims
+        p1, p2 = patients[1], patients[4]
+        p1.panel = p_ins; p1.panel_member_id = "SL-88231"
+        p1.save(update_fields=["panel", "panel_member_id"])
+        p2.panel = p_sehat; p2.panel_member_id = "SEHAT-3300-1122"
+        p2.panel_coverage_limit = Decimal("120000")
+        p2.save(update_fields=["panel", "panel_member_id", "panel_coverage_limit"])
+        create_service_invoice(patient=p1, created_by=acct,
+                               items=[("Consultation + Dressing", Decimal("1500"))])
+        create_service_invoice(patient=p2, created_by=acct,
+                               items=[("ER treatment + X-ray", Decimal("4500"))])
+        PanelPayment.objects.create(panel=p_ins, amount=Decimal("1350"), method="BANK",
+                                    reference="TRX-556677", received_by=acct,
+                                    notes="Partial settlement")
+
+    def _diagnosis(self, patients, docs, users):
+        from django.core.management import call_command
+        from diagnosis.models import DiagnosisCode, PatientDiagnosis
+        call_command("seed_icd")
+        doc_user = users["DOCTOR"]
+        for code_str, pat, note in [
+                ("I10", patients[4], "Essential hypertension, on treatment"),
+                ("E11.9", patients[6], "Type 2 diabetes, diet-controlled"),
+                ("J18.9", patients[3], "Community-acquired pneumonia")]:
+            code = DiagnosisCode.objects.filter(code=code_str).first()
+            if code:
+                PatientDiagnosis.objects.create(patient=pat, code=code, doctor=docs[0],
+                                                clinical_note=note, created_by=doc_user)
+
+    def _emergency(self, patients, docs, users):
+        from emergency.models import EmergencyCase
+        doc = docs[0]
+        recep = users["RECEPTIONIST"]
+        EmergencyCase.objects.create(
+            patient=patients[4], triage="RED", chief_complaint="Severe chest pain, sweating",
+            mode_of_arrival="AMBULANCE", bp="90/60", pulse="120", spo2="94",
+            attending_doctor=doc, disposition="IN_TREATMENT", created_by=recep)
+        EmergencyCase.objects.create(
+            patient=patients[2], triage="YELLOW", chief_complaint="Road accident — leg injury",
+            mode_of_arrival="POLICE", is_mlc=True, mlc_no="MLC-2026-014",
+            brought_by="Rescue 1122", attending_doctor=doc, disposition="WAITING",
+            created_by=recep)
+        EmergencyCase.objects.create(
+            patient=patients[7], triage="GREEN", chief_complaint="Fever and headache",
+            mode_of_arrival="WALKIN", disposition="WAITING", created_by=recep)
+
+    def _maternity(self, patients, docs, users):
+        from datetime import time
+        from maternity.models import Pregnancy, AntenatalVisit, Delivery, Birth
+        today = timezone.localdate()
+        doc_gyn = docs[1]
+        reg = users["DOCTOR"]
+        preg = Pregnancy.objects.create(
+            mother=patients[1], husband_name="Mr. Ahmed", lmp=today - timedelta(days=200),
+            gravida=2, para=1, blood_group="O+", registered_by=reg)
+        AntenatalVisit.objects.create(
+            pregnancy=preg, weight="68 kg", bp="110/70", fundal_height="28 cm",
+            fhr="146 bpm", complaints="Mild back pain",
+            next_visit=today + timedelta(days=28), seen_by=doc_gyn)
+        preg2 = Pregnancy.objects.create(
+            mother=patients[5], husband_name="Mr. Bilal", lmp=today - timedelta(days=281),
+            gravida=1, para=0, blood_group="A+", status="DELIVERED", registered_by=reg)
+        delivery = Delivery.objects.create(
+            pregnancy=preg2, mother=patients[5], delivery_type="NORMAL", outcome="LIVE",
+            conducted_by=doc_gyn, notes="Spontaneous vaginal delivery, no complications.")
+        Birth.objects.create(delivery=delivery, sex="F", weight_kg=Decimal("3.20"),
+                             birth_time=time(4, 30), status="ALIVE")
+
+    def _hr(self, users):
+        from hr.models import StaffProfile, Attendance, LeaveRequest, SalaryPayment
+        today = timezone.localdate()
+        admin = users["ADMIN"]
+        for role, desig, sal in [
+                ("DOCTOR", "Senior Medical Officer", 250000),
+                ("NURSE", "Staff Nurse", 60000),
+                ("PHARMACIST", "Pharmacist", 80000),
+                ("RECEPTIONIST", "Front Desk Officer", 45000)]:
+            StaffProfile.objects.get_or_create(user=users[role], defaults=dict(
+                designation=desig, monthly_salary=Decimal(sal),
+                joining_date=today - timedelta(days=400)))
+        for role, st in [("DOCTOR", "PRESENT"), ("NURSE", "PRESENT"),
+                         ("PHARMACIST", "PRESENT"), ("RECEPTIONIST", "LEAVE")]:
+            Attendance.objects.get_or_create(user=users[role], date=today,
+                                             defaults=dict(status=st))
+        LeaveRequest.objects.create(
+            user=users["NURSE"], leave_type="SICK", start_date=today + timedelta(days=3),
+            end_date=today + timedelta(days=4), reason="Fever", status="PENDING")
+        SalaryPayment.objects.create(
+            user=users["PHARMACIST"], period="Last month", basic=Decimal("80000"),
+            allowances=Decimal("5000"), deductions=Decimal("2000"), method="BANK",
+            note="Monthly salary", paid_by=admin)
+
+    def _referral(self, patients, docs, users):
+        from referral.models import Referral
+        Referral.objects.create(
+            patient=patients[4], direction="OUT", facility="Lady Reading Hospital, Peshawar",
+            department="Cardiology", referring_doctor=docs[0],
+            reason="Needs angiography + cardiology opinion",
+            clinical_summary="52 y/o male, chest pain, ECG changes. Stabilised.",
+            urgency="URGENT", status="PENDING", created_by=users["DOCTOR"])
+        Referral.objects.create(
+            patient=patients[3], direction="IN", facility="Basic Health Unit, Nowshera",
+            reason="Referred for paediatric assessment", urgency="ROUTINE",
+            status="ACCEPTED", created_by=users["RECEPTIONIST"])
+
+    def _certificates(self, patients, docs, users):
+        from datetime import time
+        from certificates.models import BirthCertificate, DeathCertificate
+        today = timezone.localdate()
+        BirthCertificate.objects.create(
+            child_name="Baby Girl Iqbal", sex="F", date_of_birth=today - timedelta(days=1),
+            time_of_birth=time(4, 30), place_of_birth="Sehatyar Demo Hospital",
+            weight_kg=Decimal("3.20"), mother_name="Maryam Iqbal",
+            father_name="Bilal Iqbal", address="Model Town",
+            registered_by=users["RECEPTIONIST"])
+        DeathCertificate.objects.create(
+            deceased_name="Late Abdul Sattar", sex="M", age_text="78 years",
+            date_of_death=today - timedelta(days=2), place_of_death="Sehatyar Demo Hospital",
+            cause_of_death="Cardiorespiratory failure", attending_doctor=docs[0],
+            next_of_kin="Imran Sattar (son)", registered_by=users["ADMIN"])
+
+    def _bloodbank(self, patients, users):
+        from bloodbank.models import BloodDonor, BloodUnit, BloodIssue
+        today = timezone.localdate()
+        labtech = users["LABTECH"]
+        donors = []
+        for name, cnic, phone, bg in [
+                ("Junaid Aslam", "17301-1234567-1", "0300-1234567", "O+"),
+                ("Sadia Malik", "17301-7654321-2", "0301-7654321", "A+"),
+                ("Rehan Sheikh", "17301-1112223-3", "0302-1112223", "B+")]:
+            donors.append(BloodDonor.objects.create(
+                full_name=name, cnic=cnic, phone=phone, blood_group=bg,
+                last_donation_date=today - timedelta(days=60)))
+        units = []
+        for bag, bg, donor in [
+                ("BAG-O+-01", "O+", donors[0]), ("BAG-O+-02", "O+", None),
+                ("BAG-A+-01", "A+", donors[1]), ("BAG-B+-01", "B+", donors[2]),
+                ("BAG-AB+-01", "AB+", None)]:
+            units.append(BloodUnit.objects.create(
+                bag_number=bag, blood_group=bg, component="WHOLE", donor=donor,
+                donation_date=today - timedelta(days=5),
+                expiry_date=today + timedelta(days=30), screening_done=True,
+                status="AVAILABLE", created_by=labtech))
+        u = units[0]
+        u.status = "ISSUED"; u.save(update_fields=["status"])
+        BloodIssue.objects.create(unit=u, patient=patients[4], cross_match="Compatible",
+                                  notes="Transfused 1 unit", issued_by=labtech)
+
+    def _vaccination(self, patients, users):
+        from django.core.management import call_command
+        from vaccination.models import Vaccine, VaccinationRecord
+        call_command("seed_epi")
+        today = timezone.localdate()
+        nurse = users["NURSE"]
+        child = patients[3]
+        picks = ["BCG", "OPV0", "PENTA1"]
+        for i, code in enumerate(picks):
+            v = Vaccine.objects.filter(code=code).first()
+            if v:
+                VaccinationRecord.objects.create(
+                    patient=child, vaccine=v, dose_number=1,
+                    date_given=today - timedelta(days=30 * (len(picks) - i)),
+                    batch_no=f"B{i + 1}23", given_by="Nurse Ayesha",
+                    next_due_date=today + timedelta(days=14), created_by=nurse)
+
+    def _consent(self, patients, docs, users):
+        from consent.models import ConsentTemplate, ConsentForm
+        tpl = ConsentTemplate.objects.create(
+            title="General Surgery Consent", consent_type="SURGERY",
+            body="I hereby give my consent for the surgical procedure explained to me, "
+                 "including the administration of anaesthesia, and I understand its "
+                 "risks and expected benefits.")
+        ConsentTemplate.objects.create(
+            title="Blood Transfusion Consent", consent_type="BLOOD",
+            body="I consent to the transfusion of blood / blood products as may be "
+                 "medically required during my treatment.")
+        ConsentForm.objects.create(
+            patient=patients[6], template=tpl, consent_type="SURGERY",
+            title="General Surgery Consent", body=tpl.body, procedure_name="Appendectomy",
+            doctor=docs[2], signed_by="Bilal Ahmed", relation="Self",
+            witness_name="Nurse Ayesha", created_by=users["ADMIN"])
