@@ -1,0 +1,40 @@
+{% extends 'print/base_print.html' %}
+{% block title %}Immunization Card — {{ patient.full_name }}{% endblock %}
+{% block doctitle %}Immunization Card{% endblock %}
+{% block headmeta %}
+  {% if patient.mrn %}<b>MRN:</b> {{ patient.mrn }}<br>{% endif %}
+  <b>Printed:</b> {% now "d/m/Y" %}
+{% endblock %}
+{% block body %}
+<div class="who">
+  <div>
+    <b>Child:</b> {{ patient.full_name }}<br>
+    <b>Age / Sex:</b> {{ patient.age_display|default:"—" }} / {{ patient.get_gender_display|default:patient.gender }}
+  </div>
+  <div style="text-align:right">
+    {% if patient.guardian_name %}<b>Guardian:</b> {{ patient.guardian_name }}<br>{% endif %}
+    {% if patient.phone %}<b>Phone:</b> {{ patient.phone }}{% endif %}
+  </div>
+</div>
+
+<table>
+  <thead><tr><th>Vaccine</th><th>Dose</th><th>Date given</th><th>Batch</th><th>Next due</th></tr></thead>
+  <tbody>
+    {% for r in records %}
+    <tr>
+      <td>{{ r.vaccine.name }}</td>
+      <td>{{ r.dose_number }}</td>
+      <td>{{ r.date_given|date:"d/m/Y" }}</td>
+      <td>{{ r.batch_no|default:"—" }}</td>
+      <td>{{ r.next_due_date|date:"d/m/Y"|default:"—" }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="5" style="text-align:center;color:var(--soft);padding:14px;">No doses recorded.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p style="font-size:12px;color:var(--soft);margin-top:14px;">
+  Keep this card safe and bring it to every visit. Vaccination protects your child from
+  serious diseases — complete every dose on time.
+</p>
+{% endblock %}

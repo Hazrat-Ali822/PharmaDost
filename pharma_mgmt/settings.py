@@ -104,6 +104,11 @@ INSTALLED_APPS = [
     "hr",
     "maternity",
     "diagnosis",
+    "referral",
+    "certificates",
+    "bloodbank",
+    "vaccination",
+    "consent",
     "offline_sync",
 ]
 

@@ -32,6 +32,16 @@ FEATURES = {
     'maternity':     {'ADMIN', 'DOCTOR', 'NURSE'},
     # ICD-10 coded diagnoses.
     'diagnosis':     {'ADMIN', 'DOCTOR'},
+    # Patient referrals in/out + printable referral letter.
+    'referral':      {'ADMIN', 'DOCTOR', 'RECEPTIONIST'},
+    # Birth & death certificates — the records office.
+    'certificates':  {'ADMIN', 'DOCTOR', 'RECEPTIONIST'},
+    # Blood bank — donors, unit inventory, issue.
+    'bloodbank':     {'ADMIN', 'LABTECH', 'DOCTOR', 'NURSE'},
+    # Vaccination / EPI records + immunization card.
+    'vaccination':   {'ADMIN', 'DOCTOR', 'NURSE'},
+    # Consent forms — template library + signed record.
+    'consent':       {'ADMIN', 'DOCTOR', 'NURSE'},
     # Pharmacy
     'pos':           {'ADMIN', 'PHARMACIST', 'WHOLESALE'},
     'inventory':     {'ADMIN', 'PHARMACIST'},
@@ -76,6 +86,11 @@ FEATURE_GROUPS = [
         ('emergency', 'Emergency / Casualty'),
         ('maternity', 'Maternity / Obstetrics'),
         ('diagnosis', 'Diagnoses (ICD-10)'),
+        ('referral', 'Referrals (in / out)'),
+        ('certificates', 'Birth & Death Certificates'),
+        ('bloodbank', 'Blood Bank'),
+        ('vaccination', 'Vaccination / EPI'),
+        ('consent', 'Consent Forms'),
     ]),
     ('Pharmacy', [
         ('pos', 'Point of Sale / Bills'),
@@ -116,8 +131,9 @@ CORE_FEATURES = {'settings', 'audit', 'overview', 'catalog'}
 MODULES = [
     ('pharmacy', 'Pharmacy', 'POS billing, inventory, purchases, customers & suppliers',
      ['pos', 'inventory', 'customers', 'suppliers']),
-    ('opd', 'OPD / Hospital', 'Patients, doctors, appointments, prescriptions & ICD-10 diagnoses',
-     ['patients', 'opd', 'appointments', 'doctors', 'prescriptions', 'diagnosis']),
+    ('opd', 'OPD / Hospital', 'Patients, doctors, appointments, prescriptions, diagnoses, referrals, certificates & consent',
+     ['patients', 'opd', 'appointments', 'doctors', 'prescriptions', 'diagnosis',
+      'referral', 'certificates', 'consent']),
     ('ipd', 'Inpatient (IPD)', 'Ward, bed, patient admission and daily rounds management',
      ['ipd', 'ward', 'ward_manage']),
     ('ot', 'Operation Theatre (OT)', 'Surgery booking, team scheduling and logs management',
@@ -126,6 +142,10 @@ MODULES = [
      ['emergency']),
     ('maternity', 'Maternity / Obstetrics', 'Antenatal care, deliveries & the birth register',
      ['maternity']),
+    ('bloodbank', 'Blood Bank', 'Donor register, blood-unit inventory & issue to patients',
+     ['bloodbank']),
+    ('vaccination', 'Vaccination / EPI', 'EPI schedule, dose records & immunization card',
+     ['vaccination']),
     ('lab', 'Laboratory', 'Lab test orders & printed reports',
      ['lab']),
     ('imaging', 'Imaging / Radiology', 'Ultrasound, X-ray, CT, MRI studies & reports',

@@ -1,0 +1,42 @@
+{% extends 'partials/base.html' %}
+{% block title %}Blood Donors{% endblock %}
+{% block page_title %}Blood Donors{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>Blood Donors</h2></div>
+  <a class="btn alt" href="{% url 'bloodbank_dashboard' %}">Back</a>
+</div>
+
+<div class="grid" style="grid-template-columns:1.6fr 1fr; gap:16px; align-items:start;">
+  <div class="card">
+    <form class="search" method="get" style="margin-bottom:12px;">
+      <select name="group" onchange="this.form.submit()">
+        <option value="">All groups</option>
+        {% for g, label in groups %}<option value="{{ g }}" {% if g == group %}selected{% endif %}>{{ g }}</option>{% endfor %}
+      </select>
+    </form>
+    <table class="tbl">
+      <thead><tr><th>Name</th><th>Group</th><th>Phone</th><th>Last donation</th></tr></thead>
+      <tbody>
+        {% for d in donors %}
+        <tr>
+          <td>{{ d.full_name }}</td>
+          <td><strong>{{ d.blood_group }}</strong></td>
+          <td>{{ d.phone|default:"—" }}</td>
+          <td>{{ d.last_donation_date|date:"d/m/Y"|default:"—" }}</td>
+        </tr>
+        {% empty %}<tr><td colspan="4" class="muted text-center" style="padding:14px;">No donors.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0;">Register donor</h3>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="btn-row" style="margin-top:8px;"><button class="btn" type="submit">Save</button></div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends 'partials/base.html' %}
+{% block title %}Vaccine Schedule{% endblock %}
+{% block page_title %}Vaccine Schedule{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Vaccine Schedule</h2>
+    <div class="muted">Seed the EPI schedule with <code>manage.py seed_epi</code>, or add your own.</div>
+  </div>
+  <a class="btn alt" href="{% url 'vaccination_list' %}">Back</a>
+</div>
+
+<div class="grid" style="grid-template-columns:1.6fr 1fr; gap:16px; align-items:start;">
+  <div class="card">
+    <form class="search" method="get" style="margin-bottom:12px;">
+      <input type="text" name="q" value="{{ q }}" placeholder="Search code or name">
+      <button class="btn" type="submit">Search</button>
+    </form>
+    <table class="tbl">
+      <thead><tr><th>Code</th><th>Name</th><th>Age</th><th>Doses</th><th>Active</th></tr></thead>
+      <tbody>
+        {% for v in vaccines %}
+        <tr>
+          <td><strong>{{ v.code }}</strong></td>
+          <td>{{ v.name }}</td>
+          <td>{{ v.recommended_age|default:"—" }}</td>
+          <td>{{ v.doses_in_series }}</td>
+          <td>{% if v.is_active %}<span class="badge green">Yes</span>{% else %}<span class="badge">No</span>{% endif %}</td>
+        </tr>
+        {% empty %}<tr><td colspan="5" class="muted text-center" style="padding:14px;">No vaccines. Run <code>seed_epi</code>.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0;">Add vaccine</h3>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="btn-row" style="margin-top:8px;"><button class="btn" type="submit">Add</button></div>
+    </form>
+  </div>
+</div>
+{% endblock %}

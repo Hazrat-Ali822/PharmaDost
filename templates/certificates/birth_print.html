@@ -1,0 +1,25 @@
+{% extends 'print/base_print.html' %}
+{% block title %}Birth Certificate {{ c.serial_no }}{% endblock %}
+{% block doctitle %}Certificate of Birth{% endblock %}
+{% block headmeta %}
+  <b>Serial:</b> {{ c.serial_no }}<br>
+  <b>Registered:</b> {{ c.registered_on|date:"d/m/Y" }}
+{% endblock %}
+{% block body %}
+<p style="text-align:center;font-size:13.5px;margin:6px 0 14px;color:var(--soft);">
+  This is to certify that the following birth has been registered.
+</p>
+<table>
+  <tr><th style="width:38%">Name of child</th><td>{{ c.child_name|default:"— (not yet named) —" }}</td></tr>
+  <tr><th>Sex</th><td>{{ c.get_sex_display }}</td></tr>
+  <tr><th>Date of birth</th><td>{{ c.date_of_birth|date:"d/m/Y" }}{% if c.time_of_birth %} at {{ c.time_of_birth|time:"H:i" }}{% endif %}</td></tr>
+  <tr><th>Place of birth</th><td>{{ c.place_of_birth|default:branding.brand_name|default:"Sehatyar" }}</td></tr>
+  {% if c.weight_kg %}<tr><th>Weight at birth</th><td>{{ c.weight_kg }} kg</td></tr>{% endif %}
+  <tr><th>Mother's name</th><td>{{ c.mother_name }}{% if c.mother_cnic %} (CNIC {{ c.mother_cnic }}){% endif %}</td></tr>
+  <tr><th>Father's name</th><td>{{ c.father_name|default:"—" }}{% if c.father_cnic %} (CNIC {{ c.father_cnic }}){% endif %}</td></tr>
+  <tr><th>Address</th><td>{{ c.address|default:"—" }}</td></tr>
+</table>
+<div class="sign">
+  <div class="line">Authorised Signatory<br><span style="color:var(--soft);font-size:12px;">Records Office / Medical Superintendent</span></div>
+</div>
+{% endblock %}

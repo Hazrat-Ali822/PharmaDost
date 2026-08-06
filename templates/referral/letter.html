@@ -1,0 +1,51 @@
+{% extends 'print/base_print.html' %}
+{% block title %}Referral Letter{% endblock %}
+{% block doctitle %}Referral Letter{% endblock %}
+{% block headmeta %}
+  <b>Date:</b> {{ ref.referral_date|date:"d/m/Y" }}<br>
+  <b>Urgency:</b> {{ ref.get_urgency_display }}<br>
+  {% if ref.is_out %}<b>Referred to:</b> {{ ref.facility }}{% else %}<b>Referred from:</b> {{ ref.facility }}{% endif %}
+{% endblock %}
+{% block body %}
+<div class="who">
+  <div>
+    <b>Patient:</b> {{ ref.patient.full_name }}<br>
+    {% if ref.patient.mrn %}<b>MRN:</b> {{ ref.patient.mrn }}<br>{% endif %}
+    <b>Age / Sex:</b> {{ ref.patient.age_display|default:"—" }} / {{ ref.patient.get_gender_display|default:ref.patient.gender }}
+  </div>
+  <div style="text-align:right">
+    {% if ref.department %}<b>Department:</b> {{ ref.department }}<br>{% endif %}
+    {% if ref.receiving_doctor %}<b>Attn:</b> {{ ref.receiving_doctor }}{% endif %}
+  </div>
+</div>
+
+<p style="font-size:13.5px;margin:12px 0;">
+  Dear Colleague,<br><br>
+  {% if ref.is_out %}
+  I am referring the above-named patient to your facility. Kindly find the clinical
+  details below and provide further management as appropriate.
+  {% else %}
+  The above-named patient was referred to us from {{ ref.facility }}. Clinical details
+  as received / recorded are below.
+  {% endif %}
+</p>
+
+<h3 class="sec">Reason for referral</h3>
+<p style="font-size:13.5px;">{{ ref.reason }}</p>
+
+{% if ref.clinical_summary %}<h3 class="sec">Clinical summary</h3>
+<p style="font-size:13.5px;white-space:pre-line;">{{ ref.clinical_summary }}</p>{% endif %}
+
+{% if ref.investigations %}<h3 class="sec">Investigations</h3>
+<p style="font-size:13.5px;white-space:pre-line;">{{ ref.investigations }}</p>{% endif %}
+
+{% if ref.treatment_given %}<h3 class="sec">Treatment given so far</h3>
+<p style="font-size:13.5px;white-space:pre-line;">{{ ref.treatment_given }}</p>{% endif %}
+
+<div class="sign">
+  <div class="line">
+    {% if ref.referring_doctor %}Dr. {{ ref.referring_doctor.full_name }}{% else %}Referring Doctor{% endif %}<br>
+    <span style="color:var(--soft);font-size:12px;">Signature &amp; Stamp</span>
+  </div>
+</div>
+{% endblock %}

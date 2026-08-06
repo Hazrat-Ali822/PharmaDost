@@ -1,0 +1,46 @@
+{% extends 'partials/base.html' %}
+{% block title %}Vaccinations (EPI){% endblock %}
+{% block page_title %}Vaccinations (EPI){% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Vaccination / EPI</h2>
+    <div class="muted">Record doses given and reprint the immunization card.</div>
+  </div>
+  <div class="btn-row">
+    <a class="btn alt" href="{% url 'vaccination_due' %}">Due / Overdue</a>
+    {% if request.user.role == 'ADMIN' or request.user.is_superuser %}
+    <a class="btn alt" href="{% url 'vaccine_catalogue' %}">Vaccine Schedule</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid" style="grid-template-columns:1.5fr 1fr; gap:16px; align-items:start;">
+  <div class="card">
+    <h3 style="margin-top:0;">Recent doses</h3>
+    <table class="tbl">
+      <thead><tr><th>Date</th><th>Patient</th><th>Vaccine</th><th>Dose</th><th>Next due</th></tr></thead>
+      <tbody>
+        {% for r in recent %}
+        <tr>
+          <td>{{ r.date_given|date:"d/m/Y" }}</td>
+          <td><a href="{% url 'vaccination_card' r.patient_id %}">{{ r.patient.full_name }}</a></td>
+          <td>{{ r.vaccine.name }}</td>
+          <td>{{ r.dose_number }}</td>
+          <td>{{ r.next_due_date|date:"d/m/Y"|default:"—" }}</td>
+        </tr>
+        {% empty %}<tr><td colspan="5" class="muted text-center" style="padding:14px;">No records yet.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0;">Record a dose</h3>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="btn-row" style="margin-top:8px;"><button class="btn" type="submit">Save</button></div>
+    </form>
+  </div>
+</div>
+{% endblock %}

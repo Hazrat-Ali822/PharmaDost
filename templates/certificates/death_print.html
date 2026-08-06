@@ -1,0 +1,31 @@
+{% extends 'print/base_print.html' %}
+{% block title %}Death Certificate {{ c.serial_no }}{% endblock %}
+{% block doctitle %}Certificate of Death{% endblock %}
+{% block headmeta %}
+  <b>Serial:</b> {{ c.serial_no }}<br>
+  <b>Registered:</b> {{ c.registered_on|date:"d/m/Y" }}{% if c.is_mlc %}<br><b style="color:#b91c1c">MEDICO-LEGAL CASE</b>{% endif %}
+{% endblock %}
+{% block body %}
+<p style="text-align:center;font-size:13.5px;margin:6px 0 14px;color:var(--soft);">
+  This is to certify the death of the following person.
+</p>
+<table>
+  <tr><th style="width:38%">Name of deceased</th><td>{{ c.deceased_name }}</td></tr>
+  <tr><th>Father / Husband</th><td>{{ c.father_husband_name|default:"—" }}</td></tr>
+  <tr><th>Sex / Age</th><td>{{ c.get_sex_display }} / {{ c.age_text|default:"—" }}</td></tr>
+  {% if c.cnic %}<tr><th>CNIC</th><td>{{ c.cnic }}</td></tr>{% endif %}
+  <tr><th>Date &amp; time of death</th><td>{{ c.date_of_death|date:"d/m/Y" }}{% if c.time_of_death %} at {{ c.time_of_death|time:"H:i" }}{% endif %}</td></tr>
+  <tr><th>Place of death</th><td>{{ c.place_of_death|default:branding.brand_name|default:"Sehatyar" }}</td></tr>
+  <tr><th>Cause of death</th><td>{{ c.cause_of_death }}</td></tr>
+  {% if c.secondary_causes %}<tr><th>Antecedent / other causes</th><td style="white-space:pre-line;">{{ c.secondary_causes }}</td></tr>{% endif %}
+  {% if c.manner %}<tr><th>Manner of death</th><td>{{ c.manner }}</td></tr>{% endif %}
+  <tr><th>Address</th><td>{{ c.address|default:"—" }}</td></tr>
+  {% if c.next_of_kin %}<tr><th>Next of kin</th><td>{{ c.next_of_kin }}{% if c.next_of_kin_cnic %} (CNIC {{ c.next_of_kin_cnic }}){% endif %}</td></tr>{% endif %}
+</table>
+<div class="sign">
+  <div class="line">
+    {% if c.attending_doctor %}Dr. {{ c.attending_doctor.full_name }}{% else %}Certifying Doctor{% endif %}<br>
+    <span style="color:var(--soft);font-size:12px;">Signature &amp; Stamp</span>
+  </div>
+</div>
+{% endblock %}

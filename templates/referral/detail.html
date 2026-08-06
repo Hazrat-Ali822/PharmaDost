@@ -1,0 +1,29 @@
+{% extends 'partials/base.html' %}
+{% block title %}Referral — {{ ref.patient.full_name }}{% endblock %}
+{% block page_title %}Referral{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>{{ ref.patient.full_name }} {% if ref.is_out %}↗ {{ ref.facility }}{% else %}↘ from {{ ref.facility }}{% endif %}</h2>
+    <div class="muted">{{ ref.referral_date|date:"d/m/Y" }} · {{ ref.get_urgency_display }} · {{ ref.get_status_display }}</div>
+  </div>
+  <div class="btn-row">
+    <a class="btn" href="{% url 'referral_letter' ref.pk %}" target="_blank">🖨 Referral Letter</a>
+    <a class="btn alt" href="{% url 'referral_list' %}">Back</a>
+  </div>
+</div>
+
+<div class="card" style="max-width:820px;">
+  <table class="tbl">
+    <tr><th style="width:200px;">Patient</th><td>{{ ref.patient.full_name }} — {{ ref.patient.mrn|default:"" }}</td></tr>
+    <tr><th>Direction</th><td>{{ ref.get_direction_display }}</td></tr>
+    <tr><th>Other facility</th><td>{{ ref.facility }}{% if ref.department %} — {{ ref.department }}{% endif %}</td></tr>
+    <tr><th>Referring doctor</th><td>{% if ref.referring_doctor %}Dr. {{ ref.referring_doctor.full_name }}{% else %}—{% endif %}</td></tr>
+    <tr><th>Receiving doctor</th><td>{{ ref.receiving_doctor|default:"—" }}</td></tr>
+    <tr><th>Reason</th><td>{{ ref.reason }}</td></tr>
+    <tr><th>Clinical summary</th><td>{{ ref.clinical_summary|default:"—"|linebreaksbr }}</td></tr>
+    <tr><th>Investigations</th><td>{{ ref.investigations|default:"—"|linebreaksbr }}</td></tr>
+    <tr><th>Treatment given</th><td>{{ ref.treatment_given|default:"—"|linebreaksbr }}</td></tr>
+  </table>
+</div>
+{% endblock %}

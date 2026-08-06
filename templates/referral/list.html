@@ -1,0 +1,38 @@
+{% extends 'partials/base.html' %}
+{% block title %}Referrals{% endblock %}
+{% block page_title %}Referrals{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Patient Referrals</h2>
+    <div class="muted">Send a patient to another facility, or record one referred in.</div>
+  </div>
+  <a class="btn" href="{% url 'referral_create' %}">+ New Referral</a>
+</div>
+
+<div class="card">
+  <form class="search" method="get" style="margin-bottom:12px;">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search patient, facility or reason">
+    <button class="btn" type="submit">Search</button>
+  </form>
+  <table class="tbl">
+    <thead><tr><th>Date</th><th>Patient</th><th>Direction</th><th>Facility</th><th>Reason</th><th>Urgency</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for r in referrals %}
+      <tr>
+        <td>{{ r.referral_date|date:"d/m/Y" }}</td>
+        <td>{{ r.patient.full_name }}</td>
+        <td>{% if r.is_out %}<span class="badge">Out ↗</span>{% else %}<span class="badge green">In ↘</span>{% endif %}</td>
+        <td>{{ r.facility }}</td>
+        <td>{{ r.reason }}</td>
+        <td>{% if r.urgency == 'EMERGENCY' %}<span class="badge red">Emergency</span>{% elif r.urgency == 'URGENT' %}<span class="badge amber">Urgent</span>{% else %}Routine{% endif %}</td>
+        <td>{{ r.get_status_display }}</td>
+        <td><a class="btn alt sm" href="{% url 'referral_detail' r.pk %}">Open</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8" class="muted text-center" style="padding:16px;">No referrals yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -99,7 +99,7 @@ Two traps when adding tests:
 | `low_stock_alert` | Notify pharmacist/admin about low stock (daily cron) |
 | `reconcile_stock [--fix]` | Repair `Medicine.quantity` drift vs the sum of its `StockBatch` rows (weekly cron) |
 | `repair_tenant_orphans` | Fix rows left with `hospital = NULL` |
-| `seed_lab`, `import_labs_scans`, `seed_org`, `seed_roles` | Catalog/role seeding |
+| `seed_lab`, `import_labs_scans`, `seed_org`, `seed_roles`, `seed_icd`, `seed_epi` | Catalog/role seeding (`seed_icd` = ICD-10 codes, `seed_epi` = EPI vaccine schedule; both global & idempotent) |
 
 ## Two databases — do not conflate them
 
@@ -372,6 +372,69 @@ an international standard — no `hospital` FK, no `TenantManager`), seeded by
 `/diagnosis/catalogue/` (role-gated to ADMIN even though DOCTOR holds the feature).
 `PatientDiagnosis` is the tenant-scoped record linking a patient to a code. Guarded by
 `diagnosis/tests.py`.
+
+### Referrals (in / out)
+
+The `referral` app (`/referral/`, feature `referral` in the `opd` module; roles
+ADMIN/DOCTOR/RECEPTIONIST) records a patient sent to another facility (OUT — the
+common case, and what the printed letter is for) or received from one (IN).
+`facility` is always the *other* facility; the letterhead names this hospital.
+`referral_letter` extends `print/base_print.html`. Tenant-scoped (`hospital` FK +
+`TenantManager`); nothing global. Guarded by `referral/tests.py`.
+
+### Birth & Death certificates
+
+The `certificates` app (`/certificates/`, feature `certificates` in the `opd`
+module; roles ADMIN/DOCTOR/RECEPTIONIST) is the records office. `BirthCertificate`
+and `DeathCertificate` are **stand-alone documents** — neither requires a `Patient`
+row (a newborn has none; a death may be certified for someone never admitted), so
+identity is captured as plain fields (`DeathCertificate.patient` is an optional
+SET_NULL link). `serial_no` (`B-00001` / `D-00001`) is a **per-hospital** human
+counter allocated in `save()` via `_next_serial` (count-based — these are low
+volume, no lock; `all_objects` is the unscoped manager it counts through), so each
+tenant numbers its own from 1. Both print sheets extend `print/base_print.html`.
+Guarded by `certificates/tests.py`.
+
+### Blood bank
+
+The `bloodbank` app (`/bloodbank/`, feature `bloodbank`, its own module; roles
+ADMIN/LABTECH/DOCTOR/NURSE). `BloodUnit` is one physical bag with a status machine
+(AVAILABLE → RESERVED/ISSUED, or EXPIRED/DISCARDED); `is_available` is **derived**
+(`status == 'AVAILABLE' and not is_expired`, `is_expired` from `expiry_date`), so an
+out-of-date bag is never offered even if nobody re-flagged it. `BloodDonor` is the
+donor register; `BloodIssue` issues a unit to a patient — done under
+`select_for_update()` inside `transaction.atomic()`, re-checking `status ==
+'AVAILABLE'` so two clerks can't issue the same bag, and stamping the unit ISSUED.
+Nothing here bills; a transfusion charge, if any, goes through the normal
+service-invoice path. The dashboard shows available counts per group from a single
+grouped pass (no query per group). Guarded by `bloodbank/tests.py`.
+
+### Vaccination / EPI
+
+The `vaccination` app (`/vaccination/`, feature `vaccination`, its own module;
+roles ADMIN/DOCTOR/NURSE). `Vaccine` is the schedule catalogue — a **global**
+reference table (Pakistan's EPI schedule is a national standard, like
+`DiagnosisCode`), seeded by `seed_epi` (idempotent, ~18 EPI vaccines) and
+extendable by an admin on `/vaccination/catalogue/` (role-gated to ADMIN even
+though DOCTOR/NURSE hold the feature). `VaccinationRecord` is the tenant-scoped
+dose given to a patient; `next_due_date` is **stored** (the vaccinator sets it at
+the visit) rather than derived, because the interval depends on the child's actual
+visit. `vaccination_card` extends `print/base_print.html` (the immunization card);
+`due_list` (`/vaccination/due/`) lists doses due/overdue. Guarded by
+`vaccination/tests.py`.
+
+### Consent forms
+
+The `consent` app (`/consent/`, feature `consent` in the `opd` module; roles
+ADMIN/DOCTOR/NURSE). `ConsentTemplate` is the reusable wording (surgery,
+anaesthesia, blood, etc.), **per-tenant** so a hospital keeps its own approved
+text; template management is role-gated to ADMIN (`/consent/templates/`).
+`ConsentForm` is one signed instance — the body text is **copied onto the record**
+at creation (a frozen copy), never referenced live, so editing a template later can
+never rewrite what a patient already signed. The create form pre-fills the wording
+from a chosen template client-side (a `json_script` map keyed by template id); the
+print sheet (`print/base_print.html`) carries signature lines for
+patient/guardian, witness and doctor. Guarded by `consent/tests.py`.
 
 ### Doctor availability
 

@@ -1,0 +1,47 @@
+{% extends 'partials/base.html' %}
+{% block title %}Blood Bank{% endblock %}
+{% block page_title %}Blood Bank{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Blood Bank</h2>
+    <div class="muted">{{ total_available }} unit{{ total_available|pluralize }} available · {{ donor_count }} donor{{ donor_count|pluralize }} on file</div>
+  </div>
+  <div class="btn-row">
+    <a class="btn" href="{% url 'bloodbank_unit_add' %}">+ Add Unit</a>
+    <a class="btn alt" href="{% url 'bloodbank_issue' %}">Issue Unit</a>
+    <a class="btn alt" href="{% url 'bloodbank_donors' %}">Donors</a>
+    <a class="btn alt" href="{% url 'bloodbank_units' %}">All Units</a>
+  </div>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0;">Available stock by group</h3>
+  <div class="grid" style="grid-template-columns:repeat(4,1fr); gap:12px;">
+    {% for s in stock %}
+    <a href="{% url 'bloodbank_units' %}?group={{ s.group|urlencode }}&status=AVAILABLE"
+       class="card" style="text-align:center; text-decoration:none; padding:16px;">
+      <div style="font-size:26px; font-weight:800; color:var(--pri);">{{ s.group }}</div>
+      <div style="font-size:22px; font-weight:700;">{{ s.count }}</div>
+      <div class="muted" style="font-size:12px;">unit{{ s.count|pluralize }}</div>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0;">Expiring within 7 days</h3>
+  <table class="tbl">
+    <thead><tr><th>Bag</th><th>Group</th><th>Component</th><th>Expiry</th></tr></thead>
+    <tbody>
+      {% for u in expiring %}
+      <tr>
+        <td>{{ u.bag_number }}</td><td><strong>{{ u.blood_group }}</strong></td>
+        <td>{{ u.get_component_display }}</td>
+        <td><span class="badge amber">{{ u.expiry_date|date:"d/m/Y" }}</span></td>
+      </tr>
+      {% empty %}<tr><td colspan="4" class="muted text-center" style="padding:14px;">Nothing expiring soon.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

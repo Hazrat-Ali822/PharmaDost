@@ -1,0 +1,41 @@
+{% extends 'print/base_print.html' %}
+{% block title %}Consent — {{ c.title }}{% endblock %}
+{% block doctitle %}{{ c.title }}{% endblock %}
+{% block headmeta %}
+  <b>Type:</b> {{ c.get_consent_type_display }}<br>
+  <b>Date:</b> {{ c.signed_on|date:"d/m/Y" }}
+{% endblock %}
+{% block body %}
+<div class="who">
+  <div>
+    <b>Patient:</b> {{ c.patient.full_name }}<br>
+    {% if c.patient.mrn %}<b>MRN:</b> {{ c.patient.mrn }}<br>{% endif %}
+    <b>Age / Sex:</b> {{ c.patient.age_display|default:"—" }} / {{ c.patient.get_gender_display|default:c.patient.gender }}
+  </div>
+  <div style="text-align:right">
+    {% if c.procedure_name %}<b>Procedure:</b> {{ c.procedure_name }}<br>{% endif %}
+    {% if c.doctor %}<b>Doctor:</b> Dr. {{ c.doctor.full_name }}{% endif %}
+  </div>
+</div>
+
+<div style="font-size:13.5px;line-height:1.7;white-space:pre-line;margin:16px 0;">{{ c.body }}</div>
+
+<div style="display:flex;justify-content:space-between;gap:24px;margin-top:56px;">
+  <div style="text-align:center;flex:1;">
+    <div style="border-top:1px solid var(--ink);padding-top:5px;">
+      {{ c.signed_by|default:"Patient / Guardian" }}{% if c.relation %} ({{ c.relation }}){% endif %}
+    </div>
+    <div style="color:var(--soft);font-size:12px;">Patient / Guardian signature</div>
+  </div>
+  <div style="text-align:center;flex:1;">
+    <div style="border-top:1px solid var(--ink);padding-top:5px;">{{ c.witness_name|default:"Witness" }}</div>
+    <div style="color:var(--soft);font-size:12px;">Witness signature</div>
+  </div>
+  <div style="text-align:center;flex:1;">
+    <div style="border-top:1px solid var(--ink);padding-top:5px;">
+      {% if c.doctor %}Dr. {{ c.doctor.full_name }}{% else %}Doctor{% endif %}
+    </div>
+    <div style="color:var(--soft);font-size:12px;">Doctor signature &amp; stamp</div>
+  </div>
+</div>
+{% endblock %}

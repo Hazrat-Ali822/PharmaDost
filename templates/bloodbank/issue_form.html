@@ -1,0 +1,30 @@
+{% extends 'partials/base.html' %}
+{% block title %}Issue Blood Unit{% endblock %}
+{% block page_title %}Issue Blood Unit{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>Issue Blood Unit</h2></div>
+  <a class="btn alt" href="{% url 'bloodbank_dashboard' %}">Back</a>
+</div>
+
+<div class="grid" style="grid-template-columns:1fr 1fr; gap:16px; align-items:start;">
+  <div class="card">
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="btn-row" style="margin-top:8px;"><button class="btn" type="submit">Issue Unit</button></div>
+    </form>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0;">Recently issued</h3>
+    <table class="tbl">
+      <thead><tr><th>Date</th><th>Bag</th><th>Patient</th></tr></thead>
+      <tbody>
+        {% for i in recent %}
+        <tr><td>{{ i.issued_on|date:"d/m/Y" }}</td><td>{{ i.unit.bag_number }} ({{ i.unit.blood_group }})</td><td>{{ i.patient.full_name }}</td></tr>
+        {% empty %}<tr><td colspan="3" class="muted text-center" style="padding:14px;">None yet.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

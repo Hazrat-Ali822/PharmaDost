@@ -1,0 +1,38 @@
+{% extends 'partials/base.html' %}
+{% block title %}Consent Templates{% endblock %}
+{% block page_title %}Consent Templates{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Consent Templates</h2>
+    <div class="muted">Reusable consent wording your staff can pick when recording a consent.</div>
+  </div>
+  <a class="btn alt" href="{% url 'consent_list' %}">Back</a>
+</div>
+
+<div class="grid" style="grid-template-columns:1.4fr 1fr; gap:16px; align-items:start;">
+  <div class="card">
+    <table class="tbl">
+      <thead><tr><th>Title</th><th>Type</th><th>Active</th></tr></thead>
+      <tbody>
+        {% for t in templates %}
+        <tr>
+          <td>{{ t.title }}</td>
+          <td>{{ t.get_consent_type_display }}</td>
+          <td>{% if t.is_active %}<span class="badge green">Yes</span>{% else %}<span class="badge">No</span>{% endif %}</td>
+        </tr>
+        {% empty %}<tr><td colspan="3" class="muted text-center" style="padding:14px;">No templates yet.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0;">Add template</h3>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="btn-row" style="margin-top:8px;"><button class="btn" type="submit">Save</button></div>
+    </form>
+  </div>
+</div>
+{% endblock %}

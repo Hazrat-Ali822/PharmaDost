@@ -1,0 +1,48 @@
+{% extends 'partials/base.html' %}
+{% block title %}Blood Units{% endblock %}
+{% block page_title %}Blood Units{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h2>Blood Units</h2></div>
+  <div class="btn-row">
+    <a class="btn" href="{% url 'bloodbank_unit_add' %}">+ Add Unit</a>
+    <a class="btn alt" href="{% url 'bloodbank_dashboard' %}">Back</a>
+  </div>
+</div>
+
+<div class="card">
+  <form class="search" method="get" style="margin-bottom:12px; display:flex; gap:8px;">
+    <select name="group">
+      <option value="">All groups</option>
+      {% for g, label in groups %}<option value="{{ g }}" {% if g == group %}selected{% endif %}>{{ g }}</option>{% endfor %}
+    </select>
+    <select name="status">
+      <option value="">All statuses</option>
+      {% for s, label in statuses %}<option value="{{ s }}" {% if s == status %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <button class="btn" type="submit">Filter</button>
+  </form>
+  <table class="tbl">
+    <thead><tr><th>Bag</th><th>Group</th><th>Component</th><th>Donated</th><th>Expiry</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for u in units %}
+      <tr>
+        <td>{{ u.bag_number }}</td>
+        <td><strong>{{ u.blood_group }}</strong></td>
+        <td>{{ u.get_component_display }}</td>
+        <td>{{ u.donation_date|date:"d/m/Y" }}</td>
+        <td>{% if u.is_expired %}<span class="badge red">{{ u.expiry_date|date:"d/m/Y" }}</span>{% else %}{{ u.expiry_date|date:"d/m/Y" }}{% endif %}</td>
+        <td>{{ u.get_status_display }}</td>
+        <td>
+          {% if u.status == 'AVAILABLE' %}
+          <form method="post" action="{% url 'bloodbank_unit_discard' u.pk %}" onsubmit="return confirm('Discard this unit?');" style="display:inline;">
+            {% csrf_token %}<button class="btn alt sm" type="submit">Discard</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}<tr><td colspan="7" class="muted text-center" style="padding:14px;">No units.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

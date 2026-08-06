@@ -1,0 +1,27 @@
+{% extends 'partials/base.html' %}
+{% block title %}Vaccinations Due{% endblock %}
+{% block page_title %}Vaccinations Due / Overdue{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h2>Due / Overdue</h2>
+    <div class="muted">Next doses due on or before {{ today|date:"d/m/Y" }}.</div>
+  </div>
+  <a class="btn alt" href="{% url 'vaccination_list' %}">Back</a>
+</div>
+<div class="card">
+  <table class="tbl">
+    <thead><tr><th>Due date</th><th>Patient</th><th>Last vaccine</th><th>Phone</th></tr></thead>
+    <tbody>
+      {% for r in due %}
+      <tr>
+        <td><span class="badge amber">{{ r.next_due_date|date:"d/m/Y" }}</span></td>
+        <td><a href="{% url 'vaccination_card' r.patient_id %}">{{ r.patient.full_name }}</a></td>
+        <td>{{ r.vaccine.name }} (dose {{ r.dose_number }})</td>
+        <td>{{ r.patient.phone|default:"—" }}</td>
+      </tr>
+      {% empty %}<tr><td colspan="4" class="muted text-center" style="padding:14px;">Nothing due.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

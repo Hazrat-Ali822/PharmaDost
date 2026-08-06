@@ -203,7 +203,7 @@
       </a>
       {% endif %}
 
-      {% if nav.patients or nav.opd or nav.prescriptions or nav.lab or nav.imaging or nav.ipd or nav.ward or nav.ot or nav.emergency %}
+      {% if nav.patients or nav.opd or nav.prescriptions or nav.lab or nav.imaging or nav.ipd or nav.ward or nav.ot or nav.emergency or nav.maternity or nav.diagnosis or nav.referral or nav.bloodbank or nav.vaccination or nav.certificates or nav.consent %}
       <div class="nav-group">
         <div class="nav-group-title">Clinical</div>
         {% if nav.patients and request.user.role != 'LABTECH' and request.user.role != 'SONOGRAPHER' %}
@@ -350,6 +350,36 @@
         <a href="{% url 'diagnosis_list' %}" class="{% if '/diagnosis/' in request.path %}active{% endif %}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-4"/><path d="M9 3v4h6V3M9 13h6M9 17h4"/></svg>
           Diagnoses (ICD-10)
+        </a>
+        {% endif %}
+        {% if nav.referral %}
+        <a href="{% url 'referral_list' %}" class="{% if '/referral/' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M17 7H8M17 7v9"/></svg>
+          Referrals
+        </a>
+        {% endif %}
+        {% if nav.bloodbank %}
+        <a href="{% url 'bloodbank_dashboard' %}" class="{% if '/bloodbank/' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11Z"/></svg>
+          Blood Bank
+        </a>
+        {% endif %}
+        {% if nav.vaccination %}
+        <a href="{% url 'vaccination_list' %}" class="{% if '/vaccination/' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m18 2 4 4M17 3l4 4-9 9-4 1 1-4 8-8ZM10 10l-7 7 4 4 7-7"/></svg>
+          Vaccination / EPI
+        </a>
+        {% endif %}
+        {% if nav.certificates %}
+        <a href="{% url 'certificate_list' %}" class="{% if '/certificates/' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+          Certificates
+        </a>
+        {% endif %}
+        {% if nav.consent %}
+        <a href="{% url 'consent_list' %}" class="{% if '/consent/' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M9 15l2 2 4-4"/></svg>
+          Consent Forms
         </a>
         {% endif %}
       </div>
