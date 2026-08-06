@@ -70,9 +70,11 @@
     };
   </script>
   {# SaaS owner portal keeps the platform's own default theme — never a tenant's colours #}
-  {# Inject the tenant's OWN brand colour. Skip when it's still the old indigo
-     default (#4f46e5) so an un-customised tenant falls through to the new cyan
-     default in app.css :root — a hospital that picked its own colour keeps it. #}
+  {% comment %}
+    Inject the tenant's OWN brand colour. Skip when it's still the old indigo
+    default (#4f46e5) so an un-customised tenant falls through to the new cyan
+    default in app.css :root — a hospital that picked its own colour keeps it.
+  {% endcomment %}
   {% if branding.primary_color and branding.primary_color != '#4f46e5' and request.resolver_match.namespace != 'saas' %}<style>:root{ --primary: {{ branding.primary_color }}; --accent: {{ branding.accent_color }}; }</style>{% endif %}
   <style>
     a.btn:hover, button.btn:hover { color: #ffffff !important; text-decoration: none; }
