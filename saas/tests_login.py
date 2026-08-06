@@ -81,7 +81,7 @@ class RootLoginTest(TestCase):
         # correct password, but not the owner: NOT logged in, shown their portal
         self.assertEqual(resp.status_code, 200)
         self.assertNotIn('_auth_user_id', c.session)
-        self.assertContains(resp, 'platform owner')
+        self.assertContains(resp, 'hospital portal')          # pointed to their own link
         self.assertContains(resp, 'shaheen.sehatyar.online')
 
 

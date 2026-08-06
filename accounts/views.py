@@ -30,10 +30,11 @@ class RootLoginView(LoginView):
             if getattr(user, 'hospital_id', None):
                 link = tenant_login_url(self.request, user.hospital)
                 form.add_error(None, mark_safe(
-                    'This is the platform owner sign-in. Your hospital portal is at '
-                    f'<a href="{link}">{link}</a> — please sign in there.'))
+                    'Please sign in from your hospital portal: '
+                    f'<a href="{link}">{link}</a>'))
             else:
-                form.add_error(None, 'This sign-in is for the platform owner only.')
+                form.add_error(None, 'This account cannot sign in here — '
+                                     'please contact your administrator.')
             return self.form_invalid(form)
         return super().form_valid(form)
 
