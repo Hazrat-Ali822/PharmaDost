@@ -15,6 +15,7 @@ staticfiles/
 .idea/
 .vscode/
 *.spec
+!desktop/PharmaDost.spec
 dist/
 build/
 
