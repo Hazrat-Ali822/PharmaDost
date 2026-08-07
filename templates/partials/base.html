@@ -21,6 +21,8 @@
   {# every install came out branded "Sehatyar" instead of the hospital's name. #}
   <link rel="manifest" href="{% url 'pwa_manifest' %}" crossorigin="use-credentials">
   <meta name="theme-color" content="{{ branding.primary_color|default:'#0891b2' }}">
+  {# Browser-tab favicon — without this the tab shows the browser's default globe. #}
+  <link rel="icon" type="image/png" href="{% static 'img/sehatyar-logo.png' %}">
   <link rel="apple-touch-icon" href="{{ brand_icon_url|default_if_none:'' }}">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="{{ branding.brand_name|default:'Sehatyar' }}">
@@ -191,7 +193,7 @@
       {% if branding.logo_image %}
         <img class="logo" src="{{ branding.logo_image.url }}" alt="logo" style="object-fit:cover;background:none">
       {% else %}
-        <img class="logo" src="{% static 'img/brand-logo.svg' %}" alt="{{ branding.brand_name|default:'Sehatyar' }}" style="object-fit:contain;background:none">
+        <img class="logo" src="{% static 'img/sehatyar-logo.png' %}" alt="{{ branding.brand_name|default:'Sehatyar' }}" style="object-fit:contain;background:none">
       {% endif %}
       <span>{{ branding.brand_name|default:"Sehatyar" }}<small>{{ branding.brand_tagline|default:"Hospital &amp; Pharmacy" }}</small></span>
     </div>

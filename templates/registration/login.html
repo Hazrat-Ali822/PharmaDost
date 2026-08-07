@@ -10,6 +10,8 @@
   <meta property="og:title" content="Sehatyar — Hospital &amp; Pharmacy Management System">
   <meta property="og:description" content="All-in-one HMS: pharmacy POS, OPD, IPD, lab, imaging and billing — works offline and on the clinic LAN.">
   <meta property="og:image" content="{% url 'pwa_icon' 512 %}">
+  <link rel="icon" type="image/png" href="{% static 'img/sehatyar-logo.png' %}">
+  <link rel="apple-touch-icon" href="{% static 'img/sehatyar-logo.png' %}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -96,7 +98,7 @@
         </div>
       {% else %}
         <div class="logo-image-wrap">
-          <img src="{% static 'img/brand-logo.svg' %}" alt="{{ branding.brand_name|default:'Sehatyar' }} Logo" style="max-height: 62px; border-radius: 13px; box-shadow: 0 8px 24px rgba(0,0,0,0.15);">
+          <img src="{% static 'img/sehatyar-logo.png' %}" alt="{{ branding.brand_name|default:'Sehatyar' }} Logo" style="max-height: 62px; border-radius: 13px; box-shadow: 0 8px 24px rgba(0,0,0,0.15);">
         </div>
       {% endif %}
       <h1>{{ branding.brand_name|default:"Sehatyar" }}</h1>
@@ -138,7 +140,7 @@
           {% if branding.logo_image %}
             <img src="{{ branding.logo_image.url }}" alt="{{ branding.brand_name|default:'Sehatyar' }} Logo" class="mobile-logo-img">
           {% else %}
-            <img src="{% static 'img/brand-logo.svg' %}" alt="{{ branding.brand_name|default:'Sehatyar' }} Logo" class="mobile-logo-img">
+            <img src="{% static 'img/sehatyar-logo.png' %}" alt="{{ branding.brand_name|default:'Sehatyar' }} Logo" class="mobile-logo-img">
           {% endif %}
           <h3>{{ branding.brand_name|default:"Sehatyar" }}</h3>
           <p>Complete Hospital &amp; Pharmacy Portal</p>

@@ -137,10 +137,23 @@ def icon(request, size):
             img = None
 
     if img is None:
-        # No uploaded logo → the default Sehatyar mark: a white heart with an ECG
-        # pulse through it, on the theme colour. (Pillow can't render the SVG in
-        # static/img/brand-logo.svg, so the same mark is drawn from shapes here; the
-        # templates use the SVG, this is only the installed-app / favicon icon.)
+        # No uploaded logo → the default Sehatyar logo (static/img/sehatyar-logo.png),
+        # the same file every template shows, so the installed-app / favicon icon
+        # matches the rest of the app.
+        from django.contrib.staticfiles import finders
+        default_path = finders.find("img/sehatyar-logo.png")
+        if default_path:
+            try:
+                src = Image.open(default_path).convert("RGBA")
+                canvas = Image.new("RGBA", (size, size), (255, 255, 255, 0))
+                src.thumbnail((size, size), Image.LANCZOS)
+                canvas.paste(src, ((size - src.width) // 2, (size - src.height) // 2), src)
+                img = canvas.convert("RGB")
+            except Exception:
+                img = None
+
+    if img is None:
+        # Last resort if the default file is missing: draw the heart-and-pulse mark.
         img = Image.new("RGB", (size, size), _theme(b))
         draw = ImageDraw.Draw(img)
         s = size

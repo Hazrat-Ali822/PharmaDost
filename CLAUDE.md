@@ -727,8 +727,8 @@ staff profile when opened with `?user_id=`. Staff are the hospital's own users
 The site installs as an app (phone home screen, desktop) carrying **each tenant's own**
 name, logo and colour — not "PharmaDost". `user_mgmt/pwa_views.py` serves a per-tenant
 `manifest.webmanifest`, a Pillow-rendered `app-icon-<size>.png` (the uploaded logo, else the
-default **Sehatyar heart-and-pulse mark** drawn from shapes on the theme colour — the same
-mark the templates show as `static/img/brand-logo.svg`), a service worker at **`/sw.js`** (root, so its scope is
+default **`static/img/sehatyar-logo.png`** — the Sehatyar heart-and-pulse logo the templates
+also show; a drawn heart+pulse mark is the last-resort fallback if that file is missing), a service worker at **`/sw.js`** (root, so its scope is
 the whole site), and an `/offline/` fallback. All read `SiteSettings.load()`, so branding
 follows the logged-in tenant. The four browser-fetched endpoints are in
 `LoginRequiredMiddleware.ALLOWED_NAMES` — if they redirect to login, install breaks.
