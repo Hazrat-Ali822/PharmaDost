@@ -25,13 +25,18 @@ ROOT = os.path.abspath(os.getcwd())
 # bundle. Put the project root on the path so every local package is discoverable.
 sys.path.insert(0, ROOT)
 
-# The Django project package + every local app in INSTALLED_APPS.
+# The Django project package + every local app. NOTE: this must include apps that
+# are NOT in INSTALLED_APPS but ARE routed in pharma_mgmt/urls.py — `reports` is a
+# urls+views app (no models), so it is absent from INSTALLED_APPS; leaving it out
+# here bundled no `reports.urls` and the frozen app 500'd with
+# `ModuleNotFoundError: reports.urls`. Cross-check against the include()s in
+# pharma_mgmt/urls.py, not just INSTALLED_APPS.
 APPS = [
     "pharma_mgmt",
     "saas", "accounts", "suppliers", "inventory", "lab", "imaging", "patients",
     "opd", "billing", "prescriptions", "customers", "panels", "user_mgmt", "audit",
     "sales", "ipd", "ot", "emergency", "hr", "maternity", "diagnosis", "referral",
-    "certificates", "bloodbank", "vaccination", "consent", "offline_sync",
+    "certificates", "bloodbank", "vaccination", "consent", "offline_sync", "reports",
 ]
 
 # --- hidden imports: all app submodules (views, migrations, templatetags, …) + deps
