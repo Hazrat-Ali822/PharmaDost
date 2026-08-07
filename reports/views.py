@@ -58,7 +58,10 @@ def visual_analytics(request):
     # 1. Department Revenue Breakdown
     # A. Pharmacy Sales
     pharmacy_qs = Sale.objects.filter(created_at__date__range=(start_date, end_date))
-    if hospital:
+    # Fail-closed: key on superuser, not on "has a hospital". InvoiceItem and
+    # Appointment below have no TenantManager, so a hospital-less non-superuser would
+    # otherwise aggregate every tenant's revenue and doctor workload.
+    if not request.user.is_superuser:
         pharmacy_qs = pharmacy_qs.filter(hospital=hospital)
     pharmacy_rev = pharmacy_qs.aggregate(total=Sum('total'))['total'] or Decimal('0.00')
 
@@ -67,7 +70,7 @@ def visual_analytics(request):
         invoice__status='ACTIVE',
         invoice__created_at__date__range=(start_date, end_date)
     )
-    if hospital:
+    if not request.user.is_superuser:
         invoice_qs = invoice_qs.filter(invoice__hospital=hospital)
 
     opd_rev = invoice_qs.filter(description__icontains='OPD Consultation').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
@@ -106,7 +109,7 @@ def visual_analytics(request):
         status='DONE',
         appointment_date__range=(start_date, end_date)
     )
-    if hospital:
+    if not request.user.is_superuser:
         appt_qs = appt_qs.filter(patient__hospital=hospital)
         
     doc_workload = appt_qs.values('doctor__full_name').annotate(count=Count('id')).order_by('-count')

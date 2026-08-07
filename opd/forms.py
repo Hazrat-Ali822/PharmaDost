@@ -23,11 +23,16 @@ class DoctorForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         from accounts.models import User
-        from saas.utils import get_current_hospital
+        from saas.utils import get_current_hospital, is_tenant_strict
         hospital = get_current_hospital()
         user_qs = User.objects.filter(role='DOCTOR', is_active=True)
+        # Mirror TenantManager: bound hospital -> filter to it; strict thread (a
+        # logged-in non-superuser) with none -> hospital-less only, so a hospital-less
+        # user never sees every tenant's doctor accounts in this dropdown.
         if hospital:
             user_qs = user_qs.filter(hospital=hospital)
+        elif is_tenant_strict():
+            user_qs = user_qs.filter(hospital__isnull=True)
         self.fields['user'].queryset = user_qs
         self.fields['user'].required = False
         self.fields['user'].label = "Linked User Account"

@@ -158,6 +158,24 @@ class FailClosedTest(TwoTenantSetup):
         self.assertEqual(resp.status_code, 200)
         self.assertNotContains(resp, 'Beta Patient')
 
+    # Doctor has no hospital column (scoped via user__hospital); doctor_list was on
+    # the fail-OPEN `if request.user.hospital:` guard, leaking every tenant's doctors.
+    def test_hospital_less_user_sees_no_doctors(self):
+        resp = self.client.get(reverse('doctor_list'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, 'Dr Beta')
+
+    # reports.visual_analytics aggregated InvoiceItem + Appointment (no TenantManager)
+    # behind a fail-OPEN `if hospital:`, so a hospital-less user saw every tenant's
+    # doctor workload. A DONE appointment this month must not leak into the analytics.
+    def test_hospital_less_user_sees_no_analytics_workload(self):
+        from django.utils import timezone
+        Appointment.objects.create(patient=self.patient2, doctor=self.doctor2,
+                                   status='DONE', appointment_date=timezone.localdate())
+        resp = self.client.get(reverse('visual_analytics'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, 'Dr Beta')
+
 
 class AuthenticationRequiredTest(TwoTenantSetup):
     """Anonymous users get bounced to login — never served data."""

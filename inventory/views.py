@@ -101,7 +101,10 @@ def dashboard(request):
         
     # Departmental Revenue & Activity Calculations for Selected Date Range
     invs = Invoice.objects.filter(created_at__date__range=[start_date, end_date])
-    if request.user.hospital:
+    # Fail-closed: a hospital-less non-superuser must see only hospital-less rows,
+    # not every tenant's revenue. Keying on `if request.user.hospital:` let such a
+    # user's dashboard aggregate all tenants' invoices.
+    if not request.user.is_superuser:
         invs = invs.filter(patient__hospital=request.user.hospital)
 
     items = InvoiceItem.objects.filter(invoice__in=invs).select_related('invoice')
@@ -130,7 +133,7 @@ def dashboard(request):
             other_rev += scaled_amt
 
     pharmacy_sales = Sale.objects.filter(created_at__date__range=[start_date, end_date], is_returned=False)
-    if request.user.hospital:
+    if not request.user.is_superuser:
         pharmacy_sales = pharmacy_sales.filter(patient__hospital=request.user.hospital)
     pharmacy_rev = pharmacy_sales.aggregate(s=Sum('paid'))['s'] or Decimal('0.00')
 
