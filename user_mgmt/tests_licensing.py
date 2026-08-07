@@ -151,3 +151,26 @@ class LicenseLockMiddlewareTest(TestCase):
         # even with a lapsed trial file present.
         self._lapse_trial()
         self.assertNotEqual(self.client.get("/").status_code, 402)
+
+
+class DesktopDashboardRoutingTest(TestCase):
+    """On the desktop/LAN build the hospital-less superuser is the CLINIC admin, so
+    it must land on the clinic dashboard, never the SaaS owner portal."""
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self.admin = User.objects.create_superuser(email="a@t.com", password="pw")
+        self.client.force_login(self.admin)
+
+    @override_settings(DESKTOP_BUILD=True)
+    def test_desktop_superuser_not_sent_to_saas(self):
+        with override_settings(DATA_DIR=Path(self.dir)):   # fresh trial, not locked
+            resp = self.client.get("/manage/dashboard/")
+            self.assertNotIn("/saas/", resp.get("Location", ""))
+            resp2 = self.client.get("/")
+            self.assertNotIn("/saas/", resp2.get("Location", ""))
+
+    def test_hosted_superuser_still_goes_to_saas(self):
+        # DESKTOP_BUILD False (test default): the owner portal redirect stands.
+        resp = self.client.get("/manage/dashboard/")
+        self.assertIn("/saas/", resp.get("Location", ""))

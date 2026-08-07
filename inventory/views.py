@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.conf import settings
 
 from pharma_mgmt.pagination import paginate
 from django.contrib import messages
@@ -25,7 +26,11 @@ def dashboard(request):
     # the owner ends up staring at a pharmacy dashboard full of tenant-less
     # numbers and concludes the platform has turned into one hospital.
     # A direct redirect to /saas/, which never redirects back, so no loop.
-    if request.user.is_superuser and not getattr(request.user, 'hospital', None):
+    # EXCEPT on the desktop/LAN build: its own admin is a hospital-less superuser
+    # but it IS the clinic, not the SaaS owner, so it must see the pharmacy
+    # dashboard here rather than being bounced to the owner portal.
+    if (request.user.is_superuser and not getattr(request.user, 'hospital', None)
+            and not getattr(settings, 'DESKTOP_BUILD', False)):
         return redirect('saas:dashboard')
 
     # The home page ("/") is the pharmacy dashboard. Users without pharmacy

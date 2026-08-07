@@ -41,9 +41,14 @@ def _template_for(user):
 
 @login_required
 def dashboard_router(request):
-    if request.user.is_superuser and not getattr(request.user, 'hospital', None):
+    desktop = getattr(settings, 'DESKTOP_BUILD', False)
+    # On the hosted site a hospital-less superuser is the SaaS owner → owner portal.
+    # On the desktop/LAN build that same account IS the clinic admin, so it stays
+    # here and lands on the clinic dashboard instead.
+    if (request.user.is_superuser and not getattr(request.user, 'hospital', None)
+            and not desktop):
         return redirect('saas:dashboard')
-    if getattr(request.user, 'role', None) == 'ADMIN':
+    if getattr(request.user, 'role', None) == 'ADMIN' or (desktop and request.user.is_superuser):
         # Admins land on the pharmacy dashboard — but only if pharmacy is on and
         # they actually have inventory access; otherwise show the admin shell
         # directly (avoids a redirect loop with the "/" dashboard guard).
