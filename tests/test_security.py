@@ -99,6 +99,15 @@ class TenantIsolationTest(TwoTenantSetup):
         self.assertEqual(resp.status_code, 200)
         self.assertNotContains(resp, 'BetaMed')
 
+    def test_patient_index_json_is_tenant_scoped(self):
+        """The offline patient index (whole registry as JSON) must scope exactly
+        like the list — Alpha's admin sees Alpha's patients, never Beta's."""
+        resp = self.client.get(reverse('patient_index'))
+        self.assertEqual(resp.status_code, 200)
+        names = [p['name'] for p in resp.json()['patients']]
+        self.assertIn('Alpha Patient', names)
+        self.assertNotIn('Beta Patient', names)
+
     def test_pos_prescription_prefill_is_scoped(self):
         """POS accepted any ?prescription_id= at one point — a direct cross-tenant read."""
         resp = self.client.get(reverse('sale_create') + f'?prescription_id={self.rx2.pk}')
@@ -129,6 +138,15 @@ class FailClosedTest(TwoTenantSetup):
         resp = self.client.get(reverse('prescription_list'))
         self.assertEqual(resp.status_code, 200)
         self.assertNotContains(resp, 'Beta Patient')
+
+    def test_hospital_less_user_sees_no_patient_index(self):
+        """The offline patient-index JSON reuses the list's scoping, so a
+        hospital-less non-superuser must get an empty registry, not everyone's."""
+        resp = self.client.get(reverse('patient_index'))
+        self.assertEqual(resp.status_code, 200)
+        names = [p['name'] for p in resp.json()['patients']]
+        self.assertNotIn('Alpha Patient', names)
+        self.assertNotIn('Beta Patient', names)
 
     def test_hospital_less_user_cannot_open_a_tenant_record(self):
         resp = self.client.get(reverse('prescription_detail', args=[self.rx2.pk]))

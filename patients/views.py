@@ -48,6 +48,32 @@ def patient_list(request):
 
 
 @feature_required('patients')
+def patient_index(request):
+    """Compact JSON of the tenant's patient registry, for OFFLINE search.
+
+    The list is paginated, so the service worker only caches one page and an
+    offline search would otherwise see just those ~25 rows. The logged-in browser
+    fetches this while online and keeps it on the device (localStorage), so an
+    offline search runs against the WHOLE registry. Scoped exactly like
+    `patient_list` through `_visible_patients` (tenant + role narrowing), so it
+    exposes nothing the list itself wouldn't. Capped so a very large registry
+    cannot bloat the device or this response."""
+    from django.http import JsonResponse
+    rows = [{
+        'pk': p.pk,
+        'mrn': p.mrn or '',
+        'name': p.full_name or '',
+        'phone': p.phone or '',
+        'cnic': p.cnic or '',
+        'gender': p.get_gender_display() if p.gender else '',
+        'age': p.age_display or '',
+    } for p in _visible_patients(request.user).order_by('-id')[:5000]]
+    resp = JsonResponse({'patients': rows}, json_dumps_params={'ensure_ascii': False})
+    resp['Cache-Control'] = 'private, max-age=0'
+    return resp
+
+
+@feature_required('patients')
 @role_required(['ADMIN', 'RECEPTIONIST'])
 def patient_create(request):
     if request.method == 'POST':

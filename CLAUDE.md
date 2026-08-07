@@ -771,6 +771,23 @@ Static assets are matched exactly first and then with `ignoreSearch`, because te
 them as `app.css?v=1.7`: after a version bump the exact URL misses, and without the second
 lookup the page renders offline with no stylesheet at all.
 
+**Offline search across a whole registry (not one cached page).** List screens are
+paginated, so the service worker caches only *one* page — an offline search filtering the
+DOM (`static/js/offline.js::filterDomTables`) would see just those ~25 rows. So a page may
+declare `window.__offlineIndexConfig` (see `templates/patients/patient_list.html`): a
+compact JSON index URL, a per-user `storeKey`, the searchable `fields`, and the table
+`columns`. `offline.js::primeOfflineIndex` fetches that index while online (throttled
+~3 min, other users' saved indexes dropped to mirror the per-user SW cache) and stores it in
+`localStorage`; when the search is run offline, `offlineIndexSearch` renders matches from the
+saved index into the table, so **every** saved patient is findable, not just the cached page.
+The only wired-up index today is the patient list — its endpoint is
+`patients.views.patient_index` (`/patients/index.json`, feature `patients`), scoped through
+`_visible_patients` exactly like `patient_list` (tenant + role narrowing), capped at 5000
+rows. It is **not** in `SHELL_URL_NAMES` (it is data, refreshed live, not a shell page).
+Guarded by `tests/test_security.py` (`patient_index` tenant-scoped + fail-closed for a
+hospital-less user). Column cell HTML in the config is template-authored constant; all
+patient values are escaped in `buildIndexRow`.
+
 **A service worker only runs on a secure origin**, so `SECURE_SSL_REDIRECT` is on whenever
 `USE_SSL` is (`DJANGO_SSL_REDIRECT=false` disables it). Plain http was a dead end in two
 ways at once — no worker, and `SESSION_COOKIE_SECURE` meant a sign-in never stuck — with

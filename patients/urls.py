@@ -3,6 +3,7 @@ from . import views
 
 urlpatterns = [
     path('', views.patient_list, name='patient_list'),
+    path('index.json', views.patient_index, name='patient_index'),
     path('add/', views.patient_create, name='patient_add'),
     path('<int:pk>/', views.patient_detail, name='patient_detail'),
     path('<int:pk>/edit/', views.patient_edit, name='patient_edit'),

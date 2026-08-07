@@ -401,6 +401,95 @@
     });
   }
 
+  // ---- Offline full-registry index (e.g. the whole patient list) --------
+  // List pages are paginated, so the service worker only caches one page and an
+  // offline search could see just those ~25 rows. A page may declare a compact
+  // index in `window.__offlineIndexConfig` (set by its template); while online we
+  // fetch it and keep it on the device, so an offline search runs against the
+  // WHOLE registry — not one cached page. See patients/patient_list.html.
+  var INDEX_REFRESH_MS = 180000;   // don't re-pull the registry on every visit
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function idxCfg() { return window.__offlineIndexConfig || null; }
+
+  function readIndex() {
+    var cfg = idxCfg();
+    if (!cfg) return null;
+    try {
+      var raw = localStorage.getItem(cfg.storeKey);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+
+  // Refresh the stored index while this page is online. Offline the fetch simply
+  // fails and the last saved copy is kept. Any OTHER user's saved index on a
+  // shared device is dropped, mirroring the per-user service-worker cache.
+  function primeOfflineIndex() {
+    var cfg = idxCfg();
+    if (!cfg) return;
+    try {
+      for (var i = localStorage.length - 1; i >= 0; i--) {
+        var k = localStorage.key(i);
+        if (k && cfg.keyPrefix && k.indexOf(cfg.keyPrefix) === 0 &&
+            k !== cfg.storeKey && k !== cfg.storeKey + ":ts") {
+          localStorage.removeItem(k);
+        }
+      }
+      var last = +localStorage.getItem(cfg.storeKey + ":ts") || 0;
+      if (Date.now() - last < INDEX_REFRESH_MS && readIndex()) return;  // fresh enough
+    } catch (e) { /* private mode — just try to fetch */ }
+    fetch(cfg.url, { credentials: "same-origin", headers: { "X-Requested-With": "fetch" } })
+      .then(function (r) { if (!r.ok || r.redirected) throw 0; return r.json(); })
+      .then(function (data) {
+        try {
+          localStorage.setItem(cfg.storeKey, JSON.stringify(data[cfg.dataKey] || []));
+          localStorage.setItem(cfg.storeKey + ":ts", String(Date.now()));
+        } catch (e) { /* quota — keep the older copy */ }
+      })
+      .catch(function () { /* offline, or the role can't open it */ });
+  }
+
+  function buildIndexRow(cfg, p) {
+    var tds = cfg.columns.map(function (col) {
+      if (col.html) return "<td>" + col.html(p) + "</td>";   // template-authored constant
+      var val = escapeHtml(p[col.key]);
+      if (col.link) return '<td><a href="' + escapeHtml(col.link(p)) + '">' + val + "</a></td>";
+      return "<td>" + val + "</td>";
+    });
+    return "<tr>" + tds.join("") + "</tr>";
+  }
+
+  // Render matches from the saved index into the list's table. Returns true when
+  // it handled the search, so the caller skips the plain in-page DOM filter.
+  function offlineIndexSearch(query) {
+    var cfg = idxCfg();
+    if (!cfg) return false;
+    var items = readIndex();
+    if (!items) return false;
+    var tbody = document.querySelector(cfg.tbodySelector || "table.tbl tbody");
+    if (!tbody) return false;
+    if (cfg._orig == null) cfg._orig = tbody.innerHTML;    // to restore when cleared
+    var q = (query || "").trim().toLowerCase();
+    if (!q) { tbody.innerHTML = cfg._orig; return true; }  // no query -> the page's own rows
+    var fields = cfg.fields || [];
+    var matches = items.filter(function (it) {
+      for (var i = 0; i < fields.length; i++) {
+        var v = it[fields[i]];
+        if (v != null && String(v).toLowerCase().indexOf(q) !== -1) return true;
+      }
+      return false;
+    });
+    tbody.innerHTML = matches.map(function (p) { return buildIndexRow(cfg, p); }).join("") ||
+      ('<tr><td colspan="' + (cfg.colspan || 6) + '" class="muted">No match for “' +
+       escapeHtml(query) + '” in the saved registry.</td></tr>');
+    return true;
+  }
+
   // ---- GET Search Interception & Live Offline Filtering -----------------
   function interceptSearchForm(form) {
     form.addEventListener("submit", function (e) {
@@ -408,9 +497,9 @@
       if (navigator.onLine && Date.now() - lastPing.at > PING_CACHE_MS) return;
       e.preventDefault();
       var input = form.querySelector('input[name="q"], input[type="search"], input[type="text"]');
-      var query = input ? (input.value || "").trim().toLowerCase() : "";
-      filterDomTables(query);
-      toast("🔍 Offline filter: '" + query + "'", "ok");
+      var query = input ? (input.value || "").trim() : "";
+      if (!offlineIndexSearch(query)) filterDomTables(query.toLowerCase());
+      toast("🔍 Offline search: '" + query + "'", "ok");
     });
   }
 
@@ -431,8 +520,8 @@
     Array.prototype.forEach.call(searchInputs, function (input) {
       input.addEventListener("input", function () {
         if (navigator.onLine && lastPing.ok) return;
-        var query = (input.value || "").trim().toLowerCase();
-        filterDomTables(query);
+        var query = (input.value || "").trim();
+        if (!offlineIndexSearch(query)) filterDomTables(query.toLowerCase());
       });
     });
   }
@@ -445,6 +534,7 @@
     var searchForms = document.querySelectorAll('form[method="get"], form.search');
     Array.prototype.forEach.call(searchForms, interceptSearchForm);
     setupLiveOfflineFilter();
+    primeOfflineIndex();
 
     refreshBadge();
     sync();

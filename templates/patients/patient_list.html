@@ -39,3 +39,29 @@
 </div>
 {% include 'partials/_pagination.html' %}
 {% endblock %}
+
+{% block extra_js %}
+<script>
+  // Offline full-registry search. The list is paginated, so the service worker
+  // caches only one page; this lets an offline search reach EVERY saved patient.
+  // static/js/offline.js pulls this index while online, keeps it on the device,
+  // and renders matches here when the connection is gone.
+  window.__offlineIndexConfig = {
+    url: "{% url 'patient_index' %}",
+    keyPrefix: "offidx-patients:",
+    storeKey: "offidx-patients:{{ request.user.pk|default:0 }}",
+    dataKey: "patients",
+    fields: ["name", "phone", "mrn", "cnic"],
+    tbodySelector: "table.tbl tbody",
+    colspan: 6,
+    columns: [
+      { key: "mrn" },
+      { key: "name", link: function (p) { return "/patients/" + p.pk + "/"; } },
+      { key: "phone" },
+      { key: "gender" },
+      { key: "age" },
+      { html: function () { return '<span class="muted" style="font-size:12px">saved offline</span>'; } }
+    ]
+  };
+</script>
+{% endblock %}
