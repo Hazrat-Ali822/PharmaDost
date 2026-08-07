@@ -137,17 +137,23 @@ def icon(request, size):
             img = None
 
     if img is None:
+        # No uploaded logo → the default Sehatyar mark: a white heart with an ECG
+        # pulse through it, on the theme colour. (Pillow can't render the SVG in
+        # static/img/brand-logo.svg, so the same mark is drawn from shapes here; the
+        # templates use the SVG, this is only the installed-app / favicon icon.)
         img = Image.new("RGB", (size, size), _theme(b))
         draw = ImageDraw.Draw(img)
-        letter = (b.logo_text or (b.brand_name or "S")[0] or "S")[:2].upper()
-        try:
-            font = ImageFont.truetype("arialbd.ttf", int(size * 0.52))
-        except Exception:
-            font = ImageFont.load_default(size=int(size * 0.52))
-        box = draw.textbbox((0, 0), letter, font=font)
-        draw.text(((size - (box[2] - box[0])) / 2 - box[0],
-                   (size - (box[3] - box[1])) / 2 - box[1]),
-                  letter, font=font, fill="#ffffff")
+        s = size
+        rl = 0.145 * s                                   # lobe radius
+        lc, rc, ty = 0.40 * s, 0.60 * s, 0.40 * s        # lobe centres, top y
+        draw.ellipse([lc - rl, ty - rl, lc + rl, ty + rl], fill="#ffffff")
+        draw.ellipse([rc - rl, ty - rl, rc + rl, ty + rl], fill="#ffffff")
+        draw.polygon([(lc - rl, 0.45 * s), (rc + rl, 0.45 * s), (0.50 * s, 0.72 * s)],
+                     fill="#ffffff")
+        pulse = [(0.30 * s, 0.50 * s), (0.40 * s, 0.50 * s), (0.45 * s, 0.39 * s),
+                 (0.50 * s, 0.64 * s), (0.55 * s, 0.37 * s), (0.60 * s, 0.53 * s),
+                 (0.70 * s, 0.50 * s)]
+        draw.line(pulse, fill=_theme(b), width=max(3, int(0.038 * s)), joint="curve")
 
     buffer = io.BytesIO()
     img.save(buffer, "PNG")

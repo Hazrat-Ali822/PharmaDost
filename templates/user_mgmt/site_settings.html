@@ -1,4 +1,5 @@
 {% extends 'partials/base.html' %}
+{% load static %}
 {% block title %}Site Settings{% endblock %}
 {% block page_title %}Settings{% endblock %}
 {% block content %}
@@ -13,7 +14,8 @@
       <p><label>Tagline</label>{{ form.brand_tagline }}</p>
       <p><label>Logo Letter (1–2 chars, used if no image)</label>{{ form.logo_text }}</p>
       <p><label>Logo Image (optional)</label>{{ form.logo_image }}
-         {% if site.logo_image %}<br><small class="muted">Current: <img src="{{ site.logo_image.url }}" style="height:28px;vertical-align:middle;border-radius:6px"></small>{% endif %}</p>
+         {% if site.logo_image %}<br><small class="muted">Current: <img src="{{ site.logo_image.url }}" style="height:28px;vertical-align:middle;border-radius:6px"></small>
+         {% else %}<br><small class="muted">Using the default Sehatyar logo: <img src="{% static 'img/brand-logo.svg' %}" style="height:28px;vertical-align:middle;border-radius:6px"> — upload your own to replace it everywhere.</small>{% endif %}</p>
       <div class="form-row">
         <div><label>Primary Colour</label><br>{{ form.primary_color }}</div>
         <div><label>Accent Colour</label><br>{{ form.accent_color }}</div>

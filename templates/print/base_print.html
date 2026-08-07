@@ -138,7 +138,7 @@
   {% else %}
   <div class="{% if branding.print_theme == 'modern' %}band{% else %}lh{% endif %}">
     <div class="brand">
-      <div class="logo">{% if branding.logo_image %}<img src="{{ branding.logo_image.url }}" alt="">{% else %}{{ branding.logo_text|default:'P' }}{% endif %}</div>
+      <div class="logo">{% if branding.logo_image %}<img src="{{ branding.logo_image.url }}" alt="">{% else %}<img src="{% static 'img/brand-logo.svg' %}" alt="" style="width:100%;height:100%;object-fit:contain">{% endif %}</div>
       <div>
         <div class="bname">{{ branding.brand_name|default:"Sehatyar" }}</div>
         {% if branding.brand_tagline %}<div class="tag">{{ branding.brand_tagline }}</div>{% endif %}

@@ -95,8 +95,8 @@
           <img src="{{ branding.logo_image.url }}" alt="{{ branding.brand_name|default:'Sehatyar' }} Logo" style="max-height: 62px; border-radius: 13px; box-shadow: 0 8px 24px rgba(0,0,0,0.15);">
         </div>
       {% else %}
-        <div class="logo">
-          {% if branding.logo_text %}{{ branding.logo_text }}{% else %}🏨{% endif %}
+        <div class="logo-image-wrap">
+          <img src="{% static 'img/brand-logo.svg' %}" alt="{{ branding.brand_name|default:'Sehatyar' }} Logo" style="max-height: 62px; border-radius: 13px; box-shadow: 0 8px 24px rgba(0,0,0,0.15);">
         </div>
       {% endif %}
       <h1>{{ branding.brand_name|default:"Sehatyar" }}</h1>
@@ -138,9 +138,7 @@
           {% if branding.logo_image %}
             <img src="{{ branding.logo_image.url }}" alt="{{ branding.brand_name|default:'Sehatyar' }} Logo" class="mobile-logo-img">
           {% else %}
-            <div class="mobile-logo-fallback">
-              {% if branding.logo_text %}{{ branding.logo_text }}{% else %}🏨{% endif %}
-            </div>
+            <img src="{% static 'img/brand-logo.svg' %}" alt="{{ branding.brand_name|default:'Sehatyar' }} Logo" class="mobile-logo-img">
           {% endif %}
           <h3>{{ branding.brand_name|default:"Sehatyar" }}</h3>
           <p>Complete Hospital &amp; Pharmacy Portal</p>

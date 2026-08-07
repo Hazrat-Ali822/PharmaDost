@@ -191,7 +191,7 @@
       {% if branding.logo_image %}
         <img class="logo" src="{{ branding.logo_image.url }}" alt="logo" style="object-fit:cover;background:none">
       {% else %}
-        <span class="logo">{{ branding.logo_text|default:"S" }}</span>
+        <img class="logo" src="{% static 'img/brand-logo.svg' %}" alt="{{ branding.brand_name|default:'Sehatyar' }}" style="object-fit:contain;background:none">
       {% endif %}
       <span>{{ branding.brand_name|default:"Sehatyar" }}<small>{{ branding.brand_tagline|default:"Hospital &amp; Pharmacy" }}</small></span>
     </div>
