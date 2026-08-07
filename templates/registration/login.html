@@ -4,7 +4,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sign in — Sehatyar</title>
+  <title>Sehatyar — Hospital &amp; Pharmacy Management System</title>
+  <meta name="description" content="Sehatyar is an all-in-one hospital and pharmacy management system (HMS): pharmacy POS, OPD, IPD wards, lab, imaging, billing with Sehat Card and insurance, and reports — works offline and on the clinic LAN.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Sehatyar — Hospital &amp; Pharmacy Management System">
+  <meta property="og:description" content="All-in-one HMS: pharmacy POS, OPD, IPD, lab, imaging and billing — works offline and on the clinic LAN.">
+  <meta property="og:image" content="{% url 'pwa_icon' 512 %}">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -180,7 +185,11 @@
           Forgot password? Ask your Admin to reset it, or use <a href="{% url 'password_reset' %}">password reset</a>.
         </p>
 
-        <p class="muted" style="margin-top:20px;font-size:11.5px;text-align:center;">
+        <p class="muted" style="margin-top:14px;font-size:12.5px;text-align:center;">
+          New here? <a href="{% url 'seo_landing' %}" style="font-weight:600;">Learn what Sehatyar does →</a>
+        </p>
+
+        <p class="muted" style="margin-top:16px;font-size:11.5px;text-align:center;">
           Built by <a href="https://ftdynamics.pk" target="_blank" rel="noopener" style="color:var(--muted);font-weight:700;">Future Tech Dynamics</a>
         </p>
       </div>

@@ -4,6 +4,7 @@ from django.contrib.auth import views as auth_views
 from inventory.views import dashboard
 from user_mgmt.views import setup_wizard
 from user_mgmt import pwa_views
+from user_mgmt import seo_views
 from django.conf import settings
 from django.conf.urls.static import static
 from saas.views import hospital_login
@@ -26,6 +27,12 @@ urlpatterns = [
     # not a headless job). Sits after pwa_offline so /offline/ still serves the
     # offline page and only /offline/sync/ falls through to this include.
     path('offline/', include('offline_sync.urls')),
+    # Public SEO / AEO surface (crawlable, no login) — the marketing home a search
+    # engine or AI answer engine can index and cite. See user_mgmt.seo_views.
+    path('features/', seo_views.landing, name='seo_landing'),
+    path('robots.txt', seo_views.robots_txt, name='robots_txt'),
+    path('sitemap.xml', seo_views.sitemap_xml, name='sitemap_xml'),
+    path('llms.txt', seo_views.llms_txt, name='llms_txt'),
     path('saas/', include('saas.urls')),
     path('setup/', setup_wizard, name='setup'),
     # Host-aware login: the bare platform domain shows the SaaS-owner sign-in
