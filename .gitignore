@@ -53,3 +53,6 @@ private_key.json
 
 # UI/UX design-system reference (generated, local)
 design-system/
+
+# Desktop licence runtime state (written to DATA_DIR; = repo root in dev/test)
+license.json

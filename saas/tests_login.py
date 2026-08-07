@@ -8,7 +8,7 @@ The bare platform domain (sehatyar.online) is the SaaS owner's sign-in only
 """
 from datetime import date, timedelta
 
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from accounts.models import User
@@ -83,6 +83,42 @@ class RootLoginTest(TestCase):
         self.assertNotIn('_auth_user_id', c.session)
         self.assertContains(resp, 'hospital portal')          # pointed to their own link
         self.assertContains(resp, 'shaheen.sehatyar.online')
+
+
+class DesktopLanLoginTest(TestCase):
+    """Desktop / LAN build: every staff account signs in at the same front door.
+
+    On the LAN a phone reaches the server at an IP (192.168.x.x), which never
+    resolves a tenant by host, so the hosted RootLoginView would admit only the
+    superuser and lock out every nurse/receptionist/doctor. Regression guard for
+    that: with DESKTOP_BUILD on, a plain non-superuser signs in normally.
+    """
+
+    def setUp(self):
+        # Desktop staff are hospital-less non-superusers (the desktop build has no
+        # tenant), created by the clinic's own admin.
+        self.nurse = User.objects.create_user(
+            email='nurse@clinic.local', password='pw', role='NURSE')
+        _skip_setup_wizard()
+
+    @override_settings(DESKTOP_BUILD=True, ALLOWED_HOSTS=['*'])
+    def test_non_superuser_signs_in_on_lan_ip(self):
+        c = Client()
+        resp = c.post(reverse('login'),
+                      {'username': 'nurse@clinic.local', 'password': 'pw'},
+                      HTTP_HOST='192.168.1.5:8000')
+        self.assertEqual(resp.status_code, 302, "LAN staff could not sign in")
+        self.assertIn('_auth_user_id', c.session)
+
+    def test_hosted_bare_domain_still_owner_only(self):
+        """The fix must not weaken the hosted platform: a non-superuser is still
+        turned away at the bare domain when DESKTOP_BUILD is off."""
+        c = Client()
+        resp = c.post(reverse('login'),
+                      {'username': 'nurse@clinic.local', 'password': 'pw'},
+                      HTTP_HOST='sehatyar.online')
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotIn('_auth_user_id', c.session)
 
 
 class SubdomainLoginTest(TestCase):

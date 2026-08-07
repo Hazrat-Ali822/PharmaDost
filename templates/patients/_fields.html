@@ -128,6 +128,14 @@ inside, which is exactly how this file rendered the whole form twice.
   }
   .pf-grid input:focus, .pf-grid select:focus, .pf-grid textarea:focus { border-color:var(--primary); }
   .pf-grid input[readonly], .pf-grid input:disabled { background:var(--bg); color:var(--muted); cursor:not-allowed; }
+  /* Under 16px iOS zooms the page in on focus and never zooms back out. The rule
+     above sets 14px at this same (0,2,1) specificity, so bump it back to 16px on a
+     phone — matched selector + later in source, so it wins deterministically. */
+  @media (max-width: 900px) {
+    .pf-grid input[type=text], .pf-grid input[type=number], .pf-grid input[type=email],
+    .pf-grid input[type=tel], .pf-grid input[type=password], .pf-grid input[type=date],
+    .pf-grid select, .pf-grid textarea { font-size:16px !important; }
+  }
 
   .dob-row { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
   .dob-wrap { position:relative; flex:1 1 170px; min-width:150px; }

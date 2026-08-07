@@ -347,6 +347,17 @@ None for the bare domain, `www`, a deeper label, localhost or an IP — so dev/L
 a tenant by host. The **path form `/<slug>/login/` still works** (`saas.views.hospital_login`
 → same `render_hospital_login`) as a fallback for hosts without wildcard DNS yet.
 
+**The desktop / LAN build (`settings.DESKTOP_BUILD`) uses a plain `LoginView` instead** — this
+is load-bearing and was a shipped bug. That build has no SaaS owner: it is one clinic, reached
+at `localhost` or a LAN IP, and **neither resolves a tenant by host**, so `smart_login` would
+fall through to the owner-only `RootLoginView` and admit *only* the first-run superuser —
+locking out every non-superuser nurse / receptionist / doctor the clinic creates, on the very
+phones the LAN build exists to serve. So `smart_login` short-circuits to the plain login (admits
+any active user) when `DESKTOP_BUILD` is set, before any host resolution. Guarded by
+`saas/tests_login.py::DesktopLanLoginTest` (LAN staff sign in; the hosted bare domain stays
+owner-only). The browser E2E suite runs as this single-instance case by force-planting a session
+cookie (`e2e.test_e2e.BrowserTestCase.login`) rather than depending on host policy.
+
 Two things are load-bearing:
 
 - **`reverse('login')` resolves to `/accounts/login/`, not `/login/`.** `django.contrib.auth.urls`

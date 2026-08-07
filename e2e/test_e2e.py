@@ -91,10 +91,37 @@ class BrowserTestCase(StaticLiveServerTestCase):
         return f"{self.live_server_url}{path}"
 
     def login(self, email, password='pw12345'):
+        """Sign in by planting a real session cookie, not by driving the login form.
+
+        The hosted front door is host-aware (`accounts.smart_login`): at localhost —
+        where the live server runs — no tenant resolves by host, so the owner-only
+        RootLoginView would turn a tenant admin or nurse away. Rather than depend on
+        that policy (or change rendering by faking the desktop build), we create the
+        server-side session exactly as Django's own `force_login` does and hand the
+        browser its cookie. Rendering is the true hosted rendering — which is what the
+        mobile-layout assertions need to be measuring. The login *form* itself is
+        covered by `test_valid_login_reaches_the_dashboard` /
+        `test_invalid_password_stays_on_login` and by `saas/tests_login.py`.
+        """
+        from importlib import import_module
+        from django.conf import settings
+        from django.contrib.auth import (SESSION_KEY, BACKEND_SESSION_KEY,
+                                         HASH_SESSION_KEY)
+        user = User.objects.get(email=email)
+        engine = import_module(settings.SESSION_ENGINE)
+        session = engine.SessionStore()
+        session[SESSION_KEY] = str(user.pk)
+        session[BACKEND_SESSION_KEY] = 'django.contrib.auth.backends.ModelBackend'
+        session[HASH_SESSION_KEY] = user.get_session_auth_hash()
+        session.save()
+        # A cookie must be set from a page on the origin, so open one first.
         self.page.goto(self.url('/login/'))
-        self.page.fill('input[name="username"]', email)
-        self.page.fill('input[name="password"]', password)
-        self.page.click('button[type="submit"], input[type="submit"]')
+        self.page.context.add_cookies([{
+            'name': settings.SESSION_COOKIE_NAME,
+            'value': session.session_key,
+            'url': self.live_server_url,
+        }])
+        self.page.goto(self.url('/'))
         self.page.wait_for_load_state('networkidle')
 
 
@@ -105,7 +132,13 @@ class LoginFlowTest(BrowserTestCase):
         self.assertIn('Welcome back', self.page.content())
 
     def test_invalid_password_stays_on_login(self):
-        self.login('e2e-admin@test.com', 'wrong-password')
+        # Drive the real form (force-login ignores the password): a wrong password
+        # must never authenticate, so the browser stays on the sign-in page.
+        self.page.goto(self.url('/login/'))
+        self.page.fill('input[name="username"]', 'e2e-admin@test.com')
+        self.page.fill('input[name="password"]', 'wrong-password')
+        self.page.click('button[type="submit"], input[type="submit"]')
+        self.page.wait_for_load_state('networkidle')
         self.assertIn('/login', self.page.url)
 
     def test_logout_returns_to_login(self):

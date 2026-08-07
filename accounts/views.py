@@ -47,6 +47,16 @@ def smart_login(request, *args, **kwargs):
     The path form `/<slug>/login/` still works too (a fallback for hosts without
     wildcard DNS yet), via `saas.views.hospital_login`.
     """
+    from django.conf import settings
+    # Desktop / LAN build: one clinic, no SaaS owner. Staff reach it at localhost
+    # or the LAN IP, and neither resolves a tenant by host — so the owner-only
+    # RootLoginView below would lock out EVERY non-superuser (nurse, receptionist,
+    # doctor) the clinic creates, leaving only the first-run superuser able to
+    # sign in on the wifi. There is no platform front door to protect here, so use
+    # the plain login that admits any active user.
+    if getattr(settings, 'DESKTOP_BUILD', False):
+        return LoginView.as_view(template_name='registration/login.html')(
+            request, *args, **kwargs)
     from saas.utils import hospital_from_host
     hospital = hospital_from_host(request.get_host())
     if hospital is not None:

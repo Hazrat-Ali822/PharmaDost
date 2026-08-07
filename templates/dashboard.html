@@ -105,7 +105,22 @@
   </div>
 </div>
 
-<div class="grid" style="grid-template-columns: 3fr 2fr; gap: 24px; align-items: start; margin-bottom: 24px;">
+<style>
+  /* The main dashboard split is 3fr : 2fr on a desktop. It MUST collapse to one
+     column on a phone — an inline `grid-template-columns` cannot be overridden by
+     a stylesheet media query, so on a 390px screen it stayed two columns and each
+     card was ~662px wide, pushing the whole page sideways. A class the media query
+     can reach fixes it. */
+  .dash-split { display: grid; grid-template-columns: 3fr 2fr; gap: 24px;
+    align-items: start; margin-bottom: 24px; }
+  /* Grid items default to min-width:auto and so refuse to shrink below their
+     content's intrinsic width — a wide inner table then blew the card out to
+     ~662px on a phone. min-width:0 lets the card shrink; the table scrolls inside
+     its own .table-scroll box. */
+  .dash-split > * { min-width: 0; }
+  @media (max-width: 900px) { .dash-split { grid-template-columns: 1fr; } }
+</style>
+<div class="dash-split">
   <!-- Left Side: Weekly Financial Analytics Chart -->
   <div class="card" style="padding:25px; border-radius:12px; border:1px solid var(--border);">
     <h3 style="margin-top:0; font-weight:700; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px; display:flex; align-items:center; gap:8px;">
