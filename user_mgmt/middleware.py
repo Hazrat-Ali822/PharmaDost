@@ -33,7 +33,9 @@ ALLOWED_NAMES = {
 'demo_login',
 # Public SEO / AEO pages — a search engine or AI crawler must reach these
 # without a session, or the site has nothing to index and login-walls them.
-'seo_landing', 'robots_txt', 'sitemap_xml', 'llms_txt',
+# 'dashboard' is the root '/': its view (seo_views.home) serves the marketing
+# landing to anonymous visitors and the app dashboard to signed-in ones.
+'dashboard', 'seo_landing', 'robots_txt', 'sitemap_xml', 'llms_txt',
 # The desktop/LAN cloud-backup upload is called by the launcher (no browser
 # session, authenticated by its signed licence), so it must not redirect to login.
 'saas:backup_upload',

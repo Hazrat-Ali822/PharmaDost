@@ -43,7 +43,10 @@ urlpatterns = [
     # catch-all at the bottom of this list.
     path('demo/', demo_login, name='demo_login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
-    path('', dashboard, name='dashboard'),
+    # Root: dashboard for signed-in users, the public marketing landing for an
+    # anonymous visitor on the bare platform domain (so the homepage a crawler
+    # indexes is real content, not a login wall). See user_mgmt.seo_views.home.
+    path('', seo_views.home, name='dashboard'),
     path('dashboard/', dashboard, name='dashboard_page'),
     path('medicines/', include('inventory.urls')),
     path('suppliers/', include('suppliers.urls')),

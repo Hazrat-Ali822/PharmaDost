@@ -24,9 +24,19 @@ class SeoPublicSurfaceTest(TestCase):
         # structured data for search + AI answer engines
         self.assertContains(r, 'application/ld+json')
         self.assertContains(r, 'SoftwareApplication')
+        self.assertContains(r, 'WebSite')
         self.assertContains(r, 'FAQPage')
         self.assertContains(r, 'name="description"')
         self.assertContains(r, 'og:title')
+
+    def test_root_serves_the_landing_to_anonymous(self):
+        """The homepage a crawler indexes must be real content, not a login wall."""
+        r = self.c.get('/')
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'Hospital &amp; Pharmacy Management System')
+        self.assertContains(r, 'SoftwareApplication')
+        # canonical points at the bare root so / and /features/ don't compete
+        self.assertContains(r, 'rel="canonical"')
 
     def test_robots_txt(self):
         r = self.c.get('/robots.txt')

@@ -110,6 +110,14 @@ def _jsonld(base):
         },
         {
             "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": BRAND,
+            "alternateName": f"{BRAND} — {TAGLINE}",
+            "url": base,
+            "description": SUMMARY,
+        },
+        {
+            "@context": "https://schema.org",
             "@type": "FAQPage",
             "mainEntity": [
                 {"@type": "Question", "name": q,
@@ -121,6 +129,7 @@ def _jsonld(base):
 
 
 def landing(request):
+    from django.templatetags.static import static
     base = _base_url()
     return render(request, "seo/landing.html", {
         "base_url": base,
@@ -129,8 +138,37 @@ def landing(request):
         "summary": SUMMARY,
         "features": FEATURES,
         "faqs": FAQS,
+        # Both / and /features/ render this page; point the canonical at the bare
+        # root so search engines consolidate all ranking on the homepage and never
+        # treat the two paths as duplicate content.
+        "canonical": base + "/",
+        "og_image": base + static("img/sehatyar-logo.png"),
         "jsonld": _jsonld(base),
     })
+
+
+def home(request):
+    """The site root `/`.
+
+    - Signed-in users get the app dashboard exactly as before.
+    - An anonymous visitor on the **bare platform domain** gets the public
+      marketing landing — so the homepage a search engine or AI answer engine
+      indexes is real, keyword-rich content, not a login wall (the single biggest
+      lever for being found and cited).
+    - An anonymous visitor on a **tenant subdomain** is sent to that hospital's
+      branded login; and the desktop/LAN build (one clinic, no marketing) goes
+      straight to login too.
+    """
+    if request.user.is_authenticated:
+        from inventory.views import dashboard
+        return dashboard(request)
+    from django.shortcuts import redirect
+    if getattr(settings, "DESKTOP_BUILD", False):
+        return redirect("login")
+    from saas.utils import hospital_from_host
+    if hospital_from_host(request.get_host()) is not None:
+        return redirect("login")
+    return landing(request)
 
 
 def robots_txt(request):
@@ -152,10 +190,10 @@ def robots_txt(request):
 
 def sitemap_xml(request):
     base = _base_url()
-    urls = ["/features/", "/", "/demo/"]
+    urls = ["/", "/features/", "/demo/"]
     items = "".join(
         f"<url><loc>{base}{u}</loc><changefreq>weekly</changefreq>"
-        f"<priority>{'1.0' if u == '/features/' else '0.7'}</priority></url>"
+        f"<priority>{'1.0' if u == '/' else '0.7'}</priority></url>"
         for u in urls)
     xml = ('<?xml version="1.0" encoding="UTF-8"?>'
            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'

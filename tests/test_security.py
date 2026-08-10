@@ -198,7 +198,10 @@ class FailClosedTest(TwoTenantSetup):
 class AuthenticationRequiredTest(TwoTenantSetup):
     """Anonymous users get bounced to login — never served data."""
 
-    PROTECTED = ['dashboard', 'patient_list', 'medicine_list', 'sale_create',
+    # NB: the bare root '/' ('dashboard') now serves the public marketing landing
+    # to anonymous visitors (see seo_views.home), so it is deliberately NOT here;
+    # '/dashboard/' ('dashboard_page') remains the login-walled app dashboard.
+    PROTECTED = ['dashboard_page', 'patient_list', 'medicine_list', 'sale_create',
                  'invoice_list', 'prescription_list', 'user_mgmt:user_list',
                  'user_mgmt:site_settings', 'saas:dashboard', 'audit_log']
 

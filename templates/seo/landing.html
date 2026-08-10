@@ -8,19 +8,22 @@
   <meta name="keywords" content="hospital management system, HMS, pharmacy management system, pharmacy POS, clinic management software, hospital software Pakistan, OPD IPD software, lab and imaging software, medical billing software, Sehat Card billing, offline hospital software, {{ brand }}">
   <meta name="robots" content="index, follow, max-image-preview:large">
   <meta name="author" content="Future Tech Dynamics">
-  <link rel="canonical" href="{{ base_url }}/features/">
+  <meta name="geo.region" content="PK">
+  <meta name="geo.placename" content="Pakistan">
+  <link rel="canonical" href="{{ canonical }}">
 
   <!-- Open Graph / social -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="{{ brand }}">
+  <meta property="og:locale" content="en_US">
   <meta property="og:title" content="{{ brand }} — {{ tagline }}">
   <meta property="og:description" content="{{ summary }}">
-  <meta property="og:url" content="{{ base_url }}/features/">
-  <meta property="og:image" content="{{ base_url }}{% url 'pwa_icon' 512 %}">
+  <meta property="og:url" content="{{ canonical }}">
+  <meta property="og:image" content="{{ og_image }}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="{{ brand }} — {{ tagline }}">
   <meta name="twitter:description" content="{{ summary }}">
-  <meta name="twitter:image" content="{{ base_url }}{% url 'pwa_icon' 512 %}">
+  <meta name="twitter:image" content="{{ og_image }}">
 
   <link rel="icon" type="image/png" href="{% static 'img/sehatyar-logo.png' %}">
   <link rel="apple-touch-icon" href="{% static 'img/sehatyar-logo.png' %}">
