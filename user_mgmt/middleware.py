@@ -58,7 +58,9 @@ class LoginRequiredMiddleware:
 			return self.get_response(request)
 		try:
 			match = resolve(path)
-			if match.view_name in ALLOWED_NAMES or path.startswith('/accounts/'):
+			# `seo_page_*` are the public keyword content pages (seo_views.content_page).
+			if (match.view_name in ALLOWED_NAMES or path.startswith('/accounts/')
+					or (match.view_name or '').startswith('seo_page_')):
 				return self.get_response(request)
 		except Exception:
 			pass

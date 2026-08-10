@@ -79,6 +79,188 @@ FAQS = [
 ]
 
 
+# Keyword-targeted content pages. Each ranks for its own search and gives an AI
+# answer engine a focused, factual page to cite. Slugs are top-level URLs, so they
+# are registered in pharma_mgmt/urls.py ABOVE the <slug:hospital_slug> catch-all.
+# `sections` is a list of (heading, [paragraphs]); copy is genuine, not stuffed.
+CONTENT_PAGES = {
+    "hospital-management-system": {
+        "h1": "Hospital Management System (HMS) for Pakistan",
+        "meta": ("Sehatyar is a complete hospital management system for Pakistani "
+                 "hospitals and clinics — OPD, IPD wards, pharmacy, lab, imaging, "
+                 "billing and Sehat Card/insurance — online or fully offline on the "
+                 "clinic LAN."),
+        "keywords": ("hospital management system, HMS, hospital software Pakistan, "
+                     "hospital management software, HMIS, hospital ERP, OPD IPD software"),
+        "lede": ("A hospital management system (HMS) runs a hospital's day-to-day work "
+                 "— patients, doctors, wards, pharmacy, lab, billing and reports — from "
+                 "one place. Sehatyar is an HMS built for how hospitals in Pakistan "
+                 "actually run: on a weak or absent internet connection, on phones at "
+                 "the desk and the ward, and billing to cash, insurance and the Sehat "
+                 "Card alike."),
+        "sections": [
+            ("What a hospital management system does", [
+                "An HMS replaces the registers, spreadsheets and disconnected apps a "
+                "hospital juggles with a single record. Reception registers a patient "
+                "once; that record then follows them through OPD, the ward, the lab and "
+                "the pharmacy, and every charge lands on one bill.",
+                "Sehatyar covers the whole chain: patient registration and MRN, OPD "
+                "appointments and tokens, IPD admissions with beds, doctor rounds and "
+                "nursing vitals, laboratory and imaging orders, pharmacy dispensing with "
+                "live stock, and billing with tax, discounts, insurance panels and "
+                "printable receipts."]),
+            ("Why Sehatyar fits Pakistani hospitals", [
+                "It works with no internet. Every screen can be filled offline and syncs "
+                "back later, and the desktop build turns one PC into a clinic server so "
+                "every phone on the wifi runs the whole system with no internet at all.",
+                "It bills the Sehat Card. Invoices for a covered patient become panel "
+                "claims automatically, with coverage limits and a payer ledger for the "
+                "government Sehat Sahulat scheme and private insurance. It is affordable, "
+                "installs as a Windows app or runs in the browser, and each hospital "
+                "keeps its own name, logo and colours."]),
+        ],
+        "faqs": [
+            ("What is a hospital management system?",
+             "A hospital management system (HMS) is software that runs a hospital's "
+             "clinical and administrative work — patient records, OPD, IPD wards, "
+             "pharmacy, lab, imaging, billing and reports — from one connected system."),
+            ("Which is the best hospital management system for a clinic in Pakistan?",
+             "Sehatyar is built specifically for Pakistani clinics and hospitals: it "
+             "works fully offline and on the clinic LAN, bills the Sehat Card and "
+             "insurance panels, and runs on affordable hardware with per-hospital "
+             "branding — with a free live demo to try first."),
+            ("Does the hospital system work without internet?",
+             "Yes — Sehatyar works offline on every screen and can run the whole clinic "
+             "on one computer over local wifi with no internet at all."),
+        ],
+    },
+    "pharmacy-management-software": {
+        "h1": "Pharmacy Management Software & POS",
+        "meta": ("Sehatyar pharmacy software: a fast POS with batch and expiry "
+                 "tracking, FEFO dispensing, low-stock alerts, supplier purchase "
+                 "orders and profit reports — for pharmacies and hospital pharmacies "
+                 "in Pakistan, online or offline."),
+        "keywords": ("pharmacy management software, pharmacy POS, medical store "
+                     "software, pharmacy billing software Pakistan, medicine inventory "
+                     "software, chemist software"),
+        "lede": ("Sehatyar's pharmacy module is a fast point-of-sale backed by real "
+                 "inventory: it tracks every batch and expiry, dispenses oldest-first "
+                 "so nothing expires on the shelf, and warns before stock runs out — "
+                 "for a standalone pharmacy or a hospital pharmacy."),
+        "sections": [
+            ("Sell fast, and never oversell", [
+                "The POS is built for a busy counter: search a medicine, add it, take "
+                "payment, print. Stock is checked live, so you sell only what is on hand "
+                "and in date, and the sale freezes its cost so the profit report is true.",
+                "Batch and expiry are tracked per medicine, dispensing is FEFO (first "
+                "expiry, first out), and near-expiry and low-stock alerts fire before a "
+                "problem starts. Returns quarantine expired stock automatically."]),
+            ("Purchasing, suppliers and profit", [
+                "Reorder suggestions are built from real sales velocity and turn into "
+                "draft purchase orders grouped by supplier — send them, then receive "
+                "stock straight back in. Supplier khata and payments are tracked.",
+                "It bills panels and the Sehat Card too, prints or WhatsApps the bill, "
+                "and works offline — a dropped connection never stops the counter."]),
+        ],
+        "faqs": [
+            ("What is pharmacy management software?",
+             "Pharmacy management software runs a pharmacy's selling and stock: "
+             "point-of-sale billing, batch and expiry tracking, purchasing from "
+             "suppliers, and profit and inventory reports."),
+            ("Does the pharmacy POS track batches and expiry?",
+             "Yes — Sehatyar tracks every batch and its expiry, dispenses first-expiry-"
+             "first, and blocks expired stock from being sold, with near-expiry alerts."),
+            ("Can the pharmacy software work offline?",
+             "Yes — the counter keeps working with no internet; offline sales are "
+             "recorded and reconciled, and the desktop build needs no internet at all."),
+        ],
+    },
+    "sehat-card-billing-software": {
+        "h1": "Sehat Card & Insurance Billing Software",
+        "meta": ("Sehatyar bills the government Sehat Card (Sehat Sahulat), private "
+                 "insurance and corporate panels: automatic claims, coverage limits, "
+                 "per-claim settlement and a payer ledger — inside a full hospital and "
+                 "pharmacy system."),
+        "keywords": ("Sehat Card billing software, Sehat Sahulat software, panel "
+                     "billing, insurance billing software Pakistan, IPD claims, "
+                     "empanelled hospital software"),
+        "lede": ("Sehatyar handles institutional payers — the government Sehat Card "
+                 "(Sehat Sahulat), private insurance and corporate panels — as a proper "
+                 "receivables ledger, so a covered patient's bills become claims with no "
+                 "extra step."),
+        "sections": [
+            ("Claims that build themselves", [
+                "Link a patient to their panel and card number once. From then on every "
+                "bill — OPD, lab, imaging, IPD discharge — is attributed to the panel "
+                "automatically and stamped as a pending claim; the co-pay collected at "
+                "the counter is recorded separately.",
+                "Each panel can cover only certain services (OPD-only, the inpatient "
+                "package, or the whole hospital), and a per-patient coverage limit (like "
+                "a Sehat Card annual cap) is enforced — anything over the limit is billed "
+                "to the patient as normal."]),
+            ("Settlement and the payer ledger", [
+                "What the panel owes is computed, never hand-kept, so it cannot drift. "
+                "Payments from a panel are allocated across its open claims oldest-first, "
+                "each claim shows its settled amount and status, and the ledger prints a "
+                "clean statement for reconciliation with the payer."]),
+        ],
+        "faqs": [
+            ("Can Sehatyar bill the Sehat Card (Sehat Sahulat)?",
+             "Yes — a Sehat Card patient's invoices become panel claims automatically, "
+             "with coverage limits, per-claim settlement and a payer ledger for the "
+             "government Sehat Sahulat scheme."),
+            ("Does it also handle private insurance and company panels?",
+             "Yes — private insurance, corporate panels and the Sehat Card are all "
+             "handled the same way, each with its own covered services and ledger."),
+            ("How is the co-pay handled?",
+             "The co-pay collected from the patient at the counter is recorded "
+             "separately; the panel is billed only the balance it is responsible for."),
+        ],
+    },
+    "clinic-management-software": {
+        "h1": "Clinic Management Software",
+        "meta": ("Sehatyar clinic software: reception and OPD appointments, doctor "
+                 "schedules, prescriptions, lab and imaging, and patient billing in one "
+                 "flow — works offline and on the clinic LAN, with a free demo."),
+        "keywords": ("clinic management software, clinic software, OPD software, doctor "
+                     "appointment software, patient management software Pakistan, "
+                     "EMR software"),
+        "lede": ("Sehatyar runs a clinic from the front desk to the bill: reception "
+                 "registers or finds the patient, books the doctor, and the visit flows "
+                 "through consultation, prescription, lab and billing without re-typing "
+                 "anything."),
+        "sections": [
+            ("From the front desk to the prescription", [
+                "Reception picks a department and an available doctor, registers a new "
+                "patient or finds an old one by name, mobile, CNIC or MRN, and prints a "
+                "token slip. The doctor writes the prescription, which flows to the "
+                "pharmacy, and can order lab tests or scans that raise the bill.",
+                "Doctor availability is real — timings plus per-day leave — so reception "
+                "only offers doctors who are actually sitting, and every visit is on one "
+                "patient record with full history."]),
+            ("Built for a real clinic", [
+                "It works on a phone at the desk, keeps working with no internet, bills "
+                "cash, insurance and the Sehat Card, and carries the clinic's own name "
+                "and logo. Turn on only the modules you need and add wards, imaging or "
+                "multi-branch later as the clinic grows."]),
+        ],
+        "faqs": [
+            ("What is clinic management software?",
+             "Clinic management software runs a clinic's front desk and care: patient "
+             "registration, OPD appointments, prescriptions, lab and imaging, and "
+             "billing — from one connected system."),
+            ("Does it manage doctor appointments and schedules?",
+             "Yes — doctors have weekly OPD timings and per-day availability, and "
+             "reception books against the doctor who is actually sitting, with printed "
+             "token slips."),
+            ("Is there a free trial?",
+             "Yes — a live demo with sample data across every module is available with "
+             "no signup."),
+        ],
+    },
+}
+
+
 def _jsonld(base):
     """Structured data so search engines and AI models understand exactly what
     this is: a software product, its maker, and its FAQ. No ratings are invented."""
@@ -147,6 +329,56 @@ def landing(request):
     })
 
 
+def _content_jsonld(base, slug, page):
+    url = f"{base}/{slug}/"
+    blocks = [
+        {
+            "@context": "https://schema.org",
+            "@type": "WebPage",
+            "name": page["h1"],
+            "url": url,
+            "description": page["meta"],
+            "isPartOf": {"@type": "WebSite", "name": BRAND, "url": base},
+            "about": {"@type": "SoftwareApplication", "name": BRAND, "url": base},
+        },
+        {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+                {"@type": "ListItem", "position": 1, "name": "Home", "item": base + "/"},
+                {"@type": "ListItem", "position": 2, "name": page["h1"], "item": url},
+            ],
+        },
+    ]
+    if page.get("faqs"):
+        blocks.append({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": [
+                {"@type": "Question", "name": q,
+                 "acceptedAnswer": {"@type": "Answer", "text": a}}
+                for q, a in page["faqs"]],
+        })
+    return mark_safe(json.dumps(blocks, ensure_ascii=False, indent=2))
+
+
+def content_page(request, slug):
+    """One keyword-targeted marketing page (see CONTENT_PAGES). Public, tenant-free."""
+    from django.http import Http404
+    from django.templatetags.static import static
+    page = CONTENT_PAGES.get(slug)
+    if page is None:
+        raise Http404("No such page")
+    base = _base_url()
+    return render(request, "seo/content_page.html", {
+        "base_url": base, "brand": BRAND, "tagline": TAGLINE,
+        "slug": slug, "page": page, "features": FEATURES,
+        "canonical": f"{base}/{slug}/",
+        "og_image": base + static("img/sehatyar-logo.png"),
+        "jsonld": _content_jsonld(base, slug, page),
+    })
+
+
 def home(request):
     """The site root `/`.
 
@@ -190,10 +422,20 @@ def robots_txt(request):
 
 def sitemap_xml(request):
     base = _base_url()
-    urls = ["/", "/features/", "/demo/"]
+    # Home first, then the keyword content pages (high value), then demo.
+    content = [f"/{slug}/" for slug in CONTENT_PAGES]
+    urls = ["/", "/features/"] + content + ["/demo/"]
+
+    def _priority(u):
+        if u == "/":
+            return "1.0"
+        if u in content:
+            return "0.9"
+        return "0.7"
+
     items = "".join(
         f"<url><loc>{base}{u}</loc><changefreq>weekly</changefreq>"
-        f"<priority>{'1.0' if u == '/' else '0.7'}</priority></url>"
+        f"<priority>{_priority(u)}</priority></url>"
         for u in urls)
     xml = ('<?xml version="1.0" encoding="UTF-8"?>'
            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'

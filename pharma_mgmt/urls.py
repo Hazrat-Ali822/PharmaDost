@@ -33,6 +33,10 @@ urlpatterns = [
     path('robots.txt', seo_views.robots_txt, name='robots_txt'),
     path('sitemap.xml', seo_views.sitemap_xml, name='sitemap_xml'),
     path('llms.txt', seo_views.llms_txt, name='llms_txt'),
+    # Keyword-targeted content pages — top-level slugs, so they MUST sit above the
+    # <slug:hospital_slug> catch-all below or the slug pattern would swallow them.
+    *[path(f'{slug}/', seo_views.content_page, {'slug': slug}, name=f'seo_page_{slug}')
+      for slug in seo_views.CONTENT_PAGES],
     path('saas/', include('saas.urls')),
     path('setup/', setup_wizard, name='setup'),
     # Host-aware login: the bare platform domain shows the SaaS-owner sign-in

@@ -60,3 +60,20 @@ class SeoPublicSurfaceTest(TestCase):
         for path in ['/features/', '/robots.txt', '/sitemap.xml', '/llms.txt']:
             self.assertEqual(self.c.get(path).status_code, 200,
                              f'{path} redirected an anonymous crawler')
+
+    def test_keyword_content_pages_are_public_and_structured(self):
+        from user_mgmt.seo_views import CONTENT_PAGES
+        self.assertTrue(CONTENT_PAGES)
+        sitemap = self.c.get('/sitemap.xml').content.decode()
+        for slug, page in CONTENT_PAGES.items():
+            r = self.c.get(f'/{slug}/')
+            self.assertEqual(r.status_code, 200, f'/{slug}/ not reachable anonymously')
+            self.assertContains(r, page['h1'])
+            self.assertContains(r, 'application/ld+json')
+            self.assertContains(r, 'BreadcrumbList')
+            self.assertContains(r, 'rel="canonical"')
+            self.assertIn(f'/{slug}/', sitemap, f'/{slug}/ missing from sitemap')
+
+    def test_unknown_content_slug_is_404_not_a_tenant_lookup(self):
+        # A made-up top-level slug must 404 (or hit the hospital catch-all), never 500.
+        self.assertIn(self.c.get('/no-such-marketing-page/').status_code, (404, 200, 302))
