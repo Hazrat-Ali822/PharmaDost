@@ -16,6 +16,9 @@
   <a class="btn {% if show == 'completed' %}primary{% else %}alt{% endif %}" href="?show=completed" style="padding:6px 16px; font-size:13px; text-decoration:none; border-radius:20px;">
     ✅ Completed Orders
   </a>
+  <a class="btn {% if show == 'cancelled' %}primary{% else %}alt{% endif %}" href="?show=cancelled" style="padding:6px 16px; font-size:13px; text-decoration:none; border-radius:20px;">
+    🚫 Cancelled
+  </a>
   <a class="btn {% if show == 'all' %}primary{% else %}alt{% endif %}" href="?show=all" style="padding:6px 16px; font-size:13px; text-decoration:none; border-radius:20px;">
     🌐 All Orders
   </a>
@@ -39,7 +42,9 @@
       <td>Dr. {{ o.ordered_by.get_full_name|default:o.ordered_by.email|default:"External / Self" }}</td>
       <td>{{ o.results.count }} test{{ o.results.count|pluralize }}</td>
       <td>
-        {% if o.status == 'Completed' or o.status == 'Verified' or o.status == 'Delivered' %}
+        {% if o.is_cancelled %}
+          <span class="badge red">{{ o.status }}</span>
+        {% elif o.status == 'Completed' or o.status == 'Verified' or o.status == 'Delivered' %}
           <span class="badge green">{{ o.status }}</span>
         {% else %}
           <span class="badge gray">{{ o.status }}</span>
@@ -49,6 +54,8 @@
       <td>
         {% if o.payment_status == 'Paid' %}
           <span class="badge green">Paid ({{ currency }} {{ o.payment_amount }})</span>
+        {% elif o.is_cancelled %}
+          <span class="badge red">Cancelled</span>
         {% else %}
           {% if request.user.role == 'LABTECH' or request.user.role == 'ADMIN' or request.user.is_superuser %}
             <form action="{% url 'lab:collect_payment' o.id %}" method="post" style="display:inline">

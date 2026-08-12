@@ -22,6 +22,9 @@ def _dec(value):
 VIEW_ROLES = ["ADMIN", "DOCTOR", "SONOGRAPHER", "RECEPTIONIST"]
 ORDER_ROLES = ["ADMIN", "DOCTOR", "RECEPTIONIST", "SONOGRAPHER"]
 REPORT_ROLES = ["ADMIN", "SONOGRAPHER"]
+# Withdrawing a scan the patient refused — the radiology counter is where they say
+# so, hence SONOGRAPHER; reception is left out (see lab.views.CANCEL_ROLES).
+CANCEL_ROLES = ["ADMIN", "DOCTOR", "SONOGRAPHER"]
 
 
 def _scoped_studies(request):
@@ -51,11 +54,19 @@ def study_list(request):
     modality = request.GET.get("modality", "").strip()
     if modality:
         studies = studies.filter(modality=modality)
+    # A withdrawn scan is history, not work waiting to be done, so it leaves the
+    # default list — but stays reachable, because "why was this never scanned" has
+    # to remain answerable.
+    show = request.GET.get("show", "active")
+    if show == "cancelled":
+        studies = studies.filter(status="Cancelled")
+    else:
+        studies = studies.exclude(status="Cancelled")
     page = paginate(request, studies)
     return render(
         request,
         "imaging/study_list.html",
-        {"studies": page, "page_obj": page, "modality": modality,
+        {"studies": page, "page_obj": page, "modality": modality, "show": show,
          "modalities": ImagingStudy.MODALITY_CHOICES},
     )
 
@@ -96,7 +107,11 @@ def study_detail(request, study_id):
         _scoped_studies(request).select_related("patient", "referred_by", "performed_by"),
         pk=study_id,
     )
-    return render(request, "imaging/study_detail.html", {"study": study})
+    # Same reason as lab.order_detail: never show a button that leads to a 403.
+    can_cancel = (request.user.is_superuser
+                  or getattr(request.user, "role", None) in CANCEL_ROLES)
+    return render(request, "imaging/study_detail.html",
+                  {"study": study, "can_cancel": can_cancel})
 
 
 @role_required(REPORT_ROLES)
@@ -111,6 +126,41 @@ def study_report_edit(request, study_id):
     else:
         form = ImagingReportForm(instance=study, user=request.user)
     return render(request, "imaging/study_report_edit.html", {"study": study, "form": form})
+
+
+@role_required(CANCEL_ROLES)
+def study_cancel(request, study_id):
+    """Withdraw a scan the patient refused, taking its charge off the bill.
+
+    A study is one scan, so there is no per-item case here as there is in the lab.
+    See `imaging.services.cancel_study` for why a reported study is refused.
+    """
+    study = get_object_or_404(
+        _scoped_studies(request).select_related("patient", "invoice"), pk=study_id)
+
+    if request.method == "POST":
+        from django.core.exceptions import ValidationError
+        from .services import cancel_study
+        try:
+            money = cancel_study(study, user=request.user,
+                                 reason=request.POST.get("reason", ""))
+        except ValidationError as e:
+            messages.error(request, "; ".join(e.messages))
+            return render(request, "imaging/cancel_confirm.html",
+                          {"study": study, "reason": request.POST.get("reason", "")})
+
+        cur = current_currency()
+        note = f"Study #{study.id} cancelled."
+        if money["voided"]:
+            note += f" Invoice {study.invoice.display_no} voided."
+        elif money["removed"]:
+            note += f" Charge removed — bill is now {cur} {study.invoice.total}."
+        if money["refund_due"]:
+            note += f" ⚠️ {cur} {money['refund_due']} already collected — refund it to the patient."
+        messages.success(request, note)
+        return redirect("imaging:study_detail", study_id=study.id)
+
+    return render(request, "imaging/cancel_confirm.html", {"study": study, "reason": ""})
 
 
 @role_required(REPORT_ROLES)
@@ -171,6 +221,9 @@ def scan_catalog(request):
 @require_POST
 def collect_payment(request, study_id):
     study = get_object_or_404(_scoped_studies(request), pk=study_id)
+    if study.is_cancelled:
+        messages.error(request, "This scan was cancelled — there is nothing to collect.")
+        return redirect('imaging:study_detail', study_id=study.id)
     if study.payment_status == 'Pending':
         study.payment_status = 'Paid'
         study.payment_collected_by = request.user

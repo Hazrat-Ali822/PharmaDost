@@ -167,6 +167,71 @@ def cash_position(day):
     }
 
 
+def _rederive_totals(invoice):
+    """Recompute subtotal/discount/tax/total from whatever lines the invoice still has,
+    using the same SiteSettings maths `create_service_invoice` built it with."""
+    from user_mgmt.models import SiteSettings
+    site = SiteSettings.load()
+    subtotal = invoice.items.aggregate(t=Coalesce(Sum('amount'), Decimal('0.00')))['t']
+    # A standing rupee discount larger than what is left would make the bill negative.
+    discount = min(invoice.discount or Decimal('0.00'), subtotal)
+    after_discount = subtotal - discount
+    tax = site.tax_on(after_discount)
+    invoice.subtotal = subtotal
+    invoice.discount = discount
+    invoice.tax = tax
+    invoice.total = site.round_total(after_discount + tax)
+
+
+def cancel_invoice_charge(invoice, description):
+    """Drop one chargeable line off an ACTIVE invoice and re-derive its totals.
+
+    Called when a patient refuses a service that was already ordered (a lab test,
+    a scan). The order is cancelled, so the money has to come off the bill with it —
+    a 3-test invoice becomes a 2-test invoice instead of needing the whole thing
+    voided, which is what `invoice_void` would otherwise force. When the last line
+    goes the invoice is VOIDed, since a bill for nothing is not a bill.
+
+    **`paid` is never lowered.** If the patient already handed over more than the new
+    total, the excess comes back as `refund_due` for the desk to return in cash;
+    quietly reducing `paid` would erase money the day book has already counted.
+
+    A free service (price 0) never got an `InvoiceItem` in the first place, so
+    `removed` is False and nothing happens — which is correct, not a failure.
+    """
+    result = {'removed': False, 'voided': False, 'refund_due': Decimal('0.00')}
+    if invoice is None or invoice.status != 'ACTIVE':
+        return result
+
+    with transaction.atomic():
+        # `_base_manager`, not `objects`/`all_objects`: both are TenantManagers and
+        # would re-scope by the thread-local, which fails on a legacy invoice whose
+        # `hospital` is NULL. The caller already reached this invoice through a
+        # tenant-scoped order/study, so the authorisation is done — this is only a
+        # lock on a row we are permitted to touch, in whatever state it is in.
+        inv = Invoice._base_manager.select_for_update().get(pk=invoice.pk)
+        line = inv.items.filter(description=description).first()
+        if line is None:
+            return result
+        line.delete()
+        result['removed'] = True
+
+        _rederive_totals(inv)
+        if not inv.items.exists():
+            inv.status = 'VOID'
+            result['voided'] = True
+        inv.save(update_fields=['subtotal', 'discount', 'tax', 'total', 'status'])
+
+        paid = inv.paid or Decimal('0.00')
+        if paid > inv.total:
+            result['refund_due'] = paid - inv.total
+
+        # keep the caller's in-memory copy from going stale mid-request
+        for f in ('subtotal', 'discount', 'tax', 'total', 'status'):
+            setattr(invoice, f, getattr(inv, f))
+    return result
+
+
 def create_service_invoice(*, patient, items, created_by, paid=Decimal('0.00'),
                            payment_method='CASH', discount=Decimal('0.00'),
                            appointment=None, panel=None, service=None):

@@ -23,13 +23,15 @@
 <table>
   <thead><tr><th>Test</th><th>Result</th><th>Normal Range</th><th>Unit</th><th>Remarks</th></tr></thead>
   <tbody>
+    {# Cancelled tests stay on the printed report, marked as such: the doctor asked
+       for three and got two, and the sheet has to say why rather than look complete. #}
     {% for r in order.results.all %}
     <tr>
       <td>{{ r.lab_test.name }}</td>
-      <td><b>{{ r.result_value|default:"—" }}</b></td>
-      <td>{{ r.normal_range|default:"—" }}</td>
-      <td>{{ r.unit|default:"" }}</td>
-      <td>{{ r.remarks|default:"" }}</td>
+      <td><b>{% if r.is_cancelled %}Cancelled{% else %}{{ r.result_value|default:"—" }}{% endif %}</b></td>
+      <td>{% if r.is_cancelled %}—{% else %}{{ r.normal_range|default:"—" }}{% endif %}</td>
+      <td>{% if r.is_cancelled %}{% else %}{{ r.unit|default:"" }}{% endif %}</td>
+      <td>{% if r.is_cancelled %}Not performed — {{ r.cancel_reason }}{% else %}{{ r.remarks|default:"" }}{% endif %}</td>
     </tr>
     {% endfor %}
   </tbody>

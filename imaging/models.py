@@ -53,6 +53,9 @@ class ImagingStudy(models.Model):
         ("In Progress", "In Progress"),  # patient in the scan room
         ("Reported", "Reported"),        # findings + impression written
         ("Delivered", "Delivered"),      # report handed to patient
+        # Patient declined, or the referring doctor withdrew it. Kept as a record —
+        # never deleted — but out of radiology's queue, with its charge off the bill.
+        ("Cancelled", "Cancelled"),
     )
 
     patient = models.ForeignKey(
@@ -99,6 +102,12 @@ class ImagingStudy(models.Model):
 
     created_at = models.DateTimeField(default=timezone.now)
 
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    cancelled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="cancelled_imaging_studies")
+    cancel_reason = models.CharField(max_length=255, blank=True)
+
     class Meta:
         ordering = ["-study_date"]
         verbose_name = "Imaging Study"
@@ -110,3 +119,7 @@ class ImagingStudy(models.Model):
     @property
     def is_reported(self):
         return bool((self.findings or "").strip() or (self.impression or "").strip())
+
+    @property
+    def is_cancelled(self):
+        return self.status == "Cancelled"

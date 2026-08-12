@@ -31,6 +31,10 @@ class TestOrder(models.Model):
         ('Completed', 'Completed'),
         ('Verified', 'Verified'),
         ('Delivered', 'Delivered'),
+        # The patient declined, or the doctor withdrew the request. The row stays —
+        # "why was this test never done" has to remain answerable — but it leaves
+        # the lab's pending queue and its charge comes off the bill.
+        ('Cancelled', 'Cancelled'),
     )
 
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='lab_orders')
@@ -51,9 +55,28 @@ class TestOrder(models.Model):
     payment_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     invoice = models.ForeignKey('billing.Invoice', on_delete=models.SET_NULL, null=True, blank=True, related_name='lab_orders')
 
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    cancelled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='cancelled_lab_orders')
+    cancel_reason = models.CharField(max_length=255, blank=True)
+
+    @property
+    def active_results(self):
+        """The tests still to be done — cancelled ones are history, not work."""
+        return self.results.filter(is_cancelled=False)
+
     @property
     def total_price(self):
-        return sum(t.price for t in self.tests.all())
+        """What this order is worth *now*. Reads `results`, not the `tests` M2M,
+        because a cancelled test is no longer chargeable — the M2M cannot express
+        that and would keep billing for a test the patient refused."""
+        return sum(r.lab_test.price for r in self.results.filter(is_cancelled=False)
+                   .select_related('lab_test'))
+
+    @property
+    def is_cancelled(self):
+        return self.status == 'Cancelled'
 
     def __str__(self):
         return f"Order #{self.id} - {self.patient.full_name}"
@@ -66,6 +89,16 @@ class TestResult(models.Model):
     normal_range = models.CharField(max_length=100, blank=True)
     unit = models.CharField(max_length=50, blank=True)
     remarks = models.TextField(blank=True)
+
+    # Cancelling one test off a multi-test order. Soft, with a reason and a name
+    # against it: the printed report has to be able to say "Cancelled — patient
+    # refused" rather than silently showing two tests where the doctor asked three.
+    is_cancelled = models.BooleanField(default=False)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    cancelled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='cancelled_lab_tests')
+    cancel_reason = models.CharField(max_length=255, blank=True)
 
     def save(self, *args, **kwargs):
         if not self.normal_range and self.lab_test:

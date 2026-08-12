@@ -22,6 +22,13 @@
 
 <form method="post" id="bill-form" data-offline-kind="sale" data-offline-next="{% url 'sale_create' %}">{% csrf_token %}
   <input type="hidden" name="prescription_id" value="{{ prescription_id|default:'' }}">
+  {% if prescription_id %}
+  <div class="muted no-print" style="font-size:12.5px; margin-bottom:8px;">
+    Loaded from Rx #{{ prescription_id }}. Patient doesn't want one of these?
+    <a href="{% url 'prescription_detail' prescription_id %}">Mark it declined on the prescription</a>
+    — it then leaves the pending queue instead of sitting here for ever.
+  </div>
+  {% endif %}
   <div class="card" style="margin-bottom:12px">
     <div class="form-row">
       <label>Sale Type</label>

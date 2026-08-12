@@ -202,7 +202,7 @@ def _prescribed_medicines(patient):
     from prescriptions.models import PrescriptionItem
 
     items = (PrescriptionItem.objects
-             .filter(prescription__appointment__patient=patient)
+             .filter(prescription__appointment__patient=patient, is_cancelled=False)
              .select_related('medicine', 'prescription')
              .prefetch_related('medicine__batches')
              .order_by('-prescription__created_at'))

@@ -1,0 +1,51 @@
+{% extends 'partials/base.html' %}
+{% block title %}Cancel — Study #{{ study.id }}{% endblock %}
+{% block page_title %}Cancel Scan{% endblock %}
+{% block content %}
+<div class="form-card" style="max-width:640px">
+  <h2 style="color:var(--danger);margin-top:0">Cancel this scan?</h2>
+
+  <p class="muted" style="margin-top:-6px">
+    Study #{{ study.id }} · {{ study.patient.full_name }} · MRN {{ study.patient.mrn }}
+  </p>
+
+  <p>Withdrawing <strong>{{ study.get_modality_display }} — {{ study.study_name }}</strong>.</p>
+
+  <div class="card" style="background:var(--bg-soft);margin:14px 0">
+    <strong>What happens to the money</strong>
+    {% if study.invoice %}
+      <p style="margin:6px 0 0">
+        Bill {{ study.invoice.display_no }} is currently {{ currency }} {{ study.invoice.total }}.
+        This scan's charge comes off it; if it was the only thing on the bill, the
+        invoice is voided.
+      </p>
+      {% if study.invoice.paid %}
+        <p class="msg error" style="margin:10px 0 0">
+          ⚠️ {{ currency }} {{ study.invoice.paid }} has already been collected. Anything
+          over the new total must be <strong>refunded to the patient in cash</strong>.
+        </p>
+      {% endif %}
+    {% else %}
+      <p style="margin:6px 0 0">No invoice is attached to this study, so nothing changes on the bill.</p>
+    {% endif %}
+  </div>
+
+  <p class="muted" style="font-size:13px">
+    Nothing is deleted — the study stays on the patient's record marked
+    <em>Cancelled</em>, with your name, the time and the reason.
+    {% if study.referred_by %}{{ study.referred_by.get_full_name|default:study.referred_by.email }} will be notified.{% endif %}
+  </p>
+
+  <form method="post" action="{% url 'imaging:study_cancel' study.id %}" style="margin-top:16px">
+    {% csrf_token %}
+    <label for="reason"><strong>Reason</strong> (required)</label>
+    <textarea id="reason" name="reason" rows="2" required maxlength="255"
+              placeholder="e.g. Patient refused the ultrasound"
+              style="width:100%">{{ reason }}</textarea>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn danger" type="submit">Yes, cancel this scan</button>
+      <a class="btn alt" href="{% url 'imaging:study_detail' study.id %}">Go back</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

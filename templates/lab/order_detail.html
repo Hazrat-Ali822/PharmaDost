@@ -7,32 +7,57 @@
     <div class="muted">
       <a href="{% url 'patient_detail' order.patient.pk %}">{{ order.patient.full_name }}</a>
       · {{ order.order_date|date:"Y-m-d H:i" }}
-      · <span class="badge {% if order.status == 'Completed' or order.status == 'Verified' or order.status == 'Delivered' %}green{% else %}gray{% endif %}">{{ order.status }}</span>
+      · <span class="badge {% if order.is_cancelled %}red{% elif order.status == 'Completed' or order.status == 'Verified' or order.status == 'Delivered' %}green{% else %}gray{% endif %}">{{ order.status }}</span>
     </div>
   </div>
   <div style="display:flex;gap:8px">
-    <a class="btn" href="{% url 'lab:order_results_edit' order.id %}">Edit Results</a>
-    {% if order.status == 'Completed' or order.status == 'Verified' or order.status == 'Delivered' %}
-      <a class="btn success" href="{% url 'lab:order_report' order.id %}" target="_blank">Print Report</a>
-    {% else %}
-      <a class="btn alt" href="{% url 'lab:order_mark_completed' order.id %}">Mark Completed</a>
+    {% if not order.is_cancelled %}
+      <a class="btn" href="{% url 'lab:order_results_edit' order.id %}">Edit Results</a>
+      {% if order.status == 'Completed' or order.status == 'Verified' or order.status == 'Delivered' %}
+        <a class="btn success" href="{% url 'lab:order_report' order.id %}" target="_blank">Print Report</a>
+      {% else %}
+        <a class="btn alt" href="{% url 'lab:order_mark_completed' order.id %}">Mark Completed</a>
+        {% if can_cancel %}
+          <a class="btn danger" href="{% url 'lab:order_cancel' order.id %}">Cancel Order</a>
+        {% endif %}
+      {% endif %}
     {% endif %}
     <a class="btn alt" href="{% url 'lab:order_list' %}">Back</a>
   </div>
 </div>
 
+{% if order.is_cancelled %}
+<div class="msg error" style="margin-bottom:14px">
+  🚫 This order was cancelled{% if order.cancelled_by %} by {{ order.cancelled_by.get_full_name|default:order.cancelled_by.email }}{% endif %}
+  on {{ order.cancelled_at|date:"d/m/Y H:i" }} — {{ order.cancel_reason }}
+</div>
+{% endif %}
+
 <div class="card">
   <div class="muted" style="font-size:13px;margin-bottom:8px">Ordered by: {{ order.ordered_by|default:"—" }}</div>
   <table class="tbl">
-    <thead><tr><th>Test</th><th>Result</th><th>Normal Range</th><th>Unit</th><th>Remarks</th></tr></thead>
+    <thead><tr><th>Test</th><th>Result</th><th>Normal Range</th><th>Unit</th><th>Remarks</th><th></th></tr></thead>
     <tbody>
       {% for r in order.results.all %}
-      <tr>
-        <td>{{ r.lab_test.name }}</td>
+      <tr {% if r.is_cancelled %}style="opacity:.55"{% endif %}>
+        <td>
+          {{ r.lab_test.name }}
+          {% if r.is_cancelled %}<span class="badge red">Cancelled</span>{% endif %}
+        </td>
         <td><strong>{{ r.result_value|default:"—" }}</strong></td>
         <td>{{ r.normal_range|default:"—" }}</td>
         <td>{{ r.unit|default:"" }}</td>
-        <td>{{ r.remarks|default:"" }}</td>
+        <td>
+          {% if r.is_cancelled %}
+            <span class="muted" style="font-size:12px">{{ r.cancel_reason }}</span>
+          {% else %}{{ r.remarks|default:"" }}{% endif %}
+        </td>
+        <td>
+          {% if can_cancel and not r.is_cancelled and not r.result_value and not order.is_cancelled %}
+            <a class="btn danger" style="padding:3px 10px;font-size:12px"
+               href="{% url 'lab:test_cancel' order.id r.id %}">Cancel</a>
+          {% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>

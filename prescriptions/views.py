@@ -1,12 +1,18 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
-from accounts.decorators import feature_required
+from accounts.decorators import feature_required, role_required
 from opd.models import Appointment
 from .forms import PrescriptionForm, PrescriptionItemFormSet, RxPresetForm, RxPresetItemFormSet
-from .models import Prescription, RxPreset, RxPresetItem
+from .models import Prescription, PrescriptionItem, RxPreset, RxPresetItem
+
+# Declining a prescribed medicine. The pharmacist is included because the counter
+# is where the patient actually says "I don't want this one" — but they hold `pos`,
+# not `prescriptions`, so the feature gate has to accept either key.
+CANCEL_ROLES = ['ADMIN', 'DOCTOR', 'PHARMACIST']
 
 
 def _scoped_prescriptions(request):
@@ -190,13 +196,19 @@ def prescription_list(request):
     })
 
 
-@feature_required('prescriptions')
+# 'pos' as well as 'prescriptions': the pharmacist is the one standing in front of
+# the patient when they decline a medicine, and they hold `pos`, not `prescriptions`.
+# This shows them nothing new — the POS already pre-loads the Rx contents into the cart.
+@feature_required('prescriptions', 'pos')
 def prescription_detail(request, pk):
     prescription = get_object_or_404(
         _scoped_prescriptions(request).select_related('appointment__patient', 'appointment__doctor').prefetch_related('items__medicine'),
         pk=pk
     )
-    return render(request, 'prescriptions/prescription_detail.html', {'prescription': prescription})
+    can_cancel = (request.user.is_superuser
+                  or getattr(request.user, 'role', None) in CANCEL_ROLES)
+    return render(request, 'prescriptions/prescription_detail.html',
+                  {'prescription': prescription, 'can_cancel': can_cancel})
 
 
 @feature_required('prescriptions')
@@ -263,6 +275,65 @@ def prescription_edit(request, pk):
         'presets': presets,
         'presets_json': presets_json,
     })
+
+
+@feature_required('prescriptions', 'pos')
+@role_required(CANCEL_ROLES)
+def item_cancel(request, pk, item_id):
+    """The patient declined one medicine on the Rx.
+
+    No bill is touched: a medicine is charged when it is dispensed at the POS, not
+    when it is prescribed, so refusing it simply means it is never sold. What this
+    fixes is the queue — without it the Rx sits PENDING for ever waiting for a
+    medicine nobody is coming back for.
+    """
+    prescription = get_object_or_404(
+        _scoped_prescriptions(request).select_related('appointment__patient'), pk=pk)
+    item = get_object_or_404(
+        PrescriptionItem.objects.select_related('medicine'),
+        pk=item_id, prescription=prescription)
+
+    if request.method == 'POST':
+        from .services import cancel_item
+        try:
+            cancel_item(item, user=request.user, reason=request.POST.get('reason', ''))
+        except ValidationError as e:
+            messages.error(request, "; ".join(e.messages))
+            return render(request, 'prescriptions/cancel_confirm.html', {
+                'prescription': prescription, 'item': item,
+                'reason': request.POST.get('reason', '')})
+        messages.success(request, f"{item.display_name} marked as declined by the patient.")
+        return redirect('prescription_detail', pk=prescription.pk)
+
+    return render(request, 'prescriptions/cancel_confirm.html',
+                  {'prescription': prescription, 'item': item, 'reason': ''})
+
+
+@feature_required('prescriptions', 'pos')
+@role_required(CANCEL_ROLES)
+def prescription_cancel(request, pk):
+    """The patient declined the whole prescription (or the doctor withdrew it)."""
+    prescription = get_object_or_404(
+        _scoped_prescriptions(request).select_related('appointment__patient'), pk=pk)
+
+    if request.method == 'POST':
+        from .services import cancel_prescription
+        try:
+            n = cancel_prescription(prescription, user=request.user,
+                                    reason=request.POST.get('reason', ''))
+        except ValidationError as e:
+            messages.error(request, "; ".join(e.messages))
+            return render(request, 'prescriptions/cancel_confirm.html', {
+                'prescription': prescription, 'item': None,
+                'reason': request.POST.get('reason', '')})
+        messages.success(
+            request,
+            f"Prescription #{prescription.pk} cancelled — {n} medicine(s) withdrawn "
+            f"from the pharmacy queue.")
+        return redirect('prescription_detail', pk=prescription.pk)
+
+    return render(request, 'prescriptions/cancel_confirm.html',
+                  {'prescription': prescription, 'item': None, 'reason': ''})
 
 
 # --- Rx Presets Management ---

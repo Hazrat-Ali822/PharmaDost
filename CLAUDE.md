@@ -106,7 +106,7 @@ Two traps when adding tests:
 This is the single most common source of confusion:
 
 - **Local dev** uses **Supabase PostgreSQL**, via `DATABASE_URL` in `.env`.
-- **Production (PythonAnywhere)** uses **local SQLite** at `/home/PharmaDost/PharmaDost/db.sqlite3`. There is no `DATABASE_URL` there — neither in `.env` nor the WSGI file — so `settings.py` falls back to its SQLite default. The `WARNING:root:No DATABASE_URL environment variable set` line in command output on that host is benign and expected.
+- **Production (JabraHost — cPanel + Passenger)** uses **local SQLite** at `~/sehatyar/db.sqlite3`. There is deliberately no `DATABASE_URL` in the host's `.env`, so `settings.py` falls back to its SQLite default. The `WARNING:root:No DATABASE_URL environment variable set` line in command output on that host is benign and expected. (An older PythonAnywhere install used `/home/PharmaDost/PharmaDost/db.sqlite3` and its own WSGI file; the live site is the cPanel one — `passenger_wsgi.py` + `docs/deploy_jabrahost.md`.)
 
 They are **separate databases**. A migration applied locally is *not* applied in production; it must be run again on the host.
 
@@ -114,28 +114,47 @@ They are **separate databases**. A migration applied locally is *not* applied in
 
 Tests run against in-memory SQLite via `pharma_mgmt/test_settings.py` because the remote Postgres is too slow and flaky for a test suite. Omitting `--settings=pharma_mgmt.test_settings` will run the suite over the network and may hang.
 
-## Deploying to PythonAnywhere
+## Deploying to JabraHost (cPanel + Passenger)
+
+Full first-time setup — creating the Python app, `.env`, the owner superuser — is
+`docs/deploy_jabrahost.md`. The routine update, over SSH:
 
 ```bash
-cd ~/PharmaDost && git pull
-~/PharmaDost/.venv/bin/python manage.py migrate            # only if there are new migrations
-~/PharmaDost/.venv/bin/python manage.py collectstatic --noinput   # only if static changed
-# then: Web tab → Reload (required; nothing takes effect without it)
+cd ~/sehatyar
+cp db.sqlite3 "backups/db-$(date +%F-%H%M).sqlite3"    # before ANY migrate; SQLite is one file
+git pull
+source ~/virtualenv/sehatyar/3.10/bin/activate
+pip install -r requirements.txt           # only if requirements.txt changed
+python manage.py migrate                  # only if there are new migrations
+python manage.py collectstatic --noinput  # only if static/ changed — templates are NOT static
+# then: cPanel → Setup Python App → Restart (required; nothing takes effect without it)
 ```
+
+Paths assume the app root is `~/sehatyar` and the cPanel virtualenv is
+`~/virtualenv/sehatyar/3.10/` — adjust to the real ones on the account.
+
+**Activate the virtualenv first, every time.** A bare `python` outside it is the system
+interpreter and fails with `ModuleNotFoundError: dj_database_url`. Either `source
+~/virtualenv/.../bin/activate` or call the full path
+`~/virtualenv/sehatyar/3.10/bin/python`.
+
+**Restart is not optional.** Passenger keeps the old process alive until it is restarted,
+so a `git pull` alone changes nothing a visitor can see. (`touch tmp/restart.txt` in the
+app root does the same thing from the shell.)
 
 **`DJANGO_SECRET_KEY` must be in `.env` on the host.** Anything under `/home/` refuses to
 start on the built-in default — that key signs session cookies, so a server using the
 published one can be logged into as any user by anyone. Set it once:
 
 ```bash
-cd ~/PharmaDost
+cd ~/sehatyar
 python -c "import secrets; print('DJANGO_SECRET_KEY=' + secrets.token_urlsafe(64))" >> .env
 ```
 
 Changing it signs everyone out once. Do **not** gate this on `DJANGO_ENV` — nothing sets
 that variable on the host, which is why the old check never fired.
 
-**Always use the full path `~/PharmaDost/.venv/bin/python`.** A bare `python` resolves to the system Python 3.13, which lacks `dj_database_url` and fails with `ModuleNotFoundError`.
+Daily alerts run from cPanel → Cron Jobs as a single chained line (see the deploy doc).
 
 The free tier allows only **one** scheduled task, so the cron commands are chained into a single daily line in the Tasks tab.
 
@@ -548,7 +567,84 @@ These handoffs are the backbone of the app; each creates a record, notifies a ro
 
   Discharge stores the raised invoice on `Admission.discharge_invoice` and redirects to `ipd:discharge_summary` — the printable A4 sheet (stay, diagnosis, rounds, medications given, itemised bill). `Admission.days_stayed` is the inclusive calendar-day count both the bill and the summary use.
 - **Lab / imaging → billing**: ordering a test or scan auto-creates a pending `Invoice` via `billing.services.create_service_invoice`.
+- **Withdrawing an ordered service** (the patient refuses it) runs the pipeline backwards — see "Cancelling what the patient refused" below.
 - **Reorder → purchase order**: `inventory.services.reorder_suggestions()` (sales velocity based) feeds `reorder_to_po`, which creates draft `PurchaseRequest`s grouped by supplier.
+
+### Cancelling what the patient refused
+
+A doctor orders three tests and the patient wants two. Every ordered service can
+therefore be **withdrawn** — lab test, scan, prescribed medicine. Three rules hold
+across all of them and are the whole design:
+
+1. **Cancel, never delete.** Each model carries `is_cancelled`/`status='Cancelled'`
+   plus `cancelled_at` / `cancelled_by` / `cancel_reason`, and **the reason is
+   mandatory** (the services raise `ValidationError` on a blank one). "Why was this
+   test never done" has to stay answerable, and the printed lab report shows the row
+   as *Cancelled — not performed* rather than quietly listing two tests where three
+   were asked for.
+2. **Work already done cannot be withdrawn.** A `TestResult` with a `result_value`,
+   or an `ImagingStudy` with findings, is refused — the lab used the reagent, the
+   scan was performed. That is then a billing decision (void/refund), not a lab one.
+   `cancel_order` refuses the *whole* order if any live test has a result, so a
+   part-finished order can't be wiped in one click.
+3. **The money follows, but cash already taken never vanishes.**
+   `billing.services.cancel_invoice_charge(invoice, description)` drops the matching
+   `InvoiceItem` and re-derives subtotal/discount/tax/total through
+   `_rederive_totals` (same SiteSettings maths that built it), VOIDing the invoice
+   when the last line goes. It **never lowers `paid`** — the excess comes back as
+   `refund_due` for the desk to hand over in cash, because the day book has already
+   counted that money. It matches the line **by description**, exactly the string
+   the create path wrote (`f"Lab: {name}"`, `f"{modality}: {study_name}"`); a
+   zero-price service never got a line, so `removed` is False and that is correct,
+   not a failure. It locks via `Invoice._base_manager` on purpose — `objects` and
+   `all_objects` are both `TenantManager`s and would re-scope a row the caller has
+   already been authorised for (and miss a legacy `hospital=NULL` invoice).
+
+Per module:
+
+| | Service | Entry point | Bill effect |
+|---|---|---|---|
+| Lab | `lab.services.cancel_test` / `cancel_order` | `lab:test_cancel` / `lab:order_cancel` | line off the invoice; last one VOIDs it |
+| Imaging | `imaging.services.cancel_study` | `imaging:study_cancel` | one study = one line, so normally VOID |
+| Medicine | `prescriptions.services.cancel_item` / `cancel_prescription` | `rx_item_cancel` / `prescription_cancel` | **none** |
+
+**Medicine is the odd one out and that is not an oversight**: a medicine is charged
+when the pharmacy *dispenses* it at the POS, not when it is prescribed, so refusing
+one means it is simply never sold — there is no invoice line to remove. What the
+cancel fixes there is the *queue*: `_sync_status` flips an Rx whose every item is
+declined to `CANCELLED`, so it stops sitting in the pharmacy's `PENDING` list for
+ever. The POS reads `Prescription.active_items` (not `items`) both when pre-loading
+the cart and when deciding DISPENSED vs PARTIAL — with `items` a declined line would
+keep the Rx PARTIAL for ever. `ipd._prescribed_medicines` filters cancelled items out
+too, so the ward is never offered a drug the patient refused.
+
+**Who may cancel** — deliberately not the same list as who may order. The counter
+staff who actually hear the patient say no are included; **reception is not**, since
+they never have that conversation. `lab.views.CANCEL_ROLES` = ADMIN/DOCTOR/LABTECH,
+`imaging.views.CANCEL_ROLES` = ADMIN/DOCTOR/SONOGRAPHER,
+`prescriptions.views.CANCEL_ROLES` = ADMIN/DOCTOR/PHARMACIST. The views pass
+`can_cancel` into the detail templates so a button never links into a 403.
+`prescription_detail` and the two Rx cancel views are gated
+`feature_required('prescriptions', 'pos')` — **the pharmacist holds `pos`, not
+`prescriptions`**, and without the second key the one person standing in front of the
+patient cannot do this. It shows them nothing new; the POS already pre-loads the Rx.
+
+The person who ordered it is **notified directly** (`Notification.objects.create` to
+`ordered_by` / `referred_by` / the prescribing doctor) — not `notify_admins`, which
+is reserved for owner-level exceptions. A doctor who is never told waits for a result
+that is not coming.
+
+Cancelled rows leave the working queues: `lab.order_list` gained a `?show=cancelled`
+tab and its `completed` tab excludes `Cancelled` explicitly (a bare
+`exclude(status='Pending')` filed a withdrawn order as finished work);
+`imaging.study_list` excludes them by default with a `?show=cancelled` toggle; the
+sidebar badges already keyed on `status='Pending'`. `collect_payment` refuses on a
+cancelled order/study, and `order_results_edit` builds its formset from
+`results.filter(is_cancelled=False)` so the lab cannot type a value into a refused
+test and make it chargeable again. Guarded by `tests/test_cancellation.py`.
+
+Not offline in v1: a cancel rewrites money and state the device cannot see (the same
+reason deletes and invoice voids are excluded — see "Offline data entry").
 
 ### Inventory & dispensing
 

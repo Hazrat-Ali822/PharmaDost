@@ -12,9 +12,19 @@
     </button>
     <a class="btn alt" href="{% url 'prescription_labels' prescription.pk %}" target="_blank">🏷️ Print Labels</a>
     <a class="btn" href="{% url 'prescription_edit' prescription.pk %}">✏️ Edit</a>
+    {% if can_cancel and not prescription.is_cancelled and prescription.status != 'DISPENSED' %}
+      <a class="btn danger" href="{% url 'prescription_cancel' prescription.pk %}">🚫 Cancel Rx</a>
+    {% endif %}
     <a class="btn alt" href="{% url 'prescription_list' %}">Back to List</a>
   </div>
 </div>
+
+{% if prescription.is_cancelled %}
+<div class="msg error no-print" style="margin-bottom:14px; max-width:800px; margin-left:auto; margin-right:auto;">
+  🚫 This prescription was cancelled{% if prescription.cancelled_by %} by {{ prescription.cancelled_by.get_full_name|default:prescription.cancelled_by.email }}{% endif %}
+  on {{ prescription.cancelled_at|date:"d/m/Y H:i" }} — {{ prescription.cancel_reason }}
+</div>
+{% endif %}
 
 <!-- Print Container (styled like a medical letterhead) -->
 <div class="prescription-sheet card" style="max-width: 800px; margin: 0 auto; padding: 40px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); background: white; font-family: 'Inter', sans-serif;">
@@ -84,22 +94,34 @@
             <th style="padding: 8px 0; font-size: 12px; text-transform: uppercase; color: var(--text-muted); width: 20%;">Dosage</th>
             <th style="padding: 8px 0; font-size: 12px; text-transform: uppercase; color: var(--text-muted); width: 15%;">Duration</th>
             <th style="padding: 8px 0; font-size: 12px; text-transform: uppercase; color: var(--text-muted); width: 20%;">Instructions</th>
+            <th class="no-print" style="padding: 8px 0;"></th>
           </tr>
         </thead>
         <tbody>
           {% for item in prescription.items.all %}
-          <tr style="border-bottom: 1px dashed var(--border);">
-            <td style="padding: 12px 0; font-size: 14px; font-weight: 600; color: var(--text);">
-              {{ item.medicine.name }} 
-              <span style="font-weight: 400; font-size: 12px; color: var(--text-muted);">({{ item.medicine.brand }})</span>
+          <tr style="border-bottom: 1px dashed var(--border);{% if item.is_cancelled %}opacity:.55;{% endif %}">
+            <td style="padding: 12px 0; font-size: 14px; font-weight: 600; color: var(--text);{% if item.is_cancelled %}text-decoration:line-through;{% endif %}">
+              {{ item.display_name }}
+              {% if item.medicine.brand %}<span style="font-weight: 400; font-size: 12px; color: var(--text-muted);">({{ item.medicine.brand }})</span>{% endif %}
+              {% if item.is_cancelled %}
+                <div style="font-weight:400; font-size:11px; color:var(--danger); text-decoration:none;">
+                  Cancelled — {{ item.cancel_reason }}
+                </div>
+              {% endif %}
             </td>
             <td style="padding: 12px 0; font-size: 13px; color: var(--text);">{{ item.dosage|default:"—" }}</td>
             <td style="padding: 12px 0; font-size: 13px; color: var(--text);">{{ item.duration_days|default:"1" }} Day(s)</td>
             <td style="padding: 12px 0; font-size: 13px; color: var(--text); font-style: italic;">{{ item.instructions|default:"—" }}</td>
+            <td class="no-print" style="padding: 12px 0; text-align:right;">
+              {% if can_cancel and not item.is_cancelled and not prescription.is_cancelled %}
+                <a class="btn danger" style="padding:3px 10px; font-size:12px;"
+                   href="{% url 'rx_item_cancel' prescription.pk item.pk %}">Declined</a>
+              {% endif %}
+            </td>
           </tr>
           {% empty %}
           <tr>
-            <td colspan="4" style="padding: 20px 0; text-align: center; color: var(--text-muted); font-style: italic; font-size: 13px;">No medicines prescribed.</td>
+            <td colspan="5" style="padding: 20px 0; text-align: center; color: var(--text-muted); font-style: italic; font-size: 13px;">No medicines prescribed.</td>
           </tr>
           {% endfor %}
         </tbody>

@@ -19,7 +19,14 @@
       {% endfor %}
     </select>
     <noscript><button class="btn alt sm" type="submit">Filter</button></noscript>
+    <input type="hidden" name="show" value="{{ show }}">
   </form>
+  <div style="margin-top:8px; display:flex; gap:8px;">
+    <a class="btn sm {% if show != 'cancelled' %}primary{% else %}alt{% endif %}"
+       href="?modality={{ modality }}" style="border-radius:20px;">Active</a>
+    <a class="btn sm {% if show == 'cancelled' %}primary{% else %}alt{% endif %}"
+       href="?modality={{ modality }}&show=cancelled" style="border-radius:20px;">🚫 Cancelled</a>
+  </div>
 </div>
 
 <table class="tbl">
@@ -40,7 +47,9 @@
       <td><span class="badge">{{ s.get_modality_display }}</span></td>
       <td>{{ s.study_name }}</td>
       <td>
-        {% if s.status == 'Delivered' or s.status == 'Reported' %}
+        {% if s.is_cancelled %}
+          <span class="badge red">{{ s.status }}</span>
+        {% elif s.status == 'Delivered' or s.status == 'Reported' %}
           <span class="badge green">{{ s.status }}</span>
         {% else %}
           <span class="badge gray">{{ s.status }}</span>
@@ -51,6 +60,8 @@
       <td>
         {% if s.payment_status == 'Paid' %}
           <span class="badge green">Paid ({{ currency }} {{ s.payment_amount }})</span>
+        {% elif s.is_cancelled %}
+          <span class="badge red">Cancelled</span>
         {% else %}
           {% if request.user.role == 'SONOGRAPHER' or request.user.role == 'ADMIN' or request.user.is_superuser %}
             <form action="{% url 'imaging:collect_payment' s.id %}" method="post" style="display:inline">
@@ -65,7 +76,7 @@
       {% endif %}
       <td style="white-space:nowrap">
         <a class="btn sm alt" href="{% url 'imaging:study_detail' s.id %}">View</a>
-        {% if not s.is_reported %}
+        {% if not s.is_reported and not s.is_cancelled %}
           {% if request.user.role == 'SONOGRAPHER' or request.user.role == 'ADMIN' or request.user.is_superuser %}
             <a class="btn sm" href="{% url 'imaging:study_report_edit' s.id %}">Report</a>
           {% endif %}

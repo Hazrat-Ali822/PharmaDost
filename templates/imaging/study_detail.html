@@ -8,20 +8,32 @@
     <div class="muted">
       <a href="{% url 'patient_detail' study.patient.pk %}">{{ study.patient.full_name }}</a>
       · MRN {{ study.patient.mrn }} · {{ study.study_date|date:"Y-m-d H:i" }}
-      · <span class="badge {% if study.status == 'Reported' or study.status == 'Delivered' %}green{% else %}gray{% endif %}">{{ study.status }}</span>
+      · <span class="badge {% if study.is_cancelled %}red{% elif study.status == 'Reported' or study.status == 'Delivered' %}green{% else %}gray{% endif %}">{{ study.status }}</span>
     </div>
   </div>
   <div style="display:flex;gap:8px">
-    <a class="btn" href="{% url 'imaging:study_report_edit' study.id %}">Edit Report</a>
-    {% if study.status == 'Reported' or study.status == 'Delivered' %}
-      <a class="btn alt" href="{% url 'imaging:study_report' study.id %}" target="_blank">Print</a>
-    {% endif %}
-    {% if study.status != 'Delivered' %}
-      <a class="btn success" href="{% url 'imaging:study_mark_delivered' study.id %}">Mark Delivered</a>
+    {% if not study.is_cancelled %}
+      <a class="btn" href="{% url 'imaging:study_report_edit' study.id %}">Edit Report</a>
+      {% if study.status == 'Reported' or study.status == 'Delivered' %}
+        <a class="btn alt" href="{% url 'imaging:study_report' study.id %}" target="_blank">Print</a>
+      {% endif %}
+      {% if study.status != 'Delivered' %}
+        <a class="btn success" href="{% url 'imaging:study_mark_delivered' study.id %}">Mark Delivered</a>
+      {% endif %}
+      {% if can_cancel and not study.is_reported %}
+        <a class="btn danger" href="{% url 'imaging:study_cancel' study.id %}">Cancel Scan</a>
+      {% endif %}
     {% endif %}
     <a class="btn alt" href="{% url 'imaging:study_list' %}">Back</a>
   </div>
 </div>
+
+{% if study.is_cancelled %}
+<div class="msg error" style="margin-bottom:14px">
+  🚫 This scan was cancelled{% if study.cancelled_by %} by {{ study.cancelled_by.get_full_name|default:study.cancelled_by.email }}{% endif %}
+  on {{ study.cancelled_at|date:"d/m/Y H:i" }} — {{ study.cancel_reason }}
+</div>
+{% endif %}
 
 <div class="card" style="margin-bottom:16px">
   <div class="muted" style="font-size:13px">

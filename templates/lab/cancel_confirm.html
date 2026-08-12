@@ -1,0 +1,62 @@
+{% extends "lab/_base.html" %}
+{% block title %}Cancel — Order #{{ order.id }}{% endblock %}
+{% block content %}
+<div class="form-card" style="max-width:640px">
+  <h2 style="color:var(--danger);margin-top:0">
+    {% if target %}Cancel this test?{% else %}Cancel the whole order?{% endif %}
+  </h2>
+
+  <p class="muted" style="margin-top:-6px">
+    Order #{{ order.id }} · {{ order.patient.full_name }} · MRN {{ order.patient.mrn }}
+  </p>
+
+  {% if target %}
+    <p>Withdrawing <strong>{{ target.lab_test.name }}</strong> from this order.
+       The other tests on it are not affected.</p>
+  {% else %}
+    <p>Withdrawing <strong>every test still outstanding</strong> on this order:</p>
+    <ul>
+      {% for r in order.active_results %}<li>{{ r.lab_test.name }} — {{ currency }} {{ r.lab_test.price }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+
+  <div class="card" style="background:var(--bg-soft);margin:14px 0">
+    <strong>What happens to the money</strong>
+    {% if order.invoice %}
+      <p style="margin:6px 0 0">
+        Bill {{ order.invoice.display_no }} is currently {{ currency }} {{ order.invoice.total }}.
+        The cancelled test's charge comes off it{% if not target %} — and with nothing left on it, the invoice is voided{% endif %}.
+      </p>
+      {% if order.invoice.paid %}
+        <p class="msg error" style="margin:10px 0 0">
+          ⚠️ {{ currency }} {{ order.invoice.paid }} has already been collected. Anything
+          over the new total must be <strong>refunded to the patient in cash</strong> —
+          the system will tell you how much, but it cannot hand the money back.
+        </p>
+      {% endif %}
+    {% else %}
+      <p style="margin:6px 0 0">No invoice is attached to this order, so nothing changes on the bill.</p>
+    {% endif %}
+  </div>
+
+  <p class="muted" style="font-size:13px">
+    Nothing is deleted. The test stays on the record marked <em>Cancelled</em>, with your
+    name, the time and the reason — so "why was this never done" can still be answered.
+    {% if order.ordered_by %}{{ order.ordered_by.get_full_name|default:order.ordered_by.email }} will be notified.{% endif %}
+  </p>
+
+  <form method="post" action="{{ action_url }}" style="margin-top:16px">
+    {% csrf_token %}
+    <label for="reason"><strong>Reason</strong> (required)</label>
+    <textarea id="reason" name="reason" rows="2" required maxlength="255"
+              placeholder="e.g. Patient refused — cannot afford it today"
+              style="width:100%">{{ reason }}</textarea>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn danger" type="submit">
+        {% if target %}Yes, cancel this test{% else %}Yes, cancel the order{% endif %}
+      </button>
+      <a class="btn alt" href="{% url 'lab:order_detail' order.id %}">Go back</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

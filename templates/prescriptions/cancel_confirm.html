@@ -1,0 +1,54 @@
+{% extends 'partials/base.html' %}
+{% block title %}Cancel — Rx #{{ prescription.pk }}{% endblock %}
+{% block page_title %}Cancel Prescribed Medicine{% endblock %}
+{% block content %}
+<div class="form-card" style="max-width:640px">
+  <h2 style="color:var(--danger);margin-top:0">
+    {% if item %}Patient declined this medicine?{% else %}Cancel the whole prescription?{% endif %}
+  </h2>
+
+  <p class="muted" style="margin-top:-6px">
+    Rx #{{ prescription.pk }} · {{ prescription.appointment.patient.full_name }}
+    · Dr {{ prescription.appointment.doctor.full_name }}
+  </p>
+
+  {% if item %}
+    <p>Marking <strong>{{ item.display_name }}</strong> ({{ item.dosage }}) as declined.
+       The rest of the prescription is unaffected.</p>
+  {% else %}
+    <p>Marking <strong>every medicine not yet dispensed</strong> as declined:</p>
+    <ul>
+      {% for i in prescription.active_items %}<li>{{ i.display_name }} — {{ i.dosage }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+
+  <div class="card" style="background:var(--bg-soft);margin:14px 0">
+    <strong>No money moves</strong>
+    <p style="margin:6px 0 0">
+      A medicine is charged when the pharmacy <em>dispenses</em> it, not when it is
+      prescribed — so there is no bill to correct here. Anything already sold stays
+      sold; use a sale return in the pharmacy for that.
+    </p>
+  </div>
+
+  <p class="muted" style="font-size:13px">
+    Nothing is deleted. The line stays on the doctor's prescription marked
+    <em>Cancelled</em>, with your name, the time and the reason, and it stops sitting
+    in the pharmacy's pending queue. The prescribing doctor is notified.
+  </p>
+
+  <form method="post" style="margin-top:16px">
+    {% csrf_token %}
+    <label for="reason"><strong>Reason</strong> (required)</label>
+    <textarea id="reason" name="reason" rows="2" required maxlength="255"
+              placeholder="e.g. Patient already has this at home"
+              style="width:100%">{{ reason }}</textarea>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn danger" type="submit">
+        {% if item %}Yes, mark as declined{% else %}Yes, cancel the prescription{% endif %}
+      </button>
+      <a class="btn alt" href="{% url 'prescription_detail' prescription.pk %}">Go back</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

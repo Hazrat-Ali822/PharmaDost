@@ -46,7 +46,9 @@ def sale_create(request):
         
         if request.method == 'GET':
             rx_items = []
-            for item in prescription.items.all():
+            # active_items, not items: a medicine the patient already declined must
+            # not reappear in the cart for the cashier to sell by accident.
+            for item in prescription.active_items:
                 estimated_qty = item.duration_days or 1
                 if item.dosage:
                     parts = item.dosage.replace('-', '+').split('+')
@@ -137,10 +139,12 @@ def sale_create(request):
                 payment_method=payment_method,
                 cashier=request.user,
             )
-            if prescription:
+            if prescription and not prescription.is_cancelled:
                 # Mark DISPENSED only if every prescribed (catalogued) medicine was
                 # actually sold; otherwise it's a partial fill and stays in the queue.
-                rx_med_ids = {i.medicine_id for i in prescription.items.all() if i.medicine_id}
+                # Declined lines are excluded, or an Rx whose remaining medicines were
+                # all sold would stay PARTIAL for ever waiting on one nobody wants.
+                rx_med_ids = {i.medicine_id for i in prescription.active_items if i.medicine_id}
                 sold_med_ids = {si.medicine_id for si in sale.items.all()}
                 if rx_med_ids and rx_med_ids.issubset(sold_med_ids):
                     prescription.status = 'DISPENSED'

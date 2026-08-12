@@ -8,9 +8,11 @@ from django.urls import reverse
 from django.contrib import messages
 from django.views.decorators.http import require_POST
 
+from django.core.exceptions import ValidationError
+
 from accounts.decorators import role_required, feature_required
 from user_mgmt.models import current_currency
-from .models import TestOrder, LabTest, TestCategory
+from .models import TestOrder, LabTest, TestCategory, TestResult
 from .forms import TestOrderCreateForm, TestResultFormSet
 from billing.models import PatientPayment
 
@@ -27,6 +29,10 @@ ORDER_ROLES = ["ADMIN", "DOCTOR", "LABTECH", "RECEPTIONIST"]
 RESULT_ROLES = ["ADMIN", "LABTECH"]
 # Viewing a report: anyone clinically involved.
 VIEW_ROLES = ["ADMIN", "DOCTOR", "LABTECH", "RECEPTIONIST"]
+# Withdrawing a test the patient refused. The lab counter is where the patient
+# actually says no, so LABTECH is included — but not RECEPTIONIST, who never has
+# that conversation and would only be guessing at a clinical decision.
+CANCEL_ROLES = ["ADMIN", "DOCTOR", "LABTECH"]
 
 
 def _scoped_orders(request):
@@ -59,8 +65,13 @@ def order_list(request):
     if show == 'pending':
         orders = orders.filter(status='Pending')
     elif show == 'completed':
-        orders = orders.exclude(status='Pending')
-        
+        # 'Cancelled' is excluded explicitly: a withdrawn order is not work the lab
+        # finished, and a bare exclude(status='Pending') would file it as done.
+        orders = orders.exclude(status__in=['Pending', 'Cancelled'])
+    elif show == 'cancelled':
+        orders = orders.filter(status='Cancelled')
+
+
     page = paginate(request, orders)
     return render(request, "lab/order_list.html",
                   {"orders": page, "page_obj": page, "show": show})
@@ -103,18 +114,31 @@ def order_detail(request, order_id):
         _scoped_orders(request).select_related("patient", "ordered_by"),
         pk=order_id
     )
-    return render(request, "lab/order_detail.html", {"order": order})
+    # Hide the Cancel buttons from anyone the cancel views would 403 — a link
+    # straight into a 403 is the trap CLAUDE.md warns about for nav links.
+    can_cancel = (request.user.is_superuser
+                  or getattr(request.user, "role", None) in CANCEL_ROLES)
+    return render(request, "lab/order_detail.html",
+                  {"order": order, "can_cancel": can_cancel})
 
 
 @role_required(RESULT_ROLES)
 def order_results_edit(request, order_id):
     order = get_object_or_404(_scoped_orders(request), pk=order_id)
+    if order.is_cancelled:
+        messages.error(request, "This order was cancelled — results can no longer be entered.")
+        return redirect("lab:order_detail", order_id=order.id)
+    # A cancelled test is not work waiting to be done, so it is kept out of the
+    # results form entirely — otherwise the lab types a value into a test the
+    # patient refused and it silently becomes chargeable again.
+    live = order.results.filter(is_cancelled=False)
     if request.method == "POST":
-        formset = TestResultFormSet(request.POST, instance=order)
+        formset = TestResultFormSet(request.POST, instance=order, queryset=live)
         if formset.is_valid():
             formset.save()
-            # Auto-complete if every result has a value
-            all_filled = all((r.result_value or "").strip() for r in order.results.all())
+            # Auto-complete if every result still live has a value
+            all_filled = all((r.result_value or "").strip()
+                             for r in order.results.filter(is_cancelled=False))
             if all_filled:
                 order.status = "Completed"
                 order.save(update_fields=["status"])
@@ -126,7 +150,7 @@ def order_results_edit(request, order_id):
                 )
             return redirect("lab:order_detail", order_id=order.id)
     else:
-        formset = TestResultFormSet(instance=order)
+        formset = TestResultFormSet(instance=order, queryset=live)
     return render(request, "lab/order_results_edit.html", {"order": order, "formset": formset})
 
 
@@ -137,6 +161,78 @@ def order_mark_completed(request, order_id):
     order.save(update_fields=["status"])
     messages.success(request, "Order marked as Completed.")
     return redirect("lab:order_detail", order_id=order.id)
+
+
+def _cancel_screen(request, *, order, target, action_url):
+    """Shared confirm-and-give-a-reason page for both cancel paths."""
+    return render(request, "lab/cancel_confirm.html", {
+        "order": order, "target": target, "action_url": action_url,
+        "reason": request.POST.get("reason", ""),
+    })
+
+
+@role_required(CANCEL_ROLES)
+def test_cancel(request, order_id, result_id):
+    """Withdraw ONE test from an order — the '3 tests ordered, patient wants 2' case.
+
+    The charge comes off the invoice with it; see `lab.services.cancel_test` for
+    why the row is kept rather than deleted, and why an already-resulted test is
+    refused here.
+    """
+    order = get_object_or_404(_scoped_orders(request).select_related("patient"), pk=order_id)
+    result = get_object_or_404(
+        TestResult.objects.select_related("lab_test"), pk=result_id, test_order=order)
+    action_url = reverse("lab:test_cancel", args=[order.id, result.id])
+
+    if request.method == "POST":
+        from .services import cancel_test
+        try:
+            money = cancel_test(result, user=request.user,
+                                reason=request.POST.get("reason", ""))
+        except ValidationError as e:
+            messages.error(request, "; ".join(e.messages))
+            return _cancel_screen(request, order=order, target=result, action_url=action_url)
+
+        cur = current_currency()
+        note = f"{result.lab_test.name} cancelled."
+        if money["voided"]:
+            note += f" Nothing left on the bill — invoice {order.invoice.display_no} voided."
+        elif money["removed"]:
+            note += f" Charge removed — bill is now {cur} {order.invoice.total}."
+        if money["refund_due"]:
+            note += f" ⚠️ {cur} {money['refund_due']} already collected — refund it to the patient."
+        messages.success(request, note)
+        return redirect("lab:order_detail", order_id=order.id)
+
+    return _cancel_screen(request, order=order, target=result, action_url=action_url)
+
+
+@role_required(CANCEL_ROLES)
+def order_cancel(request, order_id):
+    """Withdraw a whole order — the patient refused every test on it."""
+    order = get_object_or_404(
+        _scoped_orders(request).select_related("patient", "invoice"), pk=order_id)
+    action_url = reverse("lab:order_cancel", args=[order.id])
+
+    if request.method == "POST":
+        from .services import cancel_order
+        try:
+            money = cancel_order(order, user=request.user,
+                                 reason=request.POST.get("reason", ""))
+        except ValidationError as e:
+            messages.error(request, "; ".join(e.messages))
+            return _cancel_screen(request, order=order, target=None, action_url=action_url)
+
+        cur = current_currency()
+        note = f"Order #{order.id} cancelled."
+        if money["voided"]:
+            note += f" Invoice {order.invoice.display_no} voided."
+        if money["refund_due"]:
+            note += f" ⚠️ {cur} {money['refund_due']} already collected — refund it to the patient."
+        messages.success(request, note)
+        return redirect("lab:order_detail", order_id=order.id)
+
+    return _cancel_screen(request, order=order, target=None, action_url=action_url)
 
 
 @feature_required('lab')
@@ -193,8 +289,12 @@ def test_catalog(request):
 @require_POST
 def collect_payment(request, order_id):
     order = get_object_or_404(_scoped_orders(request), pk=order_id)
+    if order.is_cancelled:
+        messages.error(request, "This order was cancelled — there is nothing to collect.")
+        return redirect('lab:order_detail', order_id=order.id)
     if order.payment_status == 'Pending':
-        total_price = sum(t.price for t in order.tests.all())
+        # order.total_price, not the `tests` M2M: a cancelled test must not be charged.
+        total_price = order.total_price
         order.payment_status = 'Paid'
         order.payment_collected_by = request.user
         order.payment_amount = total_price
