@@ -116,3 +116,70 @@ class DesktopLicenseMiddleware:
 		from django.shortcuts import render
 		return render(request, 'desktop/license_locked.html',
 					  {'license': state}, status=402)
+
+# --- freshness -------------------------------------------------------------
+# Cookie holding a token that changes whenever anything is written. Not secret,
+# and JS must read it, so no httponly.
+DATA_VERSION_COOKIE = 'dv'
+
+# Writes that change nothing a page displays. Bumping the token for these would
+# make every Back tap re-fetch after a bell had merely been marked read.
+_DV_SKIP_PREFIXES = ('/accounts/notifications/', '/offline/ping/')
+
+
+def _dv_token():
+	from django.utils.crypto import get_random_string
+	return get_random_string(8)
+
+
+class DataVersionMiddleware:
+	"""Make Back show the *current* page instead of the one from before the edit.
+
+	Browsers restore a back-navigation from the bfcache: the page comes back from
+	memory exactly as it was, with no request to the server. So a bill that read
+	Rs 600 before a test was cancelled still read Rs 600 after it, until the user
+	pressed refresh — which is what a receptionist reports as "the amount didn't
+	change". Nothing server-side can fix that; the server is never asked.
+
+	So the server stamps a token: this middleware issues a **new** `dv` cookie
+	after every successful write, and `partials/base.html` renders the token the
+	page was built with into `<body data-dv>`. On `pageshow`/`visibilitychange`
+	the page compares the two and re-fetches **only when they differ**. A Back with
+	nothing changed in between stays instant — no request at all — which is the
+	whole point of doing it this way rather than blanket `no-store`.
+
+	The token is planted into `request.COOKIES` before the view runs on a first
+	visit, so the very first page already carries the same value the browser is
+	about to be given and does not immediately think itself stale.
+	"""
+
+	_SAFE = frozenset(('GET', 'HEAD', 'OPTIONS', 'TRACE'))
+
+	def __init__(self, get_response):
+		self.get_response = get_response
+
+	def __call__(self, request):
+		issue = None
+		if not request.COOKIES.get(DATA_VERSION_COOKIE):
+			issue = _dv_token()
+			request.COOKIES[DATA_VERSION_COOKIE] = issue
+
+		response = self.get_response(request)
+
+		# Any non-erroring write bumps it — including a form that came back with
+		# validation errors, which wrote nothing. Distinguishing the two is not
+		# worth it: an HTTP 200 from a POST is a re-rendered form *usually*, not
+		# always, and guessing wrong in the other direction brings the original
+		# bug back. Over-bumping costs one extra fetch the next time the user
+		# presses Back; under-bumping shows them a bill that is no longer true.
+		if (request.method not in self._SAFE
+				and response.status_code < 400
+				and not request.path.startswith(_DV_SKIP_PREFIXES)):
+			issue = _dv_token()
+
+		if issue:
+			response.set_cookie(
+				DATA_VERSION_COOKIE, issue,
+				max_age=60 * 60 * 24 * 30, samesite='Lax', httponly=False,
+				secure=getattr(settings, 'SESSION_COOKIE_SECURE', False))
+		return response

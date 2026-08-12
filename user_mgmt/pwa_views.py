@@ -219,8 +219,11 @@ _SHELL_STATIC = ['/static/css/app.css', '/static/js/offline.js']
 _CRITICAL_URL_NAMES = ['pwa_offline', 'dashboard']
 
 # Bump when the worker's own source changes, so returning devices drop the old
-# cache and re-warm instead of keeping a stale shell.
-_SW_REVISION = '5'
+# cache and re-warm instead of keeping a stale shell. Bump it for a change to
+# `partials/base.html` too — the worker caches whole rendered pages, so every
+# saved screen still carries the old chrome until its cache name changes.
+# 6: back button + the `data-dv` staleness stamp.
+_SW_REVISION = '6'
 
 
 def _reverse_all(names):

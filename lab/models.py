@@ -70,9 +70,13 @@ class TestOrder(models.Model):
     def total_price(self):
         """What this order is worth *now*. Reads `results`, not the `tests` M2M,
         because a cancelled test is no longer chargeable — the M2M cannot express
-        that and would keep billing for a test the patient refused."""
-        return sum(r.lab_test.price for r in self.results.filter(is_cancelled=False)
-                   .select_related('lab_test'))
+        that and would keep billing for a test the patient refused.
+
+        Filtered in **Python**, off `results.all()`, so a list view that has done
+        `prefetch_related('results__lab_test')` pays no query per row. A `.filter()`
+        here bypasses the prefetch cache and puts two queries on every line of the
+        lab list — the trap `Medicine.sellable_quantity` documents."""
+        return sum(r.lab_test.price for r in self.results.all() if not r.is_cancelled)
 
     @property
     def is_cancelled(self):

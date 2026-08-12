@@ -238,6 +238,9 @@ if _WHITENOISE:
 
 # Custom middleware: force first-run setup on a fresh install, then enforce login
 MIDDLEWARE += [
+    # Stamps the `dv` cookie so a bfcache Back can tell it is showing pre-edit
+    # data and re-fetch (see DataVersionMiddleware). Cheap and read by base.html.
+    'user_mgmt.middleware.DataVersionMiddleware',
     'user_mgmt.middleware.SetupMiddleware',
     'user_mgmt.middleware.LoginRequiredMiddleware',
     # Offline licence lock — active only on the desktop/LAN build (DESKTOP_BUILD).

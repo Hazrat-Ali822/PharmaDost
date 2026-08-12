@@ -57,7 +57,9 @@ def order_list(request):
     orders = (
         _scoped_orders(request)
         .select_related("patient", "ordered_by")
-        .prefetch_related("results")
+        # results__lab_test, not just results: every row renders `total_price`,
+        # which walks each result's LabTest for its price.
+        .prefetch_related("results__lab_test")
         .order_by("-order_date")
     )
 
@@ -111,7 +113,8 @@ def order_create(request):
 @feature_required('lab')
 def order_detail(request, order_id):
     order = get_object_or_404(
-        _scoped_orders(request).select_related("patient", "ordered_by"),
+        _scoped_orders(request).select_related("patient", "ordered_by")
+        .prefetch_related("results__lab_test"),
         pk=order_id
     )
     # Hide the Cancel buttons from anyone the cancel views would 403 — a link

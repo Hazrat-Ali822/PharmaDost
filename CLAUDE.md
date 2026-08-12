@@ -1139,6 +1139,56 @@ input**, adding its page to `pwa_views.SHELL_URL_NAMES`, and adding a payload to
 
 `base.html` injects tenant colours as CSS variables over `app.css`. When editing `static/css/app.css`, bump the `?v=X.X` cache-busting query string in every template that links it (`partials/base.html`, `registration/login.html`, `user_mgmt/setup.html`).
 
+### Back, and pages that show pre-edit data
+
+A cancelled test left the previous screen still showing the old amount until the
+user pressed refresh. Nothing was wrong server-side — **the browser restored that
+screen from its bfcache and never asked.** No amount of `Cache-Control` reliably
+fixes bfcache; the page comes back from memory, request and all skipped.
+
+So the server stamps a token and the page checks it:
+
+- **`user_mgmt.middleware.DataVersionMiddleware`** issues a fresh `dv` cookie after
+  every successful non-GET request. It is not secret and JS must read it, so it is
+  deliberately **not** `httponly`. On a first visit the token is planted into
+  `request.COOKIES` *before* the view runs, so the first page already agrees with
+  the cookie the browser is about to receive and does not think itself stale.
+- **`partials/base.html`** renders it as `<body data-dv="…">` — **only on GET**. A
+  form re-rendered after a failed POST carries no stamp on purpose, or it could
+  decide to re-fetch itself and throw the user's typing away.
+- The script at the end of `base.html` compares the two on `pageshow` (only when
+  `event.persisted` — an actual bfcache restore) and on `visibilitychange`, and
+  calls `location.replace()` **only when they differ**. A Back with nothing written
+  in between costs no request at all; that is the point of doing it this way rather
+  than blanket `no-store`, which would re-fetch every Back on a clinic connection.
+
+Three things there are load-bearing:
+
+- **`location.replace()`, not `reload()`.** `reload()` re-submits a POST-rendered
+  page; `assign()` piles up history entries until Back stops going anywhere.
+- **The `sessionStorage['dvRetry']` guard.** Offline the service worker answers
+  with the same cached copy, whose stamp is still old — without the guard the page
+  re-fetches, gets the cache again, and spins for ever on a dropped link.
+- **A rejected form still bumps the token, and that is deliberate.** Telling a
+  successful POST-that-renders from a POST-that-failed needs a guess; guessing the
+  other way brings the original bug back. Over-bumping costs one extra fetch on the
+  next Back, under-bumping shows a bill that is no longer true.
+  `_DV_SKIP_PREFIXES` exempts the notification endpoints, which change nothing any
+  page displays.
+
+**The topbar Back button (`#appBack`)** exists because the installed PWA has no
+browser chrome — on a phone there is otherwise no way back at all. It is a real
+`history.back()` (so the staleness check above applies), falling back to a
+same-origin referrer and then `/dashboard/` when `history.length` is 1 — a page
+opened from a bookmark, a link in another app, or the PWA start URL, where "back"
+would leave the app. Alt+← is bound to it for the same reason.
+
+**Bump `pwa_views._SW_REVISION` whenever `partials/base.html` changes.** The worker
+caches whole rendered pages, so every saved screen keeps the old chrome until the
+cache name changes.
+
+Guarded by `tests/test_freshness.py`.
+
 ### Phones
 
 Reception and the ward round both work off a phone, so a layout that only holds up

@@ -40,7 +40,8 @@
       </td>
       <td><a href="{% url 'patient_detail' o.patient.pk %}">{{ o.patient.full_name }}</a></td>
       <td>Dr. {{ o.ordered_by.get_full_name|default:o.ordered_by.email|default:"External / Self" }}</td>
-      <td>{{ o.results.count }} test{{ o.results.count|pluralize }}</td>
+      {# |length off the prefetched list — .count issues a COUNT query per row #}
+      <td>{{ o.results.all|length }} test{{ o.results.all|length|pluralize }}</td>
       <td>
         {% if o.is_cancelled %}
           <span class="badge red">{{ o.status }}</span>
