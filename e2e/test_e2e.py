@@ -247,6 +247,30 @@ class MobileLayoutTest(BrowserTestCase):
                     f"{path} is wider than the phone screen — a wide element is "
                     f"not inside a .table-scroll box")
 
+    def test_the_owner_portal_does_not_scroll_sideways(self):
+        """The SaaS portal is a superuser page, so it sits outside the loop above —
+        and it drifted 272px wide on a phone. Its money cards hold tables, and a
+        grid item defaults to min-width:auto, so the card refused to narrow and
+        the .table-scroll inside it never got the chance to do its job
+        (`.grid > * { min-width: 0 }` in app.css).
+        """
+        User.objects.create_superuser(email='e2e-owner@test.com', password='pw')
+        self.login('e2e-owner@test.com')
+        self.assertLessEqual(
+            self._overflow('/saas/'), 2,
+            "the SaaS owner portal is wider than the phone screen")
+
+    def test_the_sign_in_page_does_not_scroll_sideways(self):
+        """Signed out — the first screen anyone ever sees, and it has its own
+        layout (navbar + background + floating card) that the loop above misses."""
+        self.page.context.clear_cookies()
+        self.page.goto(self.url('/accounts/login/'), wait_until='load')
+        self.page.wait_for_selector('.login-card')
+        self.assertLessEqual(
+            self.page.evaluate(
+                "() => document.documentElement.scrollWidth - window.innerWidth"),
+            2, "the sign-in page is wider than the phone screen")
+
     def test_a_wide_table_scrolls_inside_its_own_box(self):
         """The table must still be readable — the fix is a scroll box, not
         hiding the overflow."""

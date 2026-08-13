@@ -361,6 +361,13 @@ a.btn.danger, a.btn.primary, a.btn.success, button.btn.danger, button.btn.primar
    templates fell back to block flow and their columns stacked. On narrow
    screens every multi-column grid collapses to one column so nothing overflows. */
 .grid { display: grid; gap: 16px; }
+/* A grid item defaults to min-width:auto, i.e. it refuses to shrink below its
+   content's min-content width. So a card holding a wide table stayed 650px wide
+   inside a 390px phone — the single-column rule below had already fired, and the
+   .table-scroll wrapper inside could not help because its *parent* would not
+   narrow. The whole page then scrolled sideways, which is the failure mode the
+   table wrapping exists to prevent. */
+.grid > * { min-width: 0; }
 @media (max-width: 720px) {
   .grid { grid-template-columns: 1fr !important; }
 }

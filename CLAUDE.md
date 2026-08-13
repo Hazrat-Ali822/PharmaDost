@@ -1212,6 +1212,12 @@ on a laptop is a broken layout. Three things carry that and are easy to undo:
   header slides away and the app reads as broken. `overflow-x:auto` clips in **both**
   axes, so the wrapper skips any table containing a dropdown that hangs out of a cell
   (the POS medicine search); `data-no-scroll-wrap` is the explicit opt-out.
+- **`.grid > * { min-width: 0 }`.** A grid item defaults to `min-width:auto` and so
+  refuses to shrink below its content's min-content width. A card holding a table
+  therefore stayed 650px wide inside a 390px phone — the single-column rule had
+  already fired, and the `.table-scroll` inside could not help because its *parent*
+  would not narrow. That is how the SaaS owner portal came to be 272px wider than
+  the screen. Do not remove it; wrapping tables is only half the fix.
 - **Inputs are 16px under 900px.** Below that iOS zooms the page in on focus and does
   not zoom back out. The rule is written with three `:not()`s deliberately so it
   outranks the page-level `<style>` blocks (`patients/_fields.html` among them) that
@@ -1220,7 +1226,9 @@ on a laptop is a broken layout. Three things carry that and are easy to undo:
   a hover on touch and the style then sticks, so tapped cards stay lifted.
 
 `e2e/test_e2e.py::MobileLayoutTest` measures `scrollWidth - innerWidth` at 390px on
-seven screens; it fails by 54–128px if the table wrapping is removed. Those tests wait
+seven signed-in screens **plus the superuser SaaS portal and the signed-out sign-in
+page** — both sit outside the signed-in-admin loop, which is exactly why the portal
+drifted 272px wide unnoticed; it fails by 54–128px if the table wrapping is removed. Those tests wait
 on elements rather than `networkidle` — every page polls notifications on a timer, so
 "the network went quiet" is a race, and that was making the E2E run flaky.
 

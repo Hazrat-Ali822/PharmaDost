@@ -226,7 +226,8 @@ _CRITICAL_URL_NAMES = ['pwa_offline', 'dashboard']
 # 7: sehatyar-logo.png lost its baked-in white background. Static assets are
 #    cached cache-first and the logo carries no ?v=, so without a bump every
 #    device that had already saved it would keep the white-cornered copy.
-_SW_REVISION = '7'
+# 8: logo onerror fallback in base.html + app.css v2.7 (grid min-width fix).
+_SW_REVISION = '8'
 
 
 def _reverse_all(names):
