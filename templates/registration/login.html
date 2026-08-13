@@ -19,7 +19,26 @@
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=2.6">
   {% if branding.primary_color and branding.primary_color != '#4f46e5' %}<style>:root{ --primary: {{ branding.primary_color }}; --accent: {{ branding.accent_color }}; }</style>{% endif %}
   <style>
-    .login-wrap { min-height: 100vh; display: grid; grid-template-columns: 1.05fr 1fr; }
+    /* Slim strip above the sign-in split, linking the public content pages. */
+    .public-nav { background: var(--surface); border-bottom: 1px solid var(--border); }
+    .public-nav-inner {
+      max-width: 1240px; margin: 0 auto; padding: 11px 20px;
+      display: flex; align-items: center; gap: 18px;
+      /* nowrap + scroll, not wrap: five links wrap to three lines on a phone and
+         shove the sign-in form off the first screen. */
+      flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .public-nav-inner::-webkit-scrollbar { display: none; }
+    .public-nav a, .public-nav-label { white-space: nowrap; font-size: 13.5px; }
+    .public-nav-label { color: var(--muted); font-weight: 600; }
+    .public-nav a { color: var(--text); text-decoration: none; font-weight: 500; }
+    .public-nav a:hover { color: var(--primary); text-decoration: underline; }
+    .public-nav-demo { color: var(--primary) !important; font-weight: 700 !important; }
+    @media (max-width: 640px) { .public-nav-label { display: none; } }
+
+    /* 100vh minus the strip, or the page gains a scrollbar it never had. */
+    .login-wrap { min-height: calc(100vh - 45px); display: grid; grid-template-columns: 1.05fr 1fr; }
 
     /* ---- brand panel (left) — calm, professional, no gimmicks ---- */
     .login-hero {
@@ -91,6 +110,20 @@
   </style>
 </head>
 <body>
+  {# The public content pages had URLs, a sitemap and JSON-LD but no link from #}
+  {# anywhere a person lands, so only crawlers ever reached them. Hidden on the #}
+  {# desktop / LAN build, which has no internet and would show dead links. #}
+  {% if not desktop_build %}
+  <nav class="public-nav" aria-label="About Sehatyar">
+    <div class="public-nav-inner">
+      <span class="public-nav-label">Learn more:</span>
+      {% for path, label in public_pages %}
+        <a href="{{ path }}">{{ label }}</a>
+      {% endfor %}
+      <a class="public-nav-demo" href="/demo/">▶ Live demo</a>
+    </div>
+  </nav>
+  {% endif %}
   <div class="login-wrap">
     <div class="login-hero">
       {% if branding.logo_image %}

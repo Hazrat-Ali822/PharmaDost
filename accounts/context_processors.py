@@ -26,7 +26,9 @@ def site_branding(request):
     """
     import os
 
+    from django.conf import settings
     from user_mgmt.models import SiteSettings, SITE_DEFAULTS
+    from user_mgmt.seo_views import public_pages
     try:
         branding = SiteSettings.load()
     except Exception:
@@ -56,6 +58,12 @@ def site_branding(request):
         # desktop/launcher.py). An env read, not a query — this runs on every
         # render. Empty on the hosted site, which hides the sidebar link.
         'lan_url': os.environ.get('PHARMADOST_LAN_URL', ''),
+        # The desktop / clinic-LAN build has no internet by design, so anything
+        # pointing at the public marketing site is a dead link there.
+        'desktop_build': getattr(settings, 'DESKTOP_BUILD', False),
+        # The public marketing/content pages, for the sign-in page's nav strip.
+        # A plain list built in Python — no query — so it is safe on every render.
+        'public_pages': public_pages(),
     }
 
 

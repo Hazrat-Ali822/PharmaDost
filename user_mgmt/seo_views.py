@@ -85,6 +85,7 @@ FAQS = [
 # `sections` is a list of (heading, [paragraphs]); copy is genuine, not stuffed.
 CONTENT_PAGES = {
     "hospital-management-system": {
+        "nav": "Hospital Management System",
         "h1": "Hospital Management System (HMS) for Pakistan",
         "meta": ("Sehatyar is a complete hospital management system for Pakistani "
                  "hospitals and clinics — OPD, IPD wards, pharmacy, lab, imaging, "
@@ -135,6 +136,7 @@ CONTENT_PAGES = {
         ],
     },
     "pharmacy-management-software": {
+        "nav": "Pharmacy Software",
         "h1": "Pharmacy Management Software & POS",
         "meta": ("Sehatyar pharmacy software: a fast POS with batch and expiry "
                  "tracking, FEFO dispensing, low-stock alerts, supplier purchase "
@@ -176,6 +178,7 @@ CONTENT_PAGES = {
         ],
     },
     "sehat-card-billing-software": {
+        "nav": "Sehat Card Billing",
         "h1": "Sehat Card & Insurance Billing Software",
         "meta": ("Sehatyar bills the government Sehat Card (Sehat Sahulat), private "
                  "insurance and corporate panels: automatic claims, coverage limits, "
@@ -218,6 +221,7 @@ CONTENT_PAGES = {
         ],
     },
     "clinic-management-software": {
+        "nav": "Clinic Software",
         "h1": "Clinic Management Software",
         "meta": ("Sehatyar clinic software: reception and OPD appointments, doctor "
                  "schedules, prescriptions, lab and imaging, and patient billing in one "
@@ -259,6 +263,17 @@ CONTENT_PAGES = {
         ],
     },
 }
+
+
+def public_pages():
+    """The anonymous, crawlable pages, as `(path, label)` for a nav strip.
+
+    Built from `CONTENT_PAGES` rather than written out again, so adding a page
+    there gives it a link as well as a URL and a sitemap entry — a page nobody
+    can click is a page only a crawler ever reads, which is what these were.
+    """
+    return ([("/features/", "Features")]
+            + [(f"/{slug}/", page["nav"]) for slug, page in CONTENT_PAGES.items()])
 
 
 def _jsonld(base):

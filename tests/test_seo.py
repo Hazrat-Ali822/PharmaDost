@@ -77,3 +77,38 @@ class SeoPublicSurfaceTest(TestCase):
     def test_unknown_content_slug_is_404_not_a_tenant_lookup(self):
         # A made-up top-level slug must 404 (or hit the hospital catch-all), never 500.
         self.assertIn(self.c.get('/no-such-marketing-page/').status_code, (404, 200, 302))
+
+
+class PublicPageLinksTest(TestCase):
+    """The content pages had URLs, a sitemap and JSON-LD but no link from any page
+    a human lands on, so only crawlers ever reached them. The nav is built from
+    CONTENT_PAGES itself, so adding a page cannot leave it unlinked."""
+
+    def setUp(self):
+        # Same reason as SeoPublicSurfaceTest: with no user in the DB,
+        # SetupMiddleware sends every request to the first-run wizard.
+        get_user_model().objects.create_superuser(email='owner2@x.com', password='pw')
+        SetupMiddleware._configured = True
+        self.client = Client()
+
+    def test_sign_in_page_links_every_public_page(self):
+        from user_mgmt.seo_views import public_pages
+        r = self.client.get('/accounts/login/')
+        self.assertEqual(r.status_code, 200)
+        for path, label in public_pages():
+            self.assertContains(r, f'href="{path}"')
+            self.assertContains(r, label)
+
+    def test_landing_footer_links_every_public_page(self):
+        from user_mgmt.seo_views import public_pages
+        r = self.client.get('/features/')
+        self.assertEqual(r.status_code, 200)
+        for path, _ in public_pages():
+            self.assertContains(r, f'href="{path}"')
+
+    def test_every_linked_page_actually_opens(self):
+        """A nav entry pointing at a 404 is worse than no nav entry."""
+        from user_mgmt.seo_views import public_pages
+        for path, _ in public_pages():
+            with self.subTest(path=path):
+                self.assertEqual(self.client.get(path).status_code, 200)

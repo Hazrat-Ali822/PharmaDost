@@ -172,8 +172,17 @@ class Command(BaseCommand):
             User.objects.filter(email__in=DEMO_EMAILS).delete()
 
     def _branding(self, demo):
+        """Brand the demo tenant's OWN settings row.
+
+        Not `SiteSettings.load()`: that resolves through the thread-local hospital,
+        which a management command never binds — so it fell through to the
+        hospital-less **platform** row and renamed the whole site "Sehatyar Demo"
+        while leaving the demo tenant with no settings of its own at all. Address
+        the row by `hospital=` explicitly, the way every other per-tenant write does.
+        """
         from user_mgmt.models import SiteSettings
-        s = SiteSettings.load()
+
+        s, _ = SiteSettings.objects.get_or_create(hospital=demo)
         s.brand_name = "Sehatyar Demo"
         s.brand_tagline = "Live Demo — sample data"
         s.enabled_modules = None            # all modules on

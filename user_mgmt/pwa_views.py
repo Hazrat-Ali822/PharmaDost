@@ -223,7 +223,10 @@ _CRITICAL_URL_NAMES = ['pwa_offline', 'dashboard']
 # `partials/base.html` too — the worker caches whole rendered pages, so every
 # saved screen still carries the old chrome until its cache name changes.
 # 6: back button + the `data-dv` staleness stamp.
-_SW_REVISION = '6'
+# 7: sehatyar-logo.png lost its baked-in white background. Static assets are
+#    cached cache-first and the logo carries no ?v=, so without a bump every
+#    device that had already saved it would keep the white-cornered copy.
+_SW_REVISION = '7'
 
 
 def _reverse_all(names):

@@ -204,7 +204,9 @@
     <div class="wrap row">
       <div>© {{ brand }} — {{ tagline }}. Built by
         <a href="https://ftdynamics.pk" rel="noopener">Future Tech Dynamics</a>.</div>
-      <div><a href="/features/">Features</a> · <a href="/demo/">Demo</a> · <a href="/login/">Sign in</a></div>
+      {# Built from CONTENT_PAGES (seo_views.public_pages) so a new page is linked #}
+      {# the moment it is added — internal links are how these get found at all. #}
+      <div>{% for path, label in public_pages %}<a href="{{ path }}">{{ label }}</a> · {% endfor %}<a href="/demo/">Demo</a> · <a href="/login/">Sign in</a></div>
     </div>
   </footer>
 </body>

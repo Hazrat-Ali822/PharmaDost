@@ -141,10 +141,17 @@ class LoginFlowTest(BrowserTestCase):
         self.page.wait_for_load_state('networkidle')
         self.assertIn('/login', self.page.url)
 
-    def test_logout_returns_to_login(self):
+    def test_logout_ends_the_session(self):
+        """After logout, `/` must no longer be the signed-in app.
+
+        It is not asserted to be `/login` any more: since the SEO work, the root
+        serves the public marketing landing to an anonymous visitor instead of a
+        sign-in wall (`seo_views.home`), so the old assertion was testing a
+        behaviour the product deliberately dropped. What still matters is that the
+        session is gone — so the app dashboard must bounce to the sign-in page."""
         self.login('e2e-admin@test.com')
         self.page.goto(self.url('/logout/'))
-        self.page.goto(self.url('/'))
+        self.page.goto(self.url('/dashboard/'))
         self.assertIn('/login', self.page.url)
 
 
