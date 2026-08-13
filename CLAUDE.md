@@ -1204,7 +1204,13 @@ Guarded by `tests/test_freshness.py`.
 ### Phones
 
 Reception and the ward round both work off a phone, so a layout that only holds up
-on a laptop is a broken layout. Three things carry that and are easy to undo:
+on a laptop is a broken layout.
+
+**Not overflowing is only half of it.** A page can measure a clean 0px of sideways
+scroll and still be unusable, and the two failures need separate guards: *does it
+fit* and *can it be read*. Everything below is easy to undo by accident.
+
+Fitting the screen:
 
 - **Every table is wrapped in `.table-scroll` by `base.html` on load**, not in the ~40
   templates that render one. Without a scroll box of its own, one wide table makes the
@@ -1225,12 +1231,46 @@ on a laptop is a broken layout. Three things carry that and are easy to undo:
 - **Hover effects are gated behind `@media (hover: none)` overrides.** A tap counts as
   a hover on touch and the style then sticks, so tapped cards stay lifted.
 
-`e2e/test_e2e.py::MobileLayoutTest` measures `scrollWidth - innerWidth` at 390px on
-seven signed-in screens **plus the superuser SaaS portal and the signed-out sign-in
-page** — both sit outside the signed-in-admin loop, which is exactly why the portal
-drifted 272px wide unnoticed; it fails by 54–128px if the table wrapping is removed. Those tests wait
-on elements rather than `networkidle` — every page polls notifications on a timer, so
-"the network went quiet" is a race, and that was making the E2E run flaky.
+Being readable once it fits (the ≤700px / ≤560px blocks in `app.css`):
+
+- **A table is sized to its content on a phone, not squeezed to fit** —
+  `.table-scroll > table { width: auto; min-width: 100% }` plus `white-space: nowrap`
+  cells. A `width:100%` table shrinks to whatever box it is in, so eight columns inside
+  390px became eight ~45px slivers: the medicine list broke "Medicine Number 10" over
+  three lines while GENERIC and CATEGORY sat beside it holding a dash. A fixed floor
+  (this was `min-width: 620px`) only moves the problem — 620px over eight columns is
+  still 77px each. Sizing to content is column-count-independent. A genuinely
+  free-text column (an audit detail, an address, a cancel reason) opts back into
+  wrapping with `class="wrap"`, or one long sentence makes the table thousands of
+  pixels wide and everything after it unreachable.
+- **Form controls in a table cell need an explicit floor.** Sizing the table to its
+  content does not rescue a row made of controls: an `<input>`/`<select>` has almost no
+  intrinsic width and collapses to whatever is left. The POS medicine picker — the one
+  control that screen exists for — came out ~45px wide showing a single character, and
+  the attendance sheet's Note box was a 20px sliver. Hence the `min-width` rules on
+  `.table-scroll td input/select/textarea` (and 200px for `.med-select`).
+- **The horizontal scrollbar is styled, therefore permanent.** A phone's overlay
+  scrollbar only appears once you are already scrolling, which is too late to be the
+  hint — a column cut off at the right edge just looks missing. Styling
+  `::-webkit-scrollbar` at all makes it persistent in both mobile engines.
+- **Tile grids go two-up, not one.** `.stat-grid` and `.dept-grid` use
+  `repeat(auto-fit, minmax(150px, 1fr))` on a phone (still one column at 320px).
+  Stacked, the dashboard's four revenue tiles and four stat tiles cost ~1400px of
+  scrolling to read eight numbers that exist to be compared at a glance.
+  **`.dept-grid` is a class precisely because a media query cannot override an inline
+  `grid-template-columns`** — same trap as `.dash-split` in `templates/dashboard.html`.
+
+`e2e/test_e2e.py::MobileLayoutTest` covers both halves at 390px. Fit:
+`scrollWidth - innerWidth` on seven signed-in screens **plus the superuser SaaS portal
+and the signed-out sign-in page** — both sit outside the signed-in-admin loop, which is
+exactly why the portal drifted 272px wide unnoticed; it fails by 54–128px if the table
+wrapping is removed. Readability: a medicine name must occupy **one line box**
+(`Range.getClientRects().length`, the only direct way to ask "did this wrap?" — range
+the name's *text node*, not the cell, since the brand `<div>` under it is a second line
+box by design), and the POS medicine picker must be ≥150px wide. Reverting the CSS
+takes those to 3 lines and 79px. Those tests wait on elements rather than
+`networkidle` — every page polls notifications on a timer, so "the network went quiet"
+is a race, and that was making the E2E run flaky.
 
 ## Keeping this file current
 

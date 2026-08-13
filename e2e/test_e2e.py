@@ -279,6 +279,70 @@ class MobileLayoutTest(BrowserTestCase):
         boxes = self.page.locator('.table-scroll')
         self.assertGreater(boxes.count(), 0, "the medicine table was never wrapped")
 
+    def test_list_columns_are_not_crushed_into_slivers(self):
+        """Not overflowing is only half of readable.
+
+        The page can measure a clean 0px of sideways scroll and still be useless:
+        a `width:100%` table squeezes itself to fit whatever box it is in, so eight
+        columns inside a 390px phone became eight ~45px slivers and the medicine
+        list broke "Medicine Number 10" over three lines while GENERIC and CATEGORY
+        sat next to it holding a dash. Nothing in the overflow tests above sees
+        that — the page fitted perfectly.
+
+        A row's name must therefore render on ONE line. The table is sized to its
+        content and scrolls inside its box instead (`app.css`, the ≤700px block).
+        """
+        self.login('e2e-admin@test.com')
+        self._open('/medicines/')
+        # Range.getClientRects() returns one rect per line box the text occupies,
+        # which is the only direct way to ask "did this wrap?".
+        lines = self.page.evaluate("""() => {
+            const row = document.querySelector('.table-scroll tbody tr');
+            if (!row) return null;
+            // The name is a bare text node in the cell; the brand sits in a <div>
+            // under it, which is a second line box by design. Range over the name
+            // text alone, so this counts wrapping and nothing else.
+            for (const cell of row.querySelectorAll('td')) {
+                for (const node of cell.childNodes) {
+                    if (node.nodeType !== Node.TEXT_NODE) continue;
+                    if (node.textContent.trim().length < 8) continue;
+                    const r = document.createRange();
+                    r.selectNode(node);
+                    return r.getClientRects().length;
+                }
+            }
+            return null;
+        }""")
+        self.assertIsNotNone(lines, "the medicine list rendered no name to measure")
+        self.assertLessEqual(
+            lines, 1,
+            "a medicine name wraps over several lines on a phone — the table is "
+            "being squeezed to fit instead of scrolling inside its box")
+
+    def test_controls_inside_a_table_row_stay_usable(self):
+        """Sizing a table to its content does not rescue a row made of controls.
+
+        An <input> or a <select> has almost no intrinsic width, so it collapses to
+        whatever space is left: the POS medicine picker — the one control that
+        screen exists for — came out about 45px wide, showing a single character of
+        the drug name, and the attendance sheet's Note box was a 20px sliver.
+        """
+        med = Medicine.objects.create(name='Amoxicillin 500mg Capsule', brand='B',
+                                      price=Decimal('50'), expiry_date=_future(),
+                                      hospital=self.hospital)
+        med.add_stock(20, expiry_date=_future(), cost_price=Decimal('30'))
+        self.login('e2e-admin@test.com')
+        self._open('/sales/new/')
+        # The cart builds its first row in JS.
+        self.page.wait_for_selector('#items tbody select.med-select')
+        width = self.page.evaluate(
+            "() => document.querySelector('#items tbody select.med-select')"
+            ".getBoundingClientRect().width")
+        self.assertGreaterEqual(
+            width, 150,
+            f"the POS medicine picker is {width:.0f}px wide on a phone — too "
+            f"narrow to read a drug name")
+
     def test_the_menu_button_is_reachable_and_opens_the_sidebar(self):
         self.login('e2e-admin@test.com')
         self._open('/patients/')

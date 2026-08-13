@@ -371,6 +371,16 @@ a.btn.danger, a.btn.primary, a.btn.success, button.btn.danger, button.btn.primar
 @media (max-width: 720px) {
   .grid { grid-template-columns: 1fr !important; }
 }
+
+/* Dashboard "Departmental Revenue Summary" tiles — an emoji, a caption and a
+   figure each. Four of them stacked is a screen and a half of scrolling for four
+   numbers nobody can then compare. Two to a row on a phone. */
+.dept-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+.dept-grid > * { min-width: 0; }
+@media (max-width: 560px) {
+  .dept-grid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+  .dept-grid > .card { padding: 12px 8px !important; }
+}
 /* Small text/spacing utilities relied on by many templates (empty-state cells,
    date filters) but never defined — content stayed left-aligned / unpadded. */
 .text-center { text-align: center; }
@@ -536,11 +546,50 @@ input[type=checkbox], input[type=radio] { accent-color: var(--primary); width: 1
 .table-scroll > table { margin: 0; }
 
 /* Inside the scroll box a `width:100%` table still squeezes itself to fit, so a
-   six-column list on a phone becomes six unreadable slivers with every cell
-   wrapped over three lines. Give it a floor and let the box scroll — that is the
-   point of the box. */
+   six-column list on a phone becomes unreadable slivers with every cell wrapped
+   over three lines. A fixed floor (this was `min-width: 620px`) only moves the
+   problem: 620px over eight columns is still 77px each, and the medicine list
+   broke "Medicine Number 10" over three lines while GENERIC and CATEGORY sat
+   there holding a dash.
+
+   So size the table to its *content* instead — `width:auto` + nowrap cells — and
+   let the box scroll. Every column keeps the width it actually needs whatever the
+   column count, and `min-width:100%` stops a two-column table from shrinking into
+   the corner. */
 @media (max-width: 700px) {
-  .table-scroll > table { min-width: 620px; }
+  .table-scroll > table { width: auto; min-width: 100%; }
+  .table-scroll > table th, .table-scroll > table td { white-space: nowrap; }
+  /* …but a free-text column (an audit detail, an address, a cancel reason) must
+     still wrap, or one long sentence makes the table thousands of pixels wide and
+     the columns after it unreachable. Templates opt those cells in. */
+  .table-scroll > table th.wrap, .table-scroll > table td.wrap {
+    white-space: normal; min-width: 14rem;
+  }
+
+  /* Sizing the table to its content does not save a row made of *controls*: an
+     <input> or a <select> has almost no intrinsic width, so it collapses to
+     whatever is left over. The POS medicine picker — the one control that whole
+     screen exists for — came out ~45px wide showing a single character, and the
+     attendance sheet's "Note" box was a 20px sliver. Give any control in a cell a
+     usable floor and let the box scroll, same as any other wide table. */
+  .table-scroll td input:not([type=checkbox]):not([type=radio]),
+  .table-scroll td select,
+  .table-scroll td textarea { min-width: 90px; }
+  .table-scroll td input[type=text], .table-scroll td textarea { min-width: 150px; }
+  .table-scroll td select.med-select { min-width: 200px; }
+
+  /* Now that the table is wider than the screen on purpose, the user has to know
+     it can be swiped — otherwise a column cut off at the right edge just looks
+     missing. A phone's overlay scrollbar only appears once you are already
+     scrolling, which is too late to be the hint. Styling the scrollbar at all
+     makes it persistent in both mobile engines, so a thin permanent bar under the
+     table says "there is more this way". */
+  .table-scroll { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; padding-bottom: 2px; }
+  .table-scroll::-webkit-scrollbar { height: 6px; -webkit-appearance: none; }
+  .table-scroll::-webkit-scrollbar-track { background: transparent; }
+  .table-scroll::-webkit-scrollbar-thumb {
+    background: var(--border-strong); border-radius: 3px;
+  }
 }
 
 /* ---------- Responsive --------------------------------------------------- */
@@ -578,12 +627,21 @@ input[type=checkbox], input[type=radio] { accent-color: var(--primary); width: 1
   .card, .form-card { padding: 14px; border-radius: 12px; }
   .card + .card { margin-top: 12px; }
 
-  /* One tile per row reads; two half-width ones with a 27px number do not. */
-  .stat-grid { grid-template-columns: 1fr; gap: 12px; margin-bottom: 16px; }
-  .stat { padding: 14px; }
-  .stat .meta .value { font-size: 22px; }
-  .stat .ic { width: 40px; height: 40px; flex: 0 0 40px; border-radius: 11px; }
-  .stat .ic svg { width: 20px; height: 20px; }
+  /* Two tiles per row, not one. Stacked, four tiles cost ~380px of scrolling to
+     read four numbers — each one a 48px icon and a short label in a box the width
+     of the screen, mostly empty. Paired they read just as well and the whole
+     summary is visible at once, which is the only reason it is at the top of the
+     page. `auto-fit` still drops to one column on a 320px phone, where 150px a
+     tile would genuinely be too narrow. */
+  .stat-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .stat { padding: 12px; gap: 10px; }
+  .stat .meta { min-width: 0; }
+  .stat .meta .value { font-size: 19px; }
+  /* Two to a row, a long label ("Expiring ≤ 30 days") must not push the tile
+     wider than its share of the grid. */
+  .stat .meta .label { font-size: 10px; letter-spacing: .03em; overflow-wrap: anywhere; }
+  .stat .ic { width: 34px; height: 34px; flex: 0 0 34px; border-radius: 10px; }
+  .stat .ic svg { width: 18px; height: 18px; }
 
   /* The topbar carries hamburger + title + four round buttons + avatar + Logout.
      On a 390px screen that runs past the right edge and Logout is the thing that
