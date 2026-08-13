@@ -48,6 +48,12 @@ def smart_login(request, *args, **kwargs):
     wildcard DNS yet), via `saas.views.hospital_login`.
     """
     from django.conf import settings
+    # Already signed in? Send them where they work. Every branch below renders a
+    # sign-in form, which to somebody who is signed in reads as "you have been
+    # logged out" — and on a phone, where /login/ is one mis-tap from the app
+    # icon, that is a genuinely alarming thing to land on.
+    if request.user.is_authenticated:
+        return redirect('user_mgmt:post_login_redirect')
     # Desktop / LAN build: one clinic, no SaaS owner. Staff reach it at localhost
     # or the LAN IP, and neither resolves a tenant by host — so the owner-only
     # RootLoginView below would lock out EVERY non-superuser (nurse, receptionist,

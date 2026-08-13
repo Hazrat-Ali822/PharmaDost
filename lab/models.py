@@ -3,21 +3,47 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 from patients.models import Patient
+from saas.utils import TenantManager
 
 
 class TestCategory(models.Model):
+    """Tenant-scoped. See `LabTest` below for why."""
     name = models.CharField(max_length=100)
+    hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE,
+                                 null=True, blank=True)
+
+    objects = TenantManager()
+    all_objects = models.Manager()      # commands, migrations, the owner portal
 
     def __str__(self):
         return self.name
 
 
 class LabTest(models.Model):
+    """A priced entry in **this hospital's** lab menu.
+
+    This carried no `hospital` column and a plain manager, which made the whole
+    lab price list one shared table: `/lab/tests/` listed every tenant's tests,
+    and its bulk-save loop ran over `LabTest.objects.all()` — so one hospital's
+    admin pressing Save rewrote *every other hospital's* prices, and could add
+    tests into their menus. Those prices build the patient's invoice, so it set
+    what other hospitals charge. Medicines, bed rates and surgery charges were
+    already per-tenant; this and `imaging.ScanType` were the two that were not.
+
+    Rows left with `hospital = NULL` are the hospital-less desktop/LAN install's
+    own catalogue (there is no tenant there) — `TenantManager` matches them for a
+    hospital-less user and hides them from every hosted tenant.
+    """
     category = models.ForeignKey(TestCategory, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     unit = models.CharField(max_length=50, blank=True)
     normal_range = models.CharField(max_length=100, blank=True)
+    hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE,
+                                 null=True, blank=True)
+
+    objects = TenantManager()
+    all_objects = models.Manager()
 
     def __str__(self):
         return f"{self.name} ({self.category.name})"

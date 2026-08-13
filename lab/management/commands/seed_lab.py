@@ -68,41 +68,68 @@ SAMPLE_PATIENTS = [
 ]
 
 class Command(BaseCommand):
-    help = "Seeds essential Lab data: categories, tests (with units & ranges), and sample patients."
+    help = ("Seeds the lab catalogue (categories + tests with units & ranges) for "
+            "every hospital, or one named with --hospital. Idempotent.")
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--hospital', dest='slug', default=None,
+            help="Seed only this hospital's catalogue (slug). Default: all of them.")
+        parser.add_argument(
+            '--patients', action='store_true',
+            help='Also create the handful of sample patients (demo use only).')
 
     @transaction.atomic
     def handle(self, *args, **options):
-        created_cat = 0
-        created_tests = 0
-        created_patients = 0
+        from saas.models import Hospital
 
-        for cat_name, tests in CATEGORIES_AND_TESTS.items():
-            cat, cat_created = TestCategory.objects.get_or_create(name=cat_name)
-            if cat_created:
-                created_cat += 1
+        # The catalogue is per-hospital (see lab.models.LabTest). A command binds
+        # no tenant, so the rows must be stamped explicitly — seeding through the
+        # manager would file them all under `hospital = NULL`, where no hosted
+        # tenant can see them. With no hospitals at all (a fresh install, or the
+        # desktop build) NULL is exactly right, so that is the fallback.
+        if options['slug']:
+            targets = list(Hospital.objects.filter(slug=options['slug']))
+            if not targets:
+                self.stderr.write(f"No hospital with slug '{options['slug']}'.")
+                return
+        else:
+            targets = list(Hospital.objects.all()) or [None]
 
-            for test_name, unit, normal_range in tests:
-                _, t_created = LabTest.objects.get_or_create(
-                    category=cat,
-                    name=test_name,
-                    defaults={"unit": unit or None, "normal_range": normal_range or None, "price": 0},
-                )
-                if t_created:
-                    created_tests += 1
+        created_cat = created_tests = created_patients = 0
+        for hospital in targets:
+            for cat_name, tests in CATEGORIES_AND_TESTS.items():
+                cat, cat_created = TestCategory.all_objects.get_or_create(
+                    name=cat_name, hospital=hospital)
+                created_cat += bool(cat_created)
 
-        for p in SAMPLE_PATIENTS:
-            _, p_created = Patient.objects.get_or_create(
-                name=p["name"],
-                defaults={
-                    "age": p["age"],
-                    "gender": p["gender"],
-                    "phone": p["phone"],
-                    "address": p["address"],
-                },
-            )
-            if p_created:
-                created_patients += 1
+                for test_name, unit, normal_range in tests:
+                    _, t_created = LabTest.all_objects.get_or_create(
+                        category=cat, name=test_name, hospital=hospital,
+                        defaults={"unit": unit or "", "normal_range": normal_range or "",
+                                  "price": 0},
+                    )
+                    created_tests += bool(t_created)
 
+        if options['patients']:
+            for hospital in targets:
+                for p in SAMPLE_PATIENTS:
+                    # Patient uses `full_name` / `age_years` — this read `name` and
+                    # `age`, so the command raised TypeError and never ran at all.
+                    _, p_created = Patient.objects.get_or_create(
+                        full_name=p["name"], hospital=hospital,
+                        defaults={
+                            "age_years": p["age"],
+                            "gender": p["gender"],
+                            "phone": p["phone"],
+                            "address": p["address"],
+                        },
+                    )
+                    created_patients += bool(p_created)
+
+        where = (f"{len(targets)} hospital(s)" if targets != [None]
+                 else "the hospital-less install")
         self.stdout.write(self.style.SUCCESS(
-            f"Seed complete ✅  Categories: +{created_cat}, Tests: +{created_tests}, Patients: +{created_patients}"
+            f"Seed complete for {where}.  Categories: +{created_cat}, "
+            f"Tests: +{created_tests}, Patients: +{created_patients}"
         ))

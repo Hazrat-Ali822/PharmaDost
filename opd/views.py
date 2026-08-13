@@ -13,6 +13,7 @@ from .availability import doctors_with_availability, split_by_availability
 from .forms import (AppointmentForm, DepartmentForm, DoctorForm, DoctorPayoutForm,
                     DoctorScheduleFormSet, VisitForm)
 from .models import (Appointment, Department, Doctor, DoctorAvailabilityOverride)
+from .scoping import scoped_doctors
 from .services import doctor_earnings, payouts_total, payout_summary
 
 PAYOUT_ROLES = ["ADMIN", "ACCOUNTANT"]
@@ -22,10 +23,9 @@ PAYOUT_ROLES = ["ADMIN", "ACCOUNTANT"]
 
 @feature_required('doctors')
 def doctor_list(request):
-    doctors = Doctor.objects.filter(is_active=True)
-    # Fail-closed: a hospital-less non-superuser must not see every tenant's doctors.
-    if not request.user.is_superuser:
-        doctors = doctors.filter(Q(user__hospital=request.user.hospital) | Q(user__isnull=True))
+    # Fail-closed via the shared helper: a hospital-less non-superuser must not
+    # see every tenant's doctors.
+    doctors = scoped_doctors(request.user, Doctor.objects.filter(is_active=True))
     return render(request, 'opd/doctor_list.html', {'doctors': doctors})
 
 
@@ -371,7 +371,7 @@ def appointment_create(request):
 @feature_required('payouts')
 def payout_list(request):
     rng = resolve_range(request)
-    rows = payout_summary(rng['start'], rng['end'])
+    rows = payout_summary(rng['start'], rng['end'], scoped_doctors(request.user))
     totals = {
         'consultations': sum(r['consultations'] for r in rows),
         'earned': sum((r['earned'] for r in rows), Decimal('0.00')),
@@ -383,7 +383,9 @@ def payout_list(request):
 
 @feature_required('payouts')
 def payout_doctor(request, pk):
-    doctor = get_object_or_404(Doctor, pk=pk)
+    # Scoped, not `Doctor.objects`: this view also POSTs a DoctorPayout, so an
+    # unscoped fetch let one tenant write money against another tenant's doctor.
+    doctor = get_object_or_404(scoped_doctors(request.user), pk=pk)
     if request.method == 'POST':
         form = DoctorPayoutForm(request.POST)
         if form.is_valid():

@@ -5,11 +5,18 @@ from django.db import models
 from django.utils import timezone
 
 from patients.models import Patient
+from saas.utils import TenantManager
 
 
 class ScanType(models.Model):
-    """A priced catalog entry for imaging services (e.g. 'Abdominal Ultrasound' Rs 1500).
-    Admin manages these; doctors pick from them when ordering a scan."""
+    """A priced catalog entry for **this hospital's** imaging services
+    (e.g. 'Abdominal Ultrasound' Rs 1500). Admin manages these; doctors pick from
+    them when ordering a scan.
+
+    Tenant-scoped for the same reason as `lab.LabTest`, and this one was worse:
+    `/imaging/scans/` also deletes by pk off an unscoped queryset, so one tenant's
+    admin could not only reprice another tenant's scans but remove them outright.
+    """
     MODALITY_CHOICES = (
         ("ULTRASOUND", "Ultrasound"),
         ("XRAY", "X-Ray"),
@@ -24,6 +31,11 @@ class ScanType(models.Model):
     name = models.CharField(max_length=150, help_text="e.g. Abdominal Ultrasound, Chest X-Ray (PA)")
     price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
     is_active = models.BooleanField(default=True)
+    hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE,
+                                 null=True, blank=True)
+
+    objects = TenantManager()
+    all_objects = models.Manager()      # commands, migrations, the owner portal
 
     class Meta:
         ordering = ("modality", "name")

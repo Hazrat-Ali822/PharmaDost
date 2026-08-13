@@ -249,7 +249,19 @@ def order_report(request, order_id):
 
 @feature_required('catalog')
 def test_catalog(request):
-    """Admin price list for lab tests — set/adjust prices in bulk and add new tests."""
+    """Admin price list for **this hospital's** lab tests.
+
+    Scoped explicitly by `request.user.hospital` through `all_objects`, rather
+    than left to `LabTest.objects`: `TenantManager` deliberately lets a superuser
+    through unfiltered, and this view bulk-writes prices — which is how it came to
+    rewrite every tenant's price list at once. On the desktop/LAN build the admin
+    *is* a hospital-less superuser, and `hospital=None` matches that install's own
+    rows, so it keeps working there unchanged.
+    """
+    hospital = request.user.hospital
+    own_tests = LabTest.all_objects.filter(hospital=hospital)
+    own_categories = TestCategory.all_objects.filter(hospital=hospital)
+
     if request.method == "POST":
         if request.POST.get("add"):
             name = request.POST.get("name", "").strip()
@@ -257,19 +269,21 @@ def test_catalog(request):
             cat_id = request.POST.get("category")
             if name and (new_cat or cat_id):
                 if new_cat:
-                    category, _ = TestCategory.objects.get_or_create(name=new_cat)
+                    category, _ = TestCategory.all_objects.get_or_create(
+                        name=new_cat, hospital=hospital)
                 else:
-                    category = get_object_or_404(TestCategory, pk=cat_id)
-                LabTest.objects.create(
+                    category = get_object_or_404(own_categories, pk=cat_id)
+                LabTest.all_objects.create(
                     category=category, name=name, price=_dec(request.POST.get("price")),
                     unit=request.POST.get("unit", "").strip(),
-                    normal_range=request.POST.get("normal_range", "").strip())
+                    normal_range=request.POST.get("normal_range", "").strip(),
+                    hospital=hospital)
                 messages.success(request, f"Added lab test '{name}'.")
             else:
                 messages.error(request, "Test name and a category are required.")
         else:
             changed = 0
-            for t in LabTest.objects.all():
+            for t in own_tests:
                 if f"price_{t.id}" not in request.POST:
                     continue
                 price = _dec(request.POST.get(f"price_{t.id}"))
@@ -282,8 +296,8 @@ def test_catalog(request):
             messages.success(request, f"Updated {changed} test(s).")
         return redirect("lab:test_catalog")
 
-    categories = TestCategory.objects.order_by("name")
-    groups = [(c, LabTest.objects.filter(category=c).order_by("name")) for c in categories]
+    categories = own_categories.order_by("name")
+    groups = [(c, own_tests.filter(category=c).order_by("name")) for c in categories]
     return render(request, "lab/test_catalog.html",
                   {"groups": groups, "categories": categories})
 

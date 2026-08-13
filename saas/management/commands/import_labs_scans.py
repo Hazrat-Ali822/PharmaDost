@@ -4,9 +4,30 @@ from lab.models import TestCategory, LabTest
 from imaging.models import ScanType
 
 class Command(BaseCommand):
-    help = "Import standard diagnostic lab tests and scan types."
+    help = ("Import standard diagnostic lab tests and scan types into every "
+            "hospital's catalogue (or one named with --hospital). Idempotent.")
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--hospital', dest='slug', default=None,
+            help="Import into only this hospital's catalogue (slug).")
 
     def handle(self, *args, **options):
+        from saas.models import Hospital
+
+        # Both catalogues are per-hospital (see lab.models.LabTest). A command
+        # binds no tenant, so rows have to be stamped explicitly or they land
+        # under `hospital = NULL` where no hosted tenant can see them. With no
+        # hospitals at all — a fresh install or the desktop build — NULL is
+        # correct, hence the [None] fallback.
+        if options['slug']:
+            targets = list(Hospital.objects.filter(slug=options['slug']))
+            if not targets:
+                self.stderr.write(f"No hospital with slug '{options['slug']}'.")
+                return
+        else:
+            targets = list(Hospital.objects.all()) or [None]
+
         # 1. Categories and Lab Tests
         lab_data = {
             "Hematology": [
@@ -40,20 +61,23 @@ class Command(BaseCommand):
             ]
         }
 
-        for cat_name, tests in lab_data.items():
-            category, _ = TestCategory.objects.get_or_create(name=cat_name)
-            for t in tests:
-                test, created = LabTest.objects.get_or_create(
-                    category=category,
-                    name=t["name"],
-                    defaults={
-                        "unit": t["unit"],
-                        "normal_range": t["normal_range"],
-                        "price": Decimal(t["price"])
-                    }
-                )
-                if created:
-                    self.stdout.write(f"Created LabTest: {test.name}")
+        for hospital in targets:
+            for cat_name, tests in lab_data.items():
+                category, _ = TestCategory.all_objects.get_or_create(
+                    name=cat_name, hospital=hospital)
+                for t in tests:
+                    test, created = LabTest.all_objects.get_or_create(
+                        category=category,
+                        name=t["name"],
+                        hospital=hospital,
+                        defaults={
+                            "unit": t["unit"],
+                            "normal_range": t["normal_range"],
+                            "price": Decimal(t["price"])
+                        }
+                    )
+                    if created:
+                        self.stdout.write(f"Created LabTest: {test.name}")
 
         # 2. Scan Types
         scan_data = [
@@ -77,16 +101,18 @@ class Command(BaseCommand):
             {"modality": "ECHO", "name": "Echocardiography", "price": "2500.00"},
         ]
 
-        for s in scan_data:
-            scan, created = ScanType.objects.get_or_create(
-                modality=s["modality"],
-                name=s["name"],
-                defaults={
-                    "price": Decimal(s["price"]),
-                    "is_active": True
-                }
-            )
-            if created:
-                self.stdout.write(f"Created ScanType: {scan.name}")
+        for hospital in targets:
+            for s in scan_data:
+                scan, created = ScanType.all_objects.get_or_create(
+                    modality=s["modality"],
+                    name=s["name"],
+                    hospital=hospital,
+                    defaults={
+                        "price": Decimal(s["price"]),
+                        "is_active": True
+                    }
+                )
+                if created:
+                    self.stdout.write(f"Created ScanType: {scan.name}")
 
         self.stdout.write("Lab tests and Scans imported successfully!")

@@ -75,14 +75,20 @@ def payouts_total(doctor, start=None, end=None):
     return qs.aggregate(t=Coalesce(Sum('amount'), Decimal('0.00')))['t']
 
 
-def payout_summary(start, end):
+def payout_summary(start, end, doctors):
     """Per-doctor rows for the payout dashboard.
 
     Period figures are for the selected range; `balance` is ALL-TIME
     (total earned share − total paid) — i.e. what the doctor is still owed.
+
+    `doctors` is **required**, and must be a queryset already narrowed to the
+    caller's tenant (`opd.scoping.scoped_doctors`). It used to default to
+    `Doctor.objects.all()`, which is how this screen came to list every
+    hospital's doctors and their earnings to any tenant's admin. A required
+    argument is the point: the next caller cannot forget it the way this one did.
     """
     rows = []
-    for d in Doctor.objects.all().order_by('full_name'):
+    for d in doctors.order_by('full_name'):
         period = doctor_earnings(d, start, end)
         rows.append({
             'doctor': d,

@@ -113,6 +113,109 @@ class TenantIsolationTest(TwoTenantSetup):
         resp = self.client.get(reverse('sale_create') + f'?prescription_id={self.rx2.pk}')
         self.assertNotContains(resp, 'Beta secret', status_code=resp.status_code)
 
+    def test_payout_screens_are_scoped(self):
+        """`Doctor` has no `hospital` column, so `TenantManager` cannot protect it —
+        every view that lists or fetches one must narrow the queryset itself
+        (`opd.scoping.scoped_doctors`). The payout screens did not, and queried
+        `Doctor.objects.all()`: the list named every tenant's doctors and the
+        detail page opened their earnings."""
+        resp = self.client.get(reverse('payout_list'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, 'Dr Beta')
+
+        detail = self.client.get(reverse('payout_doctor', args=[self.doctor2.pk]))
+        self.assertIn(detail.status_code, (403, 404),
+                      "Alpha admin could open Beta's doctor payout page")
+
+    def test_alpha_cannot_record_a_payout_against_betas_doctor(self):
+        """The payout page also POSTs money. An unscoped `get_object_or_404` made
+        that a cross-tenant *write*, not just a read."""
+        from opd.models import DoctorPayout
+        before = DoctorPayout.objects.filter(doctor=self.doctor2).count()
+        self.client.post(reverse('payout_doctor', args=[self.doctor2.pk]), {
+            'date': date.today().isoformat(), 'amount': '5000',
+            'payment_method': 'CASH', 'note': 'from Alpha'})
+        self.assertEqual(DoctorPayout.objects.filter(doctor=self.doctor2).count(),
+                         before, 'Alpha wrote a payout against Beta doctor')
+
+
+class SharedCatalogueTest(TwoTenantSetup):
+    """The lab and imaging price lists are each hospital's own.
+
+    They used to be one platform-wide table — no `hospital` column, a plain
+    manager, and a bulk-save loop over `LabTest.objects.all()`. So any tenant's
+    admin pressing Save on `/lab/tests/` rewrote *every other tenant's* prices,
+    could inject tests into their menus, and (on `/imaging/scans/`, which deletes
+    by pk) delete their scans outright. Those prices build the patient's invoice,
+    so it set what other hospitals charge.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        from lab.models import LabTest, TestCategory
+        from imaging.models import ScanType
+        cls.cat2 = TestCategory.all_objects.create(name='Beta Cat', hospital=cls.h2)
+        cls.test2 = LabTest.all_objects.create(name='Beta CBC', category=cls.cat2,
+                                               price=Decimal('300'), hospital=cls.h2)
+        cls.scan2 = ScanType.all_objects.create(name='Beta MRI', modality='MRI',
+                                                price=Decimal('8000'), hospital=cls.h2)
+
+    def setUp(self):
+        self.client = Client()
+        self.client.force_login(self.admin1)      # ALPHA
+
+    def test_the_catalogue_screens_show_only_your_own(self):
+        self.assertNotContains(self.client.get(reverse('lab:test_catalog')),
+                               'Beta CBC')
+        self.assertNotContains(self.client.get(reverse('imaging:scan_catalog')),
+                               'Beta MRI')
+
+    def test_alpha_cannot_reprice_betas_lab_test(self):
+        from lab.models import LabTest
+        self.client.post(reverse('lab:test_catalog'), {f'price_{self.test2.pk}': '9999'})
+        self.test2.refresh_from_db()
+        self.assertEqual(self.test2.price, Decimal('300.00'),
+                         "Alpha rewrote Beta's lab price")
+        # …and the row is still Beta's, not silently re-stamped.
+        self.assertEqual(LabTest.all_objects.get(pk=self.test2.pk).hospital, self.h2)
+
+    def test_alphas_new_test_does_not_appear_in_betas_menu(self):
+        from lab.models import TestCategory
+        cat1 = TestCategory.all_objects.create(name='Alpha Cat', hospital=self.h1)
+        self.client.post(reverse('lab:test_catalog'), {
+            'add': '1', 'name': 'ALPHA-INJECTED', 'category': cat1.pk, 'price': '55'})
+        beta = Client(); beta.force_login(self.admin2)
+        self.assertNotContains(beta.get(reverse('lab:test_catalog')), 'ALPHA-INJECTED')
+
+    def test_alpha_cannot_reprice_or_delete_betas_scan(self):
+        from imaging.models import ScanType
+        self.client.post(reverse('imaging:scan_catalog'),
+                         {f'price_{self.scan2.pk}': '1', f'active_{self.scan2.pk}': 'on'})
+        self.scan2.refresh_from_db()
+        self.assertEqual(self.scan2.price, Decimal('8000.00'),
+                         "Alpha rewrote Beta's scan price")
+
+        self.client.post(reverse('imaging:scan_catalog'), {'delete': str(self.scan2.pk)})
+        self.assertTrue(ScanType.all_objects.filter(pk=self.scan2.pk).exists(),
+                        "Alpha deleted Beta's scan type")
+
+    def test_a_hospital_less_install_still_has_a_catalogue(self):
+        """The desktop / LAN build has no tenant at all: its admin is a
+        hospital-less superuser and its rows carry `hospital = NULL`. The scoping
+        must not lock that install out of its own price list — which is what a
+        blanket `hospital=request.user.hospital` filter would do if it keyed on
+        "has a hospital" rather than on the value."""
+        from lab.models import LabTest, TestCategory
+        cat = TestCategory.all_objects.create(name='Local Cat', hospital=None)
+        LabTest.all_objects.create(name='Local CBC', category=cat,
+                                   price=Decimal('100'), hospital=None)
+        owner = User.objects.create_superuser(email='owner@t.com', password='pw')
+        c = Client(); c.force_login(owner)
+        resp = c.get(reverse('lab:test_catalog'))
+        self.assertContains(resp, 'Local CBC')
+        self.assertNotContains(resp, 'Beta CBC')
+
 
 class FailClosedTest(TwoTenantSetup):
     """A non-superuser whose hospital is None must see NOTHING.
@@ -253,6 +356,52 @@ class AuthorisationTest(TwoTenantSetup):
         c = Client(); c.force_login(nurse)
         self.assertEqual(c.get(reverse('sale_create')).status_code, 403)
         self.assertEqual(c.get(reverse('invoice_list')).status_code, 403)
+
+    def test_only_an_admin_reaches_the_admin_dashboard(self):
+        """`/manage/dashboard/admin/` was `@login_required` and nothing more.
+
+        It renders `user_mgmt.overview.build`, so ANY signed-in user — a nurse, a
+        wholesale operator — got the owner's view of the hospital: the day's
+        revenue and what is still unpaid, the attention list, the OPD board, and
+        the recent **audit feed** (who signed in and when). The audit trail is
+        tenant-scoped precisely because it is the most sensitive page in the
+        product; this route handed it to every role inside the tenant.
+        """
+        for role in ('NURSE', 'PHARMACIST', 'WHOLESALE', 'LABTECH',
+                     'RECEPTIONIST', 'ACCOUNTANT'):
+            with self.subTest(role=role):
+                u = User.objects.create_user(email=f'dash.{role}@t.com',
+                                             password='pw', role=role,
+                                             hospital=self.h1)
+                c = Client(); c.force_login(u)
+                self.assertEqual(
+                    c.get(reverse('user_mgmt:admin_dashboard')).status_code, 403,
+                    f'{role} can open the admin overview')
+        c = Client(); c.force_login(self.admin1)
+        self.assertEqual(
+            c.get(reverse('user_mgmt:admin_dashboard')).status_code, 200)
+
+    def test_the_legacy_role_dashboards_do_not_render_someone_elses(self):
+        """`/manage/dashboard/pharmacist|lab|sonographer|manager/` rendered a fixed
+        role's dashboard to whoever asked. They are legacy URL names kept alive for
+        old links, so they now just route the caller to their own."""
+        nurse = User.objects.create_user(email='legacy.nurse@t.com', password='pw',
+                                         role='NURSE', hospital=self.h1)
+        c = Client(); c.force_login(nurse)
+        for name in ('pharmacist_dashboard', 'lab_dashboard',
+                     'sonographer_dashboard', 'manager_dashboard'):
+            with self.subTest(view=name):
+                resp = c.get(reverse(f'user_mgmt:{name}'))
+                self.assertEqual(resp.status_code, 302,
+                                 f'{name} still renders a dashboard directly')
+
+    def test_a_signed_in_user_is_not_shown_the_sign_in_form(self):
+        """To somebody already signed in, a login form reads as "you have been
+        logged out" — and on a phone /login/ is one mis-tap away."""
+        c = Client(); c.force_login(self.admin1)
+        resp = c.get('/login/')
+        self.assertEqual(resp.status_code, 302)
+        self.assertNotIn('login', resp['Location'])
 
 
 class CsrfTest(TwoTenantSetup):

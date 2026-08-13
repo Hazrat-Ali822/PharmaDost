@@ -143,8 +143,22 @@ def dashboard_router(request):
     return render(request, _template_for(request.user), ctx)
 
 
-# Kept so existing {% url 'user_mgmt:...' %} references and direct links still resolve.
-@login_required
+# Legacy dashboard routes, kept so old links and `{% url 'user_mgmt:...' %}`
+# references still resolve. They were `@login_required` and nothing else, which
+# made every one of them a way to render somebody else's dashboard:
+#
+#   * `/manage/dashboard/admin/` handed ANY signed-in user — a nurse, a wholesale
+#     operator — the full owner overview: the day's revenue and what is unpaid,
+#     the attention list, the OPD board, and the recent audit feed (who signed in
+#     and when). The audit trail is the most sensitive page in the product and is
+#     tenant-scoped for exactly that reason; this route re-exposed it to every
+#     role inside the tenant.
+#   * The other four rendered a named role's dashboard to whoever asked.
+#
+# So the admin one is role-gated, and the rest simply route the caller to their
+# own dashboard instead of rendering a fixed one.
+
+@role_required(['ADMIN'])
 def admin_dashboard(request):
     from . import overview
     return render(request, ROLE_TEMPLATES['ADMIN'], overview.build(request.user))
@@ -152,23 +166,22 @@ def admin_dashboard(request):
 
 @login_required
 def manager_dashboard(request):
-    # legacy name — route by the caller's role
-    return render(request, _template_for(request.user))
+    return redirect('user_mgmt:post_login_redirect')
 
 
 @login_required
 def pharmacist_dashboard(request):
-    return render(request, ROLE_TEMPLATES['PHARMACIST'])
+    return redirect('user_mgmt:post_login_redirect')
 
 
 @login_required
 def lab_dashboard(request):
-    return render(request, ROLE_TEMPLATES['LABTECH'])
+    return redirect('user_mgmt:post_login_redirect')
 
 
 @login_required
 def sonographer_dashboard(request):
-    return render(request, ROLE_TEMPLATES['SONOGRAPHER'])
+    return redirect('user_mgmt:post_login_redirect')
 
 
 # ---------------------------------------------------------------- user guide / help

@@ -99,7 +99,8 @@ Two traps when adding tests:
 | `low_stock_alert` | Notify pharmacist/admin about low stock (daily cron) |
 | `reconcile_stock [--fix]` | Repair `Medicine.quantity` drift vs the sum of its `StockBatch` rows (weekly cron) |
 | `repair_tenant_orphans` | Fix rows left with `hospital = NULL` |
-| `seed_lab`, `import_labs_scans`, `seed_org`, `seed_roles`, `seed_icd`, `seed_epi` | Catalog/role seeding (`seed_icd` = ICD-10 codes, `seed_epi` = EPI vaccine schedule; both global & idempotent) |
+| `seed_lab [--hospital <slug>] [--patients]`, `import_labs_scans [--hospital <slug>]` | Seed the **per-tenant** lab/scan catalogues — every hospital by default, or one by slug (see "Multi-tenancy"). Idempotent. |
+| `seed_org`, `seed_roles`, `seed_icd`, `seed_epi` | Catalog/role seeding (`seed_icd` = ICD-10 codes, `seed_epi` = EPI vaccine schedule; both genuinely global & idempotent) |
 
 ## Two databases — do not conflate them
 
@@ -196,7 +197,7 @@ if request.user.hospital:
     qs = qs.filter(patient__hospital=request.user.hospital)
 ```
 
-Apps follow this with module-local helpers: `_scoped_prescriptions` / `_scoped_appointments` / `_scoped_presets` (prescriptions), `_scoped_orders` (lab), `_scoped_studies` (imaging), `_scoped_admissions` (ipd), `_get_scoped_patient` (patients). Reuse them rather than re-rolling the filter — in **list** views too, not just detail views: `lab.order_list`, `imaging.study_list` and `opd.appointment_list` once filtered on the fail-**open** `if request.user.hospital:` form and leaked every tenant's clinical records to a hospital-less non-superuser (the sibling detail views were already fail-closed). `RxPreset` has a `hospital` FK but **no `TenantManager`**, so its edit/delete-by-pk paths must go through `_scoped_presets` or they are cross-tenant writes. `tests/test_security.py::FailClosedTest` now covers all three lists — keep it that way. The sidebar badge counts in `accounts/context_processors.py` use the same `scope_by_hospital = not user.is_superuser` flag.
+Apps follow this with module-local helpers: `_scoped_prescriptions` / `_scoped_appointments` / `_scoped_presets` (prescriptions), `_scoped_orders` (lab), `_scoped_studies` (imaging), `_scoped_admissions` (ipd), `_get_scoped_patient` (patients), **`opd.scoping.scoped_doctors`** (any view touching `Doctor`). Reuse them rather than re-rolling the filter — in **list** views too, not just detail views: `lab.order_list`, `imaging.study_list` and `opd.appointment_list` once filtered on the fail-**open** `if request.user.hospital:` form and leaked every tenant's clinical records to a hospital-less non-superuser (the sibling detail views were already fail-closed). `RxPreset` has a `hospital` FK but **no `TenantManager`**, so its edit/delete-by-pk paths must go through `_scoped_presets` or they are cross-tenant writes. `tests/test_security.py::FailClosedTest` now covers all three lists — keep it that way. The sidebar badge counts in `accounts/context_processors.py` use the same `scope_by_hospital = not user.is_superuser` flag.
 
 On top of tenant scoping, a **doctor is narrowed to their own patients**: lab orders they
 placed, imaging they referred, and admissions where they are the `attending_doctor` **or**
@@ -204,6 +205,45 @@ raised the `AdmissionRequest` (reception may allot a different attending doctor,
 doctor who asked for the bed keeps the patient). Admin, reception and nurses are not
 narrowed — they need the whole ward to work. `Admission` has a `hospital` FK and
 `TenantManager`, so `_scoped_admissions` adds only the clinical narrowing.
+
+**Doctor payouts were the view-level helper's cautionary tale.** `opd.services.payout_summary`
+iterated a bare `Doctor.objects.all()` and `payout_doctor` did a bare
+`get_object_or_404(Doctor, pk=pk)`, so `/opd/payouts/` listed every tenant's doctors with
+their earnings, and — because that page also POSTs a `DoctorPayout` — one hospital's admin
+could **write** a payment against another hospital's doctor. The sibling `doctor_list` had
+the filter all along; this screen simply never got it. Hence `opd/scoping.py`:
+`scoped_doctors(user)` is the one named filter, and **`payout_summary(start, end, doctors)`
+takes the queryset as a required argument** rather than defaulting to everything, so the
+next caller cannot omit it the way this one did.
+
+**Two catalogues were shared across the whole platform, and both are now per-tenant.**
+`lab.LabTest` / `lab.TestCategory` and `imaging.ScanType` had no `hospital` column and a
+plain manager, so all tenants read and wrote one price list: `/lab/tests/` bulk-saved over
+`LabTest.objects.all()`, and `/imaging/scans/` also deleted by pk off an unscoped queryset.
+Any customer's admin could therefore reprice, extend or delete every other customer's
+services — and those prices build the patient's invoice. `Medicine.price`, `Ward.daily_rate`,
+`SurgeryProcedure.standard_charge` and `StaffProfile.monthly_salary` were all already
+per-tenant; these two were the outliers. Three things hold it together now:
+
+- `hospital` FK + `TenantManager` + `all_objects` on all three models.
+- **The two catalogue editors scope explicitly by `request.user.hospital` through
+  `all_objects`**, not via `objects`. `TenantManager` deliberately lets a superuser through
+  unfiltered, and these views bulk-write; keying on the hospital *value* also keeps the
+  hospital-less **desktop/LAN** install (whose admin is a superuser and whose rows are
+  `hospital = NULL`) working on its own catalogue.
+- The seeding commands (`seed_lab`, `import_labs_scans`) take `--hospital` and otherwise
+  stamp **every** hospital, falling back to `NULL` when there are none. A command binds no
+  tenant, so seeding through `objects` would file the whole catalogue where no hosted tenant
+  can see it. (`seed_lab` also read `Patient.name` / `.age`, which do not exist — it raised
+  `TypeError` and had never run; the sample patients are now behind `--patients`.)
+
+Migrations `lab/0009` and `imaging/0006` **clone** the shared rows per hospital and re-point
+each hospital's `TestResult`s at its own copy. Stamping the existing rows with one hospital
+would be arbitrary, and leaving them all `NULL` would be worse — `TenantManager` hides
+`hospital IS NULL` from a hospital-scoped user, so every tenant's lab menu would come up
+empty on deploy and no test could be ordered. Guarded by
+`tests/test_security.py::SharedCatalogueTest`, whose last case asserts the hospital-less
+install still sees its own catalogue.
 
 ### Permissions: modules × features × roles
 
@@ -393,6 +433,22 @@ Two things are load-bearing:
 ### Landing / dashboards
 
 `LOGIN_REDIRECT_URL` → `user_mgmt:post_login_redirect` → `user_mgmt.views.dashboard_router`, which sends superusers to the SaaS portal, ADMINs to `/`, and everyone else to a role template from `ROLE_TEMPLATES`.
+
+**`dashboard_router` is the only view that may pick a dashboard.** The five legacy routes
+under `/manage/dashboard/<role>/` — kept alive so old links and `{% url %}` references
+resolve — were `@login_required` and nothing else, which made each of them a way to render
+*somebody else's* dashboard. `/manage/dashboard/admin/` was the serious one: it renders
+`overview.build`, so any signed-in user (a nurse, a wholesale operator) got the owner's view
+of the hospital — the day's revenue and what is unpaid, the attention list, the OPD board,
+and the recent **audit feed**, which is tenant-scoped precisely because it is the most
+sensitive page in the product. It is now `@role_required(['ADMIN'])`; the other four
+`redirect('user_mgmt:post_login_redirect')` so the caller lands on their own. Do not give
+any of them a template back. Guarded by `tests/test_security.py::AuthorisationTest`.
+
+**`smart_login` bounces an already-authenticated user** to `post_login_redirect` before any
+host dispatch. Every branch below it renders a sign-in form, which to somebody already
+signed in reads as "you have been logged out" — and in the installed PWA `/login/` is one
+mis-tap from the app icon.
 
 **Public demo.** `/demo/` (`accounts.views.demo_login`, in `LoginRequiredMiddleware.ALLOWED_NAMES` so it's reachable signed-out) signs a visitor straight in — no password — as `demo@sehatyar.online`, a non-superuser ADMIN scoped to the isolated demo tenant (`seed_public_demo`). The login page carries a "Try the live demo" button to it. Because the demo user is tenant-scoped and never a superuser, playing in the demo can't touch a real hospital's data. The explicit `path('demo/', ...)` sits above the `<slug:hospital_slug>` catch-all so it wins.
 

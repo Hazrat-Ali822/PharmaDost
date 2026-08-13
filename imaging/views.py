@@ -183,23 +183,32 @@ def study_report(request, study_id):
 
 @feature_required('catalog')
 def scan_catalog(request):
-    """Admin price list for imaging services (scans) — set prices, add/remove scans."""
+    """Admin price list for **this hospital's** imaging services.
+
+    Scoped explicitly by `request.user.hospital` through `all_objects` — see the
+    note on `lab.views.test_catalog`. It matters more here: this view also
+    deletes by pk, so an unscoped queryset let one tenant's admin remove another
+    tenant's scans outright, not merely reprice them.
+    """
+    hospital = request.user.hospital
+    own_scans = ScanType.all_objects.filter(hospital=hospital)
+
     if request.method == "POST":
         if request.POST.get("add"):
             name = request.POST.get("name", "").strip()
             if name:
-                ScanType.objects.create(
+                ScanType.all_objects.create(
                     name=name, modality=request.POST.get("modality", "OTHER"),
-                    price=_dec(request.POST.get("price")))
+                    price=_dec(request.POST.get("price")), hospital=hospital)
                 messages.success(request, f"Added scan '{name}'.")
             else:
                 messages.error(request, "Scan name is required.")
         elif request.POST.get("delete"):
-            ScanType.objects.filter(pk=request.POST.get("delete")).delete()
+            own_scans.filter(pk=request.POST.get("delete")).delete()
             messages.success(request, "Scan removed.")
         else:
             changed = 0
-            for s in ScanType.objects.all():
+            for s in own_scans:
                 key = f"price_{s.id}"
                 if key in request.POST:
                     val = _dec(request.POST.get(key))
@@ -213,7 +222,7 @@ def scan_catalog(request):
         return redirect("imaging:scan_catalog")
 
     return render(request, "imaging/scan_catalog.html",
-                  {"scans": ScanType.objects.all(),
+                  {"scans": own_scans,
                    "modalities": ScanType.MODALITY_CHOICES})
 
 
