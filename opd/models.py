@@ -52,8 +52,39 @@ class Doctor(models.Model):
         help_text="Doctor's share of the consultation fee (%). 100 = keeps the full fee.")
     is_active = models.BooleanField(default=True)
 
+    # Titles people type into the name box. Stripped on save so the stored value is
+    # the bare name and the ~34 templates that render "Dr. {{ doctor.full_name }}"
+    # produce one title, not two.
+    _TITLES = ('dr.', 'dr', 'doctor', 'prof.', 'prof', 'professor')
+
+    def save(self, *args, **kwargs):
+        """Strip a leading title from `full_name`.
+
+        Reception and admins naturally type "Dr. Sara Ahmed", and almost every
+        screen already prefixes "Dr." itself — so the token slip and the discharge
+        summary, both handed to the patient, read "Dr. Dr. Sara Ahmed". Fixing the
+        34 templates would mean 34 chances to miss one; normalising the single
+        stored value fixes all of them at once, and `display_name` below is the one
+        place a title is added.
+        """
+        name = (self.full_name or '').strip()
+        lowered = name.lower()
+        for title in self._TITLES:
+            if lowered.startswith(title + ' '):
+                name = name[len(title):].strip()
+                break
+        self.full_name = name
+        super().save(*args, **kwargs)
+
+    @property
+    def display_name(self):
+        """'Dr. Sara Ahmed' — use this wherever a title is wanted in Python."""
+        return f"Dr. {self.full_name}" if self.full_name else "Doctor"
+
     def __str__(self):
-        return self.full_name
+        # Dropdowns and any bare `{{ doctor }}` render through here, and those are
+        # the places that do NOT add their own prefix.
+        return self.display_name
 
     def availability(self, at=None):
         """Is this doctor sitting right now, and what should reception be told?

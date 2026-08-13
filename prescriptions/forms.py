@@ -9,14 +9,20 @@ from .models import Prescription, PrescriptionItem, RxPreset, RxPresetItem
 class PrescriptionForm(forms.ModelForm):
     # Lab tests + scans can be ticked right here so the doctor orders them with the
     # prescription. Both pull from the admin-managed price lists (LabTest / ScanType).
+    # Both are `.none()` here and filled in __init__ — see the note in
+    # lab/forms.py. A queryset written at class level is evaluated once at import,
+    # before any tenant is bound, so `TenantManager` returns every hospital's rows
+    # and that unfiltered object is reused for the whole process. This screen
+    # listed every tenant's lab tests and scans, and would have accepted an order
+    # against one of them.
     tests = forms.ModelMultipleChoiceField(
-        queryset=LabTest.objects.select_related('category').order_by('category__name', 'name'),
+        queryset=LabTest.objects.none(),
         widget=forms.CheckboxSelectMultiple,
         required=False,
         help_text="Tick any lab tests to order along with this prescription.",
     )
     scans = forms.ModelMultipleChoiceField(
-        queryset=ScanType.objects.filter(is_active=True).order_by('modality', 'name'),
+        queryset=ScanType.objects.none(),
         widget=forms.CheckboxSelectMultiple,
         required=False,
         help_text="Tick any scans (ultrasound / x-ray / CT / MRI) to order.",
@@ -25,6 +31,13 @@ class PrescriptionForm(forms.ModelForm):
     class Meta:
         model = Prescription
         fields = ['complaint', 'diagnosis', 'notes']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['tests'].queryset = (
+            LabTest.objects.select_related('category').order_by('category__name', 'name'))
+        self.fields['scans'].queryset = (
+            ScanType.objects.filter(is_active=True).order_by('modality', 'name'))
 
 
 class PrescriptionItemForm(forms.ModelForm):

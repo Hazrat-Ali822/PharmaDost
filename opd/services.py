@@ -33,7 +33,7 @@ def bill_and_notify(appointment, user):
     doctor = appointment.doctor
     create_service_invoice(
         patient=appointment.patient,
-        items=[(f"OPD Consultation — {doctor.full_name}",
+        items=[(f"OPD Consultation — {doctor.display_name}",
                 _fee_for(doctor, appointment.visit_type))],
         created_by=user, appointment=appointment, service='OPD')
 

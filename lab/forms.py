@@ -5,8 +5,16 @@ from patients.models import Patient
 
 
 class TestOrderCreateForm(forms.ModelForm):
+    # `.none()`, filled in __init__ — NEVER `LabTest.objects.all()` here.
+    # A queryset built at class level is evaluated once, at import, when no tenant
+    # is bound to the thread: `TenantManager` hands back every row and that object
+    # is then reused for the life of the process. Since each hospital got its own
+    # catalogue, that meant this screen listed *every* hospital's tests — and
+    # because ModelMultipleChoiceField validates submitted ids against its own
+    # queryset, it would have accepted an order against another tenant's row.
+    # Building it in __init__ runs it per request, with the tenant bound.
     tests = forms.ModelMultipleChoiceField(
-        queryset=LabTest.objects.all(),
+        queryset=LabTest.objects.none(),
         widget=forms.CheckboxSelectMultiple,
         required=True,
         help_text="Select one or more lab tests"
@@ -20,6 +28,8 @@ class TestOrderCreateForm(forms.ModelForm):
         user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
         self.fields["patient"].queryset = Patient.objects.all().order_by("full_name")
+        self.fields["tests"].queryset = (
+            LabTest.objects.select_related("category").order_by("category__name", "name"))
         self.user = user
 
     def save(self, commit=True):

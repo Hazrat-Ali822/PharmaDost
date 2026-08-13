@@ -378,7 +378,11 @@ a.btn.danger, a.btn.primary, a.btn.success, button.btn.danger, button.btn.primar
 .dept-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
 .dept-grid > * { min-width: 0; }
 @media (max-width: 560px) {
-  .dept-grid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+  /* Lower than .stat-grid's floor because this one sits INSIDE a card: at 320px
+     the card's own padding leaves 254px, so two 140px tiles (290px) did not fit
+     and all four revenue figures stacked. Measured, not guessed: 118px is what
+     actually fits two with the 10px gap. */
+  .dept-grid { grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; }
   .dept-grid > .card { padding: 12px 8px !important; }
 }
 /* Small text/spacing utilities relied on by many templates (empty-state cells,
@@ -576,7 +580,12 @@ input[type=checkbox], input[type=radio] { accent-color: var(--primary); width: 1
   .table-scroll td select,
   .table-scroll td textarea { min-width: 90px; }
   .table-scroll td input[type=text], .table-scroll td textarea { min-width: 150px; }
-  .table-scroll td select.med-select { min-width: 200px; }
+  /* 200px was measured against the wrong thing. A real catalogue entry renders as
+     "Ventolin Inhaler (Ventolin)" — ~191px of text in the select's own font, plus
+     ~30px of padding and the dropdown arrow, so it needs ~221px and was showing
+     "Ventolin Inhaler (Ven". The box scrolls anyway; a picker you cannot read the
+     drug name in is the one thing on this screen that must not be cramped. */
+  .table-scroll td select.med-select { min-width: 17rem; }
 
   /* Now that the table is wider than the screen on purpose, the user has to know
      it can be swiped — otherwise a column cut off at the right edge just looks
@@ -611,12 +620,18 @@ input[type=checkbox], input[type=radio] { accent-color: var(--primary); width: 1
      zoom back out — the desk then works the rest of the form at 150%. This is the
      single most complained-about thing about web forms on iPhone.
 
-     Written with three :not()s deliberately: several screens carry their own
-     page-level <style> setting inputs to 14px (patients/_fields.html among them),
-     and a plain `input[type=text]` rule loses to `.pf-grid input[type=text]`. This
-     one outranks them without needing !important or an edit per template. */
-  input:not([type=checkbox]):not([type=radio]):not([type=file]),
-  select:not([size]), textarea {
+     The selector below is a **character-for-character copy of the base rule's**
+     (the nine-`:not()` one, ~120 lines up) and that is the whole point. It was
+     written with only three `:not()`s, which is specificity (0,3,1) against the
+     base rule's (0,9,1) — so the base `font-size: 14px` won and this rule never
+     applied to anything the base rule styled. Every text input on the POS, the
+     dashboard date filters and the list searches stayed 14px, i.e. the bug this
+     block exists to prevent was live the whole time. Matching the selector exactly
+     makes the specificity equal, and this one is later in the file, so it wins.
+     If the base selector is ever edited, edit this one the same way. */
+  input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=submit]):not([type=button]):not([type=reset]):not([type=color]):not([type=range]):not([type=image]),
+  select, textarea,
+  .form-row input, .form-row select, .search input {
     font-size: 16px;
   }
 }
@@ -633,7 +648,10 @@ input[type=checkbox], input[type=radio] { accent-color: var(--primary); width: 1
      summary is visible at once, which is the only reason it is at the top of the
      page. `auto-fit` still drops to one column on a 320px phone, where 150px a
      tile would genuinely be too narrow. */
-  .stat-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  /* 150px meant two tiles needed 310px, so a 320px phone (296px of content) fell
+     back to one column and the four stat tiles became four full-width rows to
+     scroll past. 140px fits two at 320 and still reads. */
+  .stat-grid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
   .stat { padding: 12px; gap: 10px; }
   .stat .meta { min-width: 0; }
   .stat .meta .value { font-size: 19px; }
@@ -655,7 +673,15 @@ input[type=checkbox], input[type=radio] { accent-color: var(--primary); width: 1
   }
   #kbdGuideTrigger { display: none; }
   .topbar .user-chip { padding: 3px; border: none; background: none; }
-  .topbar .btn.alt.sm { padding: 7px 10px; }
+  /* `flex-shrink: 0` matters as much as the padding here. The topbar is a flex
+     row, so its children shrink when space runs out — and `.btn` is
+     `white-space: nowrap; overflow: hidden`, which means a squeezed button does
+     not wrap or ellipsise, it silently clips. At 320px the Logout box came out
+     35px against a 48px label and read ".ogou". Buttons in the topbar keep their
+     natural width; the page title (which is `flex: 0 1 auto` with an ellipsis
+     above) gives up its space instead. */
+  .topbar .btn.alt.sm { padding: 7px 10px; flex-shrink: 0; }
+  .topbar .btn, .topbar form { flex-shrink: 0; }
 
   /* A row of seven header buttons has to break to full width, not to seven
      slivers of text. */

@@ -1,5 +1,5 @@
 from datetime import date, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.db.models import Sum, Q
@@ -139,15 +139,64 @@ def invoice_detail(request, pk):
 
 @feature_required('billing')
 def invoice_mark_paid(request, pk):
-    """Collect the outstanding balance — mark the invoice fully paid."""
+    """Collect a payment against the invoice — part of the balance, or all of it.
+
+    This used to write `invoice.paid = invoice.total` unconditionally, so a
+    patient handing over Rs 500 of a Rs 1500 bill could not be recorded at all;
+    the desk had to either take the whole amount or write nothing down. The model
+    always supported it — the list has been showing TOTAL / PAID / BALANCE columns
+    all along — it was only the view that could not.
+
+    A blank amount still means "the whole balance", which is the common case and
+    what the button used to do.
+    """
     invoice = get_object_or_404(Invoice, pk=pk)
     if request.method == 'POST':
         method = request.POST.get('payment_method', invoice.payment_method or 'CASH')
-        invoice.paid = invoice.total
+        raw = (request.POST.get('amount') or '').strip()
+        if raw:
+            try:
+                amount = Decimal(raw)
+            except (InvalidOperation, ValueError):
+                messages.error(request, 'Enter a valid amount.')
+                return redirect('invoice_detail', pk=invoice.pk)
+            if amount <= 0:
+                messages.error(request, 'The amount must be more than zero.')
+                return redirect('invoice_detail', pk=invoice.pk)
+            # Never let `paid` run past the total: the excess is not a payment on
+            # this bill, and the balance would go negative on every report.
+            amount = min(amount, invoice.balance)
+        else:
+            amount = invoice.balance
+
+        invoice.paid = invoice.paid + amount
         invoice.payment_method = method
         invoice.save(update_fields=['paid', 'payment_method'])
-        messages.success(request, f'Invoice {invoice.display_no} marked paid ({current_currency()} {invoice.total}).')
+        cur = current_currency()
+        if invoice.balance > 0:
+            messages.success(
+                request,
+                f'{cur} {amount} received for invoice {invoice.display_no}. '
+                f'{cur} {invoice.balance} still outstanding.')
+        else:
+            messages.success(request,
+                             f'Invoice {invoice.display_no} fully paid ({cur} {invoice.total}).')
     return redirect('invoice_detail', pk=invoice.pk)
+
+
+@feature_required('billing')
+def invoice_print(request, pk):
+    """The printable sheet for one invoice.
+
+    Every other document in the product prints — the token slip, the pharmacy
+    receipt, the lab and imaging reports, the discharge summary, the whole-patient
+    bill — but a single OPD / lab / IPD invoice had no print route at all, so the
+    one thing a patient asks for at the counter could not be handed over.
+    """
+    invoice = get_object_or_404(
+        Invoice.all_objects.select_related('patient', 'appointment', 'created_by')
+        .prefetch_related('items'), pk=pk)
+    return render(request, 'billing/invoice_print.html', {'invoice': invoice})
 
 
 @feature_required('billing')

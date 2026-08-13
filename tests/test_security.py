@@ -160,6 +160,13 @@ class SharedCatalogueTest(TwoTenantSetup):
                                                price=Decimal('300'), hospital=cls.h2)
         cls.scan2 = ScanType.all_objects.create(name='Beta MRI', modality='MRI',
                                                 price=Decimal('8000'), hospital=cls.h2)
+        # An Alpha appointment, so the prescription screen (which offers the lab
+        # and scan catalogues) can be opened as Alpha.
+        docuser1 = User.objects.create_user(email='d1@t.com', password='pw',
+                                            role='DOCTOR', hospital=cls.h1)
+        doctor1 = Doctor.objects.create(user=docuser1, full_name='Dr Alpha',
+                                        opd_fee=Decimal('100'))
+        cls.appt1 = Appointment.objects.create(patient=cls.patient1, doctor=doctor1)
 
     def setUp(self):
         self.client = Client()
@@ -199,6 +206,41 @@ class SharedCatalogueTest(TwoTenantSetup):
         self.client.post(reverse('imaging:scan_catalog'), {'delete': str(self.scan2.pk)})
         self.assertTrue(ScanType.all_objects.filter(pk=self.scan2.pk).exists(),
                         "Alpha deleted Beta's scan type")
+
+    def test_the_ordering_screens_offer_only_your_own_catalogue(self):
+        """A form field's queryset must be built in `__init__`, never at class level.
+
+        `queryset=LabTest.objects.all()` written as a class attribute is evaluated
+        **once, at import**, when no tenant is bound to the thread — so
+        `TenantManager` hands back every row and that unfiltered queryset is then
+        reused for the life of the process. Once each hospital had its own
+        catalogue, the lab-order and prescription screens listed every tenant's
+        tests and scans. Worse than a display bug: `ModelMultipleChoiceField`
+        validates submitted ids against its own queryset, so the POST would have
+        been accepted too.
+        """
+        for url in (reverse('lab:order_create'),
+                    reverse('prescription_create', args=[self.appt1.pk])):
+            with self.subTest(url=url):
+                body = self.client.get(url).content.decode()
+                self.assertNotIn('Beta CBC', body)
+                self.assertNotIn('Beta MRI', body)
+
+    def test_alpha_cannot_order_betas_lab_test_by_posting_its_id(self):
+        """The display fix and the validation fix are the same fix — prove it.
+
+        Driven through the view, not by building the form directly: the scoping is
+        `TenantManager` reading the thread-local, and only `TenantMiddleware` binds
+        that. A form instantiated in a bare unit test has no tenant bound and is
+        unfiltered by design, so testing it that way would prove nothing.
+        """
+        from lab.models import TestOrder
+        before = TestOrder.objects.count()
+        resp = self.client.post(reverse('lab:order_create'),
+                                {'patient': self.patient1.pk, 'tests': [self.test2.pk]})
+        self.assertEqual(TestOrder.objects.count(), before,
+                         "Alpha ordered Beta's lab test by posting its id")
+        self.assertContains(resp, 'not one of the available choices', status_code=200)
 
     def test_a_hospital_less_install_still_has_a_catalogue(self):
         """The desktop / LAN build has no tenant at all: its admin is a

@@ -92,8 +92,15 @@ function printReceipt() {
     <div class="receipt-info-row">
       <span><strong>Date:</strong> {{ sale.created_at|date:"Y-m-d H:i" }}</span>
     </div>
+    {% comment %}
+      `sale.patient` comes first. Selling against a prescription links the sale to
+      the patient but leaves `customer` (the khata account) empty, so this line
+      fell through to "Walk-in" and the receipt named nobody — on a bill that had
+      just been dispensed against that patient's prescription.
+    {% endcomment %}
     <div class="receipt-info-row">
-      <span><strong>Customer:</strong> {{ sale.customer|default:sale.customer_name|default:"Walk-in" }}</span>
+      <span><strong>{% if sale.patient %}Patient:{% else %}Customer:{% endif %}</strong>
+        {% if sale.patient %}{{ sale.patient.full_name }} ({{ sale.patient.mrn }}){% else %}{{ sale.customer|default:sale.customer_name|default:"Walk-in" }}{% endif %}</span>
     </div>
   </div>
 

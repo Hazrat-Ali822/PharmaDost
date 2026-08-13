@@ -1,0 +1,48 @@
+{% extends 'print/base_print.html' %}
+{% block title %}Invoice {{ invoice.display_no }}{% endblock %}
+{% block doctitle %}Invoice {{ invoice.display_no }}{% endblock %}
+
+{% block headmeta %}
+  <b>{{ invoice.patient.full_name }}</b><br>
+  MRN: {{ invoice.patient.mrn }}<br>
+  {% if invoice.patient.phone %}&#9742; {{ invoice.patient.phone }}<br>{% endif %}
+  Date: {{ invoice.created_at|date:"d M Y" }}
+{% endblock %}
+
+{% block body %}
+{% if invoice.status == 'VOID' %}
+  <p><b>THIS INVOICE HAS BEEN VOIDED.</b></p>
+{% endif %}
+
+<h3 class="sec">Charges</h3>
+<table>
+  <thead><tr><th>Description</th><th class="num">Amount</th></tr></thead>
+  <tbody>
+    {% for item in invoice.items.all %}
+    <tr><td>{{ item.description }}</td><td class="num">{{ currency }} {{ item.amount }}</td></tr>
+    {% empty %}
+    <tr><td colspan="2">No itemised charges recorded.</td></tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr><td class="num">Subtotal</td><td class="num">{{ currency }} {{ invoice.subtotal }}</td></tr>
+    {% if invoice.discount %}
+    <tr><td class="num">Discount</td><td class="num">- {{ currency }} {{ invoice.discount }}</td></tr>
+    {% endif %}
+    {% if invoice.tax %}
+    <tr><td class="num">Tax</td><td class="num">{{ currency }} {{ invoice.tax }}</td></tr>
+    {% endif %}
+    <tr><td class="num"><b>Total</b></td><td class="num"><b>{{ currency }} {{ invoice.total }}</b></td></tr>
+    <tr><td class="num">Paid</td><td class="num">{{ currency }} {{ invoice.paid }}</td></tr>
+    <tr><td class="num"><b>Balance</b></td><td class="num"><b>{{ currency }} {{ invoice.balance }}</b></td></tr>
+  </tfoot>
+</table>
+
+<p>
+  {% if invoice.balance > 0 %}
+    Outstanding: <b>{{ currency }} {{ invoice.balance }}</b>
+  {% else %}
+    Paid in full{% if invoice.payment_method %} via {{ invoice.payment_method }}{% endif %}.
+  {% endif %}
+</p>
+{% endblock %}

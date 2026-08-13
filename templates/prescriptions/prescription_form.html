@@ -6,7 +6,7 @@
   <div class="page-head">
     <div>
       <h2>{{ title }}</h2>
-      <div class="muted">{{ appointment.patient.full_name }} · {{ appointment.doctor.full_name }} · {{ appointment.appointment_date|date:"Y-m-d" }}</div>
+      <div class="muted">{{ appointment.patient.full_name }} · {{ appointment.doctor.display_name }} · {{ appointment.appointment_date|date:"Y-m-d" }}</div>
     </div>
     <a class="btn alt" href="{% url 'patient_detail' appointment.patient.pk %}">Back</a>
   </div>

@@ -4,7 +4,15 @@
 {% block content %}
 <div class="page-head">
   <h2>Admission Log Details</h2>
-  <div style="display:flex; gap:10px;">
+  {% comment %}
+    `.btn-row`, not a bare `display:flex`: this row holds up to nine actions
+    (Vitals / Fluid I/O / Nursing Note / Care Task / Handover / Round /
+    Medication / Discharge / Back) and without wrapping it ran 459px past the
+    right edge of a 1449px *desktop* — the last button sliced in half and the
+    whole page scrolling sideways. `.btn-row` wraps the buttons instead of
+    squeezing them (app.css).
+  {% endcomment %}
+  <div class="btn-row">
     <a class="btn alt" href="{% url 'ipd:admission_list' %}">Back to Registry</a>
     {% if admission.status == 'Admitted' %}
       <a class="btn success" href="{% url 'ipd:vitals_add' admission.pk %}" style="display:inline-flex; align-items:center; background:#0ea5e9; color:white;">➕ Record Vitals</a>

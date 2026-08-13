@@ -73,6 +73,12 @@
       margin-top: 24px;
       align-items: stretch;
     }
+    /* A grid item is min-width:auto and so will not shrink below its content's
+       min-content width. The Checkout Summary card bottomed out at 315px and
+       pushed a 320px phone sideways even though the single-column rule below had
+       already fired. Same trap as .grid > *, .dash-split > * and .login-wrap > *
+       in app.css. */
+    .billing-summary-grid > * { min-width: 0; }
     @media (max-width: 820px) {
       .billing-summary-grid {
         grid-template-columns: 1fr;
@@ -103,11 +109,16 @@
     }
     .form-actions {
       display: flex;
+      flex-wrap: wrap;
       gap: 12px;
       margin-top: 20px;
     }
+    /* `flex: 1` is `flex: 1 1 0%` — a zero basis, so the button shrinks below its
+       own label, and `.btn` is `white-space: nowrap; overflow: hidden`, which
+       silently clips it: "Save & Print Bill" rendered as "Save & Print B" on every
+       phone width. `auto` bases each button on its label and lets the row wrap. */
     .form-actions button, .form-actions a {
-      flex: 1;
+      flex: 1 1 auto;
       padding: 12px 20px;
       font-size: 15px;
       font-weight: 600;

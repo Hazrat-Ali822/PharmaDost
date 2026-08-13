@@ -174,7 +174,7 @@
             {% if r.bp %}BP {{ r.bp }} {% endif %}{% if r.pulse %}· Pulse {{ r.pulse }} {% endif %}{% if r.temperature %}· Temp {{ r.temperature }} {% endif %}{% if r.weight %}· Wt {{ r.weight }}{% endif %}
           </div>{% endif %}
         </td>
-        <td>{{ r.doctor.full_name|default:r.created_by.email|default:"—" }}</td>
+        <td>{% if r.doctor %}{{ r.doctor.display_name }}{% else %}{{ r.created_by.email|default:"—" }}{% endif %}</td>
       </tr>
       {% empty %}
       <tr><td colspan="6" class="muted">No clinical records yet. Add operations, ultrasound, x-ray, diagnosis here.</td></tr>
@@ -190,7 +190,7 @@
     <thead><tr><th>Date</th><th>Doctor</th><th>Type</th><th>Token</th><th>Status</th></tr></thead>
     <tbody>
       {% for a in appointments %}
-      <tr><td>{{ a.appointment_date }}</td><td>{{ a.doctor.full_name }}</td><td>{{ a.get_visit_type_display }}</td><td>{{ a.token_no }}</td><td><span class="badge gray">{{ a.get_status_display }}</span></td></tr>
+      <tr><td>{{ a.appointment_date }}</td><td>{{ a.doctor.display_name }}</td><td>{{ a.get_visit_type_display }}</td><td>{{ a.token_no }}</td><td><span class="badge gray">{{ a.get_status_display }}</span></td></tr>
       {% empty %}
       <tr><td colspan="5" class="muted">No visits recorded.</td></tr>
       {% endfor %}
@@ -203,7 +203,7 @@
   <h3>Prescriptions</h3>
   {% for p in prescriptions %}
   <div style="border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px">
-    <div class="muted" style="font-size:12px">{{ p.created_at|date:"Y-m-d" }} · {{ p.appointment.doctor.full_name }}{% if p.diagnosis %} · Dx: {{ p.diagnosis }}{% endif %}</div>
+    <div class="muted" style="font-size:12px">{{ p.created_at|date:"Y-m-d" }} · {{ p.appointment.doctor.display_name }}{% if p.diagnosis %} · Dx: {{ p.diagnosis }}{% endif %}</div>
     {% if p.complaint %}<div><strong>Complaint:</strong> {{ p.complaint }}</div>{% endif %}
     <ul style="margin:6px 0 0;padding-left:18px">
       {% for it in p.items.all %}<li>{{ it.medicine }} — {{ it.dosage }}{% if it.duration_days %} × {{ it.duration_days }}d{% endif %}{% if it.instructions %} ({{ it.instructions }}){% endif %}</li>{% endfor %}
@@ -283,7 +283,9 @@
     <tbody>
       {% for inv in invoices %}
       <tr>
-        <td>{% if nav.billing %}<a href="{% url 'invoice_detail' inv.id %}">{{ inv.id }}</a>{% else %}{{ inv.id }}{% endif %}</td>
+        {# display_no, not the raw pk: the billing list and the invoice page both #}
+        {# call this record INV-2026-00022, so "# 32" here cannot be matched to it. #}
+        <td>{% if nav.billing %}<a href="{% url 'invoice_detail' inv.id %}">{{ inv.display_no }}</a>{% else %}{{ inv.display_no }}{% endif %}</td>
         <td>{{ inv.created_at|date:"Y-m-d" }}</td>
         <td>{% for it in inv.items.all %}{{ it.description }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
         <td>{{ inv.total }}</td>

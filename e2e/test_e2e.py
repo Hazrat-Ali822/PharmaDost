@@ -237,15 +237,84 @@ class MobileLayoutTest(BrowserTestCase):
             "() => document.documentElement.scrollWidth - window.innerWidth")
 
     def test_no_screen_scrolls_sideways_on_a_phone(self):
+        """Measured at 320px as well as 390px.
+
+        390 alone is not enough: the POS Checkout Summary card bottomed out at a
+        min-content width of 315px, so it fitted a 390px phone perfectly and
+        pushed a 320px one sideways. Every sideways-scroll bug found so far has
+        been a grid item defaulting to `min-width: auto` and refusing to shrink,
+        and each one only showed at the narrowest width.
+        """
         self.login('e2e-admin@test.com')
-        for path in ['/', '/patients/', '/medicines/', '/sales/new/',
-                     '/opd/appointments/', '/billing/', '/offline/queue/']:
+        for width in (320, 390):
+            self.page.set_viewport_size({'width': width, 'height': 844})
+            for path in ['/', '/patients/', '/medicines/', '/sales/new/',
+                         '/opd/appointments/', '/billing/', '/offline/queue/']:
+                with self.subTest(page=path, width=width):
+                    # A pixel or two is sub-pixel rounding; a column's worth is a bug.
+                    self.assertLessEqual(
+                        self._overflow(path), 2,
+                        f"{path} is wider than a {width}px screen — a wide element "
+                        f"is not inside a .table-scroll box, or a grid item is "
+                        f"refusing to shrink (min-width: auto)")
+        self.page.set_viewport_size(self.PHONE)
+
+    def test_a_button_label_is_never_clipped(self):
+        """`.btn` is `white-space: nowrap` + `overflow: hidden`, so a button that
+        gets squeezed does not wrap or ellipsise — it silently loses the end of its
+        own label. The POS primary action read "Save & Print B" at every phone
+        width because `.form-actions button { flex: 1 }` gives a zero basis, and
+        the topbar's Logout read ".ogou" at 320px."""
+        self.login('e2e-admin@test.com')
+        for width in (320, 390):
+            self.page.set_viewport_size({'width': width, 'height': 844})
+            self._open('/sales/new/')
+            clipped = self.page.evaluate("""() => {
+                const out = [];
+                document.querySelectorAll('button, .btn').forEach(el => {
+                    if (el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 1) {
+                        out.push(((el.textContent || '').trim()
+                                  .replace(/[^ -~]/g, '').slice(0, 30))
+                                 + ` (box ${el.clientWidth} < text ${el.scrollWidth})`);
+                    }
+                });
+                return out;
+            }""")
+            self.assertEqual(clipped, [],
+                             f'button labels cut off at {width}px: {clipped}')
+        self.page.set_viewport_size(self.PHONE)
+
+    def test_inputs_reach_16px_on_the_screens_that_override_them(self):
+        """The 16px iOS rule has to actually win the cascade.
+
+        It was written with three `:not()`s — specificity (0,3,1) — against
+        app.css's own base input rule, which has nine — (0,9,1). The base
+        `font-size: 14px` therefore beat it everywhere the base rule applied, so
+        the POS, the dashboard date filters and every list search stayed at 14px
+        and iOS kept zooming. Checking one form (`/patients/add/`, which has its
+        own page styles) did not catch that; these three screens do."""
+        self.login('e2e-admin@test.com')
+        self.page.set_viewport_size({'width': 390, 'height': 844})
+        for path in ('/sales/new/', '/', '/medicines/'):
             with self.subTest(page=path):
-                # A pixel or two is sub-pixel rounding; a column's worth is the bug.
-                self.assertLessEqual(
-                    self._overflow(path), 2,
-                    f"{path} is wider than the phone screen — a wide element is "
-                    f"not inside a .table-scroll box")
+                self._open(path)
+                smallest = self.page.evaluate("""() => {
+                    let min = 999, which = '';
+                    document.querySelectorAll(
+                        'input:not([type=checkbox]):not([type=radio]):not([type=hidden]),'
+                        + 'select, textarea').forEach(el => {
+                        const fs = parseFloat(getComputedStyle(el).fontSize);
+                        if (fs < min) { min = fs; which = el.name || el.id || el.tagName; }
+                    });
+                    return {min, which};
+                }""")
+                if smallest['min'] == 999:
+                    continue                      # no fields on this screen
+                self.assertGreaterEqual(
+                    smallest['min'], 16,
+                    f"{path}: '{smallest['which']}' is {smallest['min']}px — "
+                    f"iOS will zoom in on focus and not zoom back out")
+        self.page.set_viewport_size(self.PHONE)
 
     def test_the_owner_portal_does_not_scroll_sideways(self):
         """The SaaS portal is a superuser page, so it sits outside the loop above —

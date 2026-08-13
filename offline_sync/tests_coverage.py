@@ -82,15 +82,18 @@ class AllKindsBase(TestCase):
             patient=self.patient, bed=occupied, attending_doctor=self.doctor,
             admission_reason="Observation", hospital=self.h)
 
-        self.cat = TestCategory.objects.create(name="Haematology")
+        # The lab and scan catalogues are per-hospital now — a row left with no
+        # hospital is invisible to a tenant user, so the order form would reject it.
+        self.cat = TestCategory.objects.create(name="Haematology", hospital=self.h)
         self.lab_test = LabTest.objects.create(
-            category=self.cat, name="CBC", price=Decimal("400"))
+            category=self.cat, name="CBC", price=Decimal("400"), hospital=self.h)
         self.order = TestOrder.objects.create(patient=self.patient)
         self.result_row = TestResult.objects.create(
             test_order=self.order, lab_test=self.lab_test)
 
         self.scan_type = ScanType.objects.create(
-            name="Abdomen US", modality="ULTRASOUND", price=Decimal("1200"))
+            name="Abdomen US", modality="ULTRASOUND", price=Decimal("1200"),
+            hospital=self.h)
         self.study = ImagingStudy.objects.create(
             patient=self.patient, modality="ULTRASOUND", study_name="Abdomen US",
             price=Decimal("1200"))

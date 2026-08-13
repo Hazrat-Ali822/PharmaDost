@@ -66,7 +66,10 @@ class SurgeryBillingTest(TestCase):
         self._schedule(c)
         description = Invoice.objects.get().items.first().description
         self.assertIn('Appendectomy', description)
-        self.assertIn('Dr Surgeon', description)
+        # 'Dr. Surgeon', with the full stop: the stored name is now the bare
+        # 'Surgeon' (Doctor.save strips a typed-in title) and the title is added
+        # once, by Doctor.display_name / __str__.
+        self.assertIn('Dr. Surgeon', description)
 
     def test_invalid_surgery_creates_neither_record_nor_invoice(self):
         """The record and its invoice are written in one transaction — a failure

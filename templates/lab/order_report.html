@@ -23,8 +23,10 @@
 <table>
   <thead><tr><th>Test</th><th>Result</th><th>Normal Range</th><th>Unit</th><th>Remarks</th></tr></thead>
   <tbody>
-    {# Cancelled tests stay on the printed report, marked as such: the doctor asked
-       for three and got two, and the sheet has to say why rather than look complete. #}
+    {% comment %}
+      Cancelled tests stay on the printed report, marked as such: the doctor asked
+      for three and got two, and the sheet has to say why rather than look complete.
+    {% endcomment %}
     {% for r in order.results.all %}
     <tr>
       <td>{{ r.lab_test.name }}</td>

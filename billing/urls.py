@@ -13,6 +13,7 @@ urlpatterns = [
     path('patient/<int:pk>/', views.patient_bill, name='patient_bill'),
     path('patient/<int:pk>/print/', views.patient_bill_print, name='patient_bill_print'),
     path('<int:pk>/', views.invoice_detail, name='invoice_detail'),
+    path('<int:pk>/print/', views.invoice_print, name='invoice_print'),
     path('<int:pk>/mark-paid/', views.invoice_mark_paid, name='invoice_mark_paid'),
     path('<int:pk>/void/', views.invoice_void, name='invoice_void'),
 ]

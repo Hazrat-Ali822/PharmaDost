@@ -100,6 +100,7 @@ Two traps when adding tests:
 | `reconcile_stock [--fix]` | Repair `Medicine.quantity` drift vs the sum of its `StockBatch` rows (weekly cron) |
 | `repair_tenant_orphans` | Fix rows left with `hospital = NULL` |
 | `seed_lab [--hospital <slug>] [--patients]`, `import_labs_scans [--hospital <slug>]` | Seed the **per-tenant** lab/scan catalogues — every hospital by default, or one by slug (see "Multi-tenancy"). Idempotent. |
+| `dedupe_catalogue [--hospital <slug>] [--dry-run]` | Merge duplicate lab tests / scan types inside a hospital's catalogue. Keeps the **best-populated** row (unit, reference range, price) and re-points existing `TestResult`s before deleting the losers — deleting first would cascade and erase entered results. |
 | `seed_org`, `seed_roles`, `seed_icd`, `seed_epi` | Catalog/role seeding (`seed_icd` = ICD-10 codes, `seed_epi` = EPI vaccine schedule; both genuinely global & idempotent) |
 
 ## Two databases — do not conflate them
@@ -1324,7 +1325,22 @@ Being readable once it fits (the ≤700px / ≤560px blocks in `app.css`):
   navbar's Live Demo button off the right edge. A layout test at one width is how that
   shipped; `test_the_sign_in_page_does_not_scroll_sideways` now sweeps 320/360/390.
 
-`e2e/test_e2e.py::MobileLayoutTest` covers both halves at 390px. Fit:
+**The 16px input rule must match the base rule's selector exactly.** app.css styles every
+text input with a nine-`:not()` selector — specificity (0,9,1). The mobile override was
+written with three, (0,3,1), so the base `font-size: 14px` beat it and iOS kept zooming on
+every screen the base rule touched (the POS, the dashboard date filters, every list
+search). The two selectors are now character-for-character identical, which makes the
+specificity equal and lets source order decide; edit them together.
+
+**A squeezed `.btn` clips rather than wraps** — it is `white-space: nowrap; overflow:
+hidden`. So any flex container that can shrink a button silently eats the end of its label:
+`.form-actions button { flex: 1 }` (a zero basis) rendered the POS primary action as
+"Save & Print B", and the topbar's Logout came out ".ogou" at 320px. Use `flex: 1 1 auto`
+and let the row wrap, or `flex-shrink: 0`.
+
+`e2e/test_e2e.py::MobileLayoutTest` covers both halves at **320px and 390px** — 320 is the
+one that catches things, since every sideways-scroll bug so far has been a grid item at
+`min-width: auto` that still fitted 390. Fit:
 `scrollWidth - innerWidth` on seven signed-in screens **plus the superuser SaaS portal
 and the signed-out sign-in page** — both sit outside the signed-in-admin loop, which is
 exactly why the portal drifted 272px wide unnoticed; it fails by 54–128px if the table
@@ -1401,7 +1417,26 @@ almost always means a query moved inside a loop; find that before raising the nu
 - Money-and-stock operations (sale, discharge + bill, surgery + invoice, PO receive) belong in `transaction.atomic()` with `select_for_update()` on the contended row.
 - `{# … #}` is a **single-line** comment in Django templates. Spanning one across several
   lines does not comment them out — it prints them, and evaluates any `{{ }}` or `{% %}`
-  inside. Use `{% comment %}…{% endcomment %}` for anything multi-line.
+  inside. Use `{% comment %}…{% endcomment %}` for anything multi-line. This has shipped
+  twice, once onto the printed **lab report handed to the patient**, so
+  `tests/test_reported_bugs.py::TemplateCommentTest` now scans the whole template tree
+  for an unclosed `{#`.
+- **A form field's queryset belongs in `__init__`, never at class level.**
+  `queryset=LabTest.objects.all()` written as a class attribute is evaluated once, at
+  import, when no tenant is bound — so `TenantManager` returns every row and that
+  unfiltered queryset is reused for the life of the process. Once the lab and scan
+  catalogues became per-tenant, the lab-order and prescription screens listed every
+  hospital's tests, and `ModelMultipleChoiceField` would have *accepted* an order against
+  one, because it validates ids against its own queryset. Use `.none()` at class level and
+  fill it in `__init__` (`consent/forms.py` and `opd/forms.py` show the pattern); the
+  per-request call has the tenant bound. Guarded by
+  `tests/test_security.py::SharedCatalogueTest`.
+- **`Doctor.full_name` holds the bare name; the title comes from `display_name`.**
+  `Doctor.save()` strips a typed-in "Dr." / "Prof." because ~34 templates render
+  `Dr. {{ doctor.full_name }}` themselves, and the OPD token slip and IPD discharge
+  summary — both handed to the patient — read "Dr. Dr. Sara Ahmed". Use
+  `doctor.display_name` (or `str(doctor)`) anywhere the title is wanted in Python or in a
+  template that does not prefix one.
 - Dates the staff type use **DD/MM/YYYY**, not a native `<input type="date">` — that renders
   in the *browser's* locale, so the same record reads `29/01/2002` at one desk and
   `01/29/2002` at another.
