@@ -163,3 +163,27 @@ class DemoBrandingLockTest(TestCase):
         c.post(self._settings_url(), self._payload('My Clinic'))
         row = SiteSettings.objects.filter(hospital=self.real).first()
         self.assertEqual(row.brand_name, 'My Clinic')
+
+
+class BrokenLogoFallbackTest(TestCase):
+    """An uploaded logo whose file has gone (DB restored without its media, an
+    upload wiped) rendered as a broken-image icon on every screen — that is how
+    the demo tenant's sidebar was reported. The browser is told what to fall back
+    to, rather than the server stat-ing the file on every render."""
+
+    def setUp(self):
+        get_user_model().objects.create_superuser(email='owner4@x.com', password='pw')
+        SetupMiddleware._configured = True
+        self.client = Client()
+
+    def test_login_navbar_logo_carries_a_fallback(self):
+        from user_mgmt.models import SiteSettings
+        site = SiteSettings.load()
+        site.logo_image = 'branding/gone-missing.png'      # row set, file absent
+        site.save(update_fields=['logo_image'])
+
+        r = self.client.get('/accounts/login/')
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'gone-missing.png')          # the upload is still tried
+        self.assertContains(r, 'onerror=')                  # ...and has somewhere to land
+        self.assertContains(r, 'img/sehatyar-logo.png')

@@ -1,4 +1,5 @@
 {% load static %}
+{% static 'img/sehatyar-logo.png' as fallback_logo %}
 <!doctype html>
 <html lang="en">
 <head>
@@ -111,11 +112,39 @@
       box-shadow: 0 26px 70px rgba(0, 0, 0, .38);
       border: 1px solid rgba(255, 255, 255, .14);
     }
-    .login-card h2 { font-size: 24px; }
-    .login-card .sub { color: var(--muted); margin-bottom: 22px; }
-    .login-card label { display: block; margin: 0 0 6px; font-size: 13px; color: var(--muted); }
-    .login-card .field { margin-bottom: 16px; }
-    .login-card .btn { width: 100%; justify-content: center; padding: 11px; font-size: 15px; }
+    .login-card h2 { font-size: 26px; margin: 0 0 4px; letter-spacing: -.02em; }
+    .login-card .sub { color: var(--muted); margin-bottom: 24px; font-size: 14px; }
+    .login-card label { display: block; margin: 0 0 7px; font-size: 12.5px; font-weight: 600;
+      color: var(--muted); letter-spacing: .01em; }
+    .login-card .field { margin-bottom: 18px; }
+
+    /* Icon inside the box. The widgets come from Django, so the icon is a sibling
+       positioned over the input and the input is given room with padding-left —
+       the two paddings must stay in step or the caret sits under the icon. */
+    .input-wrap { position: relative; display: block; }
+    .input-wrap > svg {
+      position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+      width: 17px; height: 17px; stroke: var(--muted); fill: none; stroke-width: 2;
+      pointer-events: none;
+    }
+    .login-card .input-wrap input {
+      width: 100%; padding: 12px 14px 12px 42px !important; font-size: 15px;
+      border-radius: 11px;
+    }
+    .input-wrap.has-toggle input { padding-right: 44px !important; }
+    .pw-toggle {
+      position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+      background: none; border: 0; cursor: pointer; padding: 8px; line-height: 0;
+      color: var(--muted); border-radius: 8px;
+    }
+    .pw-toggle:hover { color: var(--text); }
+    .pw-toggle svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+    .login-card .btn { width: 100%; justify-content: center; padding: 12px; font-size: 15px; }
+    .card-foot { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);
+      text-align: center; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
+    .card-foot a { font-weight: 600; }
+    .card-foot .built { display: block; margin-top: 8px; font-size: 11.5px; opacity: .8; }
     .field-error, .error-box { color: var(--danger); font-size: 13px; margin-top: 6px; }
     .error-box { background: var(--danger-bg); border: 1px solid #fecaca; border-radius: 9px; padding: 10px 12px; margin-bottom: 16px; }
     .error-box ul { margin: 0; padding-left: 18px; }
@@ -152,7 +181,8 @@
     <div class="site-nav-inner">
       <a class="site-nav-brand" href="/features/">
         {% if branding.logo_image %}
-          <img src="{{ branding.logo_image.url }}" alt="">
+          <img src="{{ branding.logo_image.url }}" alt=""
+               onerror="this.onerror=null;this.src='{{ fallback_logo }}'">
         {% else %}
           <img src="{% static 'img/sehatyar-logo.png' %}" alt="">
         {% endif %}
@@ -172,7 +202,9 @@
       {% if desktop_build %}
         <div class="logo-image-wrap">
           {% if branding.logo_image %}
-            <img src="{{ branding.logo_image.url }}" alt="{{ branding.brand_name|default:'Sehatyar' }} Logo" style="max-height: 62px; border-radius: 13px;">
+            <img src="{{ branding.logo_image.url }}" alt="{{ branding.brand_name|default:'Sehatyar' }} Logo"
+                 onerror="this.onerror=null;this.src='{{ fallback_logo }}'"
+                 style="max-height: 62px; border-radius: 13px;">
           {% else %}
             <img src="{% static 'img/sehatyar-logo.png' %}" alt="{{ branding.brand_name|default:'Sehatyar' }} Logo" style="max-height: 62px; border-radius: 13px;">
           {% endif %}
@@ -217,7 +249,8 @@
       <div class="card login-card">
         <div class="mobile-logo-header">
           {% if branding.logo_image %}
-            <img src="{{ branding.logo_image.url }}" alt="{{ branding.brand_name|default:'Sehatyar' }} Logo" class="mobile-logo-img">
+            <img src="{{ branding.logo_image.url }}" alt="{{ branding.brand_name|default:'Sehatyar' }} Logo" class="mobile-logo-img"
+                 onerror="this.onerror=null;this.src='{{ fallback_logo }}'">
           {% else %}
             <img src="{% static 'img/sehatyar-logo.png' %}" alt="{{ branding.brand_name|default:'Sehatyar' }} Logo" class="mobile-logo-img">
           {% endif %}
@@ -236,15 +269,25 @@
         <form method="post" action="{% url 'login' %}">{% csrf_token %}
           <div class="field">
             <label for="id_username">{{ form.username.label }}</label>
-            {{ form.username }}
+            <span class="input-wrap">
+              <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>
+              {{ form.username }}
+            </span>
             {% if form.username.errors %}<div class="field-error">{{ form.username.errors.0 }}</div>{% endif %}
           </div>
           <div class="field">
             <label for="id_password">{{ form.password.label }}</label>
-            {{ form.password }}
+            <span class="input-wrap has-toggle">
+              <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              {{ form.password }}
+              <button class="pw-toggle" type="button" id="pwToggle" aria-label="Show password">
+                <svg id="pwEye" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg id="pwEyeOff" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M10.6 6.2A9.9 9.9 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1M6.6 6.6A17.7 17.7 0 0 0 2 12s3.6 7 10 7a9.8 9.8 0 0 0 4.3-1"/><path d="m2 2 20 20"/></svg>
+              </button>
+            </span>
             {% if form.password.errors %}<div class="field-error">{{ form.password.errors.0 }}</div>{% endif %}
           </div>
-          <button class="btn" type="submit">Sign in</button>
+          <button class="btn" type="submit">Sign in →</button>
           <input type="hidden" name="next" value="{{ next }}">
         </form>
 
@@ -253,26 +296,38 @@
           <span>just looking around?</span>
           <span class="rule"></span>
         </div>
-        <a href="{% url 'demo_login' %}" class="btn alt" style="width:100%;justify-content:center;padding:11px;font-size:15px;text-decoration:none">
+        <a href="{% url 'demo_login' %}" class="btn alt" style="width:100%;justify-content:center;padding:12px;font-size:15px;text-decoration:none">
           ▶ Try the live demo — no signup
         </a>
-        <p class="muted" style="margin-top:8px;font-size:12px;text-align:center">
-          Explore every module with sample data. No password needed.
-        </p>
 
-        <p class="muted" style="margin-top:14px;font-size:13px;">
-          Forgot password? Ask your Admin to reset it, or use <a href="{% url 'password_reset' %}">password reset</a>.
-        </p>
-
-        <p class="muted" style="margin-top:14px;font-size:12.5px;text-align:center;">
-          New here? <a href="{% url 'seo_landing' %}" style="font-weight:600;">Learn what Sehatyar does →</a>
-        </p>
-
-        <p class="muted" style="margin-top:16px;font-size:11.5px;text-align:center;">
-          Built by <a href="https://ftdynamics.pk" target="_blank" rel="noopener" style="color:var(--muted);font-weight:700;">Future Tech Dynamics</a>
-        </p>
+        {# One block, not four stacked paragraphs: the old card ended in a wall of #}
+        {# small grey text that read as clutter rather than as help. #}
+        <div class="card-foot">
+          <a href="{% url 'password_reset' %}">Forgot password?</a>
+          &nbsp;·&nbsp;
+          <a href="{% url 'seo_landing' %}">What is {{ branding.brand_name|default:"Sehatyar" }}?</a>
+          <span class="built">Built by
+            <a href="https://ftdynamics.pk" target="_blank" rel="noopener" style="color:var(--muted)">Future Tech Dynamics</a>
+          </span>
+        </div>
       </div>
     </div>
   </div>
+<script>
+  // Show/hide the password. Nothing else on the page needs JS, so this stays inline.
+  (function () {
+    var btn = document.getElementById('pwToggle');
+    var input = document.getElementById('id_password');
+    if (!btn || !input) return;
+    btn.addEventListener('click', function () {
+      var hidden = input.type === 'password';
+      input.type = hidden ? 'text' : 'password';
+      document.getElementById('pwEye').style.display = hidden ? 'none' : '';
+      document.getElementById('pwEyeOff').style.display = hidden ? '' : 'none';
+      btn.setAttribute('aria-label', hidden ? 'Hide password' : 'Show password');
+      input.focus();
+    });
+  })();
+</script>
 </body>
 </html>

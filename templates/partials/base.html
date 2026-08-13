@@ -194,7 +194,14 @@
     {% else %}
     <div class="brand">
       {% if branding.logo_image %}
-        <img class="logo" src="{{ branding.logo_image.url }}" alt="logo" style="object-fit:cover;background:none">
+        {# onerror: an uploaded logo whose file has since gone (restored DB without #}
+        {# its media, a wiped upload) otherwise renders as a broken-image icon on   #}
+        {# every screen. Checking the file exists server-side would be a stat on    #}
+        {# every render; the browser already knows, and this costs nothing.         #}
+        {% static 'img/sehatyar-logo.png' as fallback_logo %}
+        <img class="logo" src="{{ branding.logo_image.url }}" alt="{{ branding.brand_name|default:'Sehatyar' }}"
+             onerror="this.onerror=null;this.src='{{ fallback_logo }}';this.style.objectFit='contain'"
+             style="object-fit:cover;background:none">
       {% else %}
         <img class="logo" src="{% static 'img/sehatyar-logo.png' %}" alt="{{ branding.brand_name|default:'Sehatyar' }}" style="object-fit:contain;background:none">
       {% endif %}

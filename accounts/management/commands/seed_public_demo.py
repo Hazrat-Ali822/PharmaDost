@@ -186,6 +186,13 @@ class Command(BaseCommand):
         s.brand_name = "Sehatyar Demo"
         s.brand_tagline = "Live Demo — sample data"
         s.enabled_modules = None            # all modules on
+        # The demo shows OUR logo, always. Clearing the upload makes the templates
+        # fall back to static/img/sehatyar-logo.png — and it repairs an install
+        # where a visitor uploaded one before the branding lock, or where the row
+        # points at a media file that is no longer on disk (a broken-image icon in
+        # the sidebar, which is exactly how this was reported).
+        if s.logo_image:
+            s.logo_image = ''
         s.save()
 
     def _users(self, demo):
