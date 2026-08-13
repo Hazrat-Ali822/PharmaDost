@@ -162,12 +162,14 @@ class AnonymousSmokeTest(TestCase):
     def test_login_page_renders(self):
         self.assertEqual(Client().get(reverse('login')).status_code, 200)
 
-    def test_home_serves_marketing_landing_to_anonymous(self):
-        # The bare root now shows the public marketing page (not a login wall) so a
-        # search engine / AI has real content to index. See seo_views.home.
+    def test_home_sends_an_anonymous_visitor_to_sign_in(self):
+        # The bare root is the front door staff type to get to work, so it opens on
+        # the sign-in form. The marketing page lives at /features/ (see
+        # seo_views.home, and tests/test_seo.py for the canonical + sitemap that
+        # keep it indexed).
         resp = Client().get(reverse('dashboard'))
-        self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, 'Hospital &amp; Pharmacy Management System')
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn('login', resp['Location'])
 
     def test_app_dashboard_still_login_walled(self):
         resp = Client().get(reverse('dashboard_page'))

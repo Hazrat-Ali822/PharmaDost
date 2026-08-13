@@ -335,10 +335,11 @@ def landing(request):
         "summary": SUMMARY,
         "features": FEATURES,
         "faqs": FAQS,
-        # Both / and /features/ render this page; point the canonical at the bare
-        # root so search engines consolidate all ranking on the homepage and never
-        # treat the two paths as duplicate content.
-        "canonical": base + "/",
+        # `/features/` IS this page's home. The root used to render it too and the
+        # canonical pointed there, but `/` now redirects anonymous visitors to the
+        # sign-in page — a canonical aimed at a redirect gets the page dropped from
+        # the index entirely, so it must name the URL that actually serves content.
+        "canonical": base + "/features/",
         "og_image": base + static("img/sehatyar-logo.png"),
         "jsonld": _jsonld(base),
     })
@@ -398,24 +399,23 @@ def home(request):
     """The site root `/`.
 
     - Signed-in users get the app dashboard exactly as before.
-    - An anonymous visitor on the **bare platform domain** gets the public
-      marketing landing — so the homepage a search engine or AI answer engine
-      indexes is real, keyword-rich content, not a login wall (the single biggest
-      lever for being found and cited).
-    - An anonymous visitor on a **tenant subdomain** is sent to that hospital's
-      branded login; and the desktop/LAN build (one clinic, no marketing) goes
-      straight to login too.
+    - **Anyone else gets the sign-in page**, on every host — the bare platform
+      domain, a tenant subdomain, and the desktop/LAN build alike.
+
+    The root briefly served the marketing landing to anonymous visitors instead,
+    on the SEO reasoning that a homepage a crawler can read outranks a login
+    wall. That is true in the abstract and wrong for this product: `sehatyar.online`
+    is what staff type to get to work, and landing them on a brochure instead of
+    the sign-in form is a worse cost every day than the ranking is worth. The
+    marketing page keeps its own URL at `/features/` (linked from the sign-in
+    navbar, canonical, in the sitemap at priority 1.0), so nothing is
+    unreachable or unindexable — it just is not what the front door opens onto.
     """
     if request.user.is_authenticated:
         from inventory.views import dashboard
         return dashboard(request)
     from django.shortcuts import redirect
-    if getattr(settings, "DESKTOP_BUILD", False):
-        return redirect("login")
-    from saas.utils import hospital_from_host
-    if hospital_from_host(request.get_host()) is not None:
-        return redirect("login")
-    return landing(request)
+    return redirect("login")
 
 
 def robots_txt(request):
@@ -437,12 +437,15 @@ def robots_txt(request):
 
 def sitemap_xml(request):
     base = _base_url()
-    # Home first, then the keyword content pages (high value), then demo.
+    # `/features/` first, then the keyword content pages, then demo. The bare root
+    # is deliberately NOT listed: it redirects anonymous visitors to the sign-in
+    # page, and a sitemap that advertises a redirect wastes crawl budget and
+    # teaches the crawler the homepage has nothing on it.
     content = [f"/{slug}/" for slug in CONTENT_PAGES]
-    urls = ["/", "/features/"] + content + ["/demo/"]
+    urls = ["/features/"] + content + ["/demo/"]
 
     def _priority(u):
-        if u == "/":
+        if u == "/features/":
             return "1.0"
         if u in content:
             return "0.9"

@@ -406,7 +406,9 @@ The sign-in page itself (`registration/login.html`) is the platform's shop windo
 
 **The public demo's branding is locked** (`saas.utils.is_demo_hospital`, slug `demo`). `/demo/` signs any visitor in as an ADMIN of that tenant, so without the lock one passer-by's uploaded logo and renamed hospital would greet everybody after them. `user_mgmt.views.site_settings` still *renders* for the demo (it is part of what the demo shows) but refuses the POST. Guarded by `tests/test_seo.py::DemoBrandingLockTest`, which also asserts a real tenant can still save.
 
-`/` maps to **`user_mgmt.seo_views.home`**: a signed-in user is handed straight to `inventory.views.dashboard` (the pharmacy dashboard, unchanged); an **anonymous** visitor on the bare platform domain is served the public marketing landing (so the homepage a crawler/AI indexes is real content, not a login wall), while an anonymous visitor on a tenant subdomain — or any anonymous request on the desktop/LAN build — is redirected to `login`. `'dashboard'` (the root) is therefore in `LoginRequiredMiddleware.ALLOWED_NAMES`; the login-walled app dashboard is still reachable at `/dashboard/` (`dashboard_page`). The dashboard itself is **not** feature-gated with a hard 403 — users lacking `inventory` are redirected to `post_login_redirect` instead, and `dashboard_router` avoids bouncing back for admins whose pharmacy module is off. Preserve both sides of that guard or you create a redirect loop.
+`/` maps to **`user_mgmt.seo_views.home`**: a signed-in user is handed straight to `inventory.views.dashboard` (the pharmacy dashboard, unchanged); **anyone else is redirected to `login`**, on every host. `'dashboard'` (the root) is still in `LoginRequiredMiddleware.ALLOWED_NAMES` because the view decides for itself; the login-walled app dashboard is also reachable at `/dashboard/` (`dashboard_page`).
+
+The root briefly served the **marketing landing** to anonymous visitors instead, on the SEO reasoning that an indexable homepage beats a login wall. That is true in the abstract and was the wrong trade here: `sehatyar.online` is what staff type to get to work, and meeting a brochure instead of the sign-in form costs more every day than the ranking is worth. **Do not move it back** without asking. The public surface is not lost by this — the marketing page keeps its own URL at `/features/`, which the sign-in navbar links to — but two things have to stay true or it silently *is*: `landing()`'s **canonical must name `/features/`, not the bare root** (a canonical pointing at a redirect gets the page dropped from the index entirely), and **`sitemap_xml` must not list `/`** (advertising a redirect as the homepage teaches the crawler there is nothing there). `tests/test_seo.py::test_the_marketing_page_is_still_reachable_and_canonical` asserts both. The dashboard itself is **not** feature-gated with a hard 403 — users lacking `inventory` are redirected to `post_login_redirect` instead, and `dashboard_router` avoids bouncing back for admins whose pharmacy module is off. Preserve both sides of that guard or you create a redirect loop.
 
 `dashboard` **also** sends a hospital-less superuser straight to `saas:dashboard`, mirroring the router. `dashboard_router` only runs at login, so typing the bare domain while already signed in skipped it and dropped the SaaS owner onto a tenant's pharmacy dashboard — which reads as "the platform has turned into one hospital". That hop goes directly to `/saas/`, which never redirects back, so it cannot loop; do not route it through `post_login_redirect` instead.
 
@@ -1259,6 +1261,12 @@ Being readable once it fits (the ≤700px / ≤560px blocks in `app.css`):
   scrolling to read eight numbers that exist to be compared at a glance.
   **`.dept-grid` is a class precisely because a media query cannot override an inline
   `grid-template-columns`** — same trap as `.dash-split` in `templates/dashboard.html`.
+- **Measure narrower than 390px.** The sign-in card bottomed out at a min-content width
+  of 350px — `.login-wrap`'s grid items were `min-width:auto`, and an `<input>` carries
+  an intrinsic width from its `size` attribute the same way a long word does — so it
+  fitted a 390px phone exactly and pushed a 320px one 30px sideways, clipping the
+  navbar's Live Demo button off the right edge. A layout test at one width is how that
+  shipped; `test_the_sign_in_page_does_not_scroll_sideways` now sweeps 320/360/390.
 
 `e2e/test_e2e.py::MobileLayoutTest` covers both halves at 390px. Fit:
 `scrollWidth - innerWidth` on seven signed-in screens **plus the superuser SaaS portal

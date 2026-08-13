@@ -29,14 +29,36 @@ class SeoPublicSurfaceTest(TestCase):
         self.assertContains(r, 'name="description"')
         self.assertContains(r, 'og:title')
 
-    def test_root_serves_the_landing_to_anonymous(self):
-        """The homepage a crawler indexes must be real content, not a login wall."""
+    def test_root_sends_an_anonymous_visitor_to_sign_in(self):
+        """`sehatyar.online` is what staff type to get to work.
+
+        The root briefly served the marketing landing instead, on the SEO argument
+        that an indexable homepage beats a login wall. It does in the abstract, and
+        it was the wrong trade here: every member of staff, every day, met a
+        brochure where the sign-in form should be. The marketing page keeps its own
+        URL — see the two assertions below, which are what stops this from being a
+        quiet loss of the whole public surface.
+        """
         r = self.c.get('/')
+        self.assertEqual(r.status_code, 302)
+        self.assertIn('login', r['Location'])
+
+    def test_the_marketing_page_is_still_reachable_and_canonical(self):
+        """Moving the front door back must not un-index the marketing content.
+
+        A canonical URL that points at a redirect gets the page dropped from the
+        index altogether, so `/features/` must name itself — not the bare root it
+        used to share with.
+        """
+        r = self.c.get('/features/')
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, 'Hospital &amp; Pharmacy Management System')
         self.assertContains(r, 'SoftwareApplication')
-        # canonical points at the bare root so / and /features/ don't compete
-        self.assertContains(r, 'rel="canonical"')
+        self.assertContains(r, 'rel="canonical" href="https://sehatyar.online/features/"')
+        # …and the sitemap must not advertise the redirect as the homepage.
+        sm = self.c.get('/sitemap.xml').content.decode()
+        self.assertIn('<loc>https://sehatyar.online/features/</loc>', sm)
+        self.assertNotIn('<loc>https://sehatyar.online/</loc>', sm)
 
     def test_robots_txt(self):
         r = self.c.get('/robots.txt')

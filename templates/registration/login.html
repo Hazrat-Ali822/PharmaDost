@@ -105,6 +105,13 @@
 
     .hero-foot { margin-top: 40px; color: rgba(255,255,255,.62); font-size: 12.5px; }
 
+    /* A grid item defaults to min-width:auto and so refuses to shrink below its
+       content's min-content width — the sign-in card bottomed out at 350px, so
+       any screen narrower than that (a 320px iPhone SE, a folded phone) scrolled
+       sideways and the navbar's Live Demo button was clipped off the right edge.
+       Same trap as `.grid > *` and `.dash-split > *` in app.css. */
+    .login-wrap > * { min-width: 0; }
+
     /* ---- form panel (right) — the card floats on the photograph ---- */
     .login-panel { display: grid; place-items: center; padding: 118px 32px 40px; background: transparent; }
     .login-card {
@@ -170,6 +177,17 @@
       .login-hero { display: none; }
       .mobile-logo-header { display: block; }
       .login-panel { padding: 92px 16px 32px; }
+    }
+
+    /* A 320px phone (iPhone SE, a folded handset) is 288px of usable width once
+       the panel's own padding is off, and the card would not go below 318: an
+       <input> carries an intrinsic width from its `size` attribute, which counts
+       towards min-content the same way a long word does. Let the fields shrink
+       and give the card less padding to hold. */
+    @media (max-width: 380px) {
+      .login-card { padding: 24px 18px; }
+      .login-card input { min-width: 0; }
+      .site-nav-brand b { font-size: 14px; }
     }
   </style>
 </head>

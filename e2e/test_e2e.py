@@ -262,14 +262,25 @@ class MobileLayoutTest(BrowserTestCase):
 
     def test_the_sign_in_page_does_not_scroll_sideways(self):
         """Signed out — the first screen anyone ever sees, and it has its own
-        layout (navbar + background + floating card) that the loop above misses."""
+        layout (navbar + background + floating card) that the loop above misses.
+
+        Measured at 320px as well as 390px, and 320 is the one that matters: the
+        card's min-content width bottomed out at 350px (a grid item is
+        `min-width:auto`, and an `<input>` carries an intrinsic width from its
+        `size` attribute), so it fitted a 390px phone perfectly and pushed a 320px
+        one 30px sideways — clipping the navbar's Live Demo button off the right
+        edge. A single-width layout test is how that shipped.
+        """
         self.page.context.clear_cookies()
-        self.page.goto(self.url('/accounts/login/'), wait_until='load')
-        self.page.wait_for_selector('.login-card')
-        self.assertLessEqual(
-            self.page.evaluate(
-                "() => document.documentElement.scrollWidth - window.innerWidth"),
-            2, "the sign-in page is wider than the phone screen")
+        for width in (320, 360, 390):
+            with self.subTest(width=width):
+                self.page.set_viewport_size({'width': width, 'height': 780})
+                self.page.goto(self.url('/accounts/login/'), wait_until='load')
+                self.page.wait_for_selector('.login-card')
+                self.assertLessEqual(
+                    self.page.evaluate("() => document.documentElement.scrollWidth"
+                                       " - window.innerWidth"),
+                    2, f"the sign-in page is wider than a {width}px screen")
 
     def test_a_wide_table_scrolls_inside_its_own_box(self):
         """The table must still be readable — the fix is a scroll box, not
