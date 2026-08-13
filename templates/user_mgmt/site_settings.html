@@ -7,6 +7,13 @@
   <div><h2>Branding &amp; Appearance</h2><div class="muted">Customise the name, logo and colours of your system.</div></div>
 </div>
 
+{% if demo_locked %}
+<div class="msg warning" style="margin-bottom:14px">
+  🔒 This is the public demo, so branding is read-only here — otherwise one visitor's
+  logo would greet everybody who came after. On your own hospital every field below is editable.
+</div>
+{% endif %}
+
 <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start">
   <div class="form-card" style="max-width:none">
     <form method="post" enctype="multipart/form-data" id="settings-form">{% csrf_token %}

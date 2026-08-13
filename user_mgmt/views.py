@@ -360,7 +360,18 @@ def user_edit(request, pk):
 @feature_required('settings')
 def site_settings(request):
     site = SiteSettings.load()
+    # The public demo signs every visitor in as an ADMIN, so without this any
+    # passer-by could rename the hospital, upload their own logo or switch modules
+    # off — for everyone who visits afterwards. The screen still opens (it is part
+    # of what the demo is showing); only saving is refused.
+    from saas.utils import is_demo_hospital
+    demo_locked = is_demo_hospital(getattr(request.user, 'hospital', None))
     if request.method == 'POST':
+        if demo_locked:
+            messages.warning(
+                request, 'This is the public demo — settings cannot be changed here. '
+                         'Everything else is fully editable.')
+            return redirect('user_mgmt:site_settings')
         if 'reset' in request.POST:
             site.reset_to_defaults()
             messages.success(request, 'Branding reset to defaults.')
@@ -389,7 +400,8 @@ def site_settings(request):
         form = SiteSettingsForm(instance=site)
     enabled = site.enabled_modules if site.enabled_modules is not None else MODULE_KEYS
     return render(request, 'user_mgmt/site_settings.html',
-                  {'form': form, 'site': site, 'modules': MODULES, 'enabled': enabled})
+                  {'form': form, 'site': site, 'modules': MODULES, 'enabled': enabled,
+                   'demo_locked': demo_locked})
 
 
 @role_required(["ADMIN"])

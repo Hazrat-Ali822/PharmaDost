@@ -19,46 +19,77 @@
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=2.6">
   {% if branding.primary_color and branding.primary_color != '#4f46e5' %}<style>:root{ --primary: {{ branding.primary_color }}; --accent: {{ branding.accent_color }}; }</style>{% endif %}
   <style>
-    /* Slim strip above the sign-in split, linking the public content pages. */
-    .public-nav { background: var(--surface); border-bottom: 1px solid var(--border); }
-    .public-nav-inner {
-      max-width: 1240px; margin: 0 auto; padding: 11px 20px;
+    /* ---- floating dark navbar ------------------------------------------ */
+    .site-nav { position: absolute; top: 0; left: 0; right: 0; z-index: 5; padding: 16px 20px; }
+    .site-nav-inner {
+      max-width: 1280px; margin: 0 auto; height: 62px;
       display: flex; align-items: center; gap: 18px;
-      /* nowrap + scroll, not wrap: five links wrap to three lines on a phone and
-         shove the sign-in form off the first screen. */
-      flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
+      padding: 0 12px 0 18px; border-radius: 16px;
+      background: rgba(9, 24, 30, .72);
+      -webkit-backdrop-filter: saturate(160%) blur(14px);
+      backdrop-filter: saturate(160%) blur(14px);
+      border: 1px solid rgba(255, 255, 255, .10);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .28);
     }
-    .public-nav-inner::-webkit-scrollbar { display: none; }
-    .public-nav a, .public-nav-label { white-space: nowrap; font-size: 13.5px; }
-    .public-nav-label { color: var(--muted); font-weight: 600; }
-    .public-nav a { color: var(--text); text-decoration: none; font-weight: 500; }
-    .public-nav a:hover { color: var(--primary); text-decoration: underline; }
-    .public-nav-demo { color: var(--primary) !important; font-weight: 700 !important; }
-    @media (max-width: 640px) { .public-nav-label { display: none; } }
-
-    /* 100vh minus the strip, or the page gains a scrollbar it never had. */
-    .login-wrap { min-height: calc(100vh - 45px); display: grid; grid-template-columns: 1.05fr 1fr; }
-
-    /* ---- brand panel (left) — calm, professional, no gimmicks ---- */
-    .login-hero {
-      position: relative; overflow: hidden;
-      background: #0891b2;
-      background: linear-gradient(150deg, var(--primary), var(--accent));
-      color: #fff; padding: 56px 52px; display: flex; flex-direction: column; justify-content: center;
+    .site-nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; flex: 0 0 auto; }
+    .site-nav-brand img { height: 38px; width: 38px; object-fit: contain; }
+    .site-nav-brand b { color: #fff; font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
+    .site-nav-links {
+      display: flex; align-items: center; gap: 26px; margin: 0 auto;
+      /* nowrap + scroll, never wrap: wrapped links would grow the bar and push
+         the sign-in card off the first screen on a laptop. */
+      flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
     }
-    .login-hero::before {
-      content: ''; position: absolute; inset: 0; pointer-events: none;
+    .site-nav-links::-webkit-scrollbar { display: none; }
+    .site-nav-links a {
+      color: rgba(255, 255, 255, .82); text-decoration: none;
+      font-size: 14.5px; font-weight: 500; white-space: nowrap;
+      transition: color .18s ease;
+    }
+    .site-nav-links a:hover { color: #fff; }
+    .site-nav-cta {
+      flex: 0 0 auto; text-decoration: none; white-space: nowrap;
+      padding: 11px 22px; border-radius: 999px;
+      background: linear-gradient(135deg, var(--accent), var(--primary));
+      color: #062017; font-weight: 700; font-size: 14.5px;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, .25);
+    }
+    .site-nav-cta:hover { filter: brightness(1.07); }
+    @media (max-width: 900px) {
+      .site-nav { padding: 10px 12px; }
+      .site-nav-inner { height: 56px; gap: 12px; padding: 0 10px 0 12px; }
+      .site-nav-links { display: none; }        /* the card is what matters on a phone */
+      .site-nav-brand b { font-size: 15px; }
+      .site-nav-cta { padding: 9px 16px; font-size: 13.5px; }
+    }
+
+    .login-wrap {
+      position: relative;
+      min-height: 100vh; display: grid; grid-template-columns: 1.05fr 1fr;
+      /* The photograph, over the brand gradient. If img/login-bg.jpg is ever
+         missing the gradient below simply shows through — the page never breaks,
+         it just loses the picture. Replace that one file to change the artwork. */
       background:
-        radial-gradient(620px 440px at 88% 12%, rgba(255,255,255,.13), transparent 60%),
-        radial-gradient(520px 420px at 8% 92%, rgba(255,255,255,.08), transparent 55%);
+        /* Dark on the left where the headline sits, clearing to the right so the
+           photograph is actually visible. Heavier than this and any picture you
+           drop in is crushed to a flat dark panel. */
+        linear-gradient(100deg, rgba(3, 20, 27, .88) 0%, rgba(3, 20, 27, .66) 38%, rgba(3, 20, 27, .34) 100%),
+        url("{% static 'img/login-bg.jpg' %}") center / cover no-repeat,
+        linear-gradient(150deg, var(--primary), var(--accent));
+    }
+
+    /* ---- brand panel (left) — over the photograph ---- */
+    .login-hero {
+      position: relative; overflow: hidden; background: transparent;
+      color: #fff; padding: 118px 52px 56px; display: flex; flex-direction: column; justify-content: center;
     }
     .login-hero > * { position: relative; z-index: 1; }
     .login-hero .logo { width: 56px; height: 56px; border-radius: 15px; background: rgba(255,255,255,.18);
       border: 1px solid rgba(255,255,255,.22);
       display: grid; place-items: center; font-weight: 800; font-size: 26px; margin-bottom: 24px; }
     .login-hero .logo-image-wrap { margin-bottom: 24px; }
-    .login-hero h1 { color: #fff; font-size: 33px; line-height: 1.14; letter-spacing: -.02em; margin: 0; }
+    .login-hero h1 { color: #fff; font-size: 44px; line-height: 1.1; letter-spacing: -.025em; margin: 0; font-weight: 800; }
+    .login-hero h1 .accent { color: var(--accent); display: block; }
     .login-hero .lede { color: rgba(255,255,255,.86); font-size: 15.5px; line-height: 1.55; max-width: 400px; margin: 14px 0 0; }
 
     .value-list { margin-top: 36px; display: flex; flex-direction: column; gap: 15px; max-width: 400px; }
@@ -71,9 +102,15 @@
 
     .hero-foot { margin-top: 40px; color: rgba(255,255,255,.62); font-size: 12.5px; }
 
-    /* ---- form panel (right) ---- */
-    .login-panel { display: grid; place-items: center; padding: 32px; background: var(--bg); }
-    .login-card { width: 100%; max-width: 380px; }
+    /* ---- form panel (right) — the card floats on the photograph ---- */
+    .login-panel { display: grid; place-items: center; padding: 118px 32px 40px; background: transparent; }
+    .login-card {
+      width: 100%; max-width: 400px;
+      background: var(--bg-card, #fff);
+      border-radius: 18px; padding: 34px 32px;
+      box-shadow: 0 26px 70px rgba(0, 0, 0, .38);
+      border: 1px solid rgba(255, 255, 255, .14);
+    }
     .login-card h2 { font-size: 24px; }
     .login-card .sub { color: var(--muted); margin-bottom: 22px; }
     .login-card label { display: block; margin: 0 0 6px; font-size: 13px; color: var(--muted); }
@@ -101,11 +138,7 @@
       .login-wrap { grid-template-columns: 1fr; }
       .login-hero { display: none; }
       .mobile-logo-header { display: block; }
-      .login-panel {
-        background-image:
-          radial-gradient(600px 300px at 100% 0%, color-mix(in srgb, var(--primary) 7%, transparent), transparent 70%),
-          radial-gradient(500px 300px at 0% 100%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 70%);
-      }
+      .login-panel { padding: 92px 16px 32px; }
     }
   </style>
 </head>
@@ -113,29 +146,41 @@
   {# The public content pages had URLs, a sitemap and JSON-LD but no link from #}
   {# anywhere a person lands, so only crawlers ever reached them. Hidden on the #}
   {# desktop / LAN build, which has no internet and would show dead links. #}
+  <div class="login-wrap">
   {% if not desktop_build %}
-  <nav class="public-nav" aria-label="About Sehatyar">
-    <div class="public-nav-inner">
-      <span class="public-nav-label">Learn more:</span>
-      {% for path, label in public_pages %}
-        <a href="{{ path }}">{{ label }}</a>
-      {% endfor %}
-      <a class="public-nav-demo" href="/demo/">▶ Live demo</a>
+  <nav class="site-nav" aria-label="About {{ branding.brand_name|default:'Sehatyar' }}">
+    <div class="site-nav-inner">
+      <a class="site-nav-brand" href="/features/">
+        {% if branding.logo_image %}
+          <img src="{{ branding.logo_image.url }}" alt="">
+        {% else %}
+          <img src="{% static 'img/sehatyar-logo.png' %}" alt="">
+        {% endif %}
+        <b>{{ branding.brand_name|default:"Sehatyar" }}</b>
+      </a>
+      <div class="site-nav-links">
+        {% for path, label in public_pages %}<a href="{{ path }}">{{ label }}</a>{% endfor %}
+      </div>
+      <a class="site-nav-cta" href="{% url 'demo_login' %}">Live Demo</a>
     </div>
   </nav>
   {% endif %}
-  <div class="login-wrap">
     <div class="login-hero">
-      {% if branding.logo_image %}
+      {# The navbar already carries the logo; showing it again right underneath #}
+      {# reads as a mistake. On the desktop/LAN build there is no navbar, so the #}
+      {# hero keeps it. #}
+      {% if desktop_build %}
         <div class="logo-image-wrap">
-          <img src="{{ branding.logo_image.url }}" alt="{{ branding.brand_name|default:'Sehatyar' }} Logo" style="max-height: 62px; border-radius: 13px; box-shadow: 0 8px 24px rgba(0,0,0,0.15);">
-        </div>
-      {% else %}
-        <div class="logo-image-wrap">
-          <img src="{% static 'img/sehatyar-logo.png' %}" alt="{{ branding.brand_name|default:'Sehatyar' }} Logo" style="max-height: 62px; border-radius: 13px; box-shadow: 0 8px 24px rgba(0,0,0,0.15);">
+          {% if branding.logo_image %}
+            <img src="{{ branding.logo_image.url }}" alt="{{ branding.brand_name|default:'Sehatyar' }} Logo" style="max-height: 62px; border-radius: 13px;">
+          {% else %}
+            <img src="{% static 'img/sehatyar-logo.png' %}" alt="{{ branding.brand_name|default:'Sehatyar' }} Logo" style="max-height: 62px; border-radius: 13px;">
+          {% endif %}
         </div>
       {% endif %}
-      <h1>{{ branding.brand_name|default:"Sehatyar" }}</h1>
+      {# A value proposition, not the brand name — the navbar already says who #}
+      {# this is, and repeating it as the headline wastes the largest text on the page. #}
+      <h1>Your Complete<span class="accent">Hospital &amp; Pharmacy Solution</span></h1>
       <p class="lede">One system for your whole hospital &amp; pharmacy — patients, OPD, lab, wards, billing and reports in one calm place.</p>
 
       <div class="value-list">

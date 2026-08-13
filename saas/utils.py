@@ -95,3 +95,18 @@ class TenantManager(models.Manager):
         if is_tenant_strict():
             return qs.filter(hospital__isnull=True)
         return qs
+
+
+# The public demo tenant (accounts/management/commands/seed_public_demo.py).
+DEMO_SLUG = "demo"
+
+
+def is_demo_hospital(hospital):
+    """Is this the public demo tenant?
+
+    `/demo/` signs any visitor in as an ADMIN of this hospital, so anything an
+    admin can normally change — the brand name, the logo, which modules exist —
+    is something a passer-by could change for every later visitor. Callers use
+    this to refuse those writes; see `user_mgmt.views.site_settings`.
+    """
+    return bool(hospital and hospital.slug == DEMO_SLUG)
