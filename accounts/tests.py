@@ -178,3 +178,30 @@ class UserModelTest(TestCase):
     def test_default_role_is_pharmacist(self):
         self.assertEqual(User.objects.create_user(email='def@t.com', password='pw').role,
                          'PHARMACIST')
+
+
+class CustomPasswordResetTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.h = Hospital.objects.create(name='Test Hospital', slug='testhosp', expiry_date=_future())
+        cls.admin = User.objects.create_user(email='admin@testhosp.com', password='pw', role='ADMIN', hospital=cls.h)
+        cls.staff = User.objects.create_user(email='staff@testhosp.com', password='pw', role='PHARMACIST', hospital=cls.h)
+
+    def test_get_password_reset_page(self):
+        client = Client()
+        resp = client.get(reverse('password_reset'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Reset Password')
+
+    def test_post_password_reset_notifies_hospital_admin(self):
+        client = Client()
+        resp = client.post(reverse('password_reset'), {'email': 'staff@testhosp.com'})
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'sent to your Hospital Administrator')
+        
+        # Verify notification created for hospital admin
+        self.assertEqual(self.admin.notifications.count(), 1)
+        note = self.admin.notifications.first()
+        self.assertIn('Password reset requested by staff@testhosp.com', note.message)
+        self.assertEqual(note.link, f'/manage/users/{self.staff.pk}/edit/')
+

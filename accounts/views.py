@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login as auth_login
 from django.contrib.auth.views import LoginView
 from django.contrib import messages
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from django.utils.safestring import mark_safe
 from .models import Notification
 
@@ -127,3 +127,38 @@ def get_notifications_latest(request):
         'count': unread_count,
         'html': html,
     })
+
+
+def custom_password_reset_request(request):
+    """Staff password reset request.
+    Instead of sending an email, notifies the user's Hospital Admin
+    so they can reset the password directly.
+    """
+    success_msg = None
+    error_msg = None
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip()
+        if not email:
+            error_msg = 'Please enter your registered email address.'
+        else:
+            from accounts.models import User, Notification
+            user = User.objects.filter(email__iexact=email, is_active=True).first()
+            if user and user.hospital:
+                user_name = user.get_full_name() or user.email
+                msg = f"Password reset requested by {user_name} ({user.get_role_display()})."
+                Notification.notify_admins(
+                    hospital=user.hospital,
+                    message=msg,
+                    link=f"/manage/users/{user.pk}/edit/"
+                )
+                success_msg = "A password reset request has been sent to your Hospital Administrator. Please contact your administrator to reset your password."
+            elif user and user.is_superuser:
+                success_msg = "Superuser password resets must be done via CLI (python manage.py changepassword)."
+            else:
+                success_msg = "If an active account exists for this email, your Hospital Administrator has been notified."
+
+    return render(request, 'registration/password_reset_request.html', {
+        'success_msg': success_msg,
+        'error_msg': error_msg,
+    })
+

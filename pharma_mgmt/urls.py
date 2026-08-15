@@ -8,7 +8,7 @@ from user_mgmt import seo_views
 from django.conf import settings
 from django.conf.urls.static import static
 from saas.views import hospital_login
-from accounts.views import demo_login, smart_login
+from accounts.views import demo_login, smart_login, custom_password_reset_request
 
 
 urlpatterns = [
@@ -85,6 +85,7 @@ urlpatterns = [
     # isolation. Shadow it here (before the include) so /accounts/login/ is
     # handled by smart_login too — now every login path routes through it.
     path('accounts/login/', smart_login, name='login'),
+    path('accounts/password_reset/', custom_password_reset_request, name='password_reset'),
     path('accounts/', include('django.contrib.auth.urls')),
     path('<slug:hospital_slug>/', hospital_login, name='hospital_login_landing'),
     path('<slug:hospital_slug>/login/', hospital_login, name='hospital_login'),
