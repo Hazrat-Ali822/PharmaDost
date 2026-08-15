@@ -8,7 +8,11 @@ from .models import LeaveRequest, SalaryPayment, StaffProfile
 class StaffProfileForm(forms.ModelForm):
     class Meta:
         model = StaffProfile
-        fields = ['designation', 'monthly_salary', 'joining_date', 'phone', 'cnic']
+        fields = [
+            'photo', 'designation', 'monthly_salary', 'allowed_monthly_leaves',
+            'enable_absence_deduction', 'deduction_per_absent_day',
+            'joining_date', 'phone', 'cnic', 'address', 'emergency_contact'
+        ]
         widgets = {'joining_date': forms.DateInput(attrs={'type': 'date'})}
 
 

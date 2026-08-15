@@ -6,12 +6,21 @@
   <h2>{{ staff_user.get_full_name|default:staff_user.email }}</h2>
   <a class="btn alt" href="{% url 'hr_staff_list' %}">Back</a>
 </div>
-<div class="card" style="max-width:560px;">
-  <form method="post">
+<div class="card" style="max-width:600px;">
+  {% if profile.photo %}
+    <div style="margin-bottom:16px;display:flex;align-items:center;gap:16px;">
+      <img src="{{ profile.photo.url }}" alt="Profile Photo" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid var(--primary, #4f46e5);">
+      <div>
+        <strong style="display:block;font-size:16px;">{{ staff_user.get_full_name|default:staff_user.email }}</strong>
+        <span class="muted" style="font-size:13px;">{{ staff_user.get_role_display }}</span>
+      </div>
+    </div>
+  {% endif %}
+  <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
     {{ form.as_p }}
-    <div class="btn-row" style="margin-top:10px;">
-      <button class="btn" type="submit">Save</button>
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn" type="submit">Save Profile</button>
       <a class="btn alt" href="{% url 'hr_staff_list' %}">Cancel</a>
     </div>
   </form>

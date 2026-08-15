@@ -20,21 +20,67 @@
 
 <div class="card">
   <table class="tbl">
-    <thead><tr><th>Name</th><th>Role</th><th>Designation</th><th class="num">Monthly salary</th><th></th></tr></thead>
+    <thead>
+      <tr>
+        <th style="width:50px;">Photo</th>
+        <th>Name</th>
+        <th>Role / Designation</th>
+        <th class="num">Monthly Salary</th>
+        <th class="num">Leave Limit</th>
+        <th>Absence Deduction</th>
+        <th></th>
+      </tr>
+    </thead>
     <tbody>
       {% for u in staff %}
       <tr>
-        <td><strong>{{ u.get_full_name|default:u.email }}</strong><br><small class="muted">{{ u.email }}</small></td>
-        <td>{{ u.get_role_display }}</td>
-        <td>{{ u.hr_profile.designation|default:"—" }}</td>
-        <td class="num">{% if u.hr_profile %}{{ currency }} {{ u.hr_profile.monthly_salary|floatformat:0 }}{% else %}<span class="muted">not set</span>{% endif %}</td>
         <td>
-          <a class="btn sm alt" href="{% url 'hr_profile_edit' u.id %}">Edit</a>
-          <a class="btn sm" href="{% url 'hr_salary_create' %}?user_id={{ u.id }}">Pay</a>
+          {% if u.hr_profile.photo %}
+            <img src="{{ u.hr_profile.photo.url }}" alt="{{ u.get_full_name|default:u.email }}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:1px solid rgba(255,255,255,0.15);">
+          {% else %}
+            <div style="width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;color:var(--muted);">
+              {{ u.email|first|upper }}
+            </div>
+          {% endif %}
+        </td>
+        <td>
+          <strong>{{ u.get_full_name|default:u.email }}</strong><br>
+          <small class="muted">{{ u.email }}</small>
+        </td>
+        <td>
+          {{ u.get_role_display }}
+          {% if u.hr_profile.designation %}
+            <br><small class="muted">{{ u.hr_profile.designation }}</small>
+          {% endif %}
+        </td>
+        <td class="num">
+          {% if u.hr_profile %}
+            {{ currency }} {{ u.hr_profile.monthly_salary|floatformat:0 }}
+          {% else %}
+            <span class="muted">not set</span>
+          {% endif %}
+        </td>
+        <td class="num">
+          {% if u.hr_profile %}
+            <span class="badge blue">{{ u.hr_profile.allowed_monthly_leaves }} days/mo</span>
+          {% else %}
+            <span class="muted">2 days/mo</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if u.hr_profile.enable_absence_deduction %}
+            <span class="badge green">Enabled</span>
+          {% else %}
+            <span class="badge grey">Disabled</span>
+          {% endif %}
+        </td>
+        <td>
+          <a class="btn sm alt" href="{% url 'hr_profile_edit' u.id %}">Edit Profile</a>
+          <a class="btn sm" href="{% url 'hr_salary_create' %}?user_id={{ u.id }}">Pay Salary</a>
         </td>
       </tr>
       {% empty %}
-      <tr><td colspan="5" class="muted text-center" style="padding:20px;">No staff found.</td></tr>
+      <tr><td colspan="7" class="muted text-center" style="padding:20px;">No staff found.</td></tr>
       {% endfor %}
     </tbody>
   </table>

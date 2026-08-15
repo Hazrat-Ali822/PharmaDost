@@ -15,11 +15,17 @@ from saas.utils import TenantManager
 class StaffProfile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
                                 related_name='staff_profile')
+    photo = models.ImageField(upload_to='staff_photos/', null=True, blank=True)
     designation = models.CharField(max_length=100, blank=True)
     monthly_salary = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    allowed_monthly_leaves = models.IntegerField(default=2, help_text="Monthly allowed paid leaves")
+    enable_absence_deduction = models.BooleanField(default=True, help_text="Enable dynamic salary deduction for absences/excess leaves")
+    deduction_per_absent_day = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Fixed daily deduction rate, or leave empty for auto (salary / 30)")
     joining_date = models.DateField(null=True, blank=True)
     phone = models.CharField(max_length=20, blank=True)
     cnic = models.CharField(max_length=20, blank=True)
+    address = models.TextField(blank=True)
+    emergency_contact = models.CharField(max_length=50, blank=True)
     hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
 
     objects = TenantManager()

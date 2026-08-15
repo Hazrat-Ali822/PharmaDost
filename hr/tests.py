@@ -90,3 +90,36 @@ class HrTest(TestCase):
         self.assertEqual(StaffProfile.objects.count(), 0)
         set_current_hospital(self.h)
         self.assertEqual(StaffProfile.objects.count(), 1)
+
+    def test_auto_absence_deduction_calculation(self):
+        StaffProfile.objects.create(
+            user=self.nurse, monthly_salary=Decimal('30000'),
+            allowed_monthly_leaves=2, enable_absence_deduction=True, hospital=self.h
+        )
+        today = date.today()
+        # Mark 3 absent days and 3 leave days (1 excess leave beyond 2 allowed)
+        for i in range(1, 4):
+            Attendance.objects.create(user=self.nurse, date=today.replace(day=i), status='ABSENT', hospital=self.h)
+        for i in range(4, 7):
+            Attendance.objects.create(user=self.nurse, date=today.replace(day=i), status='LEAVE', hospital=self.h)
+
+        resp = self._client().get(f"{reverse('hr_salary_create')}?user_id={self.nurse.id}")
+        self.assertEqual(resp.status_code, 200)
+        form = resp.context['form']
+        # 3 absent days + 1 excess leave day = 4 days * (30000/30 = 1000/day) = 4000
+        self.assertEqual(form.initial.get('deductions'), Decimal('4000.00'))
+        self.assertIn('Auto-deducted', form.initial.get('note', ''))
+
+    def test_disabled_absence_deduction(self):
+        StaffProfile.objects.create(
+            user=self.nurse, monthly_salary=Decimal('30000'),
+            allowed_monthly_leaves=2, enable_absence_deduction=False, hospital=self.h
+        )
+        today = date.today()
+        Attendance.objects.create(user=self.nurse, date=today.replace(day=1), status='ABSENT', hospital=self.h)
+
+        resp = self._client().get(f"{reverse('hr_salary_create')}?user_id={self.nurse.id}")
+        self.assertEqual(resp.status_code, 200)
+        form = resp.context['form']
+        self.assertEqual(form.initial.get('deductions'), Decimal('0.00'))
+
