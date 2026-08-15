@@ -42,7 +42,11 @@ def staff_list(request):
 @feature_required('hr')
 def profile_edit(request, user_id):
     staff_user = get_object_or_404(_staff(request), pk=user_id)
-    profile, _ = StaffProfile.objects.get_or_create(user=staff_user)
+    h = getattr(staff_user, 'hospital', None) or getattr(request.user, 'hospital', None)
+    profile, created = StaffProfile.objects.get_or_create(user=staff_user, defaults={'hospital': h})
+    if not created and profile.hospital is None and h is not None:
+        profile.hospital = h
+        profile.save(update_fields=['hospital'])
     if request.method == 'POST':
         form = StaffProfileForm(request.POST, request.FILES, instance=profile)
         if form.is_valid():
