@@ -14,6 +14,13 @@ date, and `messaging.services.already_sent` refuses a repeat — on a shared hos
 you cannot be certain the task ran exactly once, and a patient messaged twice
 about the same appointment stops reading the messages.
 
+`already_sent` counts only messages that were actually **SENT**. One that was
+SKIPPED (no gateway configured) or FAILED is offered again next run, which is
+right — nobody was messaged, so nothing has been used up. It also means that on
+an install with no SMS gateway this command lists the same reminders every day,
+and **the summary must not call those "sent"**: it reports what left the
+building, separately from what could not.
+
 Iterates hospital by hospital and binds the tenant, because these queries run
 through `TenantManager` and a command binds no hospital of its own.
 """
@@ -48,6 +55,10 @@ class Command(BaseCommand):
             hospitals = list(Hospital.objects.filter(is_active=True)) + [None]
 
         self.dry = options['dry_run']
+        # Kept apart on purpose. Reporting a SKIPPED message as sent is the kind
+        # of reassuring-but-false output that stops anyone looking at Settings ->
+        # Messages to find out why no patient ever hears from the system.
+        self.tally = {'sent': 0, 'skipped': 0, 'failed': 0}
         total = 0
         for hospital in hospitals:
             set_current_hospital(hospital)
@@ -58,8 +69,27 @@ class Command(BaseCommand):
             finally:
                 clear_current_hospital()
 
-        verb = 'would send' if self.dry else 'sent'
-        self.stdout.write(self.style.SUCCESS(f"{verb} {total} reminder(s)."))
+        if self.dry:
+            self.stdout.write(self.style.SUCCESS(f'would send {total} reminder(s).'))
+            return
+
+        t = self.tally
+        self.stdout.write(self.style.SUCCESS(f"sent {t['sent']} reminder(s)."))
+        if t['failed']:
+            self.stdout.write(self.style.ERROR(
+                f"{t['failed']} failed — see Settings -> Messages for the error."))
+        if t['skipped']:
+            from messaging.services import email_configured, sms_configured
+            missing = []
+            if not sms_configured():
+                missing.append('SMS gateway (PHARMADOST_SMS_URL)')
+            if not email_configured():
+                missing.append('email host (DJANGO_EMAIL_HOST)')
+            reason = (' — no ' + ' and no '.join(missing) + ' configured'
+                      if missing else '')
+            self.stdout.write(self.style.WARNING(
+                f"{t['skipped']} message(s) could not be sent{reason}. "
+                f"Nothing reached a patient; they will be offered again next run."))
 
     # ------------------------------------------------------------------ helpers
 
@@ -77,12 +107,32 @@ class Command(BaseCommand):
             return 0
         if already_sent(f'{key}:sms') or already_sent(f'{key}:email'):
             return 0
-        self.stdout.write(f"  {kind}: {patient.full_name} ({phone or email})")
         if self.dry:
+            self.stdout.write(f"  {kind}: {patient.full_name} ({phone or email})")
             return 1
-        notify(email=email, phone=phone, subject=subject, body=body,
-               sms_text=sms_text, kind=kind, dedupe_key=key)
+
+        rows = notify(email=email, phone=phone, subject=subject, body=body,
+                      sms_text=sms_text, kind=kind, dedupe_key=key)
+        outcome = self._tally(rows)
+        self.stdout.write(f"  {kind}: {patient.full_name} ({phone or email}) — {outcome}")
         return 1
+
+    def _tally(self, rows):
+        """Record what actually happened to each channel, and describe it."""
+        from messaging.models import MessageLog
+
+        seen = []
+        for row in rows:
+            if row.status == MessageLog.SENT:
+                self.tally['sent'] += 1
+                seen.append('sent')
+            elif row.status == MessageLog.FAILED:
+                self.tally['failed'] += 1
+                seen.append('FAILED')
+            else:
+                self.tally['skipped'] += 1
+                seen.append('not sent')
+        return ', '.join(seen) or 'no channel'
 
     # ------------------------------------------------------------------ sources
 

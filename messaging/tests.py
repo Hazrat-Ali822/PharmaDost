@@ -276,3 +276,67 @@ class MessageLogScreenTest(TestCase):
         c = Client()
         c.force_login(self.nurse)
         self.assertEqual(c.get('/messages/').status_code, 403)
+
+
+class ReminderReportingTest(TestCase):
+    """What the command *says* happened must match what happened.
+
+    On the live host, with no SMS gateway configured, the command printed
+    "sent 1 reminder(s)." every night. Nothing had reached anybody — the message
+    was recorded SKIPPED — and the line read as confirmation that the patient had
+    been told. That is the reassuring-but-false output this project keeps having
+    to dig out, and it is worse here than a plain failure: it is the only signal
+    anyone has that the reminders are not working.
+    """
+
+    def setUp(self):
+        self.h = Hospital.objects.create(name='H', slug='h-rep', expiry_date=_future())
+        set_current_hospital(self.h)
+        from opd.models import Appointment, Doctor
+        doctor = Doctor.objects.create(full_name='Sara Ahmed', opd_fee=Decimal('500'))
+        patient = Patient.objects.create(full_name='Ali Khan', gender='M',
+                                         phone='03001234567', hospital=self.h)
+        Appointment.objects.create(patient=patient, doctor=doctor,
+                                   appointment_date=timezone.localdate() + timedelta(days=1))
+
+    def tearDown(self):
+        clear_current_hospital()
+
+    def _run(self):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        out = StringIO()
+        call_command('send_reminders', hospital='h-rep', stdout=out)
+        return out.getvalue()
+
+    @override_settings(SMS_URL='', EMAIL_HOST='')
+    def test_with_no_gateway_it_does_not_claim_to_have_sent_anything(self):
+        output = self._run()
+        self.assertIn('sent 0 reminder(s)', output)
+        self.assertIn('could not be sent', output)
+        self.assertIn('SMS gateway', output, 'it should name what is missing')
+
+    @override_settings(SMS_URL='https://gw.example.pk/send')
+    def test_with_a_gateway_a_real_send_is_counted(self):
+        with mock.patch('messaging.services.urlrequest.urlopen') as urlopen:
+            urlopen.return_value.__enter__.return_value.status = 200
+            output = self._run()
+        self.assertIn('sent 1 reminder(s)', output)
+        self.assertNotIn('could not be sent', output)
+
+    @override_settings(SMS_URL='https://gw.example.pk/send')
+    def test_a_gateway_error_is_reported_as_failed_not_sent(self):
+        with mock.patch('messaging.services.urlrequest.urlopen',
+                        side_effect=OSError('gateway down')):
+            output = self._run()
+        self.assertIn('sent 0 reminder(s)', output)
+        self.assertIn('failed', output)
+
+    @override_settings(SMS_URL='', EMAIL_HOST='')
+    def test_an_unsent_reminder_is_offered_again_next_run(self):
+        """Nothing was used up, so the dedupe key must not consume it."""
+        self._run()
+        self.assertIn('sent 0 reminder(s)', self._run())
+        self.assertIn('appointment_reminder', self._run())

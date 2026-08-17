@@ -1283,8 +1283,16 @@ appointment reminders for tomorrow, "your lab report is ready", and vaccination
 doses due. **It is safe to run twice** — every message carries a `dedupe_key`
 naming the thing and the date, and `already_sent` refuses a repeat, because on a
 shared host you cannot be sure the task ran exactly once and a patient messaged
-twice stops reading the messages. A *failure* is deliberately not remembered as
-sent, so one gateway hiccup does not cancel that reminder for good.
+twice stops reading the messages. `already_sent` counts only **SENT**: a SKIPPED
+or FAILED message is offered again next run, since nobody was reached and
+nothing has been used up.
+
+**Its summary must report what actually left the building.** With no gateway
+configured every message records SKIPPED, and the command still printed
+`sent 1 reminder(s).` — which on the live host read, every night, as
+confirmation that patients were being told when not one message had ever gone
+out. It now counts sent / failed / skipped separately and names the missing
+setting. Guarded by `messaging.tests.ReminderReportingTest`.
 
 Two traps in that command: `Appointment` and `TestOrder` have **no `hospital`
 column and no `TenantManager`**, so binding the tenant does not scope them — they
