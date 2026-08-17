@@ -8,7 +8,10 @@ fails is quietly: a model that did not load leaves the site working, the screens
 you happen to open look right, and the missing rows surface weeks later when
 somebody asks for a patient who is not there.
 
-Everything below is built around catching that.
+Everything below is built around catching that. **This procedure has been
+rehearsed end to end** — seeded database → export → fresh empty database → import
+→ row-count comparison — which is how the encoding trap in step 4 was found. The
+obvious `dumpdata -o` command fails on this app's data, every time.
 
 ## Why bother
 
@@ -19,9 +22,9 @@ The hosted site is one `db.sqlite3` file holding every tenant. That means:
   billing at the same moment still queue. It holds today; it will not hold at
   15–20 busy tenants.
 - **One file to lose.** Corruption or a bad disk takes every customer at once.
-- **No per-tenant separation at the storage layer.** This is exactly why the
-  one-click backup could hand any tenant admin every other tenant's database
-  (fixed — see `can_download_raw_backup`).
+- **No separation at the storage layer.** This is exactly why the one-click
+  backup could hand any tenant admin every other tenant's database (fixed — see
+  `can_download_raw_backup`).
 
 Migrating while the data is small is far easier than migrating when it is not.
 
@@ -29,9 +32,11 @@ Migrating while the data is small is far easier than migrating when it is not.
 
 - Do it at night. The site is down for the duration (10–30 minutes).
 - `psycopg2-binary` is already in `requirements.txt`.
-- You need the DB name, user and password from the cPanel PostgreSQL wizard.
+- You need a DB name, user and password from the cPanel PostgreSQL wizard.
   cPanel prefixes them with the account name, e.g. `sehatyar_prod` /
   `sehatyar_dbuser`.
+- **Rollback is one line** — deleting `DATABASE_URL` from `.env` puts the site
+  back on the untouched SQLite file. That is what makes this safe to attempt.
 
 ## Steps
 
@@ -40,35 +45,61 @@ Migrating while the data is small is far easier than migrating when it is not.
 cPanel → **PostgreSQL Database Wizard**: create the database, create a user, and
 grant that user **all privileges** on it. Write the three values down.
 
-### 2. Count what you have
+### 2. Check the data will be accepted
 
 ```bash
 cd ~/sehatyar
 source ~/virtualenv/sehatyar/3.10/bin/activate
+python manage.py db_preflight
+```
+
+SQLite is loosely typed and has not always enforced foreign keys, so a database
+that has worked for years can still hold rows PostgreSQL will refuse — a value
+longer than its column, a NULL in a NOT NULL column, a foreign key pointing at a
+row that was deleted. Without this you find them one stack trace at a time, at
+night, with the site down. It only reads; it changes nothing.
+
+Fix anything it reports before going further.
+
+### 3. Count what you have
+
+```bash
 python manage.py db_snapshot --save ~/before-counts.json
 ```
 
-This is the number you will check against at the end. Do not skip it — it is the
-only thing that will tell you whether the move lost anything.
+This is the number you check against at the end. Do not skip it — it is the only
+thing that will tell you whether the move lost anything.
 
-### 3. Back up, then dump the data
+### 4. Back up, then export the data
 
 ```bash
 cp db.sqlite3 ~/db-before-postgres.sqlite3          # keep this until you are sure
 
-python manage.py dumpdata \
-  --natural-foreign --natural-primary \
-  --exclude contenttypes --exclude auth.permission \
-  --exclude sessions.session --exclude admin.logentry \
-  --indent 2 -o ~/alldata.json
+python manage.py db_export ~/alldata.json
 ```
 
-The exclusions matter. `contenttypes` and `auth.permission` are rebuilt by
-`migrate` on the new database; loading the old ones on top collides on their
-unique constraints and the whole load aborts. Sessions and admin log entries are
-disposable — carrying them over only signs people in against stale rows.
+**Use `db_export`, not `dumpdata -o`.** Django writes the `-o` file in the
+machine's locale encoding, but `loaddata` always decodes UTF-8. This app puts em
+dashes into ordinary data — "OPD Consultation — Dr. Sara Ahmed", "Delivery —
+Normal", "IPD Bed Charges: … — 2 Day(s)" — so on Windows (cp1252) or any host
+whose locale is POSIX/C the import dies with
 
-### 4. Point the app at PostgreSQL
+```
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0x97 in position 76919
+```
+
+**part of the way through**, leaving a half-filled database that looks like it
+worked. That is not hypothetical — it is what the rehearsal produced, and
+`db_snapshot --compare` then reported 75 models sitting at zero. `db_export`
+writes an explicit UTF-8 handle and reads the file back to prove it decodes
+before reporting success.
+
+It also applies the exclusions for you, which matter: `contenttypes` and
+`auth.permission` are rebuilt by `migrate` on the new database, and loading the
+old rows on top collides on their unique constraints and aborts the entire load.
+Sessions and admin log entries are disposable.
+
+### 5. Point the app at PostgreSQL
 
 Add one line to `~/sehatyar/.env` (there is deliberately no `DATABASE_URL` there
 today, which is why it falls back to SQLite):
@@ -79,18 +110,18 @@ DATABASE_URL=postgres://USER:PASSWORD@localhost:5432/DBNAME
 
 If the password contains `@ : / #`, percent-encode it or the URL parses wrongly.
 
-### 5. Build the schema and load the data
+### 6. Build the schema and load the data
 
 ```bash
 python manage.py migrate                 # creates every table, empty
 python manage.py loaddata ~/alldata.json
 ```
 
-If `loaddata` reports an integrity error, **stop**. Remove `DATABASE_URL` from
-`.env` and the site is back on SQLite exactly as it was — nothing has been lost.
-Fix the reported model and try again.
+If `loaddata` reports an error, **stop**. Remove `DATABASE_URL` from `.env` and
+the site is back on SQLite exactly as it was — nothing has been lost. Fix the
+reported model and start again from step 4.
 
-### 6. Check every row arrived
+### 7. Check every row arrived
 
 ```bash
 python manage.py db_snapshot --compare ~/before-counts.json
@@ -99,23 +130,23 @@ python manage.py db_snapshot --compare ~/before-counts.json
 It prints any model whose count changed and exits non-zero. **Do not go live
 until this says every model matches.**
 
-### 7. Restart and test properly
+### 8. Restart and test by hand
 
 cPanel → Setup Python App → **Restart**.
 
-Then check by hand, because a row count does not prove the app works:
+A row count does not prove the app works, so check:
 
 - sign in as a tenant admin, and as the SaaS owner
 - open the dashboard — the revenue figures should match yesterday's
-- register a patient (this exercises the MRN counter, which locks a row)
+- register a patient (exercises the MRN counter, which locks a row)
 - take a POS sale (stock deduction under a lock)
 - raise and pay an invoice (the invoice-number counter)
 
-The two counters are the things to watch. Django's `loaddata` resets Postgres
-sequences at the end, but `SiteSettings.mrn_last_number` and
-`invoice_last_number` are **ordinary integer columns this app maintains itself**,
-not sequences — they come across with the data and need no resetting. If a new
-patient somehow gets MRN 1, check `SiteSettings` rather than the database.
+Those two counters are what to watch. `loaddata` resets Postgres sequences at the
+end, but `SiteSettings.mrn_last_number` and `invoice_last_number` are **ordinary
+integer columns this app maintains itself**, not sequences — they come across
+with the data and need no resetting. If a new patient somehow gets MRN 1, look at
+`SiteSettings`, not at the database.
 
 ## If it goes wrong
 
@@ -125,8 +156,9 @@ regardless.
 
 ## Afterwards
 
-- **Backups change.** `backup_download` refuses on Postgres, and says why: the
-  database is no longer a file you can zip. Use `pg_dump` or cPanel's own backup:
+- **Backups change.** `backup_download` refuses on PostgreSQL and says why: the
+  database is no longer a file it can zip, and a zip of media alone labelled as a
+  backup is worse than none. Use `pg_dump`:
   ```bash
   pg_dump -U USER -d DBNAME -F c -f ~/backups/db-$(date +%F).dump
   ```

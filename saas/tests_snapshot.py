@@ -88,3 +88,68 @@ class DbSnapshotTest(TestCase):
                 call_command('db_snapshot', save=str(path), verbosity=0)
         self.assertIn('would be a lie', str(caught.exception))
         self.assertFalse(path.exists(), 'a broken snapshot must not be written')
+
+
+class DbExportEncodingTest(TestCase):
+    """`dumpdata -o` writes the file in the machine's locale encoding, but
+    `loaddata` always decodes UTF-8. This app writes em dashes into ordinary
+    data — "OPD Consultation — Dr. Sara Ahmed" — so on Windows (cp1252) or any
+    POSIX/C-locale host the dump of a real hospital dies on import with
+
+        UnicodeDecodeError: 'utf-8' codec can't decode byte 0x97
+
+    half way through, leaving a partly-filled database. Found by rehearsing the
+    migration; `db_export` writes an explicit UTF-8 handle so the encoding
+    cannot depend on which machine ran the command.
+    """
+
+    def setUp(self):
+        self.h = Hospital.objects.create(name='H — Dash', slug='h-dash',
+                                         expiry_date=_future())
+        Patient.objects.create(full_name='Ali — Khan', gender='M',
+                               hospital=self.h)
+        self.tmp = Path(tempfile.mkdtemp())
+
+    def tearDown(self):
+        clear_current_hospital()
+
+    def test_the_dump_is_utf8_and_keeps_the_em_dashes(self):
+        path = self.tmp / 'data.json'
+        call_command('db_export', str(path), verbosity=0)
+        # Decoded the way loaddata will decode it — that is the whole test.
+        text = path.read_bytes().decode('utf-8')
+        self.assertIn('Ali — Khan', text)
+        self.assertIn('H — Dash', text)
+
+    def test_it_excludes_what_migrate_rebuilds(self):
+        """Loading old contenttypes/permissions on top of freshly migrated ones
+        collides on their unique constraints and aborts the entire load."""
+        path = self.tmp / 'data.json'
+        call_command('db_export', str(path), verbosity=0)
+        text = path.read_text(encoding='utf-8')
+        self.assertNotIn('"contenttypes.contenttype"', text)
+        self.assertNotIn('"auth.permission"', text)
+
+
+class DbPreflightTest(TestCase):
+    """SQLite stores things PostgreSQL will refuse. Find them before the move,
+    not one stack trace at a time at 2am with the site down."""
+
+    def setUp(self):
+        self.h = Hospital.objects.create(name='H', slug='h-pre',
+                                         expiry_date=_future())
+
+    def tearDown(self):
+        clear_current_hospital()
+
+    def test_clean_data_passes(self):
+        Patient.objects.create(full_name='Fine', gender='M', hospital=self.h)
+        call_command('db_preflight', verbosity=0)          # no raise
+
+    def test_an_over_length_value_is_caught(self):
+        """SQLite ignores VARCHAR(n) entirely; PostgreSQL rejects the row."""
+        field = Patient._meta.get_field('full_name')
+        Patient.objects.create(full_name='x' * (field.max_length + 50),
+                               gender='M', hospital=self.h)
+        with self.assertRaises(CommandError):
+            call_command('db_preflight', verbosity=0)
