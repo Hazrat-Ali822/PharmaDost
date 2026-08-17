@@ -354,8 +354,8 @@ In-charge builds), `patient_allocation` (`ward_manage`, assigns each admitted pa
 nurse *rostered for that shift* — `PatientAllocation` is unique per admission/date/shift,
 and the nurse's load is shown so the ratio is visible), and `my_duties` (`ward`, a nurse's
 own upcoming shifts + the patients allotted to them today). `Ward.in_charge` names the
-senior nurse who runs the ward. Shifts are `MORNING/EVENING/NIGHT` (`ipd.models.SHIFT_CHOICES`,
-times in `SHIFT_TIMES`); `_current_shift()` maps the clock to one. `roster_add` upserts on
+senior nurse who runs the ward. **Shifts are configured per hospital** (`hr.Shift`, below);
+`ipd.views._current_shift(request)` asks the tenant's own times. `roster_add` upserts on
 the unique `(nurse, date, shift)` so a re-add moves the nurse rather than duplicating.
 
 **Nursing vitals + MEWS + fluid balance** (the nurse's continuous-care layer, distinct from
@@ -1082,6 +1082,32 @@ whose `net` is a derived property (`basic + allowances − deductions`, never st
 printed via `print/base_print.html`; `salary_create` pre-fills `basic` from the
 staff profile when opened with `?user_id=`. Staff are the hospital's own users
 (`User.objects.filter(hospital=...)`, superuser sees all). Guarded by `hr/tests.py`.
+
+**Working shifts are per-tenant** (`hr.Shift`: name, start/end time, order,
+`is_active`), edited by an admin at `/hr/shifts/` and used by the ward roster,
+patient allocation, nursing notes and handovers. They were a hardcoded
+`MORNING/EVENING/NIGHT` list with fixed times in `ipd.models`, which no hospital
+could change — a clinic runs one long day, a busy hospital splits four, and night
+duty starts at 20:00 in one place and 22:00 in the next. Three things are
+load-bearing:
+
+- **A shift may cross midnight, and `Shift.covers()` is the only thing allowed to
+  decide whether one is running.** A plain `start <= t <= end` is never true for a
+  21:00→07:00 night shift, so it reports "no shift is on" for the eight hours the
+  ward is thinnest. (`Doctor.availability` in `opd/models.py` still has that bug
+  for a doctor's OPD sitting — the remaining place to fix.)
+- **`Shift.for_hospital()` / `ensure_defaults()` go through `all_objects` keyed on
+  the hospital *value*,** not `objects` — same reason as the lab/imaging catalogue
+  editors: `TenantManager` lets a superuser past unfiltered, and the desktop/LAN
+  install is hospital-less with a superuser admin. Defaults are created only when
+  a hospital has *no* shifts, so deleting down to two does not resurrect a third.
+- **The `shift` form field's queryset is set in `__init__`** via
+  `ipd.forms._ShiftScopedForm`, never at class level — the usual trap.
+
+The four ward models `PROTECT` their shift, so `hr.views.shift_delete` deactivates
+one that is in use rather than deleting it; old rosters must keep reading
+correctly. Migration `ipd/0010` clones the old three into every hospital and
+re-points existing rows (same shape as `lab/0009`). Guarded by `hr/tests_shifts.py`.
 
 **Absence deductions** are computed, never stored on the profile.
 `StaffProfile.allowed_monthly_leaves` is the paid-leave quota, and deductible days
