@@ -162,8 +162,9 @@
   <div class="doc-grid">
     {% for d in documents %}
     <figure class="doc-tile">
-      <a href="{{ d.image.url }}" target="_blank" rel="noopener" title="Open full size">
-        <img src="{{ d.image.url }}" alt="{{ d.label }}" loading="lazy">
+      {# Through a view, not MEDIA_URL — see patients.views.document_file. #}
+      <a href="{% url 'patient_document_file' d.pk %}" target="_blank" rel="noopener" title="Open full size">
+        <img src="{% url 'patient_document_file' d.pk %}" alt="{{ d.label }}" loading="lazy">
       </a>
       <figcaption>
         <strong>{{ d.label }}</strong>

@@ -1099,9 +1099,27 @@ Four things are deliberate:
   cloud backup — paid three times. If Pillow cannot process a file it is stored
   unchanged: losing the record to save disk is the wrong trade. Over
   `images.MAX_UPLOAD_BYTES` the form refuses with a readable message.
+- **The picture is served by a view, never from `MEDIA_URL`**
+  (`patients.views.document_file`, login + tenant + role scoped). Two reasons,
+  either sufficient on its own. A prescription photograph is a medical record,
+  and anything under `/media/` is fetched with no session — readable by anyone
+  holding the URL, including someone who has left the hospital. And
+  `django.conf.urls.static.static()` — the line at the bottom of
+  `pharma_mgmt/urls.py` — **returns an empty list when `DEBUG` is False**, so on
+  the deployed host nothing in Django serves `/media/` at all and whether the
+  file appears depends on web-server configuration. A missing file is a 404, not
+  a 500 (a database restored without its media).
 - **Not offline.** `static/js/offline.js` cannot queue a file input (it drops
   them with a toast and re-attaches once online), so the upload needs a
   connection — the clinical entry it accompanies does not.
+
+That `static()` no-op is worth knowing generally: **other uploads (tenant logos,
+medicine images, staff photos) still go through `MEDIA_URL`** and therefore
+depend on the web server serving `/media/`. On the hosted site that has not been
+verified, and the logo `<img>`s all carry an `onerror` fallback to the default
+mark — so a tenant's uploaded logo failing to load looks exactly like a tenant
+that never uploaded one. If someone reports "my logo does not show", check
+whether `/media/` is served before looking anywhere else.
 
 ### Branding & print
 

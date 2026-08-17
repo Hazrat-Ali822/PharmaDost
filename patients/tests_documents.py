@@ -41,7 +41,10 @@ class DocumentUploadTest(TestCase):
 
     def tearDown(self):
         for d in PatientDocument.all_objects.all():
-            d.image.delete(save=False)
+            try:
+                d.image.delete(save=False)
+            except OSError:
+                pass          # Windows holds a streamed file open; harmless here
         clear_current_hospital()
 
     def _post(self, **extra):
@@ -127,7 +130,10 @@ class DocumentAccessTest(TestCase):
 
     def tearDown(self):
         for d in PatientDocument.all_objects.all():
-            d.image.delete(save=False)
+            try:
+                d.image.delete(save=False)
+            except OSError:
+                pass          # Windows holds a streamed file open; harmless here
         clear_current_hospital()
 
     def test_the_pharmacist_can_attach_a_photo_although_they_lack_patients(self):
@@ -197,3 +203,74 @@ class ImageCompressionTest(TestCase):
 
         out = Image.open(compress(_photo(size=(300, 400))))
         self.assertEqual(out.size, (300, 400))
+
+
+class DocumentServingTest(TestCase):
+    """The picture is served by a view, not from MEDIA_URL.
+
+    Two separate reasons, and each on its own would be enough:
+
+    * `django.conf.urls.static.static()` returns an empty list when DEBUG is
+      False, so on the deployed host **nothing in Django serves /media/** — the
+      thumbnails' visibility would depend on web-server config nobody checked.
+    * A prescription photograph is a medical record. `/media/` is fetched with no
+      session, so the file would be readable by anyone holding the URL.
+    """
+
+    def setUp(self):
+        self.h = Hospital.objects.create(name='H', slug='h-serve', expiry_date=_future())
+        self.other = Hospital.objects.create(name='O', slug='o-serve', expiry_date=_future())
+        set_current_hospital(self.h)
+        self.admin = User.objects.create_user(email='a@a.com', password='pw',
+                                              role='ADMIN', hospital=self.h)
+        self.outsider = User.objects.create_user(email='x@o.com', password='pw',
+                                                 role='ADMIN', hospital=self.other)
+        self.patient = Patient.objects.create(full_name='Bilal', gender='M', hospital=self.h)
+        self.doc = PatientDocument.objects.create(
+            patient=self.patient, hospital=self.h, uploaded_by=self.admin,
+            image=_photo(), doc_date=date.today())
+
+    def tearDown(self):
+        for d in PatientDocument.all_objects.all():
+            try:
+                d.image.delete(save=False)
+            except OSError:
+                pass          # Windows holds a streamed file open; harmless here
+        clear_current_hospital()
+
+    def _url(self):
+        return f'/patients/photo/{self.doc.pk}/file/'
+
+    def test_a_signed_in_user_of_that_hospital_gets_the_image(self):
+        c = Client(); c.login(email='a@a.com', password='pw')
+        r = c.get(self._url())
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r['Content-Type'], 'image/jpeg')
+        self.assertTrue(b''.join(r.streaming_content).startswith(b'\xff\xd8'))  # JPEG
+
+    def test_a_signed_out_visitor_is_sent_to_the_login(self):
+        r = Client().get(self._url())
+        self.assertEqual(r.status_code, 302)
+        self.assertIn('login', r['Location'])
+
+    def test_another_hospital_cannot_read_it(self):
+        c = Client(); c.login(email='x@o.com', password='pw')
+        self.assertIn(c.get(self._url()).status_code, (403, 404))
+
+    def test_a_missing_file_is_a_404_rather_than_a_500(self):
+        """A database restored without its media, or a wiped upload folder."""
+        self.doc.image.delete(save=False)
+        c = Client(); c.login(email='a@a.com', password='pw')
+        self.assertEqual(c.get(self._url()).status_code, 404)
+
+    def test_the_response_is_not_cacheable_by_a_shared_proxy(self):
+        c = Client(); c.login(email='a@a.com', password='pw')
+        r = c.get(self._url())
+        self.assertIn('private', r['Cache-Control'])
+        r.close()          # Windows will not delete a file that is still open
+
+    def test_the_record_page_links_the_view_not_the_media_url(self):
+        c = Client(); c.login(email='a@a.com', password='pw')
+        body = c.get(f'/patients/{self.patient.pk}/').content.decode()
+        self.assertIn(self._url(), body)
+        self.assertNotIn('/media/patient_docs/', body)

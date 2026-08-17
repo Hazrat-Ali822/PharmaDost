@@ -303,6 +303,43 @@ def document_add(request, pk):
 
 
 @feature_required('patients', 'pos')
+def document_file(request, pk):
+    """Stream a patient document, behind the login and the tenant scope.
+
+    These are **not** served from `MEDIA_URL`, and that is deliberate twice over.
+
+    Access: a prescription photograph is a medical record. Anything under
+    `/media/` is fetched by the web server with no session, so it would be
+    readable by anyone holding the URL — including someone who left the
+    hospital's employment. The path contains a uuid4 and so is not guessable,
+    but "hard to guess" is not access control for a patient's records.
+
+    Availability: `django.conf.urls.static.static()` — the line at the bottom of
+    `pharma_mgmt/urls.py` — **returns an empty list when `DEBUG` is False**. On
+    the host DEBUG is off, so nothing in Django serves `/media/` there at all,
+    and whether the file appears depends on web-server configuration nobody
+    checked. Going through a view makes it work identically on the hosted site,
+    the desktop build and the LAN, with no Apache config to get right.
+    """
+    from django.http import FileResponse, Http404
+    from .models import PatientDocument
+
+    doc = get_object_or_404(PatientDocument.objects.select_related('patient'), pk=pk)
+    _document_patient(request, doc.patient_id)      # tenant + role scope, or 403/404
+    try:
+        handle = doc.image.open('rb')
+    except (FileNotFoundError, ValueError):
+        # A database restored without its media, or a wiped upload folder.
+        raise Http404('That picture is no longer on disk.')
+    response = FileResponse(handle, content_type='image/jpeg')
+    # Private: it is a patient record, so no shared proxy may keep a copy. Still
+    # cached by the browser, or a record with a dozen photos re-fetches them all
+    # on every visit.
+    response['Cache-Control'] = 'private, max-age=600'
+    return response
+
+
+@feature_required('patients', 'pos')
 def document_delete(request, pk):
     """Remove a photo. The file goes with the row — a wrong or duplicate picture
     left on disk is a record of nothing, and this is not a clinical entry whose

@@ -10,5 +10,6 @@ urlpatterns = [
     path('<int:pk>/delete/', views.patient_delete, name='patient_delete'),
     path('<int:pk>/record/add/', views.record_add, name='patient_record_add'),
     path('<int:pk>/photo/add/', views.document_add, name='patient_document_add'),
+    path('photo/<int:pk>/file/', views.document_file, name='patient_document_file'),
     path('photo/<int:pk>/delete/', views.document_delete, name='patient_document_delete'),
 ]
