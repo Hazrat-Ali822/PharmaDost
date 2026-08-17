@@ -100,6 +100,7 @@ Two traps when adding tests:
 | `low_stock_alert` | Notify pharmacist/admin about low stock (daily cron) |
 | `reconcile_stock [--fix]` | Repair `Medicine.quantity` drift vs the sum of its `StockBatch` rows (weekly cron) |
 | `repair_tenant_orphans` | Fix rows left with `hospital = NULL` |
+| `db_snapshot [--save FILE] [--compare FILE]` | Row counts for every model. `--compare` exits non-zero if any differ — the check that a SQLite→PostgreSQL move lost nothing (`docs/migrate_to_postgres.md`). Refuses to answer at all if the DB is unreachable, rather than reporting zero. |
 | `seed_lab [--hospital <slug>] [--patients]`, `import_labs_scans [--hospital <slug>]` | Seed the **per-tenant** lab/scan catalogues — every hospital by default, or one by slug (see "Multi-tenancy"). Idempotent. |
 | `dedupe_catalogue [--hospital <slug>] [--dry-run]` | Merge duplicate lab tests / scan types inside a hospital's catalogue. Keeps the **best-populated** row (unit, reference range, price) and re-points existing `TestResult`s before deleting the losers — deleting first would cascade and erase entered results. |
 | `seed_org`, `seed_roles`, `seed_icd`, `seed_epi` | Catalog/role seeding (`seed_icd` = ICD-10 codes, `seed_epi` = EPI vaccine schedule; both genuinely global & idempotent) |
@@ -112,6 +113,17 @@ This is the single most common source of confusion:
 - **Production (JabraHost — cPanel + Passenger)** uses **local SQLite** at `~/sehatyar/db.sqlite3`. There is deliberately no `DATABASE_URL` in the host's `.env`, so `settings.py` falls back to its SQLite default. The `WARNING:root:No DATABASE_URL environment variable set` line in command output on that host is benign and expected. (An older PythonAnywhere install used `/home/PharmaDost/PharmaDost/db.sqlite3` and its own WSGI file; the live site is the cPanel one — `passenger_wsgi.py` + `docs/deploy_jabrahost.md`.)
 
 They are **separate databases**. A migration applied locally is *not* applied in production; it must be run again on the host.
+
+**JabraHost does offer PostgreSQL** (cPanel → Databases → PostgreSQL Databases /
+phpPgAdmin), and moving the hosted site onto it needs **no code change** —
+`settings.py` already picks the engine up from `DATABASE_URL`, which is how local
+dev runs on Supabase. The procedure, and the reasons the hosted site should
+eventually stop being one shared SQLite file, are in
+**`docs/migrate_to_postgres.md`**; `db_snapshot` is the verification step. Two
+things change on the far side: **`backup_download` refuses on PostgreSQL** (the
+database is no longer a file it can zip, and shipping a zip of media alone while
+calling it a backup is worse than refusing), so backups become `pg_dump`; and the
+desktop/LAN build is unaffected and must stay on SQLite.
 
 `settings.py` resolves the DB as: SQLite at `DATA_DIR/db.sqlite3` by default, overridden by `DATABASE_URL` (via `dj_database_url`) when present. `.env` is loaded from `BASE_DIR` first, then `DATA_DIR` with `override=True` (the desktop app sets `PHARMADOST_DATA_DIR` to a writable per-user folder).
 

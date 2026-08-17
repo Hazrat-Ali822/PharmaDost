@@ -452,6 +452,19 @@ def backup_download(request):
             "hospital's records, so it is limited to the system owner. Ask your "
             "provider for a copy of your hospital's data."
         )
+    # This copies the database *file*, which only exists on SQLite. On
+    # PostgreSQL `NAME` is a database name, not a path, so `Path(name).exists()`
+    # is simply False — the old code then shipped a zip containing media and no
+    # database at all, and called it a backup. Say so instead: a backup you
+    # believe you have is worse than none.
+    engine = settings.DATABASES['default']['ENGINE']
+    if 'sqlite' not in engine:
+        return HttpResponseForbidden(
+            "This server runs on PostgreSQL, where the database is not a file "
+            "that can be zipped up. Take the backup with pg_dump (or your "
+            "host's database backup tool) instead — a download from here would "
+            "contain your uploaded files and none of your records."
+        )
     db_path = Path(settings.DATABASES['default']['NAME'])
     media_root = Path(settings.MEDIA_ROOT)
 
