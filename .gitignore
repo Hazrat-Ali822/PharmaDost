@@ -56,3 +56,9 @@ design-system/
 
 # Desktop licence runtime state (written to DATA_DIR; = repo root in dev/test)
 license.json
+
+# Source artwork sitting in the repo root — the AI-generated originals the
+# login background and the logo were cut from. Nothing references them; the
+# shipped versions live in static/img/. Kept on the machine, out of the repo.
+/Medical_tech_background_with_ECG*
+/minimal-flat-app-icon-logo*
