@@ -151,7 +151,25 @@ class FluidBalanceEntryForm(forms.ModelForm):
         }
 
 
-class NursingNoteForm(forms.ModelForm):
+class _ShiftScopedForm(forms.ModelForm):
+    """Fills the `shift` dropdown with **this hospital's** shifts.
+
+    The queryset is set here, per request, and never as a class attribute: a
+    class-level `queryset=Shift.objects.all()` is evaluated once at import with
+    no tenant bound, so `TenantManager` hands back every hospital's rows and the
+    field would then *accept* a POST naming another tenant's shift. Same trap the
+    lab-order and consent forms document.
+    """
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        from hr.models import Shift
+        hospital = None if getattr(user, 'is_superuser', False) else getattr(user, 'hospital', None)
+        self.fields['shift'].queryset = Shift.for_hospital(hospital)
+        self.fields['shift'].empty_label = None
+
+
+class NursingNoteForm(_ShiftScopedForm):
     class Meta:
         model = NursingNote
         fields = ['noted_at', 'shift', 'note']
@@ -162,7 +180,7 @@ class NursingNoteForm(forms.ModelForm):
         }
 
 
-class ShiftHandoverForm(forms.ModelForm):
+class ShiftHandoverForm(_ShiftScopedForm):
     class Meta:
         model = ShiftHandover
         fields = ['date', 'shift', 'situation', 'background', 'assessment', 'recommendation']

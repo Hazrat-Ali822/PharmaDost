@@ -14,8 +14,8 @@
     <thead><tr><th>Shift</th><th>Bed / Ward</th><th>Patient</th><th>Action</th></tr></thead>
     <tbody>
       {% for a in my_alloc %}
-      <tr {% if a.shift == current_shift %}style="background:color-mix(in srgb, var(--primary) 6%, transparent);"{% endif %}>
-        <td>{{ a.get_shift_display }}{% if a.shift == current_shift %} <span class="badge" style="background:var(--primary); color:#fff;">now</span>{% endif %}</td>
+      <tr {% if current_shift and a.shift_id == current_shift.pk %}style="background:color-mix(in srgb, var(--primary) 6%, transparent);"{% endif %}>
+        <td>{{ a.shift.name|default:'—' }}{% if current_shift and a.shift_id == current_shift.pk %} <span class="badge" style="background:var(--primary); color:#fff;">now</span>{% endif %}</td>
         <td>Bed {{ a.admission.bed.bed_number }} <span class="muted">· {{ a.admission.bed.ward.name }}</span></td>
         <td>{{ a.admission.patient.full_name }}</td>
         <td>
@@ -41,7 +41,7 @@
       {% for s in upcoming %}
       <tr {% if s.date == today %}style="font-weight:600;"{% endif %}>
         <td>{{ s.date|date:'D d/m/Y' }}{% if s.date == today %} <span class="badge" style="background:#22c55e; color:#fff;">today</span>{% endif %}</td>
-        <td>{{ s.get_shift_display }}</td>
+        <td>{{ s.shift.name|default:'—' }}</td>
         <td class="muted">{{ s.shift_time }}</td>
         <td>{{ s.ward.name }}</td>
         <td>{% if s.duty == 'INCHARGE' %}<span style="color:#b45309;">★ Shift In-charge</span>{% else %}Staff Nurse{% endif %}</td>

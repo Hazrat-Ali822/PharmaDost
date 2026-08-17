@@ -4,18 +4,8 @@ from django.db import models
 from django.utils import timezone
 from saas.utils import TenantManager
 
-# The standard three-shift ward day. Times follow the common Pakistani pattern and
-# are advisory (shown on screen); the roster keys on the shift name, not the clock.
-SHIFT_CHOICES = [
-    ('MORNING', 'Morning'),
-    ('EVENING', 'Evening'),
-    ('NIGHT', 'Night'),
-]
-SHIFT_TIMES = {
-    'MORNING': '07:00 – 14:00',
-    'EVENING': '14:00 – 21:00',
-    'NIGHT': '21:00 – 07:00',
-}
+# Shifts are configured per hospital — see `hr.Shift`. They were a fixed
+# three-entry list with fixed times here, which no hospital could change.
 
 # How often a ward patient should have observations taken before they count as
 # overdue on the nursing board. Advisory — a clinician sets the real frequency.
@@ -276,7 +266,8 @@ class NurseShift(models.Model):
     nurse = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='nurse_shifts')
     ward = models.ForeignKey(Ward, on_delete=models.CASCADE, related_name='shifts')
     date = models.DateField(default=timezone.localdate)
-    shift = models.CharField(max_length=10, choices=SHIFT_CHOICES)
+    shift = models.ForeignKey('hr.Shift', on_delete=models.PROTECT, null=True,
+                              related_name='nurse_shifts')
     duty = models.CharField(max_length=10, choices=DUTY_CHOICES, default='STAFF')
     notes = models.CharField(max_length=200, blank=True)
     created_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True,
@@ -287,7 +278,7 @@ class NurseShift(models.Model):
     objects = TenantManager()
 
     class Meta:
-        ordering = ('-date', 'shift')
+        ordering = ('-date', 'shift__order')
         constraints = [
             models.UniqueConstraint(fields=['nurse', 'date', 'shift'],
                                     name='uniq_nurse_date_shift'),
@@ -295,10 +286,10 @@ class NurseShift(models.Model):
 
     @property
     def shift_time(self):
-        return SHIFT_TIMES.get(self.shift, '')
+        return self.shift.time_range if self.shift else ''
 
     def __str__(self):
-        return f"{self.nurse.get_full_name() or self.nurse.email} — {self.ward.name} {self.date} {self.get_shift_display()}"
+        return f"{self.nurse.get_full_name() or self.nurse.email} — {self.ward.name} {self.date} {self.shift.name if self.shift else ''}"
 
 
 class PatientAllocation(models.Model):
@@ -312,7 +303,8 @@ class PatientAllocation(models.Model):
     admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name='allocations')
     nurse = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='patient_allocations')
     date = models.DateField(default=timezone.localdate)
-    shift = models.CharField(max_length=10, choices=SHIFT_CHOICES)
+    shift = models.ForeignKey('hr.Shift', on_delete=models.PROTECT, null=True,
+                              related_name='allocations')
     assigned_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True,
                                     blank=True, related_name='+')
     created_at = models.DateTimeField(default=timezone.now)
@@ -321,14 +313,14 @@ class PatientAllocation(models.Model):
     objects = TenantManager()
 
     class Meta:
-        ordering = ('-date', 'shift')
+        ordering = ('-date', 'shift__order')
         constraints = [
             models.UniqueConstraint(fields=['admission', 'date', 'shift'],
                                     name='uniq_admission_date_shift'),
         ]
 
     def __str__(self):
-        return f"{self.admission.patient.full_name} → {self.nurse.get_full_name() or self.nurse.email} ({self.date} {self.get_shift_display()})"
+        return f"{self.admission.patient.full_name} → {self.nurse.get_full_name() or self.nurse.email} ({self.date} {self.shift.name if self.shift else ''})"
 
 
 class VitalsObservation(models.Model):
@@ -433,7 +425,8 @@ class NursingNote(models.Model):
     noted_at = models.DateTimeField(default=timezone.now)
     noted_by = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True,
                                  blank=True, related_name='+')
-    shift = models.CharField(max_length=10, choices=SHIFT_CHOICES, blank=True)
+    shift = models.ForeignKey('hr.Shift', on_delete=models.PROTECT, null=True,
+                              blank=True, related_name='+')
     note = models.TextField()
     hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
 
@@ -452,8 +445,9 @@ class ShiftHandover(models.Model):
     standard structure; the incoming nurse acknowledges it."""
     admission = models.ForeignKey(Admission, on_delete=models.CASCADE, related_name='handovers')
     date = models.DateField(default=timezone.localdate)
-    shift = models.CharField(max_length=10, choices=SHIFT_CHOICES,
-                             help_text='The shift being handed over')
+    shift = models.ForeignKey('hr.Shift', on_delete=models.PROTECT, null=True,
+                              related_name='+',
+                              help_text='The shift being handed over')
     from_nurse = models.ForeignKey('accounts.User', on_delete=models.SET_NULL, null=True,
                                    blank=True, related_name='+')
     situation = models.TextField(help_text='Why the patient is here / current problem')
@@ -472,7 +466,7 @@ class ShiftHandover(models.Model):
         ordering = ('-created_at',)
 
     def __str__(self):
-        return f"Handover {self.admission.patient.full_name} — {self.date} {self.get_shift_display()}"
+        return f"Handover {self.admission.patient.full_name} — {self.date} {self.shift.name if self.shift else ''}"
 
 
 class CareTask(models.Model):

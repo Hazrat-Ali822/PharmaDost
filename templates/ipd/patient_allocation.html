@@ -20,7 +20,7 @@
   <label>Date<br><input type="date" name="date" value="{{ date|date:'Y-m-d' }}" onchange="this.form.submit()"></label>
   <label>Shift<br>
     <select name="shift" onchange="this.form.submit()">
-      {% for key, label in shift_choices %}<option value="{{ key }}" {% if key == shift %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      {% for s in shifts %}<option value="{{ s.pk }}" {% if shift and s.pk == shift.pk %}selected{% endif %}>{{ s.name }}</option>{% endfor %}
     </select>
   </label>
   <span class="muted" style="font-size:13px;">{{ shift_time }}</span>

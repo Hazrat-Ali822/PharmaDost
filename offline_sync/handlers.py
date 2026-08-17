@@ -723,7 +723,9 @@ def handle_nursing_note(request, data):
 
     _require(request.user, "ward")
     admission = _parent(Admission, data.get("admission_id"), "admission")
-    note = record_nursing_note(admission, _valid(NursingNoteForm(data)), request.user)
+    note = record_nursing_note(admission,
+                               _valid(NursingNoteForm(data, user=request.user)),
+                               request.user)
     return {"note_id": note.id, "admission_id": admission.id}
 
 
@@ -747,7 +749,9 @@ def handle_handover(request, data):
 
     _require(request.user, "ward")
     admission = _parent(Admission, data.get("admission_id"), "admission")
-    ho = record_handover(admission, _valid(ShiftHandoverForm(data)), request.user)
+    ho = record_handover(admission,
+                         _valid(ShiftHandoverForm(data, user=request.user)),
+                         request.user)
     return {"handover_id": ho.id, "admission_id": admission.id}
 
 

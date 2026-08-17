@@ -5,11 +5,13 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
-from accounts.decorators import feature_required
+from django.db.models.deletion import ProtectedError
+
+from accounts.decorators import feature_required, role_required
 from accounts.models import User
 
 from .forms import LeaveRequestForm, SalaryPaymentForm, StaffProfileForm
-from .models import Attendance, LeaveRequest, SalaryPayment, StaffProfile
+from .models import Attendance, LeaveRequest, SalaryPayment, Shift, StaffProfile
 
 
 def _staff(request):
@@ -206,3 +208,85 @@ def salary_create(request):
 def salary_slip(request, pk):
     slip = get_object_or_404(SalaryPayment.objects.select_related('user'), pk=pk)
     return render(request, 'hr/salary_slip.html', {'slip': slip})
+
+
+# ---------------------------------------------------------------- shifts
+# Working shifts are per-hospital (`hr.Shift`) rather than a fixed
+# morning/evening/night list, because no two hospitals run the same day. The
+# editor is reachable from HR *and* from the ward roster, so it is gated on any
+# of those features rather than `hr` alone — a hospital running IPD without the
+# HR module still has to be able to name its own shifts.
+
+@role_required(['ADMIN'])
+@feature_required('hr', 'ipd', 'ward_manage')
+def shift_list(request):
+    hospital = None if request.user.is_superuser else request.user.hospital
+    if request.method == 'POST':
+        return _shift_save(request, hospital)
+    return render(request, 'hr/shift_list.html', {
+        'shifts': Shift.for_hospital(hospital, include_inactive=True),
+    })
+
+
+def _shift_save(request, hospital):
+    """Add one shift, or save edits to the existing rows in one submit."""
+    if request.POST.get('action') == 'add':
+        name = (request.POST.get('name') or '').strip()
+        start, end = request.POST.get('start_time'), request.POST.get('end_time')
+        if not (name and start and end):
+            messages.error(request, 'A shift needs a name, a start and an end.')
+        elif Shift.all_objects.filter(hospital=hospital, name__iexact=name).exists():
+            messages.error(request, f'There is already a shift called "{name}".')
+        else:
+            last = Shift.all_objects.filter(hospital=hospital).count()
+            Shift.all_objects.create(hospital=hospital, name=name, start_time=start,
+                                     end_time=end, order=last)
+            messages.success(request, f'Shift "{name}" added.')
+        return redirect('hr_shift_list')
+
+    # Bulk save. Scoped through `all_objects` on the hospital *value*, not
+    # `objects`: TenantManager lets a superuser past unfiltered, and this writes.
+    for s in Shift.all_objects.filter(hospital=hospital):
+        name = (request.POST.get(f'name_{s.pk}') or '').strip()
+        start = request.POST.get(f'start_{s.pk}')
+        end = request.POST.get(f'end_{s.pk}')
+        if not (name and start and end):
+            continue
+        s.name, s.start_time, s.end_time = name, start, end
+        s.order = _int(request.POST.get(f'order_{s.pk}'), s.order)
+        s.is_active = request.POST.get(f'active_{s.pk}') == 'on'
+        s.save()
+    messages.success(request, 'Shifts saved.')
+    return redirect('hr_shift_list')
+
+
+def _int(raw, fallback):
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return fallback
+
+
+@role_required(['ADMIN'])
+@feature_required('hr', 'ipd', 'ward_manage')
+def shift_delete(request, pk):
+    """Delete a shift nobody has used; otherwise say so and leave it alone.
+
+    Rosters, allocations, notes and handovers all PROTECT their shift, so a used
+    one cannot be removed without taking history with it. Deactivating keeps old
+    records readable and takes it out of every dropdown, which is what "we don't
+    run that shift any more" actually means.
+    """
+    hospital = None if request.user.is_superuser else request.user.hospital
+    shift = get_object_or_404(Shift.all_objects, pk=pk, hospital=hospital)
+    if request.method == 'POST':
+        try:
+            shift.delete()
+            messages.success(request, f'Shift "{shift.name}" deleted.')
+        except ProtectedError:
+            shift.is_active = False
+            shift.save(update_fields=['is_active'])
+            messages.info(request, f'"{shift.name}" is used on the roster, so it has '
+                                   f'been switched off instead of deleted — old records '
+                                   f'still read correctly.')
+    return redirect('hr_shift_list')

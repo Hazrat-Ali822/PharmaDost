@@ -69,6 +69,8 @@ class AllKindsBase(TestCase):
         self.supplier = Supplier.objects.create(name="Ali Traders", hospital=self.h)
         self.customer = Customer.objects.create(name="Noor Medical", hospital=self.h)
 
+        from hr.models import Shift
+        self.shift = Shift.for_hospital(self.h).first()
         self.ward = Ward.objects.create(
             name="General", ward_type="General Male", daily_rate=Decimal("1500"),
             hospital=self.h)
@@ -260,7 +262,7 @@ class AllKindsBase(TestCase):
             },
             "nursing_note": {
                 "admission_id": self.admission.pk, "noted_at": now,
-                "shift": "MORNING", "note": "Patient comfortable, ate breakfast.",
+                "shift": self.shift.pk, "note": "Patient comfortable, ate breakfast.",
             },
             "care_task": {
                 "admission_id": self.admission.pk, "done_at": now,
@@ -268,7 +270,7 @@ class AllKindsBase(TestCase):
             },
             "handover": {
                 "admission_id": self.admission.pk,
-                "date": now.split("T")[0], "shift": "MORNING",
+                "date": now.split("T")[0], "shift": self.shift.pk,
                 "situation": "Post-op day 1", "background": "", "assessment": "Stable",
                 "recommendation": "Continue IV antibiotics",
             },

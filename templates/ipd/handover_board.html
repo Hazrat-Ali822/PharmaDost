@@ -35,7 +35,7 @@
       {% if r.handover.recommendation %}<p style="margin:2px 0 0;"><strong>R:</strong> {{ r.handover.recommendation }}</p>{% endif %}
     </div>
     <div style="margin-top:10px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-      <span class="muted" style="font-size:12px;">{{ r.handover.get_shift_display }} · {{ r.handover.from_nurse.get_full_name|default:r.handover.from_nurse.email }} · {{ r.handover.created_at|date:'d/m H:i' }}</span>
+      <span class="muted" style="font-size:12px;">{{ r.handover.shift.name|default:'—' }} · {{ r.handover.from_nurse.get_full_name|default:r.handover.from_nurse.email }} · {{ r.handover.created_at|date:'d/m H:i' }}</span>
       {% if r.handover.acknowledged_by %}
         <span class="badge success" style="background:#22c55e; color:#fff;">✓ acknowledged by {{ r.handover.acknowledged_by.get_full_name|default:r.handover.acknowledged_by.email }}</span>
       {% else %}

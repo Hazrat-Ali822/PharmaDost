@@ -227,7 +227,7 @@ _CRITICAL_URL_NAMES = ['pwa_offline', 'dashboard']
 #    cached cache-first and the logo carries no ?v=, so without a bump every
 #    device that had already saved it would keep the white-cornered copy.
 # 8: logo onerror fallback in base.html + app.css v2.7 (grid min-width fix).
-_SW_REVISION = '13'
+_SW_REVISION = '14'
 
 
 def _reverse_all(names):

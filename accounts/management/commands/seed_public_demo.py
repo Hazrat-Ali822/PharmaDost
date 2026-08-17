@@ -408,10 +408,14 @@ class Command(BaseCommand):
         from ipd.models import (Ward, Bed, Admission, DoctorRound, MedicationLog,
                                 VitalsObservation, FluidBalanceEntry, NursingNote,
                                 CareTask, ShiftHandover, NurseShift, PatientAllocation)
+        from hr.models import Shift
         nurse = users["NURSE"]
         admin = users["ADMIN"]
         today = timezone.localdate()
         now = timezone.now()
+        # The tenant's own shifts, not a hardcoded 'MORNING' — a command binds no
+        # hospital, so address the row explicitly (see SiteSettings.load's trap).
+        shift = Shift.for_hospital(admin.hospital).first()
 
         w1 = Ward.objects.create(name="General Ward", ward_type="General Male",
                                  daily_rate=Decimal("2000"), in_charge=nurse)
@@ -448,12 +452,12 @@ class Command(BaseCommand):
                                              volume_ml=500)
             FluidBalanceEntry.objects.create(admission=adm, recorded_by=nurse,
                                              direction="OUT", kind="Urine", volume_ml=350)
-            NursingNote.objects.create(admission=adm, noted_by=nurse, shift="MORNING",
+            NursingNote.objects.create(admission=adm, noted_by=nurse, shift=shift,
                                        note="Patient comfortable, tolerating oral fluids.")
             CareTask.objects.create(admission=adm, task="HYGIENE", done_by=nurse,
                                     notes="Morning sponge bath done.")
             ShiftHandover.objects.create(
-                admission=adm, shift="MORNING", from_nurse=nurse,
+                admission=adm, shift=shift, from_nurse=nurse,
                 situation="Stable, on IV fluids.",
                 background="Admitted with dehydration.",
                 assessment="Improving, vitals stable.",
@@ -463,10 +467,10 @@ class Command(BaseCommand):
         for d in range(0, 3):
             NurseShift.objects.get_or_create(
                 nurse=nurse, ward=w1, date=today + timedelta(days=d),
-                shift="MORNING", defaults=dict(duty="STAFF", created_by=admin))
+                shift=shift, defaults=dict(duty="STAFF", created_by=admin))
         for adm in admissions:
             PatientAllocation.objects.get_or_create(
-                admission=adm, date=today, shift="MORNING",
+                admission=adm, date=today, shift=shift,
                 defaults=dict(nurse=nurse, assigned_by=admin))
 
     def _ot(self, patients, docs):

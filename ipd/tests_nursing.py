@@ -36,6 +36,8 @@ class NursingWardManagementTest(TestCase):
                                             admission_reason='obs', attending_doctor=self.doc,
                                             hospital=self.h)
         self.today = timezone.localdate().isoformat()
+        from hr.models import Shift
+        self.morning, self.night = Shift.for_hospital(self.h)[:2]
 
     def _admin(self):
         c = Client(); c.login(email='admin@a.com', password='pw'); return c
@@ -48,14 +50,14 @@ class NursingWardManagementTest(TestCase):
         self.assertEqual(c.get(f'/ipd/roster/?ward={self.ward.pk}').status_code, 200)
 
         c.post('/ipd/roster/add/', {'ward': self.ward.pk, 'nurse': self.nurse.pk,
-                                    'date': self.today, 'shift': 'MORNING', 'duty': 'STAFF'})
+                                    'date': self.today, 'shift': self.morning.pk, 'duty': 'STAFF'})
         self.assertEqual(NurseShift.objects.count(), 1)
 
-        page = c.get(f'/ipd/allocation/?ward={self.ward.pk}&date={self.today}&shift=MORNING')
+        page = c.get(f'/ipd/allocation/?ward={self.ward.pk}&date={self.today}&shift={self.morning.pk}')
         self.assertContains(page, 'Bilal')
         self.assertContains(page, 'Sana')
 
-        c.post(f'/ipd/allocation/?ward={self.ward.pk}&date={self.today}&shift=MORNING',
+        c.post(f'/ipd/allocation/?ward={self.ward.pk}&date={self.today}&shift={self.morning.pk}',
                {f'alloc_{self.adm.pk}': self.nurse.pk})
         self.assertEqual(PatientAllocation.objects.count(), 1)
         self.assertEqual(PatientAllocation.objects.first().nurse, self.nurse)
@@ -64,16 +66,16 @@ class NursingWardManagementTest(TestCase):
         c = self._admin()
         for _ in range(2):
             c.post('/ipd/roster/add/', {'ward': self.ward.pk, 'nurse': self.nurse.pk,
-                                        'date': self.today, 'shift': 'MORNING', 'duty': 'STAFF'})
+                                        'date': self.today, 'shift': self.morning.pk, 'duty': 'STAFF'})
         # (nurse, date, shift) is unique — a second add updates, never duplicates.
-        self.assertEqual(NurseShift.objects.filter(nurse=self.nurse, shift='MORNING').count(), 1)
+        self.assertEqual(NurseShift.objects.filter(nurse=self.nurse, shift=self.morning).count(), 1)
 
     def test_nurse_sees_own_duties_but_cannot_manage(self):
         # give the nurse a shift + an allocated patient today
         NurseShift.objects.create(nurse=self.nurse, ward=self.ward, date=timezone.localdate(),
-                                  shift='MORNING', hospital=self.h)
+                                  shift=self.morning, hospital=self.h)
         PatientAllocation.objects.create(admission=self.adm, nurse=self.nurse,
-                                         date=timezone.localdate(), shift='MORNING', hospital=self.h)
+                                         date=timezone.localdate(), shift=self.morning, hospital=self.h)
         c = self._nurse()
         duties = c.get('/ipd/my-duties/')
         self.assertContains(duties, 'Bilal')
@@ -82,8 +84,8 @@ class NursingWardManagementTest(TestCase):
         # ...but building it and allocating patients is ward_manage — denied.
         self.assertEqual(c.get('/ipd/allocation/').status_code, 403)
         self.assertEqual(c.post('/ipd/roster/add/', {'ward': self.ward.pk, 'nurse': self.nurse.pk,
-                                'date': self.today, 'shift': 'NIGHT'}).status_code, 403)
-        self.assertFalse(NurseShift.objects.filter(shift='NIGHT').exists())
+                                'date': self.today, 'shift': self.night.pk}).status_code, 403)
+        self.assertFalse(NurseShift.objects.filter(shift=self.night).exists())
 
 
 class MewsScoringTest(TestCase):
@@ -183,13 +185,15 @@ class NursingNotesHandoverCensusTest(TestCase):
         self.adm = Admission.objects.create(patient=self.patient, bed=self.bed,
                                             admission_reason='post-op', attending_doctor=self.doc,
                                             hospital=self.h)
+        from hr.models import Shift
+        self.morning = Shift.for_hospital(self.h).first()
         self.c = Client(); self.c.login(email='n@a.com', password='pw')
 
     def test_nurse_writes_a_progress_note(self):
         from ipd.models import NursingNote
         self.c.post(f'/ipd/{self.adm.pk}/note/', {
             'noted_at': timezone.now().strftime('%Y-%m-%dT%H:%M'),
-            'shift': 'MORNING', 'note': 'Wound clean, no discharge.'})
+            'shift': self.morning.pk, 'note': 'Wound clean, no discharge.'})
         self.assertEqual(NursingNote.objects.count(), 1)
         self.assertEqual(NursingNote.objects.first().noted_by, self.nurse)
 
@@ -204,7 +208,7 @@ class NursingNotesHandoverCensusTest(TestCase):
     def test_handover_written_then_acknowledged_by_next_nurse(self):
         from ipd.models import ShiftHandover
         self.c.post(f'/ipd/{self.adm.pk}/handover/', {
-            'date': timezone.localdate().strftime('%Y-%m-%d'), 'shift': 'MORNING',
+            'date': timezone.localdate().strftime('%Y-%m-%d'), 'shift': self.morning.pk,
             'situation': 'Post-op day 1', 'background': '', 'assessment': 'Stable',
             'recommendation': 'IV antibiotics'})
         ho = ShiftHandover.objects.get()

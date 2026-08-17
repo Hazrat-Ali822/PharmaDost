@@ -1,0 +1,66 @@
+{% extends 'partials/base.html' %}
+{% block title %}Working Shifts{% endblock %}
+{% block page_title %}Working Shifts{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Working Shifts</h2>
+  <a class="btn alt" href="{% url 'ipd:duty_roster' %}">Duty Roster →</a>
+</div>
+
+<p class="muted" style="margin-top:-6px;">
+  Your hospital's own shifts. Rename them, move the hours, add a fourth, or run a
+  single long day — the roster, patient allocation and handover screens all follow
+  what you set here. A shift that ends before it starts (21:00 → 07:00) is a night
+  shift crossing midnight and is handled correctly.
+</p>
+
+<form method="post" class="card">
+  {% csrf_token %}
+  <div class="table-scroll">
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th style="min-width:150px;">Name</th>
+          <th>Starts</th>
+          <th>Ends</th>
+          <th>Hours</th>
+          <th title="Position in the roster grid">Order</th>
+          <th title="Switch off a shift you no longer run — old records keep reading correctly">In use</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in shifts %}
+        <tr>
+          <td><input type="text" name="name_{{ s.pk }}" value="{{ s.name }}" required></td>
+          <td><input type="time" name="start_{{ s.pk }}" value="{{ s.start_time|time:'H:i' }}" required></td>
+          <td><input type="time" name="end_{{ s.pk }}" value="{{ s.end_time|time:'H:i' }}" required></td>
+          <td class="muted">{{ s.hours }} h{% if s.crosses_midnight %} <span class="badge" title="Crosses midnight">◐</span>{% endif %}</td>
+          <td><input type="number" name="order_{{ s.pk }}" value="{{ s.order }}" min="0" style="max-width:70px;"></td>
+          <td style="text-align:center;"><input type="checkbox" name="active_{{ s.pk }}" {% if s.is_active %}checked{% endif %}></td>
+          <td>
+            <button class="linklike" formaction="{% url 'hr_shift_delete' s.pk %}" formmethod="post"
+                    style="border:none; background:none; color:#ef4444; cursor:pointer;">Delete</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="form-actions" style="margin-top:12px;">
+    <button class="btn" type="submit">Save changes</button>
+  </div>
+</form>
+
+<div class="card" style="margin-top:16px;">
+  <h3 style="margin-top:0;">Add a shift</h3>
+  <form method="post" style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="add">
+    <label>Name<br><input type="text" name="name" placeholder="e.g. Night, Shift C" required></label>
+    <label>Starts<br><input type="time" name="start_time" required></label>
+    <label>Ends<br><input type="time" name="end_time" required></label>
+    <button class="btn" type="submit">Add shift</button>
+  </form>
+</div>
+{% endblock %}

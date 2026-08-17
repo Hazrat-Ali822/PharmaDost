@@ -145,7 +145,7 @@
       {% for n in nursing_notes %}
       <div style="border-left:3px solid #0ea5e9; padding-left:14px; margin-bottom:12px;">
         <div style="display:flex; justify-content:space-between; font-size:12px;" class="muted">
-          <span>{{ n.noted_by.get_full_name|default:n.noted_by.email }}{% if n.shift %} · {{ n.get_shift_display }}{% endif %}</span>
+          <span>{{ n.noted_by.get_full_name|default:n.noted_by.email }}{% if n.shift %} · {{ n.shift.name }}{% endif %}</span>
           <span>{{ n.noted_at|date:'d/m H:i' }}</span>
         </div>
         <p style="margin:4px 0 0; font-size:13.5px; white-space:pre-wrap;">{{ n.note }}</p>
