@@ -70,8 +70,23 @@ python manage.py migrate
 python manage.py collectstatic --noinput
 ```
 
-The SQLite file is created at `~/sehatyar/db.sqlite3`. **Back this file up** — it
-is the whole database.
+**The live site runs on PostgreSQL** (`sehatyar_prod`), configured by the
+`DATABASE_URL` line in `.env`. It began on SQLite and was moved across —
+`docs/migrate_to_postgres.md` has that procedure. `~/sehatyar/db.sqlite3` is
+still on disk but nothing reads it; copying it is not a backup of anything.
+
+Back up with `pg_dump`, and back up `MEDIA_ROOT` separately — uploaded logos and
+patient document photos live there, and no database dump covers them:
+
+```bash
+cd ~/sehatyar && mkdir -p backups
+PGPASSWORD='<db password>' pg_dump -h localhost -U sehatyar_dbuser   -d sehatyar_prod -F c -f "backups/pg-$(date +%F-%H%M).dump"
+tar czf "backups/media-$(date +%F).tar.gz" data/media
+```
+
+Use the **plain** password here, not the percent-encoded form from
+`DATABASE_URL`: `%28` and `%23` are URL escaping for `(` and `#`, and `pg_dump`
+takes the real characters.
 
 ## 6. Create the platform owner (SaaS multi-tenant)
 
@@ -113,8 +128,19 @@ python manage.py collectstatic --noinput # only if static changed
 cPanel → **Cron Jobs**, one daily line (adjust the path):
 
 ```
-cd ~/sehatyar && ~/virtualenv/sehatyar/3.10/bin/python manage.py expiry_alert && ~/virtualenv/sehatyar/3.10/bin/python manage.py low_stock_alert
+cd ~/sehatyar && ~/virtualenv/sehatyar/3.10/bin/python manage.py expiry_alert && ~/virtualenv/sehatyar/3.10/bin/python manage.py low_stock_alert && ~/virtualenv/sehatyar/3.10/bin/python manage.py send_reminders && PGPASSWORD='<db password>' pg_dump -h localhost -U sehatyar_dbuser -d sehatyar_prod -F c -f ~/sehatyar/backups/pg-$(date +\%F).dump
 ```
+
+Three notes on that line:
+
+- **`send_reminders` belongs here** — it is the patient-facing half (tomorrow's
+  appointments, "your lab report is ready", vaccination due). It is safe to run
+  twice: every message carries a `dedupe_key` and `already_sent` refuses a repeat.
+- **`%F` is escaped as `\%F`.** cron treats an unescaped `%` as end-of-command
+  and turns the rest into stdin, so the dump would be written to a file literally
+  named `pg-` and the reminders would look like they ran but the backup would not.
+- The free tier allows only **one** scheduled task, which is why everything is
+  chained into this single daily line.
 
 ## If you insist on MySQL
 

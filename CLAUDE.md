@@ -112,19 +112,36 @@ Two traps when adding tests:
 This is the single most common source of confusion:
 
 - **Local dev** uses **Supabase PostgreSQL**, via `DATABASE_URL` in `.env`.
-- **Production (JabraHost — cPanel + Passenger)** uses **local SQLite** at `~/sehatyar/db.sqlite3`. There is deliberately no `DATABASE_URL` in the host's `.env`, so `settings.py` falls back to its SQLite default. The `WARNING:root:No DATABASE_URL environment variable set` line in command output on that host is benign and expected. (An older PythonAnywhere install used `/home/PharmaDost/PharmaDost/db.sqlite3` and its own WSGI file; the live site is the cPanel one — `passenger_wsgi.py` + `docs/deploy_jabrahost.md`.)
+- **Production (JabraHost — cPanel + Passenger)** runs on **PostgreSQL**
+  (`sehatyar_prod`), via `DATABASE_URL` in `~/sehatyar/.env`. It was one shared
+  SQLite file until the move described in `docs/migrate_to_postgres.md`; that
+  file is still on the host as `~/sehatyar/db.sqlite3` but **nothing reads it**.
+  If a command there prints `WARNING:root:No DATABASE_URL environment variable
+  set`, the `.env` line is not being picked up and the command is talking to the
+  dead SQLite file — stop and fix it rather than trusting the output. (An older
+  PythonAnywhere install used `/home/PharmaDost/PharmaDost/db.sqlite3`; the live
+  site is the cPanel one — `passenger_wsgi.py` + `docs/deploy_jabrahost.md`.)
+- **The desktop / LAN build stays on SQLite** and must: one clinic, one machine,
+  no server. It sets no `DATABASE_URL`.
 
-They are **separate databases**. A migration applied locally is *not* applied in production; it must be run again on the host.
+They are **separate databases**. A migration applied locally is *not* applied in
+production; it must be run again on the host.
 
-**JabraHost does offer PostgreSQL** (cPanel → Databases → PostgreSQL Databases /
-phpPgAdmin), and moving the hosted site onto it needs **no code change** —
-`settings.py` already picks the engine up from `DATABASE_URL`, which is how local
-dev runs on Supabase. The procedure, and the reasons the hosted site should
-eventually stop being one shared SQLite file, are in
-**`docs/migrate_to_postgres.md`**, and that procedure has been **rehearsed end to
-end** rather than reasoned about. Three commands support it: `db_preflight`
-(rows PostgreSQL will refuse), `db_export` (the dump) and `db_snapshot`
-(verification).
+Two consequences of the hosted site being PostgreSQL:
+
+- **Backups are `pg_dump`, not a file copy.** `backup_download` refuses on
+  PostgreSQL and says why — the database is no longer a file it can zip, and
+  shipping a zip of media alone while calling it a backup is worse than refusing.
+  The nightly cron line runs `pg_dump` (see `docs/deploy_jabrahost.md`), and
+  **uploaded patient photos live in `MEDIA_ROOT`, which `pg_dump` does not
+  cover** — the media folder needs its own copy.
+- **Migrations are now checked against a real PostgreSQL**, not just the SQLite
+  test database. See the note below on data steps; SQLite silently tolerates
+  things the host rejects.
+
+`docs/migrate_to_postgres.md` documents the move that was performed, and the three
+commands that supported it: `db_preflight` (rows PostgreSQL will refuse),
+`db_export` (the dump) and `db_snapshot` (before/after row counts).
 
 **Never put schema changes after a data step in one migration.** Each migration
 runs in a single transaction, and once a `RunPython`/`RunSQL` has written rows,
@@ -183,7 +200,10 @@ Full first-time setup — creating the Python app, `.env`, the owner superuser �
 
 ```bash
 cd ~/sehatyar
-cp db.sqlite3 "backups/db-$(date +%F-%H%M).sqlite3"    # before ANY migrate; SQLite is one file
+# before ANY migrate. The host is PostgreSQL now, so this is pg_dump —
+# copying db.sqlite3 backs up a file nothing reads any more.
+mkdir -p backups
+PGPASSWORD='<db password>' pg_dump -h localhost -U sehatyar_dbuser   -d sehatyar_prod -F c -f "backups/pg-$(date +%F-%H%M).dump"
 git pull
 source ~/virtualenv/sehatyar/3.10/bin/activate
 pip install -r requirements.txt           # only if requirements.txt changed
