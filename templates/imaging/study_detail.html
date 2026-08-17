@@ -24,6 +24,7 @@
         <a class="btn danger" href="{% url 'imaging:study_cancel' study.id %}">Cancel Scan</a>
       {% endif %}
     {% endif %}
+    {% include 'patients/_attach_photo.html' with patient=study.patient kind='SCAN' label='Attach Scan Photo' %}
     <a class="btn alt" href="{% url 'imaging:study_list' %}">Back</a>
   </div>
 </div>

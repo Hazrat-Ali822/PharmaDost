@@ -164,6 +164,10 @@ def _document_path(instance, filename):
     return f'patient_docs/{instance.patient_id}/{uuid.uuid4().hex}{ext}'
 
 
+def _thumb_path(instance, filename):
+    return f'patient_docs/{instance.patient_id}/thumbs/{uuid.uuid4().hex}.jpg'
+
+
 class PatientDocument(models.Model):
     """A photograph of a paper document, attached to the patient's record.
 
@@ -202,6 +206,12 @@ class PatientDocument(models.Model):
     appointment = models.ForeignKey('opd.Appointment', on_delete=models.SET_NULL,
                                     null=True, blank=True, related_name='documents')
     image = models.ImageField(upload_to=_document_path)
+    # A ~320px copy for the grid. Without it every tile downloads the full
+    # picture and the CSS shrinks it: a dozen photos is ~4 MB per visit to the
+    # record, on a clinic connection, to show a dozen postage stamps. Nullable
+    # because it is an optimisation — `document_file` falls back to the full
+    # image, so a row without one still works.
+    thumbnail = models.ImageField(upload_to=_thumb_path, blank=True, null=True)
     kind = models.CharField(max_length=12, choices=KIND_CHOICES, default='RX')
     title = models.CharField(max_length=120, blank=True,
                              help_text='Optional — "Dr. Sara, BP medicines"')

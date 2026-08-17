@@ -1,0 +1,27 @@
+{% comment %}
+An "Attach Photo" button for any screen where somebody is holding paper.
+
+Include it, do not copy it — there are half a dozen such screens and a copied
+button is a button that stops matching the others.
+
+    {% include 'patients/_attach_photo.html' with patient=patient kind='RX' %}
+
+`patient` is required. `kind` pre-selects what the paper is (see
+`PatientDocument.KIND_CHOICES`) and may be left off. `next` is filled in from
+the current page, so saving returns the user where they were rather than
+dropping them on the patient record halfway through writing a prescription.
+
+Gated on `patients` **or** `pos`: the pharmacist holds `pos` and not `patients`,
+and is often the one holding the paper. Same pair the Rx cancel views carry.
+{% endcomment %}
+{% if patient %}{% if nav.patients or nav.pos %}
+<a class="btn sm alt"
+   href="{% url 'patient_document_add' patient.pk %}?kind={{ kind|default:'OTHER' }}&next={{ request.get_full_path|urlencode }}"
+   title="Photograph a paper document onto this patient's record">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+       style="width:15px;height:15px;vertical-align:-2px;margin-right:4px;">
+    <path d="M3 8a2 2 0 0 1 2-2h2l1.5-2h7L17 6h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+    <circle cx="12" cy="13" r="3.5"/>
+  </svg>{{ label|default:"Attach Photo" }}
+</a>
+{% endif %}{% endif %}

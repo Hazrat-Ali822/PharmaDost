@@ -275,7 +275,7 @@ def record_add(request, pk):
 @feature_required('patients', 'pos')
 def document_add(request, pk):
     from .forms import PatientDocumentForm
-    from .images import compress
+    from .images import compress, make_thumbnail
 
     patient = _document_patient(request, pk)
     if request.method == 'POST':
@@ -287,12 +287,15 @@ def document_add(request, pk):
             doc.hospital = patient.hospital
             if doc.image:
                 doc.image = compress(doc.image)
+                # Built from the compressed copy, not the original upload, so
+                # the rotation and colour conversion are already applied.
+                doc.thumbnail = make_thumbnail(doc.image)
             appt_id = request.POST.get('appointment_id')
             if appt_id:
                 doc.appointment = patient.appointments.filter(pk=appt_id).first()
             doc.save()
             messages.success(request, 'Photo saved to the patient record.')
-            return redirect(request.POST.get('next') or 'patient_detail', pk=patient.pk)
+            return redirect(_safe_next(request, patient))
     else:
         form = PatientDocumentForm(initial={'kind': request.GET.get('kind') or 'RX'})
     return render(request, 'patients/document_form.html', {
@@ -326,8 +329,15 @@ def document_file(request, pk):
 
     doc = get_object_or_404(PatientDocument.objects.select_related('patient'), pk=pk)
     _document_patient(request, doc.patient_id)      # tenant + role scope, or 403/404
+
+    # `?thumb=1` asks for the small copy. Falling back to the full picture keeps
+    # rows that predate thumbnails, and rows whose thumbnail could not be made,
+    # working rather than blank.
+    field = doc.image
+    if request.GET.get('thumb') and doc.thumbnail:
+        field = doc.thumbnail
     try:
-        handle = doc.image.open('rb')
+        handle = field.open('rb')
     except (FileNotFoundError, ValueError):
         # A database restored without its media, or a wiped upload folder.
         raise Http404('That picture is no longer on disk.')
@@ -354,10 +364,32 @@ def document_delete(request, pk):
             raise PermissionDenied('Only an admin or whoever uploaded it can remove a photo.')
         patient_id = doc.patient_id
         doc.image.delete(save=False)
+        if doc.thumbnail:
+            doc.thumbnail.delete(save=False)
         doc.delete()
         messages.success(request, 'Photo removed.')
         return redirect('patient_detail', pk=patient_id)
     return redirect('patient_detail', pk=doc.patient_id)
+
+
+def _safe_next(request, patient):
+    """Where to go after saving — back where the user was, if that is our page.
+
+    `next` arrives in the request, so it is checked before being followed:
+    without `url_has_allowed_host_and_scheme` a link like
+    `?next=https://evil.example/` turns this form into an open redirect, which
+    is a phishing step (the user is on the real hospital domain, saves a photo,
+    and lands on a copy of the login page).
+    """
+    from django.urls import reverse
+    from django.utils.http import url_has_allowed_host_and_scheme
+
+    target = request.POST.get('next') or request.GET.get('next') or ''
+    if target and url_has_allowed_host_and_scheme(
+            target, allowed_hosts={request.get_host()},
+            require_https=request.is_secure()):
+        return target
+    return reverse('patient_detail', args=[patient.pk])
 
 
 def _document_patient(request, pk):

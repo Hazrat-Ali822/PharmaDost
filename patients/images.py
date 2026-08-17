@@ -27,6 +27,13 @@ logger = logging.getLogger(__name__)
 
 MAX_EDGE = 1600
 JPEG_QUALITY = 78
+
+# A separate small copy for the grid on the patient record. Without it every
+# tile downloads the full picture and CSS shrinks it on screen — twelve photos
+# is ~4 MB per visit to that page, on a clinic connection, to show twelve
+# postage stamps. At 320px a tile is ~15-25 KB.
+THUMB_EDGE = 320
+THUMB_QUALITY = 70
 # Anything larger than this is refused at the form rather than processed — a
 # 60 MB upload on a shared host is a mistake or an attack, not a prescription.
 MAX_UPLOAD_BYTES = 12 * 1024 * 1024
@@ -66,6 +73,50 @@ def compress(uploaded):
         return uploaded
 
 
+def make_thumbnail(source):
+    """A small copy of `source`, or None if one cannot be made.
+
+    None is a normal answer, not a failure: the view falls back to the full
+    picture, so a thumbnail that could not be generated costs bandwidth and
+    nothing else.
+    """
+    try:
+        from PIL import Image, ImageOps
+    except ImportError:
+        return None
+
+    try:
+        source.seek(0)
+        img = Image.open(source)
+        img = ImageOps.exif_transpose(img)
+        if img.mode not in ('RGB', 'L'):
+            img = img.convert('RGB')
+        img.thumbnail((THUMB_EDGE, THUMB_EDGE), Image.LANCZOS)
+
+        buf = io.BytesIO()
+        img.save(buf, format='JPEG', quality=THUMB_QUALITY, optimize=True)
+        size = buf.tell()
+        buf.seek(0)
+        return InMemoryUploadedFile(buf, 'ImageField', _thumb_name(source.name),
+                                    'image/jpeg', size, None)
+    except Exception as exc:                # noqa: BLE001
+        logger.warning('could not thumbnail %s: %s', getattr(source, 'name', '?'), exc)
+        return None
+    finally:
+        # The caller saves `source` next; leaving the handle at EOF writes an
+        # empty file, which is the sort of thing that only shows up in
+        # production as a picture that will not open.
+        try:
+            source.seek(0)
+        except Exception:                   # noqa: BLE001
+            pass
+
+
 def _jpeg_name(name):
     import os
     return (os.path.splitext(name or 'photo')[0] or 'photo') + '.jpg'
+
+
+def _thumb_name(name):
+    import os
+    return (os.path.splitext(name or 'photo')[0] or 'photo') + '-thumb.jpg'

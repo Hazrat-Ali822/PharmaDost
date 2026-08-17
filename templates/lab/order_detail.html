@@ -22,6 +22,7 @@
         {% endif %}
       {% endif %}
     {% endif %}
+    {% include 'patients/_attach_photo.html' with patient=order.patient kind='LAB' label='Attach Report Photo' %}
     <a class="btn alt" href="{% url 'lab:order_list' %}">Back</a>
   </div>
 </div>

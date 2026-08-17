@@ -274,3 +274,103 @@ class DocumentServingTest(TestCase):
         body = c.get(f'/patients/{self.patient.pk}/').content.decode()
         self.assertIn(self._url(), body)
         self.assertNotIn('/media/patient_docs/', body)
+
+
+class DocumentThumbnailTest(TestCase):
+    """The grid must not download full pictures to show postage stamps."""
+
+    def setUp(self):
+        self.h = Hospital.objects.create(name='H', slug='h-thumb', expiry_date=_future())
+        set_current_hospital(self.h)
+        self.admin = User.objects.create_user(email='a@a.com', password='pw',
+                                              role='ADMIN', hospital=self.h)
+        self.patient = Patient.objects.create(full_name='Bilal', gender='M', hospital=self.h)
+        self.c = Client()
+        self.c.login(email='a@a.com', password='pw')
+        self.c.post(f'/patients/{self.patient.pk}/photo/add/',
+                    {'image': _photo(), 'kind': 'RX',
+                     'doc_date': date.today().strftime('%Y-%m-%d')})
+        self.doc = PatientDocument.objects.get()
+
+    def tearDown(self):
+        for d in PatientDocument.all_objects.all():
+            for f in (d.image, d.thumbnail):
+                try:
+                    f and f.delete(save=False)
+                except OSError:
+                    pass
+        clear_current_hospital()
+
+    def test_a_thumbnail_is_made_on_upload(self):
+        from patients.images import THUMB_EDGE
+
+        self.assertTrue(self.doc.thumbnail)
+        self.assertLessEqual(max(self.doc.thumbnail.width, self.doc.thumbnail.height),
+                             THUMB_EDGE)
+
+    def test_the_thumbnail_is_much_smaller_than_the_picture(self):
+        self.assertLess(self.doc.thumbnail.size, self.doc.image.size / 2)
+
+    def test_the_grid_asks_for_the_thumbnail_and_links_the_full_picture(self):
+        body = self.c.get(f'/patients/{self.patient.pk}/').content.decode()
+        url = f'/patients/photo/{self.doc.pk}/file/'
+        self.assertIn(f'src="{url}?thumb=1"', body)
+        self.assertIn(f'href="{url}"', body)
+
+    def test_a_row_with_no_thumbnail_falls_back_to_the_full_picture(self):
+        """Rows predating thumbnails, and any whose thumbnail could not be made,
+        must still show something."""
+        self.doc.thumbnail.delete(save=False)
+        self.doc.thumbnail = None
+        self.doc.save(update_fields=['thumbnail'])
+        r = self.c.get(f'/patients/photo/{self.doc.pk}/file/?thumb=1')
+        self.assertEqual(r.status_code, 200)
+        r.close()
+
+    def test_deleting_the_record_removes_both_files(self):
+        image, thumb = self.doc.image.path, self.doc.thumbnail.path
+        import os
+        self.c.post(f'/patients/photo/{self.doc.pk}/delete/')
+        self.assertFalse(os.path.exists(image))
+        self.assertFalse(os.path.exists(thumb))
+
+
+class DocumentRedirectTest(TestCase):
+    """`next` comes from the request, so it is checked before it is followed."""
+
+    def setUp(self):
+        self.h = Hospital.objects.create(name='H', slug='h-next', expiry_date=_future())
+        set_current_hospital(self.h)
+        User.objects.create_user(email='a@a.com', password='pw', role='ADMIN', hospital=self.h)
+        self.patient = Patient.objects.create(full_name='Bilal', gender='M', hospital=self.h)
+        self.c = Client()
+        self.c.login(email='a@a.com', password='pw')
+
+    def tearDown(self):
+        for d in PatientDocument.all_objects.all():
+            for f in (d.image, d.thumbnail):
+                try:
+                    f and f.delete(save=False)
+                except OSError:
+                    pass
+        clear_current_hospital()
+
+    def _post(self, next_url):
+        return self.c.post(f'/patients/{self.patient.pk}/photo/add/',
+                           {'image': _photo(), 'kind': 'RX',
+                            'doc_date': date.today().strftime('%Y-%m-%d'),
+                            'next': next_url})
+
+    def test_it_returns_to_the_screen_the_user_came_from(self):
+        r = self._post('/lab/order/7/')
+        self.assertEqual(r['Location'], '/lab/order/7/')
+
+    def test_an_offsite_next_is_ignored(self):
+        """Otherwise this form is an open redirect: the user is on the real
+        hospital domain, saves a photo, and lands on a copy of the login page."""
+        r = self._post('https://evil.example/login/')
+        self.assertEqual(r['Location'], f'/patients/{self.patient.pk}/')
+
+    def test_a_scheme_relative_next_is_ignored_too(self):
+        r = self._post('//evil.example/login/')
+        self.assertEqual(r['Location'], f'/patients/{self.patient.pk}/')

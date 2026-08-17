@@ -163,8 +163,9 @@
     {% for d in documents %}
     <figure class="doc-tile">
       {# Through a view, not MEDIA_URL — see patients.views.document_file. #}
+      {# The tile loads the small copy; the link opens the full picture. #}
       <a href="{% url 'patient_document_file' d.pk %}" target="_blank" rel="noopener" title="Open full size">
-        <img src="{% url 'patient_document_file' d.pk %}" alt="{{ d.label }}" loading="lazy">
+        <img src="{% url 'patient_document_file' d.pk %}?thumb=1" alt="{{ d.label }}" loading="lazy">
       </a>
       <figcaption>
         <strong>{{ d.label }}</strong>

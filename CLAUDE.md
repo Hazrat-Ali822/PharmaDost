@@ -1093,8 +1093,25 @@ Four things are deliberate:
 - **Gated on `patients` OR `pos`.** The pharmacist is often the one holding the
   paper and does not hold `patients`; without the second key the person standing
   in front of the patient cannot do this (same reasoning as the Rx cancel views).
+- **A photo is attached from wherever somebody is holding paper**, through one
+  include — `templates/patients/_attach_photo.html`, taking `patient` and an
+  optional `kind`/`label`. It is on the patient record, the OPD appointment
+  slip, the prescription form, the lab order, the imaging study and the ward
+  admission. Add it by including it, never by copying the button; it carries the
+  current URL as `next`, and `patients.views._safe_next` validates that against
+  the request host (`url_has_allowed_host_and_scheme`) before following it —
+  otherwise `?next=https://evil.example/` makes the form an open redirect, which
+  is a phishing step: the user is on the real hospital domain, saves a photo,
+  and lands on a copy of the login page.
 - **Uploads are shrunk** (`patients/images.py`: 1600px long edge, JPEG q78,
-  EXIF rotation applied). A phone writes 3–8 MB a shot, and on the desktop build
+  EXIF rotation applied) and a **~320px thumbnail** is stored alongside. The
+  grid loads the thumbnail (`?thumb=1`) and links the full picture; without it a
+  dozen photos is ~4 MB per visit to the record, over a clinic connection, to
+  show a dozen postage stamps. `thumbnail` is nullable and the view falls back
+  to the full image, so rows that predate it still render.
+- **The picture is a file on disk; the database holds a path.** An `ImageField`
+  stores ~60 bytes of text, so `pg_dump` does not grow with the photos — only
+  `MEDIA_ROOT` does, and that needs its own backup (see the deploy doc). A phone writes 3–8 MB a shot, and on the desktop build
   every megabyte is copied into the launch backup zip and then uploaded to the
   cloud backup — paid three times. If Pillow cannot process a file it is stored
   unchanged: losing the record to save disk is the wrong trade. Over

@@ -23,12 +23,21 @@
   <label>Photo{{ form.image }}{{ form.image.errors }}</label>
   <img id="preview" alt="" style="display:none; max-width:100%; margin:10px 0; border-radius:8px; border:1px solid var(--border);">
 
-  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px;">
-    <label>What is it{{ form.kind }}</label>
-    <label>Date on the paper{{ form.doc_date }}{{ form.doc_date.errors }}</label>
-  </div>
-  <label>Title{{ form.title }}</label>
-  <label>Note{{ form.note }}</label>
+  <label>What is it{{ form.kind }}</label>
+
+  {# Two decisions, not five. The date defaults to today and the two text boxes #}
+  {# are almost always left empty — asking for them up front turns a five-second #}
+  {# job into a form, on the phone, at the counter, with a patient waiting. #}
+  <details style="margin-top:6px;">
+    <summary style="cursor:pointer; color:var(--muted); font-size:13px;">
+      More details — date on the paper, title, note
+    </summary>
+    <div style="margin-top:10px;">
+      <label>Date on the paper{{ form.doc_date }}{{ form.doc_date.errors }}</label>
+      <label>Title{{ form.title }}</label>
+      <label>Note{{ form.note }}</label>
+    </div>
+  </details>
 
   <div class="form-actions">
     <button class="btn" type="submit">Save to record</button>
