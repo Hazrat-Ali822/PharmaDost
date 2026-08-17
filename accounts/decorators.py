@@ -29,6 +29,29 @@ def feature_required(*features: str):
 	return decorator
 
 
+def module_installed(*features: str):
+	"""Require that ALL the given features are installed for this tenant.
+
+	`feature_required` passes on ANY key and is about *who* may open a screen.
+	This is about *whether the tenant bought the module at all*, and it stacks on
+	top — the lab/imaging price editors are gated on the CORE `catalog` feature,
+	which is on for every install, so a pharmacy-only tenant could open a lab test
+	price list for a lab it does not have. Like the install check in
+	`feature_required`, a superuser does not bypass this: the module is off for
+	the tenant, not merely out of reach for the user.
+	"""
+	def decorator(view_func):
+		@wraps(view_func)
+		def _wrapped(request, *args, **kwargs):
+			from .permissions import installed_features
+			inst = installed_features()
+			if any(f not in inst for f in features):
+				return HttpResponseForbidden("This module is turned off for this system.")
+			return view_func(request, *args, **kwargs)
+		return _wrapped
+	return decorator
+
+
 def role_required(allowed_roles: list[str]):
 	"""Gate a view to specific user roles. allowed_roles like ["ADMIN", "PHARMACIST"]."""
 	def decorator(view_func):

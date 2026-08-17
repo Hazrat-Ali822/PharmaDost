@@ -263,6 +263,35 @@ Access is granted only when the feature is **both** installed for the tenant **a
 
 Roles: `ADMIN`, `RECEPTIONIST`, `DOCTOR`, `NURSE` (Ward Staff), `PHARMACIST`, `WHOLESALE`, `LABTECH`, `SONOGRAPHER`, `ACCOUNTANT`.
 
+**`accounts.decorators.module_installed(*keys)`** stacks on top of
+`feature_required` and asks a different question: `feature_required` gates on *who
+may open this screen* and passes on ANY key, while `module_installed` requires
+**all** the named features to be installed for the tenant. It exists because the
+lab and scan price editors are gated on `catalog`, which is a **`CORE_FEATURE` and
+therefore on for every install** — so a pharmacy-only tenant could open a lab test
+price list for a lab it does not have. A superuser does not bypass it: the module
+is off for the *tenant*, not merely out of reach for the user.
+
+**Selling only part of the system.** The smallest package is pharmacy-only, and it
+is the configuration that exposes assumptions the full-hospital case hides — a
+shop has **no patients at all**. Two rules:
+
+- **`pharmacy` alone is not a shippable package.** It grants `pos`, `inventory`,
+  `customers`, `suppliers` and nothing else, so the shop cannot see its own sales,
+  profit, stock valuation or day book (all in `reports`), and cannot record an
+  expense or close the counter for the day (`expenses` / `cashclosing`, both inside
+  `finance`). The recommended pharmacy package is **`pharmacy` + `reports` +
+  `finance`**, optionally `hr`. `finance` also drags in `billing`, `panel` and
+  `payouts`, which a pure pharmacy does not need — that is nav clutter, not
+  breakage. Never enable `opd`/`ipd`/`ot`/`emergency`/`maternity`/`bloodbank`/
+  `vaccination`/`lab`/`imaging` for a shop.
+  `tests/test_module_packaging.py` asserts the recommended package opens every
+  screen it should, and that pharmacy alone cannot reach the report screens.
+- **A nav group whose every link is feature-gated needs the group itself gated
+  too.** The sidebar's "Price List" heading was `{% if nav.catalog %}` while both
+  links inside were `nav.lab` / `nav.imaging`, so a pharmacy-only tenant got a
+  section title over nothing.
+
 The `ward` feature (nurses) is deliberately narrower than `ipd`: ward views take
 `feature_required('ipd', 'ward')`, while admitting, discharging and ward setup stay
 `ipd`-only. `lab.order_create` and `imaging.study_create` also accept `ward` so the ward
@@ -330,8 +359,10 @@ Two channels, deliberately separated — mixing them makes the inbox unreadable:
   rather than shown, so the list stays short enough to read.
 - **`Notification.notify_admins()`** is for the *exceptional* only — currently stock written
   off (`inventory.adjustment_create`, negative adjustments only), an invoice voided
-  (`billing.invoice_void`), and a run of failed sign-ins. Do not add routine events here:
-  an inbox that fills with normal activity is one nobody reads.
+  (`billing.invoice_void`), a run of failed sign-ins, and a **password-reset request**
+  (`accounts.custom_password_reset_request`, below — the admin is the only one who can
+  action it). Do not add routine events here: an inbox that fills with normal activity is
+  one nobody reads.
 
 Repeated failed sign-ins fire once, on the attempt that crosses `FAILED_LOGIN_BURST` within
 `FAILED_LOGIN_WINDOW_MINUTES` (`audit/signals.py`) — not on every attempt after it.
@@ -418,7 +449,15 @@ any active user) when `DESKTOP_BUILD` is set, before any host resolution. Guarde
 owner-only). The browser E2E suite runs as this single-instance case by force-planting a session
 cookie (`e2e.test_e2e.BrowserTestCase.login`) rather than depending on host policy.
 
-Two things are load-bearing:
+**There is no password-reset email.** The deployment has no mail backend, so
+`django.contrib.auth`'s emailed reset link would silently go nowhere. `/accounts/password_reset/`
+is shadowed by **`accounts.views.custom_password_reset_request`** (registered *above* the auth
+include, same as the login shadow), which instead notifies the requesting user's **Hospital
+Admin** — the person who can actually reset it from the user editor. A superuser is told to use
+`python manage.py changepassword`; an unknown address gets the same neutral wording as a known
+one, so the form cannot be used to enumerate accounts.
+
+Three things are load-bearing:
 
 - **`reverse('login')` resolves to `/accounts/login/`, not `/login/`.** `django.contrib.auth.urls`
   (included for password-reset etc.) also registers a view named `login` at `/accounts/login/`,
@@ -711,6 +750,43 @@ test and make it chargeable again. Guarded by `tests/test_cancellation.py`.
 Not offline in v1: a cancel rewrites money and state the device cannot see (the same
 reason deletes and invoice voids are excluded — see "Offline data entry").
 
+### Dashboard & analytics revenue
+
+Two screens report revenue by department — `inventory.views.dashboard` (the
+"Departmental Revenue Summary" tiles) and `reports.views.visual_analytics` — and
+both are cash-basis: the dashboard scales each invoice line by the invoice's
+`paid / total`, so an uncollected consultation shows nowhere until reception takes
+the money. Three traps, each of which has shipped:
+
+- **Never scope a money queryset through `patient__hospital`.** `Sale`, `Invoice`
+  and `Expense` all carry a `hospital` FK **and** a `TenantManager`, so
+  `Sale.objects` is already scoped and already fail-closed. Adding
+  `.filter(patient__hospital=...)` on top looks like belt and braces and is
+  silent data loss: **`Sale.patient` is nullable**, so the INNER JOIN drops every
+  sale with no patient — i.e. every walk-in counter sale. A pharmacy-only tenant
+  has no patients at all, so its "Pharmacy Sales" tile read Rs 0 all day while the
+  "30-Day Revenue" tile beside it (no such join) showed the real money on the same
+  screen. The pattern is only correct on the manager-less models (`Appointment`,
+  `TestOrder`, `ImagingStudy`, `Prescription`), whose `patient` is **not** nullable.
+- **Classify invoice lines through `billing.revenue.classify()`, never inline.**
+  `InvoiceItem` records no service type, so the department is recovered by parsing
+  the description the create path wrote. With two readers it drifted immediately:
+  the dashboard tested `description == 'OPD Consultation'` and so missed the
+  `'OPD Consultation — Dr. Name'` form that `opd.services.bill_and_notify` (i.e.
+  reception, the booking form and offline replay — nearly every real appointment)
+  actually writes, filing every consultation under "Other"; the analytics chart
+  tested `description__icontains='CT'`, and `'Injection'` contains `ct`, so a ward
+  injection was charted as a CT scan. Matching is by **prefix**, and
+  `revenue.imaging_prefixes()` is derived from `ImagingStudy.MODALITY_CHOICES` so
+  a new modality cannot quietly fall into "Other".
+- **The tiles must sum to the "Total Income" printed in the same heading.** The
+  dashboard used to withhold a consultation until its appointment was `DONE`,
+  which made the parts stop adding up to the whole with nothing on screen to
+  explain the gap. Money that is `paid` is income. Analytics likewise must
+  `exclude(is_returned=True)` — a refunded sale keeps its `total`.
+
+Guarded by `tests/test_module_packaging.py`.
+
 ### Inventory & dispensing
 
 Stock lives in `StockBatch` rows; `Medicine.quantity` is an aggregate that can drift from `batch_quantity` (hence `reconcile_stock`). Use the derived properties rather than raw `quantity`:
@@ -890,6 +966,20 @@ whose `net` is a derived property (`basic + allowances − deductions`, never st
 printed via `print/base_print.html`; `salary_create` pre-fills `basic` from the
 staff profile when opened with `?user_id=`. Staff are the hospital's own users
 (`User.objects.filter(hospital=...)`, superuser sees all). Guarded by `hr/tests.py`.
+
+**Absence deductions** are computed, never stored on the profile.
+`StaffProfile.allowed_monthly_leaves` is the paid-leave quota, and deductible days
+= absents + half-days×0.5 + leaves *beyond* the quota. The rate is
+`deduction_per_absent_day`, or `monthly_salary / 30` when that is blank; the whole
+thing is skipped when `enable_absence_deduction` is off. Both
+`attendance_summary` (per-staff estimate) and `salary_create` (pre-fills
+`deductions` + an explaining `note` when opened with `?user_id=`) derive it from
+the same attendance rows — the payslip's stored figure is the one the accountant
+accepted, which is why they may still edit it before saving.
+`StaffProfile.photo` needs `request.FILES` on the profile form. Note
+`profile_edit` **stamps `hospital` on the profile it `get_or_create`s**: without it
+the row lands with `hospital = NULL` and `TenantManager` then hides the profile
+that was just created.
 
 ### Install-as-app (PWA)
 

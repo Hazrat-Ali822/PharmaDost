@@ -47,6 +47,8 @@ def dashboard(request):
     from decimal import Decimal
     from django.db.models import Sum, Q
     from billing.models import Invoice, InvoiceItem, Expense
+    from billing import revenue
+    from billing.revenue import classify
     from sales.models import Sale
 
     low_stock = Medicine.objects.low_stock()
@@ -100,13 +102,17 @@ def dashboard(request):
         daily_expense.append(float(exp_by_day.get(day, 0)))
         
     # Departmental Revenue & Activity Calculations for Selected Date Range
+    # Scoping is the managers' job here: Invoice and Sale both carry a `hospital`
+    # FK and a TenantManager, which is already fail-closed (a hospital-less
+    # non-superuser matches only hospital-less rows).
+    #
+    # Do NOT re-add `.filter(patient__hospital=...)`. It looks like a belt-and-
+    # braces tenant filter and is actually a silent data-loss bug: `Sale.patient`
+    # is nullable, so the join drops every sale that has no patient — i.e. every
+    # walk-in counter sale. A pharmacy-only tenant has *no* patients at all, so
+    # its "Pharmacy Sales" tile read Rs 0 all day while the 30-day tile beside it
+    # (which has no such join) showed the real money.
     invs = Invoice.objects.filter(created_at__date__range=[start_date, end_date])
-    # Fail-closed: a hospital-less non-superuser must see only hospital-less rows,
-    # not every tenant's revenue. Keying on `if request.user.hospital:` let such a
-    # user's dashboard aggregate all tenants' invoices.
-    if not request.user.is_superuser:
-        invs = invs.filter(patient__hospital=request.user.hospital)
-
     items = InvoiceItem.objects.filter(invoice__in=invs).select_related('invoice')
     
     opd_rev = Decimal('0.00')
@@ -122,19 +128,24 @@ def dashboard(request):
             factor = Decimal(str(item.invoice.paid)) / Decimal(str(item.invoice.total))
         scaled_amt = amt * factor
         
-        if desc == 'OPD Consultation':
-            if item.invoice.appointment and item.invoice.appointment.status == 'DONE':
-                opd_rev += scaled_amt
-        elif desc.startswith('Lab:'):
+        # One shared classifier (billing.revenue) — this screen and the analytics
+        # chart used to parse the description with different rules and disagree.
+        # It also drops no appointment-status gate: these tiles must add up to the
+        # "Total Income" figure printed in the same heading, and `paid` is money
+        # already in the till, so withholding a consultation until the doctor
+        # marks it DONE made the parts stop summing to the whole.
+        kind = classify(desc)
+        if kind == revenue.OPD:
+            opd_rev += scaled_amt
+        elif kind == revenue.LAB:
             lab_rev += scaled_amt
-        elif any(desc.startswith(prefix) for prefix in ['Ultrasound:', 'X-Ray:', 'CT Scan:', 'MRI:', 'ECG:', 'Echocardiography:', 'Mammography:', 'ULTRASOUND:', 'XRAY:', 'CT:', 'MRI:', 'ECG:', 'ECHO:', 'MAMMO:']):
+        elif kind == revenue.IMAGING:
             imaging_rev += scaled_amt
         else:
             other_rev += scaled_amt
 
-    pharmacy_sales = Sale.objects.filter(created_at__date__range=[start_date, end_date], is_returned=False)
-    if not request.user.is_superuser:
-        pharmacy_sales = pharmacy_sales.filter(patient__hospital=request.user.hospital)
+    pharmacy_sales = Sale.objects.filter(created_at__date__range=[start_date, end_date],
+                                         is_returned=False)
     pharmacy_rev = pharmacy_sales.aggregate(s=Sum('paid'))['s'] or Decimal('0.00')
 
     # Total Income and Expense for the selected date range

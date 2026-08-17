@@ -551,7 +551,13 @@
       </div>
       {% endif %}
 
-      {% if nav.catalog %}
+      {% comment %}
+        `catalog` is a CORE feature, so it is on even for a pharmacy-only tenant —
+        but both links inside are gated on lab/imaging, which such a tenant does
+        not have. Without the second half of this test the sidebar rendered a
+        bare heading with nothing under it.
+      {% endcomment %}
+      {% if nav.catalog and nav.lab or nav.catalog and nav.imaging %}
       <div class="nav-group">
         <div class="nav-group-title">Price List</div>
         {% if nav.lab %}

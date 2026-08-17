@@ -10,7 +10,7 @@ from django.views.decorators.http import require_POST
 
 from django.core.exceptions import ValidationError
 
-from accounts.decorators import role_required, feature_required
+from accounts.decorators import role_required, feature_required, module_installed
 from user_mgmt.models import current_currency
 from .models import TestOrder, LabTest, TestCategory, TestResult
 from .forms import TestOrderCreateForm, TestResultFormSet
@@ -248,6 +248,7 @@ def order_report(request, order_id):
 
 
 @feature_required('catalog')
+@module_installed('lab')
 def test_catalog(request):
     """Admin price list for **this hospital's** lab tests.
 

@@ -57,7 +57,11 @@ def visual_analytics(request):
 
     # 1. Department Revenue Breakdown
     # A. Pharmacy Sales
-    pharmacy_qs = Sale.objects.filter(created_at__date__range=(start_date, end_date))
+    # `is_returned=False`: a refunded sale keeps its `total`, so counting it here
+    # left returned goods showing as revenue on the chart. The dashboard excluded
+    # them all along; this screen did not.
+    pharmacy_qs = Sale.objects.filter(created_at__date__range=(start_date, end_date),
+                                      is_returned=False)
     # Fail-closed: key on superuser, not on "has a hospital". InvoiceItem and
     # Appointment below have no TenantManager, so a hospital-less non-superuser would
     # otherwise aggregate every tenant's revenue and doctor workload.
@@ -73,30 +77,24 @@ def visual_analytics(request):
     if not request.user.is_superuser:
         invoice_qs = invoice_qs.filter(invoice__hospital=hospital)
 
-    opd_rev = invoice_qs.filter(description__icontains='OPD Consultation').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
-    lab_rev = invoice_qs.filter(description__icontains='Lab:').aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
-    
-    imaging_rev = invoice_qs.filter(
-        Q(description__icontains='Ultrasound') |
-        Q(description__icontains='X-Ray') |
-        Q(description__icontains='CT') |
-        Q(description__icontains='MRI') |
-        Q(description__icontains='ECG') |
-        Q(description__icontains='Echocardiography') |
-        Q(description__icontains='Imaging')
-    ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+    # Classified with billing.revenue, the same rule the dashboard uses. These
+    # were `icontains` tests, which is why a ward "Injection" charge counted as a
+    # CT scan — 'Injection' contains 'ct'. Prefix matching, and one shared rule so
+    # the two screens cannot drift apart again.
+    from billing import revenue
+    imaging_q = Q()
+    for prefix in revenue.imaging_prefixes():
+        imaging_q |= Q(description__istartswith=prefix)
+    service_q = (Q(description__istartswith='OPD Consultation')
+                 | Q(description__istartswith='Lab:') | imaging_q)
 
-    other_rev = invoice_qs.exclude(
-        Q(description__icontains='OPD Consultation') |
-        Q(description__icontains='Lab:') |
-        Q(description__icontains='Ultrasound') |
-        Q(description__icontains='X-Ray') |
-        Q(description__icontains='CT') |
-        Q(description__icontains='MRI') |
-        Q(description__icontains='ECG') |
-        Q(description__icontains='Echocardiography') |
-        Q(description__icontains='Imaging')
-    ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+    def _sum(qs):
+        return qs.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+
+    opd_rev = _sum(invoice_qs.filter(description__istartswith='OPD Consultation'))
+    lab_rev = _sum(invoice_qs.filter(description__istartswith='Lab:'))
+    imaging_rev = _sum(invoice_qs.filter(imaging_q))
+    other_rev = _sum(invoice_qs.exclude(service_q))
 
     dept_labels = ["Pharmacy", "OPD Consultations", "Laboratory", "Imaging/Radiology"]
     dept_values = [float(pharmacy_rev), float(opd_rev), float(lab_rev), float(imaging_rev)]

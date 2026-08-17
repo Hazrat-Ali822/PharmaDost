@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from pharma_mgmt.pagination import paginate
 from django.views.decorators.http import require_POST
 
-from accounts.decorators import role_required, feature_required
+from accounts.decorators import role_required, feature_required, module_installed
 from user_mgmt.models import current_currency
 from .forms import ImagingReportForm, ImagingStudyCreateForm
 from .models import ImagingStudy, ScanType
@@ -182,6 +182,7 @@ def study_report(request, study_id):
 
 
 @feature_required('catalog')
+@module_installed('imaging')
 def scan_catalog(request):
     """Admin price list for **this hospital's** imaging services.
 
