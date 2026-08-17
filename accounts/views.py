@@ -48,6 +48,14 @@ def smart_login(request, *args, **kwargs):
     wildcard DNS yet), via `saas.views.hospital_login`.
     """
     from django.conf import settings
+
+    from .lockout import guard
+    # Guessing a password had no consequence at all before this: the audit log
+    # noticed a burst and told the admin, but nothing refused the next attempt.
+    locked = guard(request)
+    if locked is not None:
+        return locked
+
     # Already signed in? Send them where they work. Every branch below renders a
     # sign-in form, which to somebody who is signed in reads as "you have been
     # logged out" — and on a phone, where /login/ is one mis-tap from the app

@@ -8,6 +8,21 @@ def get_current_user():
     return getattr(_state, 'user', None)
 
 
+def get_current_ip():
+    """Where the request came from, for the audit trail and the login lockout.
+
+    A security log that cannot say *where from* only tells half the story, and
+    the lockout keys on (email, IP) so that one attacker cannot lock a whole
+    hospital's staff out of their own system.
+    """
+    return getattr(_state, 'ip', '') or ''
+
+
+def _client_ip(request):
+    forwarded = (request.META.get('HTTP_X_FORWARDED_FOR') or '').split(',')[0].strip()
+    return (forwarded or request.META.get('REMOTE_ADDR') or '')[:45]
+
+
 @contextlib.contextmanager
 def suppress_audit():
     """Detach the current user for a block so the signal-based audit logger skips
@@ -35,7 +50,9 @@ class CurrentUserMiddleware:
 
     def __call__(self, request):
         _state.user = getattr(request, 'user', None)
+        _state.ip = _client_ip(request)
         try:
             return self.get_response(request)
         finally:
             _state.user = None
+            _state.ip = ''

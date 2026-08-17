@@ -1,0 +1,22 @@
+{% extends 'print/base_print.html' %}
+{% comment %}
+  Extends the print base rather than partials/base.html on purpose: the person
+  seeing this is not signed in, so the app chrome (sidebar, notification poll,
+  badge counts) has nothing to render and several of its context processors
+  would be doing work for a page that exists to say one sentence.
+{% endcomment %}
+{% block title %}Sign-in temporarily locked{% endblock %}
+{% block content %}
+<div style="max-width:520px;margin:60px auto;text-align:center">
+  <div style="font-size:44px;line-height:1">🔒</div>
+  <h2 style="margin:14px 0 8px">Sign-in temporarily locked</h2>
+  <p style="color:#555;line-height:1.6">{{ message }}</p>
+  <p style="color:#777;font-size:13px;line-height:1.6">
+    This limit applies to this computer only — it does not lock the account, so
+    your colleagues can carry on working.
+  </p>
+  <p style="margin-top:22px">
+    <a class="btn" href="{% url 'login' %}">Back to sign in</a>
+  </p>
+</div>
+{% endblock %}

@@ -130,6 +130,7 @@ INSTALLED_APPS = [
     "vaccination",
     "consent",
     "offline_sync",
+    "messaging",
 ]
 
 LOGIN_URL = '/login/'
@@ -203,6 +204,106 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
+
+# ---------------------------------------------------------------------------
+# Outbound messaging (see messaging/services.py)
+#
+# Both channels are OFF unless configured, and `messaging.services` records that
+# as SKIPPED rather than an error — most installs have no SMS gateway and the
+# desktop/LAN build has no internet at all. Nothing here may make a send raise.
+# ---------------------------------------------------------------------------
+EMAIL_HOST = os.getenv("DJANGO_EMAIL_HOST", "").strip()
+EMAIL_PORT = int(os.getenv("DJANGO_EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.getenv("DJANGO_EMAIL_USER", "").strip()
+EMAIL_HOST_PASSWORD = os.getenv("DJANGO_EMAIL_PASSWORD", "")
+EMAIL_USE_TLS = os.getenv("DJANGO_EMAIL_TLS", "True").lower() == "true"
+EMAIL_USE_SSL = os.getenv("DJANGO_EMAIL_SSL", "False").lower() == "true"
+EMAIL_TIMEOUT = 15
+DEFAULT_FROM_EMAIL = os.getenv("DJANGO_EMAIL_FROM", EMAIL_HOST_USER).strip()
+# With no host configured, print to the console instead of attempting SMTP —
+# in development that shows the message, and in production `email_configured()`
+# is False so nothing is attempted at all.
+EMAIL_BACKEND = ("django.core.mail.backends.smtp.EmailBackend" if EMAIL_HOST
+                 else "django.core.mail.backends.console.EmailBackend")
+
+# SMS: any HTTP gateway, described entirely by env so switching vendor is a
+# change to .env rather than to code. {to} and {text} are substituted.
+#   PHARMADOST_SMS_URL=https://api.example.pk/send
+#   PHARMADOST_SMS_PARAMS=api_key=abc&sender=Sehatyar&to={to}&text={text}
+SMS_URL = os.getenv("PHARMADOST_SMS_URL", "").strip()
+SMS_PARAMS = os.getenv("PHARMADOST_SMS_PARAMS", "to={to}&text={text}").strip()
+SMS_METHOD = os.getenv("PHARMADOST_SMS_METHOD", "GET").strip()
+
+# ---------------------------------------------------------------------------
+# Failed-login lockout (accounts.lockout)
+# ---------------------------------------------------------------------------
+LOCKOUT_THRESHOLD = int(os.getenv("PHARMADOST_LOCKOUT_THRESHOLD", "8"))
+LOCKOUT_WINDOW_MINUTES = int(os.getenv("PHARMADOST_LOCKOUT_WINDOW", "15"))
+LOCKOUT_MINUTES = int(os.getenv("PHARMADOST_LOCKOUT_MINUTES", "15"))
+
+# ---------------------------------------------------------------------------
+# Logging + error reporting
+#
+# With DEBUG off, an unhandled exception on the host produced a 500 page and
+# nothing else — no trace, no file, no alert — so the first anyone knew of a
+# broken screen was a customer telephoning. These write the traceback somewhere
+# a person can read it.
+# ---------------------------------------------------------------------------
+LOG_DIR = DATA_DIR / "logs"
+try:
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    _log_file = str(LOG_DIR / "app.log")
+except OSError:                      # read-only install dir; console only
+    _log_file = None
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "full": {"format": "{asctime} {levelname} {name} {message}", "style": "{"},
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "full"},
+    },
+    "root": {"handlers": ["console"], "level": "WARNING"},
+    "loggers": {
+        "django.request": {"handlers": ["console"], "level": "ERROR",
+                           "propagate": False},
+    },
+}
+if _log_file:
+    LOGGING["handlers"]["file"] = {
+        # Rotating, because a shared host's disk quota is small and an
+        # unbounded log is its own outage.
+        "class": "logging.handlers.RotatingFileHandler",
+        "filename": _log_file,
+        "maxBytes": 2 * 1024 * 1024,
+        "backupCount": 3,
+        "formatter": "full",
+    }
+    LOGGING["root"]["handlers"].append("file")
+    LOGGING["loggers"]["django.request"]["handlers"].append("file")
+
+# Sentry is entirely optional — the package is not in requirements.txt, so an
+# install without it (and every install without a DSN set) simply carries on.
+SENTRY_DSN = os.getenv("SENTRY_DSN", "").strip()
+if SENTRY_DSN:
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.django import DjangoIntegration
+
+        sentry_sdk.init(
+            dsn=SENTRY_DSN,
+            integrations=[DjangoIntegration()],
+            # Errors only by default: performance tracing on a small shared host
+            # costs more than it tells you, and every trace is an outbound call.
+            traces_sample_rate=float(os.getenv("SENTRY_TRACES_RATE", "0")),
+            # These carry patient data. Never ship it to a third party.
+            send_default_pii=False,
+            environment=os.getenv("SENTRY_ENV", "production"),
+        )
+    except Exception:                # pragma: no cover - never block startup
+        pass
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Asia/Karachi"

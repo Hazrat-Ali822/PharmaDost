@@ -27,6 +27,7 @@ urlpatterns = [
     # not a headless job). Sits after pwa_offline so /offline/ still serves the
     # offline page and only /offline/sync/ falls through to this include.
     path('offline/', include('offline_sync.urls')),
+    path('messages/', include('messaging.urls')),
     # Public SEO / AEO surface (crawlable, no login) — the marketing home a search
     # engine or AI answer engine can index and cite. See user_mgmt.seo_views.
     path('features/', seo_views.landing, name='seo_landing'),

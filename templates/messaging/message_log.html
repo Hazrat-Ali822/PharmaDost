@@ -1,0 +1,77 @@
+{% extends 'partials/base.html' %}
+{% block title %}Messages{% endblock %}
+{% block page_title %}Messages{% endblock %}
+{% block content %}
+<div class="page-head"><h2>📨 Messages sent</h2></div>
+
+<div class="card" style="margin-bottom:16px">
+  <h3 style="margin-top:0">Channels</h3>
+  <p style="margin:6px 0">
+    Email:
+    {% if email_ready %}<span class="badge green">configured</span>
+    {% else %}<span class="badge">not set up</span>
+      <span class="muted" style="font-size:13px">— set <code>DJANGO_EMAIL_HOST</code> and the related values in <code>.env</code>.</span>
+    {% endif %}
+  </p>
+  <p style="margin:6px 0">
+    SMS:
+    {% if sms_ready %}<span class="badge green">configured</span>
+    {% else %}<span class="badge">not set up</span>
+      <span class="muted" style="font-size:13px">— set <code>PHARMADOST_SMS_URL</code> and <code>PHARMADOST_SMS_PARAMS</code> in <code>.env</code>.</span>
+    {% endif %}
+  </p>
+  <p class="muted" style="font-size:13px;margin-bottom:0">
+    A channel that is not set up records its messages as <b>Skipped</b>, not as a
+    failure — nothing is broken, there is simply nowhere to send them yet.
+  </p>
+</div>
+
+{% if failed_count %}
+<div class="card" style="margin-bottom:16px;border-color:#ef4444">
+  <b style="color:#ef4444">{{ failed_count }} message(s) failed.</b>
+  <span class="muted">Messages are sent as they happen and are not retried, so a
+  failure here means that person was never reached.</span>
+</div>
+{% endif %}
+
+<form method="get" class="search" style="margin-bottom:12px">
+  <select name="status">
+    <option value="">All statuses</option>
+    <option value="SENT" {% if status == 'SENT' %}selected{% endif %}>Sent</option>
+    <option value="FAILED" {% if status == 'FAILED' %}selected{% endif %}>Failed</option>
+    <option value="SKIPPED" {% if status == 'SKIPPED' %}selected{% endif %}>Skipped</option>
+  </select>
+  <select name="kind">
+    <option value="">All kinds</option>
+    {% for k in kinds %}<option value="{{ k }}" {% if kind == k %}selected{% endif %}>{{ k }}</option>{% endfor %}
+  </select>
+  <button class="btn" type="submit">Filter</button>
+</form>
+
+<div class="card">
+  <table class="tbl">
+    <thead>
+      <tr><th>When</th><th>Channel</th><th>To</th><th>Kind</th><th>Status</th><th>Detail</th></tr>
+    </thead>
+    <tbody>
+      {% for m in page %}
+      <tr>
+        <td>{{ m.created_at|date:"d/m/Y H:i" }}</td>
+        <td>{{ m.get_channel_display }}</td>
+        <td>{{ m.to }}</td>
+        <td>{{ m.kind }}</td>
+        <td>
+          {% if m.status == 'SENT' %}<span class="badge green">Sent</span>
+          {% elif m.status == 'FAILED' %}<span class="badge" style="background:#ef4444;color:#fff">Failed</span>
+          {% else %}<span class="badge">Skipped</span>{% endif %}
+        </td>
+        <td class="wrap">{{ m.error|default:m.subject|default:m.body|truncatechars:120 }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="muted">Nothing has been sent yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% include 'partials/_pagination.html' with page=page %}
+{% endblock %}

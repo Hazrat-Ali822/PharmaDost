@@ -553,7 +553,14 @@ def render_hospital_login(request, hospital):
     another hospital is rejected here even with a correct password (only that
     hospital's staff, or a superuser, may sign in on its portal).
     """
+    from accounts.lockout import guard
     from user_mgmt.models import SiteSettings
+
+    # Same brute-force limit as the platform door — a tenant portal is just as
+    # exposed, and this is the address a hospital's staff actually use.
+    locked = guard(request)
+    if locked is not None:
+        return locked
 
     # Check if subscription is active
     if not hospital.is_active or hospital.expiry_date < timezone.now().date():

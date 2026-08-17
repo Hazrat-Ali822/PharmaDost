@@ -35,6 +35,10 @@ class AuditLog(models.Model):
     object_id = models.CharField(max_length=40, blank=True)
     object_repr = models.CharField(max_length=200, blank=True)
     description = models.CharField(max_length=255, blank=True)
+    # Where the request came from. Blank for anything raised outside a request
+    # (management commands, cron). Indexed because the login lockout counts
+    # failures per (email, IP).
+    ip_address = models.CharField(max_length=45, blank=True, db_index=True)
     hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE,
                                  null=True, blank=True, related_name='audit_logs')
 

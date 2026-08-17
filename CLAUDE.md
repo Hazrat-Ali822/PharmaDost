@@ -96,6 +96,7 @@ Two traps when adding tests:
 | `seed_demo` | Demo hospital + users + data (all demo passwords are `pharma123`) |
 | `seed_public_demo [--reset]` | Isolated **public demo tenant** ("Sehatyar Demo Hospital", slug `demo`) with a user per role (all `demo1122`) and data in **every** module. Idempotent — re-run only refreshes logins; `--reset` wipes and rebuilds. Powers the `/demo/` one-click login. |
 | `expiry_alert [--days N]` | Notify pharmacist/admin about near-expiry stock (daily cron) |
+| `send_reminders [--hospital <slug>] [--dry-run]` | SMS/email patients: tomorrow's appointments, lab report ready, vaccination due (daily cron). Idempotent — a `dedupe_key` per message stops a re-run messaging anyone twice. |
 | `low_stock_alert` | Notify pharmacist/admin about low stock (daily cron) |
 | `reconcile_stock [--fix]` | Repair `Medicine.quantity` drift vs the sum of its `StockBatch` rows (weekly cron) |
 | `repair_tenant_orphans` | Fix rows left with `hospital = NULL` |
@@ -157,6 +158,8 @@ Changing it signs everyone out once. Do **not** gate this on `DJANGO_ENV` — no
 that variable on the host, which is why the old check never fired.
 
 Daily alerts run from cPanel → Cron Jobs as a single chained line (see the deploy doc).
+**`send_reminders` belongs on that same line** — it is the patient-facing half
+(appointment / lab-ready / vaccination-due) and is safe to run twice.
 
 The free tier allows only **one** scheduled task, so the cron commands are chained into a single daily line in the Tasks tab.
 
@@ -1056,6 +1059,81 @@ accepted, which is why they may still edit it before saving.
 `profile_edit` **stamps `hospital` on the profile it `get_or_create`s**: without it
 the row lands with `hospital = NULL` and `TenantManager` then hides the profile
 that was just created.
+
+### Reaching people: email, SMS and reminders
+
+There was no way to contact anybody — no mail backend, no SMS — which is why the
+password reset had to become an in-app notification to the admin. The app knew
+tomorrow's appointments, which lab reports were ready and which children were due
+a vaccine, and none of it could leave the building.
+
+`messaging/` is that layer. Four rules hold it together:
+
+- **A send never raises.** These are called from the middle of a booking, a
+  discharge, a lab result. A gateway that is down, misconfigured or simply not
+  bought must never lose the clinical work that triggered the message, so every
+  send swallows its exception into a `MessageLog` row and returns.
+- **Not configured is not an error.** Most installs have no SMS gateway and the
+  desktop/LAN build has no internet, so those record **`SKIPPED`**, not `FAILED`.
+  A screen full of red trains the admin to ignore it.
+- **Everything is logged, because there is no queue.** A shared cPanel host with
+  one scheduled task means messages go out inline with nothing watching and
+  nowhere to retry from. `MessageLog` (tenant-scoped) is the only place a failed
+  reminder becomes visible; **Settings → Messages** (`/messages/`, ADMIN) reads it
+  back and states plainly whether each channel is configured at all.
+- **SMS is vendor-neutral.** There is no single Pakistani gateway, so the backend
+  is an HTTP call described entirely by env — `PHARMADOST_SMS_URL`,
+  `PHARMADOST_SMS_PARAMS` (with `{to}` and `{text}` substituted) and
+  `PHARMADOST_SMS_METHOD`. Switching provider is a change to `.env`, not to code.
+  Email is the standard `DJANGO_EMAIL_*` set; with no host configured the backend
+  falls back to console and `email_configured()` reports False.
+
+`send_reminders` (daily cron, chain it with the existing alert commands) sends
+appointment reminders for tomorrow, "your lab report is ready", and vaccination
+doses due. **It is safe to run twice** — every message carries a `dedupe_key`
+naming the thing and the date, and `already_sent` refuses a repeat, because on a
+shared host you cannot be sure the task ran exactly once and a patient messaged
+twice stops reading the messages. A *failure* is deliberately not remembered as
+sent, so one gateway hiccup does not cancel that reminder for good.
+
+Two traps in that command: `Appointment` and `TestOrder` have **no `hospital`
+column and no `TenantManager`**, so binding the tenant does not scope them — they
+must be filtered on `patient__hospital`, or the hospital-less pass at the end of
+the loop picks up every hospital's rows a second time. And `Patient` has a
+`phone` but **no email**, which is correct for the market: patients are reached by
+SMS, staff by email.
+
+### Brute force, audit IP, and report exports
+
+**Failed sign-ins are now refused, not merely noticed.** `audit/signals.py` always
+told the admin about a burst, but nothing stopped the next attempt, so an
+internet-facing hospital login could be tried at machine speed.
+`accounts/lockout.py` counts failures off the existing `AuditLog` rows —
+**not a cache**, because Passenger runs several processes and Django's default
+cache is per-process local memory, so a cache counter would give an attacker N
+attempts per worker. It locks on **(email, IP)**, never on the account alone:
+locking the account hands anyone a way to shut a hospital's staff out of their own
+system by typing a wrong password a few times. `lockout.guard(request)` is called
+at the top of `accounts.smart_login` and `saas.render_hospital_login` (both login
+doors) and renders `registration/locked_out.html` with **HTTP 429**. The lock
+lifts on its own — there is no unlock button, because an admin who is locked out
+could not press one. Tunable via `LOCKOUT_THRESHOLD` / `LOCKOUT_WINDOW_MINUTES` /
+`LOCKOUT_MINUTES`.
+
+`AuditLog.ip_address` was added for this and is worth having anyway — a security
+trail that cannot say *where from* is half a trail. It is filled from
+`audit.middleware.get_current_ip()`, a thread-local set per request, and is blank
+for anything raised outside one (commands, cron).
+
+**Every report exports to CSV** via `?export=csv` (`reports/export.py`,
+`csv_response`). CSV rather than .xlsx: Excel opens it, it needs no dependency on
+a shared host, and `_safe()` defuses **formula injection** — a medicine or patient
+named `=cmd|...` would otherwise execute when the accountant opens the file. The
+file carries a UTF-8 BOM or Excel on Windows renders non-ASCII names as mojibake.
+The download link lives in `reports/_range_filter.html`, so it inherits the
+period on screen and every report that includes that partial gets it for free.
+
+Guarded by `tests/test_hardening.py` and `messaging/tests.py`.
 
 ### Install-as-app (PWA)
 

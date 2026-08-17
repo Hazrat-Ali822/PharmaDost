@@ -21,3 +21,12 @@
   <button class="btn" type="submit">Apply</button>
   <span class="muted" style="align-self:center">Showing: <strong>{{ rng.label }}</strong></span>
 </form>
+{% comment %}
+  Export carries the *current* query string, so the file matches the period on
+  screen. Built from request.GET rather than rng so a custom from/to survives.
+{% endcomment %}
+<p style="margin:-6px 0 16px">
+  <a class="btn alt sm" href="?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&amp;{% endif %}export=csv">
+    Download as CSV (opens in Excel)
+  </a>
+</p>

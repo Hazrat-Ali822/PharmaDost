@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from accounts.decorators import role_required, feature_required
+from .export import csv_response, wants_csv
 from .utils import (resolve_range, sales_report_data, profit_report_data,
                     inventory_snapshot, daybook_data, module_profit_data)
 
@@ -10,6 +11,16 @@ REPORT_ROLES = ["ADMIN", "PHARMACIST", "ACCOUNTANT"]
 def sales_report(request):
     rng = resolve_range(request)
     data = sales_report_data(rng['start'], rng['end'])
+    if wants_csv(request):
+        rows = [('Bills', data['bills']), ('Total billed', data['total']),
+                ('Collected', data['paid']), ('On credit', data['credit']),
+                ('Retail bills', data['retail']['bills']),
+                ('Retail total', data['retail']['total']),
+                ('Wholesale bills', data['wholesale']['bills']),
+                ('Wholesale total', data['wholesale']['total'])]
+        rows += [(f"Collected by {method}", v['total'])
+                 for method, v in sorted(data['by_payment'].items())]
+        return csv_response('sales-report', ['Measure', 'Value'], rows)
     return render(request, 'reports/sales_report.html', {'data': data, 'rng': rng})
 
 
@@ -17,6 +28,11 @@ def sales_report(request):
 def profit_report(request):
     rng = resolve_range(request)
     data = profit_report_data(rng['start'], rng['end'])
+    if wants_csv(request):
+        rows = [(it['name'], it['qty'], it['revenue'], it['profit'])
+                for it in data['top_items']]
+        return csv_response('profit-by-item',
+                            ['Medicine', 'Qty sold', 'Revenue', 'Profit'], rows)
     return render(request, 'reports/profit_report.html', {'data': data, 'rng': rng})
 
 
@@ -24,6 +40,10 @@ def profit_report(request):
 def daybook_report(request):
     rng = resolve_range(request)
     data = daybook_data(rng['start'], rng['end'])
+    if wants_csv(request):
+        rows = [(k.replace('_', ' ').title(), v) for k, v in data.items()
+                if not isinstance(v, (dict, list))]
+        return csv_response('day-book', ['Measure', 'Value'], rows)
     return render(request, 'reports/daybook.html', {'data': data, 'rng': rng})
 
 
@@ -37,6 +57,13 @@ def module_profit_report(request):
     """
     rng = resolve_range(request)
     rows, totals = module_profit_data(rng['start'], rng['end'])
+    if wants_csv(request):
+        out = [(r['label'], r['revenue'],
+                r['cost'] if r['cost_tracked'] else 'not recorded',
+                r['profit'] if r['cost_tracked'] else '') for r in rows]
+        out.append(('TOTAL', totals['revenue'], totals['cost'], totals['profit']))
+        return csv_response('profit-by-module',
+                            ['Module', 'Revenue', 'Cost', 'Profit'], out)
     return render(request, 'reports/module_profit.html',
                   {'rows': rows, 'totals': totals, 'rng': rng})
 
@@ -44,6 +71,14 @@ def module_profit_report(request):
 @feature_required('reports')
 def inventory_report(request):
     items, summary = inventory_snapshot()
+    if wants_csv(request):
+        rows = [(i['name'], i['generic_name'], i['brand'], i['category'],
+                 i['quantity'], i['reorder_level'], i['price'],
+                 i['wholesale_price'], i['expiry_date']) for i in items]
+        return csv_response(
+            'inventory',
+            ['Medicine', 'Generic', 'Brand', 'Category', 'Qty', 'Reorder level',
+             'Retail price', 'Wholesale price', 'Expiry'], rows)
     return render(request, 'reports/inventory_report.html', {'items': items, 'summary': summary})
 
 

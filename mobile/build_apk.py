@@ -25,7 +25,7 @@ ANDROID_MANIFEST_XML = """<?xml version="1.0" encoding="utf-8"?>
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="false">
         
         <activity
             android:name=".MainActivity"

@@ -4,16 +4,18 @@
   "webDir": "dist_web",
   "bundledWebRuntime": false,
   "server": {
-    "url": "http://sehatyar.online",
-    "cleartext": true,
+    "url": "https://sehatyar.online",
+    "cleartext": false,
+    "androidScheme": "https",
     "allowNavigation": [
-      "*"
+      "sehatyar.online",
+      "*.sehatyar.online"
     ]
   },
   "android": {
-    "allowMixedContent": true,
+    "allowMixedContent": false,
     "captureInput": true,
-    "webContentsDebuggingEnabled": true
+    "webContentsDebuggingEnabled": false
   },
   "plugins": {
     "SplashScreen": {

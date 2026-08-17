@@ -9,7 +9,7 @@ from django.contrib.auth.signals import (user_logged_in, user_logged_out,
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 
-from .middleware import get_current_user
+from .middleware import get_current_user, get_current_ip
 from .models import AuditLog
 
 # app_label.ModelName of the business objects we track (line-items excluded to
@@ -95,6 +95,7 @@ def _log_delete(sender, instance, **kwargs):
 @receiver(user_logged_in)
 def _log_login(sender, request, user, **kwargs):
     AuditLog.objects.create(user=user, action='LOGIN', model_name='User',
+                            ip_address=get_current_ip(),
                             object_id=str(user.pk), object_repr=str(user),
                             hospital_id=getattr(user, 'hospital_id', None))
 
@@ -104,6 +105,7 @@ def _log_logout(sender, request, user, **kwargs):
     if user is None:
         return
     AuditLog.objects.create(user=user, action='LOGOUT', model_name='User',
+                            ip_address=get_current_ip(),
                             object_id=str(user.pk), object_repr=str(user),
                             hospital_id=getattr(user, 'hospital_id', None))
 
@@ -120,7 +122,7 @@ def _log_login_failed(sender, credentials, **kwargs):
                    .values_list('hospital_id', flat=True).first())
     AuditLog.objects.create(user=None, action='LOGIN_FAILED', model_name='User',
                             object_repr=str(who)[:200], description='Failed login attempt',
-                            hospital_id=hospital_id)
+                            ip_address=get_current_ip(), hospital_id=hospital_id)
 
     if hospital_id:
         _warn_on_repeated_failures(who, hospital_id)
