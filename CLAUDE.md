@@ -126,6 +126,28 @@ end** rather than reasoned about. Three commands support it: `db_preflight`
 (rows PostgreSQL will refuse), `db_export` (the dump) and `db_snapshot`
 (verification).
 
+**Never put schema changes after a data step in one migration.** Each migration
+runs in a single transaction, and once a `RunPython`/`RunSQL` has written rows,
+PostgreSQL holds deferred foreign-key trigger events and refuses DDL on the
+tables they reference:
+
+```
+django.db.utils.OperationalError: cannot ALTER TABLE "hr_shift"
+because it has pending trigger events
+```
+
+`ipd/0010` did AddField → RunPython → RenameField and **the whole suite passed**,
+because SQLite has no deferred constraint triggers and cannot produce that error
+— it broke only on the real database, mid-deploy. Split it: schema, then data,
+then schema (`ipd/0010_shift_fk_add` → `0011_shift_fk_data` → `0012_shift_fk_finish`).
+Schema *before* data in one migration is fine (add a column, then backfill it);
+it is DDL **after** DML that fails. Also prefer renaming the *old* column out of
+the way and creating the new field under its final name over adding a temporary
+field and renaming it — renaming an FK column drops and recreates its
+constraint, which is more DDL on the referenced table. Guarded by
+`tests/test_migration_safety.py`, which reads every migration file rather than
+running one, since the test database will never reproduce this.
+
 **A signal that writes during a fixture load breaks the migration**, and no
 amount of care with the dump helps — the source data is valid; the *load*
 invents rows. `user_mgmt.create_profile` (a `post_save` on the user model) built
