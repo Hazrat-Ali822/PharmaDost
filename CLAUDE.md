@@ -1346,6 +1346,20 @@ too. Only that off-machine copy survives the computer being stolen or its disk f
 the doc steers the clinic to set it. The in-app `backup_download` button remains for
 on-demand copies.
 
+**`backup_download` archives the whole install, not one hospital, and is therefore
+owner-only.** The zip is the raw `db.sqlite3` plus the whole of `MEDIA_ROOT` — on the
+hosted site that single file holds *every* tenant's patients, bills, staff and password
+hashes, and the media root every tenant's uploads. It shipped as `@role_required(["ADMIN"])`
+with the button in each tenant's own dashboard topbar, which put a one-click download of
+every customer's database in every customer's hands. `user_mgmt.views.can_download_raw_backup`
+now limits it to the **desktop/LAN build** (where the clinic *is* the install — this is what
+the button was written for) and to a **superuser** on the hosted site; the three places that
+render the button are gated on `desktop_build or user.is_superuser` to match, so it never
+links into a 403. Guarded by `tests/test_security.py::RawBackupIsOwnerOnlyTest`.
+
+A **per-tenant** export (that hospital's own rows only) does not exist yet and is the right
+thing to build if customers ask for their data — do not "fix" that by relaxing this gate.
+
 **Cloud backup to the host + restore** (LAN install → hosted, *not* live sync). On every
 launch `desktop.launcher.upload_backup_to_cloud` also POSTs the snapshot to the hosted site
 (`PHARMADOST_CLOUD_URL`, default `https://sehatyar.online`) at `saas.views.backup_upload` —

@@ -20,7 +20,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from pathlib import Path
 
-from django.test import TestCase, Client
+from django.test import TestCase, Client, override_settings
 from django.urls import reverse
 
 from accounts.models import User
@@ -496,3 +496,50 @@ class SecretKeyGuardTest(TestCase):
     def test_local_development_still_runs_without_a_key(self):
         from django.conf import settings as live
         self.assertTrue(live.SECRET_KEY, 'the suite itself must not need a key set')
+
+
+class RawBackupIsOwnerOnlyTest(TestCase):
+    """The one-click backup archives the WHOLE install, not one hospital.
+
+    On the hosted site the database is a single SQLite file holding every
+    tenant — patients, bills, staff, password hashes — and `MEDIA_ROOT` holds
+    every tenant's uploads. The endpoint shipped as `@role_required(["ADMIN"])`
+    and the button sat in the topbar of every tenant's dashboard, so any
+    customer could download every other customer's database in one click.
+    """
+
+    def setUp(self):
+        self.h = Hospital.objects.create(name='Alpha', slug='alpha-backup',
+                                         expiry_date=_exp())
+        self.admin = User.objects.create_user(email='a@backup.com', password='pw',
+                                              role='ADMIN', hospital=self.h)
+
+    def tearDown(self):
+        from saas.utils import clear_current_hospital
+        clear_current_hospital()
+
+    def _get(self, user):
+        c = Client()
+        c.force_login(user)
+        return c.get(reverse('user_mgmt:backup_download'))
+
+    def test_a_tenant_admin_is_refused(self):
+        self.assertEqual(self._get(self.admin).status_code, 403)
+
+    def test_the_saas_owner_may_still_take_one(self):
+        owner = User.objects.create_superuser(email='owner@backup.com', password='pw')
+        self.assertEqual(self._get(owner).status_code, 200)
+
+    def test_the_desktop_build_may_still_take_one(self):
+        """The clinic *is* the install there, and this button was written for it."""
+        with override_settings(DESKTOP_BUILD=True):
+            self.assertEqual(self._get(self.admin).status_code, 200)
+
+    def test_the_button_is_hidden_from_a_tenant_admin(self):
+        """A link into a 403 is its own bug — and this one advertised that
+        somebody else's database was one click away."""
+        c = Client()
+        c.force_login(self.admin)
+        for path in ('/', '/manage/settings/'):
+            html = c.get(path, follow=True).content.decode()
+            self.assertNotIn(reverse('user_mgmt:backup_download'), html, path)

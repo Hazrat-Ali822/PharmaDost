@@ -7,7 +7,7 @@
   <div style="display:flex;gap:8px">
     <a class="btn" href="{% url 'user_mgmt:site_settings' %}">⚙ Settings</a>
     <a class="btn alt" href="{% url 'user_mgmt:user_list' %}">👥 Users</a>
-    <a class="btn alt" href="{% url 'user_mgmt:backup_download' %}">💾 Backup</a>
+    {% if desktop_build or user.is_superuser %}<a class="btn alt" href="{% url 'user_mgmt:backup_download' %}">💾 Backup</a>{% endif %}
   </div>
 </div>
 {% comment %}

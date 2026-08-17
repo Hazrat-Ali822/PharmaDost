@@ -4,7 +4,7 @@ import zipfile
 from pathlib import Path
 
 from django.conf import settings
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -417,11 +417,41 @@ def site_settings(request):
                    'demo_locked': demo_locked})
 
 
+def can_download_raw_backup(user):
+    """Who may pull the raw database + media archive.
+
+    **The archive is the whole install, not one hospital.** On the hosted site
+    that is a single SQLite file holding every tenant — patients, bills, staff,
+    password hashes — and `MEDIA_ROOT` likewise holds every tenant's uploads. So
+    this is only ever safe for someone who owns the whole install:
+
+      * the **desktop / LAN build**, where the clinic *is* the install and the
+        admin owns their own data (this is what the button was written for), and
+      * a **superuser** on the hosted site, i.e. the SaaS owner.
+
+    It shipped as `@role_required(["ADMIN"])` alone, which put a one-click
+    download of every customer's database in each customer's own topbar.
+    """
+    if getattr(user, 'is_superuser', False):
+        return True
+    return bool(getattr(settings, 'DESKTOP_BUILD', False))
+
+
 @role_required(["ADMIN"])
 def backup_download(request):
     """One-click backup: zip up the whole database + uploaded media and send it as a
     download. Restoring is just unzipping these two into the data folder. Handy for the
-    local desktop app where the admin owns their own data."""
+    local desktop app where the admin owns their own data.
+
+    Gated by `can_download_raw_backup` — see there for why a tenant admin on the
+    hosted site must not have this.
+    """
+    if not can_download_raw_backup(request.user):
+        return HttpResponseForbidden(
+            "This download contains the whole system's database, not just your "
+            "hospital's records, so it is limited to the system owner. Ask your "
+            "provider for a copy of your hospital's data."
+        )
     db_path = Path(settings.DATABASES['default']['NAME'])
     media_root = Path(settings.MEDIA_ROOT)
 

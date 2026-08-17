@@ -193,11 +193,13 @@
     </div>
   </div>
 
+  {% if desktop_build or user.is_superuser %}
   <div class="card">
     <h3>💾 Backup</h3>
     <p class="muted" style="font-size:13px;margin-top:6px">Download a full copy of your data (database + uploaded files) as a single <b>.zip</b>. Keep it somewhere safe. To restore, unzip it back into your data folder.</p>
     <a class="btn" href="{% url 'user_mgmt:backup_download' %}" style="margin-top:10px">Download Backup Now</a>
   </div>
+  {% endif %}
 </div>
 
 <script>
