@@ -73,6 +73,7 @@ urlpatterns = [
     path('maternity/', include('maternity.urls')),
     path('diagnosis/', include('diagnosis.urls')),
     path('referral/', include('referral.urls')),
+    path('ambulance/', include('ambulance.urls')),
     path('certificates/', include('certificates.urls')),
     path('bloodbank/', include('bloodbank.urls')),
     path('vaccination/', include('vaccination.urls')),

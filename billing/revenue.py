@@ -26,6 +26,7 @@ IPD = 'IPD'
 OT = 'OT'
 EMERGENCY = 'EMERGENCY'
 MATERNITY = 'MATERNITY'
+AMBULANCE = 'AMBULANCE'
 OTHER = 'OTHER'
 
 # Human labels for the module profit report, in the order it lists them.
@@ -37,6 +38,7 @@ LABELS = {
     OT: 'Operation Theatre',
     EMERGENCY: 'Emergency / Casualty',
     MATERNITY: 'Maternity',
+    AMBULANCE: 'Ambulance',
     OTHER: 'Other services',
 }
 
@@ -51,6 +53,7 @@ _PREFIXES = (
     (IPD, ('IPD Bed Charges:', 'Medicine:')),
     (OT, ('OT Surgery:', 'OT Theatre:', 'OT Anaesthesia:', 'OT Consumables:')),
     (MATERNITY, ('Delivery',)),
+    (AMBULANCE, ('Ambulance:', 'Ambulance Distance:', 'Ambulance Waiting:')),
 )
 
 

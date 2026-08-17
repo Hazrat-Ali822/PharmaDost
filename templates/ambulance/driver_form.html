@@ -1,0 +1,22 @@
+{% extends 'partials/base.html' %}
+{% block title %}{% if obj %}Edit Driver{% else %}Add Driver{% endif %}{% endblock %}
+{% block page_title %}{% if obj %}Edit Driver{% else %}Add Driver{% endif %}{% endblock %}
+{% block content %}
+<form method="post" class="card" style="max-width:640px;">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px;">
+    <label>Name{{ form.full_name }}{{ form.full_name.errors }}</label>
+    <label>Phone{{ form.phone }}</label>
+    <label>Licence no.{{ form.licence_no }}</label>
+    <label>CNIC{{ form.cnic }}</label>
+  </div>
+  <label>Address{{ form.address }}</label>
+  <label style="display:flex; gap:8px; align-items:center;">{{ form.is_active }} Active</label>
+  <label>Notes{{ form.notes }}</label>
+  <div class="form-actions">
+    <button class="btn" type="submit">Save</button>
+    <a class="btn alt" href="{% url 'ambulance:fleet_list' %}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

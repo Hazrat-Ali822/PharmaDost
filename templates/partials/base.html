@@ -220,7 +220,7 @@
       </a>
       {% endif %}
 
-      {% if nav.patients or nav.opd or nav.prescriptions or nav.lab or nav.imaging or nav.ipd or nav.ward or nav.ot or nav.emergency or nav.maternity or nav.diagnosis or nav.referral or nav.bloodbank or nav.vaccination or nav.certificates or nav.consent %}
+      {% if nav.patients or nav.opd or nav.prescriptions or nav.lab or nav.imaging or nav.ipd or nav.ward or nav.ot or nav.emergency or nav.maternity or nav.diagnosis or nav.referral or nav.bloodbank or nav.vaccination or nav.certificates or nav.consent or nav.ambulance %}
       <div class="nav-group">
         <div class="nav-group-title">Clinical</div>
         {% if nav.patients and request.user.role != 'LABTECH' and request.user.role != 'SONOGRAPHER' %}
@@ -385,6 +385,12 @@
         <a href="{% url 'vaccination_list' %}" class="{% if '/vaccination/' in request.path %}active{% endif %}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m18 2 4 4M17 3l4 4-9 9-4 1 1-4 8-8ZM10 10l-7 7 4 4 7-7"/></svg>
           Vaccination / EPI
+        </a>
+        {% endif %}
+        {% if nav.ambulance %}
+        <a href="{% url 'ambulance:dispatch_board' %}" class="{% if '/ambulance/' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17V7a1 1 0 0 1 1-1h10v11M14 9h4l3 3.5V17"/><circle cx="7.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/><path d="M8 9v4M6 11h4"/></svg>
+          Ambulance
         </a>
         {% endif %}
         {% if nav.certificates %}

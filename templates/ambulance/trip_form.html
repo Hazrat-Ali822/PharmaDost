@@ -1,0 +1,58 @@
+{% extends 'partials/base.html' %}
+{% block title %}New Ambulance Trip{% endblock %}
+{% block page_title %}New Ambulance Trip{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Dispatch an Ambulance</h2>
+  <a class="btn alt" href="{% url 'ambulance:dispatch_board' %}">← Board</a>
+</div>
+
+{% if not free %}
+  <div class="msg warn">No ambulance is free right now. You can still book one — it will be sent as soon as it is back.</div>
+{% endif %}
+
+<form method="post" class="card">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px;">
+    <label>Ambulance{{ form.ambulance }}{{ form.ambulance.errors }}</label>
+    <label>Driver <span class="muted">(defaults to the vehicle's)</span>{{ form.driver }}</label>
+    <label>Trip type{{ form.trip_type }}</label>
+    <label>Called at{{ form.called_at }}</label>
+  </div>
+
+  <h3>Who it is for</h3>
+  <p class="muted" style="margin-top:-8px;">{{ form.patient.help_text }}</p>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px;">
+    <label>Patient{{ form.patient }}</label>
+    <label>Caller's name{{ form.contact_name }}</label>
+    <label>Caller's phone{{ form.contact_phone }}</label>
+  </div>
+
+  <h3>Route</h3>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px;">
+    <label>From{{ form.from_location }}{{ form.from_location.errors }}</label>
+    <label>To{{ form.to_location }}{{ form.to_location.errors }}</label>
+    <label>Distance (km) <span class="muted">— can be filled at the end</span>{{ form.distance_km }}</label>
+    <label>Waiting (hours){{ form.waiting_hours }}</label>
+  </div>
+
+  <h3>Charges</h3>
+  <p class="muted" style="margin-top:-8px;">
+    Leave these blank and the vehicle's own rates are used and frozen onto this trip.
+    Type a figure only to charge this run differently.
+  </p>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px;">
+    <label>Call-out ({{ currency }}){{ form.base_charge }}</label>
+    <label>Per km ({{ currency }}){{ form.per_km_charge }}</label>
+    <label>Waiting per hour ({{ currency }}){{ form.waiting_charge_per_hour }}</label>
+  </div>
+
+  <label>Notes{{ form.notes }}</label>
+
+  <div class="form-actions">
+    <button class="btn" type="submit">Dispatch</button>
+    <a class="btn alt" href="{% url 'ambulance:dispatch_board' %}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

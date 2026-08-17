@@ -1,0 +1,46 @@
+{% extends 'partials/base.html' %}
+{% block title %}Ambulance Trips{% endblock %}
+{% block page_title %}Ambulance Trips{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Trips</h2>
+  <div style="display:flex; gap:10px; flex-wrap:wrap;">
+    <a class="btn" href="{% url 'ambulance:trip_create' %}">＋ New Trip</a>
+    <a class="btn alt" href="{% url 'ambulance:dispatch_board' %}">Board</a>
+  </div>
+</div>
+
+<form class="search" method="get">
+  <input type="text" name="q" value="{{ q }}" placeholder="Patient, caller, phone, address or number plate">
+  <select name="status" onchange="this.form.submit()">
+    <option value="">All statuses</option>
+    {% for key, label in status_choices %}<option value="{{ key }}" {% if key == status %}selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+  <button class="btn" type="submit">Search</button>
+</form>
+
+<div class="card">
+  <div class="table-scroll">
+    <table class="tbl">
+      <thead><tr><th>When</th><th>For</th><th>Vehicle</th><th>Type</th><th>From &rarr; To</th><th>Km</th><th>Charge</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for t in trips %}
+        <tr>
+          <td>{{ t.called_at|date:'d/m/Y H:i' }}</td>
+          <td><a href="{% url 'ambulance:trip_detail' t.pk %}">{{ t.who }}</a></td>
+          <td>{{ t.ambulance.label|default:t.ambulance.registration_no }}</td>
+          <td>{{ t.get_trip_type_display }}</td>
+          <td class="wrap">{{ t.from_location }} &rarr; {{ t.to_location }}</td>
+          <td>{{ t.distance_km }}</td>
+          <td>{% if t.total_charge %}{{ currency }} {{ t.total_charge }}{% else %}—{% endif %}</td>
+          <td>{{ t.get_status_display }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="muted">No trips recorded yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% include 'partials/_pagination.html' %}
+{% endblock %}

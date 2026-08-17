@@ -276,6 +276,9 @@ def module_profit_data(start, end):
       * **Pharmacy** — `SaleItem.cost_price`, the batch COGS frozen at the moment
         of sale, so a later price change cannot rewrite an old sale's profit.
       * **Lab** — `LabTest.cost_price`, entered by the admin on the price list.
+      * **OT** and **Ambulance** — `cost_price` frozen onto the record at
+        scheduling / dispatch, so repricing the catalogue or the fleet later
+        cannot rewrite an old margin.
       * **OPD** — the doctor's own share of the consultation fee
         (`Doctor.share_percent`). That share *is* the hospital's cost of seeing
         the patient. Read live rather than frozen, because it is a standing
@@ -354,8 +357,21 @@ def module_profit_data(start, end):
         'note': 'Batch cost frozen at the time of each sale.',
     }]
 
+    # --- Ambulance cost: frozen onto each trip at dispatch, same rule as OT.
+    # Dated by the invoice where there is one — a trip completed on the 31st but
+    # billed on the 1st otherwise puts its cost and its revenue in different
+    # months. A trip with no patient raises no invoice (see ambulance.services)
+    # and falls back to the call time.
+    from ambulance.models import AmbulanceTrip
+    amb_cost = (AmbulanceTrip.objects
+                .filter(status=AmbulanceTrip.STATUS_COMPLETED)
+                .filter(Q(invoice__created_at__date__range=(start, end))
+                        | Q(invoice__isnull=True,
+                            called_at__date__range=(start, end)))
+                .aggregate(s=Sum('cost_price'))['s'] or zero)
+
     for key in (rev.OPD, rev.LAB, rev.IMAGING, rev.IPD, rev.OT,
-                rev.EMERGENCY, rev.MATERNITY, rev.OTHER):
+                rev.EMERGENCY, rev.MATERNITY, rev.AMBULANCE, rev.OTHER):
         amount = billed.get(key, zero)
         if key == rev.LAB:
             cost, tracked = lab_cost, True
@@ -373,6 +389,11 @@ def module_profit_data(start, end):
             note = ("Theatre cost frozen on each operation." if ot_cost else
                     "No cost entered yet — set it per procedure on the Surgery "
                     "Procedures screen and this row becomes a real margin.")
+        elif key == rev.AMBULANCE:
+            cost, tracked = amb_cost, True
+            note = ("Fuel / running cost frozen on each trip." if amb_cost else
+                    "No cost entered yet — set 'cost per trip' on the vehicle in "
+                    "Fleet & Drivers and this row becomes a real margin.")
         else:
             cost, tracked, note = zero, False, 'Cost is not recorded for this module.'
 

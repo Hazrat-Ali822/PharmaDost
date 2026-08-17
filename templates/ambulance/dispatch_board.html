@@ -1,0 +1,108 @@
+{% extends 'partials/base.html' %}
+{% block title %}Ambulance{% endblock %}
+{% block page_title %}Ambulance Dispatch{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Dispatch Board <span class="muted" style="font-weight:400; font-size:14px;">· {{ today|date:'d/m/Y' }}</span></h2>
+  <div style="display:flex; gap:10px; flex-wrap:wrap;">
+    <a class="btn" href="{% url 'ambulance:trip_create' %}">＋ New Trip</a>
+    <a class="btn alt" href="{% url 'ambulance:trip_list' %}">All Trips</a>
+    {% if user.is_superuser or user.role == 'ADMIN' %}
+    <a class="btn alt" href="{% url 'ambulance:fleet_list' %}">Fleet &amp; Drivers</a>
+    {% endif %}
+  </div>
+</div>
+
+{% if not fleet %}
+  <div class="msg info">
+    No ambulances on record yet.
+    {% if user.is_superuser or user.role == 'ADMIN' %}<a href="{% url 'ambulance:ambulance_create' %}">Add your first vehicle</a> — set its call-out and per-km rates there and every trip will use them.{% else %}Ask an admin to add the fleet.{% endif %}
+  </div>
+{% else %}
+
+<div class="stat-grid">
+  <div class="stat-card"><div class="stat-label">Vehicles</div><div class="stat-value">{{ fleet|length }}</div></div>
+  <div class="stat-card"><div class="stat-label">Free now</div><div class="stat-value">{{ free|length }}</div></div>
+  <div class="stat-card"><div class="stat-label">Out on a trip</div><div class="stat-value">{{ open_trips|length }}</div></div>
+  <div class="stat-card"><div class="stat-label">Runs today</div><div class="stat-value">{{ todays|length }}</div></div>
+</div>
+
+<div class="card" style="margin-top:16px;">
+  <h3 style="margin-top:0;">Fleet</h3>
+  <div class="table-scroll">
+    <table class="tbl">
+      <thead><tr><th>Vehicle</th><th>Type</th><th>Driver</th><th>Phone</th><th>Rates</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for a in fleet %}
+        <tr>
+          <td><strong>{{ a.label|default:a.registration_no }}</strong><div class="muted" style="font-size:12px;">{{ a.registration_no }}</div></td>
+          <td>{{ a.vehicle_type|default:'—' }}</td>
+          <td>{{ a.driver.full_name|default:'—' }}</td>
+          <td>{{ a.driver.phone|default:a.phone|default:'—' }}</td>
+          <td class="muted" style="font-size:12px;">
+            {% if a.base_charge %}{{ currency }} {{ a.base_charge }} call-out{% endif %}
+            {% if a.per_km_charge %}{% if a.base_charge %} · {% endif %}{{ currency }} {{ a.per_km_charge }}/km{% endif %}
+            {% if not a.base_charge and not a.per_km_charge %}no charge{% endif %}
+          </td>
+          <td>
+            {% if a.status == 'AVAILABLE' %}<span class="badge" style="background:#dcfce7; color:#166534;">Available</span>
+            {% elif a.status == 'ON_TRIP' %}<span class="badge" style="background:#fef3c7; color:#92400e;">On a trip</span>
+            {% else %}<span class="badge" style="background:#fee2e2; color:#991b1b;">Out of service</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% if open_trips %}
+<div class="card" style="margin-top:16px;">
+  <h3 style="margin-top:0;">Out right now</h3>
+  <div class="table-scroll">
+    <table class="tbl">
+      <thead><tr><th>Vehicle</th><th>For</th><th>From → To</th><th>Called</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        {% for t in open_trips %}
+        <tr>
+          <td>{{ t.ambulance.label|default:t.ambulance.registration_no }}</td>
+          <td>{{ t.who }}</td>
+          <td class="wrap">{{ t.from_location }} → {{ t.to_location }}</td>
+          <td>{{ t.called_at|date:'H:i' }}</td>
+          <td>{{ t.get_status_display }}</td>
+          <td><a class="btn sm alt" href="{% url 'ambulance:trip_detail' t.pk %}">Open</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<div class="card" style="margin-top:16px;">
+  <h3 style="margin-top:0;">Today's runs</h3>
+  {% if todays %}
+  <div class="table-scroll">
+    <table class="tbl">
+      <thead><tr><th>Time</th><th>Vehicle</th><th>For</th><th>Type</th><th>From → To</th><th>Km</th><th>Charge</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for t in todays %}
+        <tr>
+          <td>{{ t.called_at|date:'H:i' }}</td>
+          <td>{{ t.ambulance.label|default:t.ambulance.registration_no }}</td>
+          <td><a href="{% url 'ambulance:trip_detail' t.pk %}">{{ t.who }}</a></td>
+          <td>{{ t.get_trip_type_display }}</td>
+          <td class="wrap">{{ t.from_location }} → {{ t.to_location }}</td>
+          <td>{{ t.distance_km }}</td>
+          <td>{% if t.total_charge %}{{ currency }} {{ t.total_charge }}{% else %}—{% endif %}</td>
+          <td>{{ t.get_status_display }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<p class="muted" style="margin:0;">No runs today yet.</p>{% endif %}
+</div>
+
+{% endif %}
+{% endblock %}

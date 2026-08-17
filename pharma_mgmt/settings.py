@@ -125,6 +125,7 @@ INSTALLED_APPS = [
     "maternity",
     "diagnosis",
     "referral",
+    "ambulance",
     "certificates",
     "bloodbank",
     "vaccination",

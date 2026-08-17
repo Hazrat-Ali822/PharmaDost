@@ -585,6 +585,52 @@ in the intake dropdown are scoped the app's usual way for the manager-less `Doct
 model — `Q(user__hospital=...) | Q(user__isnull=True)`. Guarded by `emergency/tests.py`.
 Not offline in v1.
 
+### Ambulance
+
+The `ambulance` app (`/ambulance/`, feature `ambulance`, its own module; roles
+ADMIN/RECEPTIONIST/NURSE/DOCTOR — whoever answers the phone books a run). Before
+it, "ambulance" existed in the codebase as a single *mode of arrival* dropdown
+value on `EmergencyCase`: a hospital could record that a patient arrived by
+ambulance and nothing else. `Ambulance` is one vehicle, `AmbulanceDriver` the
+driver register (deliberately **not** `User` — drivers rarely have a login, and
+requiring an account to record who drove means dead accounts or a blank field),
+and `AmbulanceTrip` one run through REQUESTED → DISPATCHED → COMPLETED/CANCELLED.
+Four things are deliberate:
+
+- **Rates are per vehicle and frozen onto the trip at dispatch.**
+  `base_charge` / `per_km_charge` / `waiting_charge_per_hour` / `cost_price` all
+  default to 0, and `services.apply_vehicle_rates` fills only the parts the
+  operator left blank — so a long run can be charged more, and repricing the
+  fleet tomorrow cannot rewrite what a family was charged today. Same rule as
+  `SaleItem.cost_price`, `MedicationLog.unit_price` and `SurgeryRecord`'s four
+  charges. A zero part produces no bill line, so a hospital that does not charge
+  bills nothing.
+- **A trip need not have a `Patient`.** Body transfers, another facility's
+  patient, a false alarm — `patient` is nullable and `contact_name`/`contact_phone`
+  carry the caller. `AmbulanceTripForm.clean` requires one or the other, so the
+  record stays findable. `complete_trip` only invoices when there **is** a
+  patient (an invoice needs one); otherwise the run is recorded and collected in
+  cash, because forcing a `Patient` row for a body transfer would put the
+  deceased in the patient register.
+- **The vehicle is locked at dispatch** (`select_for_update` inside
+  `transaction.atomic`) and re-checked — two operators with the board open would
+  otherwise send the same van, and unlike a double-booked bed there is no second
+  one parked outside. `services._free_vehicle` keys on "has no open trip left"
+  rather than on this trip finishing, and never touches one that is
+  `MAINTENANCE`.
+- Cancelling needs a **mandatory reason** (as everywhere else a service is
+  withdrawn), and a **completed** run cannot be cancelled — the van went; that is
+  then a billing decision.
+
+Billing goes through `create_service_invoice(..., service='AMBULANCE')`;
+`Panel.SVC_AMBULANCE` lets a card cover or exclude it, and `billing.revenue`
+gained an `AMBULANCE` category whose prefixes (`'Ambulance:'`,
+`'Ambulance Distance:'`, `'Ambulance Waiting:'`) must stay in step with
+`AmbulanceTrip.charge_lines()`. `reports.utils.module_profit_data` reports it
+with `cost_tracked=True`, dated by the invoice where there is one (same reason as
+OT). **Not offline** — dispatch writes vehicle state two devices cannot both see,
+the same reason blood-unit issue is excluded. Guarded by `ambulance/tests.py`.
+
 ### Maternity / Obstetrics
 
 The `maternity` app (`/maternity/`, feature `maternity`; roles ADMIN/DOCTOR/NURSE)

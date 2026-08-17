@@ -43,6 +43,7 @@ ADMIN_PAGES = [
     # reports
     'sales_report', 'inventory_report', 'profit_report', 'daybook_report',
     'visual_analytics',
+    'hr_shift_list',
     # system
     'audit_log',
 ]
@@ -56,6 +57,8 @@ ADMIN_NAMESPACED_PAGES = [
     'ot:procedure_list', 'ot:procedure_create', 'ot:category_create',
     'user_mgmt:user_list', 'user_mgmt:user_create', 'user_mgmt:site_settings',
     'user_mgmt:help_center',
+    'ambulance:dispatch_board', 'ambulance:trip_list', 'ambulance:trip_create',
+    'ambulance:fleet_list', 'ambulance:ambulance_create', 'ambulance:driver_create',
 ]
 
 

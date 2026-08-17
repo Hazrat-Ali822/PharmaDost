@@ -1,0 +1,71 @@
+{% extends 'partials/base.html' %}
+{% block title %}Ambulance Fleet{% endblock %}
+{% block page_title %}Fleet &amp; Drivers{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>Fleet &amp; Drivers</h2>
+  <div style="display:flex; gap:10px; flex-wrap:wrap;">
+    <a class="btn" href="{% url 'ambulance:ambulance_create' %}">＋ Ambulance</a>
+    <a class="btn alt" href="{% url 'ambulance:driver_create' %}">＋ Driver</a>
+    <a class="btn alt" href="{% url 'ambulance:dispatch_board' %}">Board</a>
+  </div>
+</div>
+
+<p class="muted" style="margin-top:-6px;">
+  Rates set here are copied onto each trip when it is dispatched, so changing a
+  rate tomorrow never rewrites what somebody was charged today. Leave them at 0 if
+  you do not charge for ambulance runs — no bill line is produced.
+</p>
+
+<div class="card">
+  <h3 style="margin-top:0;">Ambulances</h3>
+  <div class="table-scroll">
+    <table class="tbl">
+      <thead>
+        <tr><th>Vehicle</th><th>Number</th><th>Type</th><th>Driver</th><th>Call-out</th>
+            <th>Per km</th><th>Waiting/hr</th><th>Cost/trip</th><th>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for a in fleet %}
+        <tr {% if not a.is_active %}class="muted"{% endif %}>
+          <td>{{ a.label|default:'—' }}</td>
+          <td><strong>{{ a.registration_no }}</strong></td>
+          <td>{{ a.vehicle_type|default:'—' }}</td>
+          <td>{{ a.driver.full_name|default:'—' }}</td>
+          <td>{{ currency }} {{ a.base_charge }}</td>
+          <td>{{ currency }} {{ a.per_km_charge }}</td>
+          <td>{{ currency }} {{ a.waiting_charge_per_hour }}</td>
+          <td>{% if a.cost_price %}{{ currency }} {{ a.cost_price }}{% else %}<span class="muted">not recorded</span>{% endif %}</td>
+          <td>{{ a.get_status_display }}{% if not a.is_active %} · retired{% endif %}</td>
+          <td><a class="btn sm alt" href="{% url 'ambulance:ambulance_edit' a.pk %}">Edit</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="10" class="muted">No ambulances yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px;">
+  <h3 style="margin-top:0;">Drivers</h3>
+  <div class="table-scroll">
+    <table class="tbl">
+      <thead><tr><th>Name</th><th>Phone</th><th>Licence</th><th>Active</th><th></th></tr></thead>
+      <tbody>
+        {% for d in drivers %}
+        <tr>
+          <td>{{ d.full_name }}</td>
+          <td>{{ d.phone|default:'—' }}</td>
+          <td>{{ d.licence_no|default:'—' }}</td>
+          <td>{% if d.is_active %}Yes{% else %}No{% endif %}</td>
+          <td><a class="btn sm alt" href="{% url 'ambulance:driver_edit' d.pk %}">Edit</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="muted">No drivers yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

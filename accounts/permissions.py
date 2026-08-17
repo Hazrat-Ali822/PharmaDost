@@ -42,6 +42,9 @@ FEATURES = {
     'vaccination':   {'ADMIN', 'DOCTOR', 'NURSE'},
     # Consent forms — template library + signed record.
     'consent':       {'ADMIN', 'DOCTOR', 'NURSE'},
+    # Ambulance — dispatch board, fleet, drivers, trip log. Whoever answers the
+    # phone books a run, so reception and the ward are both in.
+    'ambulance':     {'ADMIN', 'RECEPTIONIST', 'NURSE', 'DOCTOR'},
     # Pharmacy
     'pos':           {'ADMIN', 'PHARMACIST', 'WHOLESALE'},
     'inventory':     {'ADMIN', 'PHARMACIST'},
@@ -91,6 +94,7 @@ FEATURE_GROUPS = [
         ('bloodbank', 'Blood Bank'),
         ('vaccination', 'Vaccination / EPI'),
         ('consent', 'Consent Forms'),
+        ('ambulance', 'Ambulance / Dispatch'),
     ]),
     ('Pharmacy', [
         ('pos', 'Point of Sale / Bills'),
@@ -146,6 +150,8 @@ MODULES = [
      ['bloodbank']),
     ('vaccination', 'Vaccination / EPI', 'EPI schedule, dose records & immunization card',
      ['vaccination']),
+    ('ambulance', 'Ambulance', 'Fleet, drivers, dispatch board & trip charges',
+     ['ambulance']),
     ('lab', 'Laboratory', 'Lab test orders & printed reports',
      ['lab']),
     ('imaging', 'Imaging / Radiology', 'Ultrasound, X-ray, CT, MRI studies & reports',

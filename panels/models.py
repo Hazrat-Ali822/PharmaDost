@@ -37,6 +37,7 @@ class Panel(models.Model):
     SVC_IMAGING = "IMAGING"
     SVC_IPD = "IPD"
     SVC_PROCEDURE = "PROCEDURE"
+    SVC_AMBULANCE = "AMBULANCE"
     SERVICE_CHOICES = (
         (SVC_OPD, "OPD / Consultation"),
         (SVC_PHARMACY, "Pharmacy / Medicines"),
@@ -44,6 +45,7 @@ class Panel(models.Model):
         (SVC_IMAGING, "Imaging / Radiology"),
         (SVC_IPD, "Admission / IPD"),
         (SVC_PROCEDURE, "Procedures / Surgery"),
+        (SVC_AMBULANCE, "Ambulance"),
     )
     SERVICE_KEYS = [k for k, _ in SERVICE_CHOICES]
 

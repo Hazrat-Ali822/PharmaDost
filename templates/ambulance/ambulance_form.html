@@ -1,0 +1,44 @@
+{% extends 'partials/base.html' %}
+{% block title %}{% if obj %}Edit Ambulance{% else %}Add Ambulance{% endif %}{% endblock %}
+{% block page_title %}{% if obj %}Edit Ambulance{% else %}Add Ambulance{% endif %}{% endblock %}
+{% block content %}
+<form method="post" class="card" style="max-width:760px;">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px;">
+    <label>Number plate{{ form.registration_no }}{{ form.registration_no.errors }}</label>
+    <label>Name{{ form.label }}</label>
+    <label>Type{{ form.vehicle_type }}</label>
+    <label>Usual driver{{ form.driver }}</label>
+    <label>Phone{{ form.phone }}</label>
+    <label>Status{{ form.status }}</label>
+  </div>
+  <datalist id="ambulance-types">
+    <option value="Basic"></option>
+    <option value="ALS"></option>
+    <option value="ICU-equipped"></option>
+    <option value="Patient transport"></option>
+    <option value="Mortuary van"></option>
+  </datalist>
+
+  <h3>Rates</h3>
+  <p class="muted" style="margin-top:-8px;">
+    Copied onto each trip when it is dispatched. Leave at 0 if you do not charge.
+  </p>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px;">
+    <label>Call-out ({{ currency }}){{ form.base_charge }}</label>
+    <label>Per km ({{ currency }}){{ form.per_km_charge }}</label>
+    <label>Waiting per hour ({{ currency }}){{ form.waiting_charge_per_hour }}</label>
+    <label>Your cost per trip ({{ currency }}){{ form.cost_price }}
+      <span class="muted" style="font-size:12px;">{{ form.cost_price.help_text }}</span></label>
+  </div>
+
+  <label style="display:flex; gap:8px; align-items:center; margin-top:12px;">{{ form.is_active }} In service</label>
+  <label>Notes{{ form.notes }}</label>
+
+  <div class="form-actions">
+    <button class="btn" type="submit">Save</button>
+    <a class="btn alt" href="{% url 'ambulance:fleet_list' %}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

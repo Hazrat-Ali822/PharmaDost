@@ -1,0 +1,67 @@
+{% extends 'partials/base.html' %}
+{% block title %}Trip #{{ trip.pk }}{% endblock %}
+{% block page_title %}Ambulance Trip{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h2>{{ trip.who }} <span class="muted" style="font-weight:400; font-size:14px;">· {{ trip.get_trip_type_display }}</span></h2>
+  <a class="btn alt" href="{% url 'ambulance:dispatch_board' %}">← Board</a>
+</div>
+
+<div class="card">
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px;">
+    <div><div class="muted" style="font-size:12px;">Vehicle</div><strong>{{ trip.ambulance }}</strong></div>
+    <div><div class="muted" style="font-size:12px;">Driver</div><strong>{{ trip.driver.full_name|default:'—' }}</strong></div>
+    <div><div class="muted" style="font-size:12px;">Status</div><strong>{{ trip.get_status_display }}</strong></div>
+    <div><div class="muted" style="font-size:12px;">Called</div><strong>{{ trip.called_at|date:'d/m/Y H:i' }}</strong></div>
+    <div><div class="muted" style="font-size:12px;">Completed</div><strong>{% if trip.completed_at %}{{ trip.completed_at|date:'d/m/Y H:i' }}{% else %}—{% endif %}</strong></div>
+    <div><div class="muted" style="font-size:12px;">Route</div><strong>{{ trip.from_location }} → {{ trip.to_location }}</strong></div>
+    <div><div class="muted" style="font-size:12px;">Distance</div><strong>{{ trip.distance_km }} km</strong></div>
+    <div><div class="muted" style="font-size:12px;">Contact</div><strong>{{ trip.contact_phone|default:trip.patient.phone|default:'—' }}</strong></div>
+  </div>
+  {% if trip.notes %}<p class="muted" style="margin-bottom:0;">{{ trip.notes }}</p>{% endif %}
+  {% if trip.cancel_reason %}<div class="msg warn" style="margin-top:12px;">Cancelled — {{ trip.cancel_reason }}</div>{% endif %}
+</div>
+
+<div class="card" style="margin-top:16px;">
+  <h3 style="margin-top:0;">Charges</h3>
+  {% if trip.charge_lines %}
+  <div class="table-scroll">
+    <table class="tbl">
+      <tbody>
+        {% for desc, amount in trip.charge_lines %}
+        <tr><td class="wrap">{{ desc }}</td><td style="text-align:right;">{{ currency }} {{ amount }}</td></tr>
+        {% endfor %}
+        <tr><th class="wrap">Total</th><th style="text-align:right;">{{ currency }} {{ trip.total_charge }}</th></tr>
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <p class="muted" style="margin:0;">No charge for this trip.</p>
+  {% endif %}
+  {% if trip.invoice %}
+    <p style="margin-bottom:0;">Billed on <a href="{% url 'invoice_detail' trip.invoice.pk %}">invoice {{ trip.invoice.display_no }}</a>.</p>
+  {% elif trip.status == 'COMPLETED' and trip.total_charge and not trip.patient %}
+    <p class="muted" style="margin-bottom:0;">No patient on this trip, so no invoice was raised — collect at the desk.</p>
+  {% endif %}
+</div>
+
+{% if trip.is_open %}
+<div class="card" style="margin-top:16px;">
+  <h3 style="margin-top:0;">Finish the run</h3>
+  <form method="post" action="{% url 'ambulance:trip_complete' trip.pk %}"
+        style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+    {% csrf_token %}
+    <label>Distance (km)<br><input type="number" step="0.1" min="0" name="distance_km" value="{{ trip.distance_km }}"></label>
+    <label>Waiting (hours)<br><input type="number" step="0.1" min="0" name="waiting_hours" value="{{ trip.waiting_hours }}"></label>
+    <button class="btn" type="submit">Complete &amp; bill</button>
+  </form>
+  <form method="post" action="{% url 'ambulance:trip_cancel' trip.pk %}"
+        style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-top:14px;">
+    {% csrf_token %}
+    <label>Cancel this trip — reason<br><input type="text" name="reason" required
+           placeholder="Family arranged their own transport" style="min-width:280px;"></label>
+    <button class="btn alt" type="submit">Cancel trip</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}
