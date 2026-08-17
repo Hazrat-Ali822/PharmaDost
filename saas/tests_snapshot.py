@@ -6,6 +6,7 @@ could not actually read the data.
 
     python manage.py test saas.tests_snapshot --settings=pharma_mgmt.test_settings
 """
+import io
 import json
 import tempfile
 from datetime import date, timedelta
@@ -19,6 +20,7 @@ from accounts.models import User
 from patients.models import Patient
 from saas.models import Hospital
 from saas.utils import clear_current_hospital
+from user_mgmt.models import UserProfile
 
 
 def _future():
@@ -153,3 +155,56 @@ class DbPreflightTest(TestCase):
                                gender='M', hospital=self.h)
         with self.assertRaises(CommandError):
             call_command('db_preflight', verbosity=0)
+
+
+class FixtureRoundTripTest(TestCase):
+    """A dump of this database must load back into an empty one.
+
+    That is the whole SQLite -> PostgreSQL move, and on the real data it stopped
+    partway with
+
+        Could not load user_mgmt.UserProfile(pk=5): duplicate key value
+        violates unique constraint "user_mgmt_userprofile_user_id_key"
+
+    because a `post_save` receiver created a profile for every user the fixture
+    inserted, taking the pks the fixture's own profiles were meant to land on.
+    `db_preflight` cannot see this — the source data is perfectly valid; it is
+    the *load* that invents rows.
+
+    The check is deliberately the round trip rather than that one receiver: any
+    other signal that starts writing during a fixture load fails here too.
+    """
+
+    def _dump(self, *labels):
+        buf = io.StringIO()
+        call_command('dumpdata', *labels, natural_foreign=True,
+                     natural_primary=True, stdout=buf)
+        return buf.getvalue()
+
+    def _load(self, payload):
+        path = Path(tempfile.mkdtemp()) / 'data.json'
+        path.write_text(payload, encoding='utf-8')
+        call_command('loaddata', str(path), verbosity=0)
+
+    def test_a_dump_of_users_and_profiles_loads_back(self):
+        for i in range(3):
+            User.objects.create_user(email=f'u{i}@x.com', password='x')
+        self.assertEqual(UserProfile.objects.count(), 3)
+
+        payload = self._dump('accounts.User', 'user_mgmt.UserProfile')
+
+        User.objects.all().delete()          # cascades the profiles away
+        self.assertEqual(UserProfile.objects.count(), 0)
+
+        self._load(payload)
+
+        self.assertEqual(User.objects.count(), 3)
+        self.assertEqual(UserProfile.objects.count(), 3,
+                         'the load created profiles of its own on top of the '
+                         "fixture's — the duplicate-key failure")
+
+    def test_every_user_still_gets_a_profile_normally(self):
+        """The guard is for fixture loads only; ordinary sign-up is
+        unchanged."""
+        u = User.objects.create_user(email='normal@x.com', password='x')
+        self.assertTrue(UserProfile.objects.filter(user=u).exists())

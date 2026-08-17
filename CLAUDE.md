@@ -126,6 +126,17 @@ end** rather than reasoned about. Three commands support it: `db_preflight`
 (rows PostgreSQL will refuse), `db_export` (the dump) and `db_snapshot`
 (verification).
 
+**A signal that writes during a fixture load breaks the migration**, and no
+amount of care with the dump helps — the source data is valid; the *load*
+invents rows. `user_mgmt.create_profile` (a `post_save` on the user model) built
+a `UserProfile` for every user `loaddata` inserted, taking the pks the fixture's
+own profiles were meant to occupy, and the real migration died partway with
+`duplicate key ... "user_mgmt_userprofile_user_id_key"`. Django passes
+`raw=True` to signals during a fixture load precisely so receivers can stand
+aside; **any receiver that creates rows must return on it**. `db_preflight`
+cannot see this class of failure — `saas.tests_snapshot.FixtureRoundTripTest`
+(dump → delete → reload) is what guards it.
+
 **Do not use `dumpdata -o` for this.** Django writes that file in the machine's
 locale encoding while `loaddata` always decodes UTF-8, and this app writes em
 dashes into ordinary data (`'OPD Consultation — Dr. Sara Ahmed'`,

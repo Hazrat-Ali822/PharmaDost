@@ -117,9 +117,34 @@ python manage.py migrate                 # creates every table, empty
 python manage.py loaddata ~/alldata.json
 ```
 
-If `loaddata` reports an error, **stop**. Remove `DATABASE_URL` from `.env` and
-the site is back on SQLite exactly as it was — nothing has been lost. Fix the
-reported model and start again from step 4.
+If `loaddata` reports an error, **stop**. Nothing has been lost — the SQLite
+file has not been touched, and if you followed step 5's shell-variable form the
+live site is still serving from it.
+
+The new database is now **half full**, so it must be emptied before the next
+attempt or the retry collides with what the failed run already inserted:
+
+```bash
+python manage.py flush --noinput      # empties every table, keeps the schema
+python manage.py loaddata ~/alldata.json
+```
+
+**A load can fail on data that is perfectly valid.** `db_preflight` checks the
+rows; it cannot see a `post_save` receiver that *writes* while the fixture is
+being read. One did, and it stopped the real migration:
+
+```
+Could not load user_mgmt.UserProfile(pk=5): duplicate key value violates
+unique constraint "user_mgmt_userprofile_user_id_key"
+DETAIL:  Key (user_id)=(4) already exists.
+```
+
+`user_mgmt.create_profile` made a profile for every user the fixture inserted,
+taking the primary keys the fixture's own profiles were meant to land on. Django
+passes `raw=True` to signals during a fixture load for exactly this reason, and
+the receiver now returns on it. If you ever add a receiver that creates rows,
+guard it the same way — `saas.tests_snapshot.FixtureRoundTripTest` dumps and
+reloads a small fixture and will catch the next one.
 
 ### 7. Check every row arrived
 

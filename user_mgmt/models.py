@@ -238,6 +238,19 @@ class UserProfile(models.Model):
 		return f"{self.user} → {self.organization or 'No Org'}"
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
-def create_profile(sender, instance, created, **kwargs):
+def create_profile(sender, instance, created, raw=False, **kwargs):
+	# `raw=True` means loaddata is inserting a serialised row, and the fixture
+	# already carries that user's own UserProfile. Creating a second one here
+	# takes the next free pk, so when the fixture's profile arrives it collides:
+	#
+	#   IntegrityError: Could not load user_mgmt.UserProfile(pk=5):
+	#   duplicate key value violates unique constraint
+	#   "user_mgmt_userprofile_user_id_key"  DETAIL: Key (user_id)=(4) exists.
+	#
+	# That is what stopped the SQLite -> PostgreSQL load partway through, leaving
+	# a half-filled database. During a fixture load the fixture is the authority
+	# on which rows exist; nothing may invent extra ones.
+	if raw:
+		return
 	if created:
 		UserProfile.objects.create(user=instance)
