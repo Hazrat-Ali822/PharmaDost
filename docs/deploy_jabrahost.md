@@ -80,13 +80,30 @@ patient document photos live there, and no database dump covers them:
 
 ```bash
 cd ~/sehatyar && mkdir -p backups
+source ~/virtualenv/sehatyar/3.10/bin/activate
+
 PGPASSWORD='<db password>' pg_dump -h localhost -U sehatyar_dbuser   -d sehatyar_prod -F c -f "backups/pg-$(date +%F-%H%M).dump"
-tar czf "backups/media-$(date +%F).tar.gz" data/media
+
+MEDIA=$(python manage.py shell -c "from django.conf import settings; print(settings.MEDIA_ROOT)")
+tar czf "backups/media-$(date +%F).tar.gz" -C "$(dirname "$MEDIA")" "$(basename "$MEDIA")"
+
+ls -lh backups/ | tail -3
 ```
 
-Use the **plain** password here, not the percent-encoded form from
-`DATABASE_URL`: `%28` and `%23` are URL escaping for `(` and `#`, and `pg_dump`
-takes the real characters.
+Two things to get right here.
+
+**Use the plain password**, not the percent-encoded form from `DATABASE_URL`:
+`%28` and `%23` are URL escaping for `(` and `#`, and `pg_dump` takes the real
+characters.
+
+**Ask Django where the media is; do not type the path.** `MEDIA_ROOT` is
+`DATA_DIR / "media"`, and `DATA_DIR` is `PHARMADOST_DATA_DIR` or `BASE_DIR` — so
+on this host it is `~/sehatyar/media`, but on the desktop build it is a per-user
+folder somewhere else entirely. Guessing `data/media` produced a **45-byte
+tar.gz**: `tar` warned on stderr, exited non-zero, and left behind a file that
+sits in the backups folder looking exactly like a backup. Check the size of what
+you just wrote — that is the whole difference between having a backup and
+believing you have one.
 
 ## 6. Create the platform owner (SaaS multi-tenant)
 
@@ -128,7 +145,7 @@ python manage.py collectstatic --noinput # only if static changed
 cPanel → **Cron Jobs**, one daily line (adjust the path):
 
 ```
-cd ~/sehatyar && ~/virtualenv/sehatyar/3.10/bin/python manage.py expiry_alert && ~/virtualenv/sehatyar/3.10/bin/python manage.py low_stock_alert && ~/virtualenv/sehatyar/3.10/bin/python manage.py send_reminders && PGPASSWORD='<db password>' pg_dump -h localhost -U sehatyar_dbuser -d sehatyar_prod -F c -f ~/sehatyar/backups/pg-$(date +\%F).dump
+cd ~/sehatyar && ~/virtualenv/sehatyar/3.10/bin/python manage.py expiry_alert && ~/virtualenv/sehatyar/3.10/bin/python manage.py low_stock_alert && ~/virtualenv/sehatyar/3.10/bin/python manage.py send_reminders && PGPASSWORD='<db password>' pg_dump -h localhost -U sehatyar_dbuser -d sehatyar_prod -F c -f ~/sehatyar/backups/pg-$(date +\%F).dump && tar czf ~/sehatyar/backups/media-$(date +\%F).tar.gz -C ~/sehatyar media
 ```
 
 Three notes on that line:

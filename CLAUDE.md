@@ -134,7 +134,10 @@ Two consequences of the hosted site being PostgreSQL:
   shipping a zip of media alone while calling it a backup is worse than refusing.
   The nightly cron line runs `pg_dump` (see `docs/deploy_jabrahost.md`), and
   **uploaded patient photos live in `MEDIA_ROOT`, which `pg_dump` does not
-  cover** — the media folder needs its own copy.
+  cover** — the media folder needs its own copy. Ask Django for that path
+  (`settings.MEDIA_ROOT`) rather than typing it: it is `DATA_DIR / "media"` and
+  `DATA_DIR` differs between the host and the desktop build, so a guessed path
+  produces a valid-looking empty archive rather than an error anyone notices.
 - **Migrations are now checked against a real PostgreSQL**, not just the SQLite
   test database. See the note below on data steps; SQLite silently tolerates
   things the host rejects.
