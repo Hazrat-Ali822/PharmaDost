@@ -24,17 +24,27 @@
         <thead>
           <tr>
             <th>Procedure Name</th>
-            <th style="text-align:right;">Standard Charge</th>
+            <th style="text-align:right;">Surgeon</th>
+            <th style="text-align:right;">Theatre</th>
+            <th style="text-align:right;">Anaesthesia</th>
+            <th style="text-align:right;">Consumables</th>
+            <th style="text-align:right;">Total</th>
+            <th style="text-align:right;">Your cost</th>
           </tr>
         </thead>
         <tbody>
           {% for p in cat.procedures.all %}
           <tr>
             <td><strong>{{ p.name }}</strong></td>
-            <td style="text-align:right; font-weight:600; color:var(--primary)">{{ currency }} {{ p.standard_charge }}</td>
+            <td style="text-align:right;">{{ p.standard_charge }}</td>
+            <td style="text-align:right;">{{ p.ot_charge }}</td>
+            <td style="text-align:right;">{{ p.anesthesia_charge }}</td>
+            <td style="text-align:right;">{{ p.consumables_charge }}</td>
+            <td style="text-align:right; font-weight:700; color:var(--primary)">{{ currency }} {{ p.total_charge }}</td>
+            <td style="text-align:right;" class="muted">{% if p.cost_price %}{{ p.cost_price }}{% else %}&mdash;{% endif %}</td>
           </tr>
           {% empty %}
-          <tr><td colspan="2" class="muted">No procedures added.</td></tr>
+          <tr><td colspan="7" class="muted">No procedures added.</td></tr>
           {% endfor %}
         </tbody>
       </table>

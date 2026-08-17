@@ -783,7 +783,7 @@ def handle_surgery(request, data):
     from ot.services import schedule_surgery
 
     _require(request.user, "ot")
-    form = _valid(SurgeryRecordForm(data))
+    form = _valid(SurgeryRecordForm(data, user=request.user))
     surg_req = _parent(SurgeryRequest, data.get("request_id"), "surgery request",
                        required=False)
     record = schedule_surgery(

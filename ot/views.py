@@ -34,7 +34,7 @@ def surgery_create(request):
     surg_req = SurgeryRequest.objects.filter(pk=req_id, status='Pending').first() if req_id else None
 
     if request.method == 'POST':
-        form = SurgeryRecordForm(request.POST)
+        form = SurgeryRecordForm(request.POST, user=request.user)
         if form.is_valid():
             from .services import schedule_surgery
             record = schedule_surgery(form, request.user, surgery_request=surg_req)
@@ -46,7 +46,7 @@ def surgery_create(request):
             initial['patient'] = surg_req.patient
             if surg_req.procedure_id:
                 initial['procedure'] = surg_req.procedure
-        form = SurgeryRecordForm(initial=initial)
+        form = SurgeryRecordForm(initial=initial, user=request.user)
     return render(request, 'ot/surgery_form.html', {
         'form': form,
         'title': 'Schedule New Surgery',
@@ -65,13 +65,13 @@ def surgery_detail(request, pk):
 def surgery_edit(request, pk):
     record = get_object_or_404(SurgeryRecord, pk=pk)
     if request.method == 'POST':
-        form = SurgeryRecordForm(request.POST, instance=record)
+        form = SurgeryRecordForm(request.POST, instance=record, user=request.user)
         if form.is_valid():
             rec = form.save()
             messages.success(request, "Surgery log updated successfully.")
             return redirect('ot:surgery_detail', pk=rec.pk)
     else:
-        form = SurgeryRecordForm(instance=record)
+        form = SurgeryRecordForm(instance=record, user=request.user)
     return render(request, 'ot/surgery_form.html', {
         'form': form,
         'title': 'Update Surgery Log'

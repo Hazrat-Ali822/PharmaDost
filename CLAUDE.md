@@ -822,9 +822,46 @@ sees one row rather than a column of zeroes.
 Two known gaps, both fine to leave and worth knowing: ward medication given from
 pharmacy stock bills on the **IPD** invoice, so its stock cost is invisible to
 both pharmacy and IPD (`MedicationLog` freezes `unit_price` but no COGS — mirror
-`SaleItem.cost_price` there if IPD profit is ever wanted); and imaging/OT have no
+`SaleItem.cost_price` there if IPD profit is ever wanted); and **imaging** has no
 cost field at all. Adding either is the same shape as `LabTest.cost_price` plus a
 row in `module_profit_data`. Guarded by `tests/test_module_profit.py`.
+
+**Cost and revenue must be dated by the same clock.** Revenue can only be dated
+by the invoice, so a module whose cost lives on its own record has to be dated by
+that record's invoice too — `SurgeryRecord.invoice` exists for exactly this,
+because an operation scheduled for next week but billed today otherwise put its
+cost and its revenue in different months.
+
+### Operation Theatre charges
+
+A surgery bills as its parts, not one opaque figure. `SurgeryProcedure` is the
+theatre price list and carries four rates — `standard_charge` (the surgeon's
+fee, kept under its original name because everything already uses it),
+`ot_charge` (theatre / room), `anesthesia_charge`, `consumables_charge` — plus
+`cost_price` for the profit report. All the new ones **default to 0**, and a
+zero part produces no invoice line, so a hospital that does not itemise bills
+byte-identically to before.
+
+`SurgeryRecord` **freezes** all four onto itself at scheduling
+(`ot.services.apply_procedure_defaults` prefills any left at zero from the
+catalogue), so a long operation can be charged more than the standard rate and
+repricing the catalogue tomorrow cannot rewrite what a patient was billed today —
+the same rule `SaleItem.cost_price` and `MedicationLog.unit_price` follow.
+`SurgeryRecord.CHARGE_PARTS` is the single description of how a surgery becomes
+bill lines; `charge_lines()` builds them and `billing.revenue._PREFIXES`
+classifies them, so **a new charge type needs adding in both places**. Note the
+model spells it `anesthesia_*` (matching the pre-existing `anesthesia_type`)
+while the labels read "Anaesthesia".
+
+Migration `ot/0004` backfills `surgeon_charge` on existing records from their
+procedure's `standard_charge` — that is what the old single charge covered — and
+deliberately leaves the other three at 0 rather than inventing a split.
+
+`SurgeryRecordForm` takes **`user`** and scopes `lead_surgeon` through
+`opd.scoping.scoped_doctors`. It used `Doctor.objects.all()`, and `Doctor` has no
+`hospital` column and no `TenantManager`, so the theatre form listed every
+tenant's doctors *and* would have accepted a POST naming one. Guarded by
+`ot/tests_charges.py`.
 
 ### Inventory & dispensing
 

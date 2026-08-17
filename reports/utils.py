@@ -329,6 +329,22 @@ def module_profit_data(start, end):
                         test_order__order_date__date__range=(start, end))
                 .aggregate(s=Sum('lab_test__cost_price'))['s'] or zero)
 
+    # --- OT cost: frozen onto the record at scheduling, so repricing the
+    # procedure catalogue later cannot rewrite an old operation's margin.
+    # Dated by the **invoice**, so cost and revenue land in the same period —
+    # an operation scheduled for next week but billed today otherwise split
+    # itself across two months. Records predating that link (and any whose
+    # every charge was zero, so no invoice was raised) fall back to the
+    # operation date, which is the best that can be said about them.
+    from django.db.models import Q
+
+    from ot.models import SurgeryRecord
+    ot_cost = (SurgeryRecord.objects
+               .filter(Q(invoice__created_at__date__range=(start, end))
+                       | Q(invoice__isnull=True,
+                           start_time__date__range=(start, end)))
+               .aggregate(s=Sum('cost_price'))['s'] or zero)
+
     rows = [{
         'key': 'PHARMACY',
         'label': 'Pharmacy',
@@ -352,6 +368,11 @@ def module_profit_data(start, end):
             note = ("The doctor's share of the fee." if opd_cost else
                     "Every doctor keeps 100% of the fee, so the hospital's OPD "
                     "margin is nil. Set a share on the doctor's record to change that.")
+        elif key == rev.OT:
+            cost, tracked = ot_cost, True
+            note = ("Theatre cost frozen on each operation." if ot_cost else
+                    "No cost entered yet — set it per procedure on the Surgery "
+                    "Procedures screen and this row becomes a real margin.")
         else:
             cost, tracked, note = zero, False, 'Cost is not recorded for this module.'
 

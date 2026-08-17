@@ -49,7 +49,7 @@ _PREFIXES = (
     (OPD, ('OPD Consultation',)),
     (LAB, ('Lab:',)),
     (IPD, ('IPD Bed Charges:', 'Medicine:')),
-    (OT, ('OT Surgery:',)),
+    (OT, ('OT Surgery:', 'OT Theatre:', 'OT Anaesthesia:', 'OT Consumables:')),
     (MATERNITY, ('Delivery',)),
 )
 
