@@ -1,12 +1,12 @@
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 from django.contrib.auth import views as auth_views
 from inventory.views import dashboard
 from user_mgmt.views import setup_wizard
 from user_mgmt import pwa_views
 from user_mgmt import seo_views
 from django.conf import settings
-from django.conf.urls.static import static
+from pharma_mgmt.media import serve_media
 from saas.views import hospital_login
 from accounts.views import demo_login, smart_login, custom_password_reset_request
 
@@ -94,9 +94,13 @@ urlpatterns = [
 ]
 
 
-# Serve uploaded media through Django. On the desktop app (waitress) this is the only
-# thing serving media; on PythonAnywhere the proxy maps /media/ first, so this is just a
-# harmless fallback. Static files are handled by WhiteNoise (see settings).
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Serve uploaded media through Django on every deployment. This used to be
+# `static(settings.MEDIA_URL, ...)`, which returns an empty list when DEBUG is
+# False — so on the hosted site nothing served /media/ at all and every tenant's
+# logo fell back to the default mark without anyone noticing. See
+# `pharma_mgmt/media.py`; patient documents are deliberately NOT reachable here.
+urlpatterns += [
+    re_path(r'^media/(?P<path>.*)$', serve_media, name='media'),
+]
 
 

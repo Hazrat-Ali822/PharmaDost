@@ -1113,13 +1113,21 @@ Four things are deliberate:
   them with a toast and re-attaches once online), so the upload needs a
   connection — the clinical entry it accompanies does not.
 
-That `static()` no-op is worth knowing generally: **other uploads (tenant logos,
-medicine images, staff photos) still go through `MEDIA_URL`** and therefore
-depend on the web server serving `/media/`. On the hosted site that has not been
-verified, and the logo `<img>`s all carry an `onerror` fallback to the default
-mark — so a tenant's uploaded logo failing to load looks exactly like a tenant
-that never uploaded one. If someone reports "my logo does not show", check
-whether `/media/` is served before looking anywhere else.
+**`/media/` is served by `pharma_mgmt.media.serve_media`, not by
+`django.conf.urls.static.static()`.** That helper returns an **empty list when
+`DEBUG` is False**, so on the deployed host nothing served `/media/` and every
+tenant's uploaded logo 404'd — and since each logo `<img>` carries an `onerror`
+fallback to the default mark, the page looked fine while showing the wrong
+brand. It went unnoticed until a real uploaded logo was fetched on the live site
+and came back 404. WhiteNoise only serves `STATIC_ROOT`, and Apache in front of a
+cPanel Python app is not something the deployment can rely on, so this goes
+through Django on every install.
+
+`serve_media` **refuses the `patient_docs/` prefix** (casefolded — a
+case-sensitive `startswith` is no guard on a case-insensitive filesystem), so the
+one upload tree stays one folder to back up while medical records stay behind
+`document_file`. Guarded by `tests/test_media.py`; reverting to `static()` fails
+it, because Django's test runner also has `DEBUG = False`.
 
 ### Branding & print
 
