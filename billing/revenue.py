@@ -22,7 +22,36 @@ Matching is by **prefix**, mirroring how the writers build the string:
 OPD = 'OPD'
 LAB = 'LAB'
 IMAGING = 'IMAGING'
+IPD = 'IPD'
+OT = 'OT'
+EMERGENCY = 'EMERGENCY'
+MATERNITY = 'MATERNITY'
 OTHER = 'OTHER'
+
+# Human labels for the module profit report, in the order it lists them.
+LABELS = {
+    OPD: 'OPD / Consultations',
+    LAB: 'Laboratory',
+    IMAGING: 'Imaging / Radiology',
+    IPD: 'Inpatient (IPD)',
+    OT: 'Operation Theatre',
+    EMERGENCY: 'Emergency / Casualty',
+    MATERNITY: 'Maternity',
+    OTHER: 'Other services',
+}
+
+# The literal prefixes each service's create path writes. Kept next to the
+# classifier so a change to a description string has one obvious place to land.
+# Order matters: 'Emergency Consultation' must be tested before the looser
+# 'OPD Consultation' would ever be reached, and the two IPD forms are distinct.
+_PREFIXES = (
+    (EMERGENCY, ('Emergency Consultation',)),
+    (OPD, ('OPD Consultation',)),
+    (LAB, ('Lab:',)),
+    (IPD, ('IPD Bed Charges:', 'Medicine:')),
+    (OT, ('OT Surgery:',)),
+    (MATERNITY, ('Delivery',)),
+)
 
 
 def imaging_prefixes():
@@ -38,12 +67,16 @@ def imaging_prefixes():
 
 
 def classify(description):
-    """Return OPD / LAB / IMAGING / OTHER for one invoice line."""
+    """Return the service category for one invoice line.
+
+    Callers that only care about the four dashboard buckets can treat everything
+    they do not recognise as OTHER — adding a category here is backward
+    compatible for them, because the extra values fall into their `else`.
+    """
     desc = (description or '').strip()
-    if desc.startswith('OPD Consultation'):
-        return OPD
-    if desc.startswith('Lab:'):
-        return LAB
+    for kind, prefixes in _PREFIXES:
+        if desc.startswith(prefixes):
+            return kind
     if desc.startswith(imaging_prefixes()):
         return IMAGING
     return OTHER

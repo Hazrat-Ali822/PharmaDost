@@ -276,6 +276,7 @@ def test_catalog(request):
                     category = get_object_or_404(own_categories, pk=cat_id)
                 LabTest.all_objects.create(
                     category=category, name=name, price=_dec(request.POST.get("price")),
+                    cost_price=_dec(request.POST.get("cost_price")),
                     unit=request.POST.get("unit", "").strip(),
                     normal_range=request.POST.get("normal_range", "").strip(),
                     hospital=hospital)
@@ -288,11 +289,14 @@ def test_catalog(request):
                 if f"price_{t.id}" not in request.POST:
                     continue
                 price = _dec(request.POST.get(f"price_{t.id}"))
+                cost = _dec(request.POST.get(f"cost_{t.id}"))
                 unit = request.POST.get(f"unit_{t.id}", "").strip()
                 nrange = request.POST.get(f"nr_{t.id}", "").strip()   # normal range (optional)
-                if price != t.price or unit != t.unit or nrange != t.normal_range:
-                    t.price, t.unit, t.normal_range = price, unit, nrange
-                    t.save(update_fields=["price", "unit", "normal_range"])
+                if (price != t.price or cost != t.cost_price or unit != t.unit
+                        or nrange != t.normal_range):
+                    t.price, t.cost_price = price, cost
+                    t.unit, t.normal_range = unit, nrange
+                    t.save(update_fields=["price", "cost_price", "unit", "normal_range"])
                     changed += 1
             messages.success(request, f"Updated {changed} test(s).")
         return redirect("lab:test_catalog")

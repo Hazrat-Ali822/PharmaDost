@@ -37,6 +37,12 @@ class LabTest(models.Model):
     category = models.ForeignKey(TestCategory, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    # What the test costs the lab to run — reagent, strip, film, kit share. Used
+    # only by the module profit report; **0 means "not recorded", not "free"**,
+    # and that report says so rather than claiming 100% margin. Optional on
+    # purpose: a hospital that never fills it in loses nothing it had before.
+    cost_price = models.DecimalField(max_digits=10, decimal_places=2,
+                                     default=Decimal('0.00'))
     unit = models.CharField(max_length=50, blank=True)
     normal_range = models.CharField(max_length=100, blank=True)
     hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE,

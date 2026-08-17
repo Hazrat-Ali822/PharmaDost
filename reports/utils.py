@@ -254,3 +254,122 @@ def inventory_snapshot():
         'near_expiry': near_expiry,
     }
     return items, summary
+
+
+# ---------------------------------------------------------------------------
+# Per-module profit
+# ---------------------------------------------------------------------------
+
+def module_profit_data(start, end):
+    """Revenue, cost and profit for each module, for a date range.
+
+    **Basis is billed, not cash collected.** Profit only means anything when the
+    cost is matched to the sale that incurred it, so a bill raised in the period
+    counts in the period even if the patient pays later. That is also what the
+    existing Profit Report does; the *dashboard* is deliberately the other way
+    (cash), and the screen says so, because two numbers that differ with nothing
+    on the page to explain why is how this system has misled people before.
+
+    Cost is only recorded in two places, and the report is explicit about the
+    rest rather than presenting an unrecorded cost as 100% margin:
+
+      * **Pharmacy** — `SaleItem.cost_price`, the batch COGS frozen at the moment
+        of sale, so a later price change cannot rewrite an old sale's profit.
+      * **Lab** — `LabTest.cost_price`, entered by the admin on the price list.
+      * **OPD** — the doctor's own share of the consultation fee
+        (`Doctor.share_percent`). That share *is* the hospital's cost of seeing
+        the patient. Read live rather than frozen, because it is a standing
+        arrangement rather than a per-visit figure.
+
+    Every other module reports revenue with `cost_tracked = False`.
+
+    Each row: key, label, revenue, cost, profit, cost_tracked, note.
+    """
+    from decimal import Decimal as D
+
+    from billing import revenue as rev
+    from billing.models import InvoiceItem
+    from lab.models import TestResult
+    from sales.models import Sale, SaleItem
+
+    zero = D('0.00')
+
+    # --- Pharmacy: its own ledger, never invoiced, so it cannot double count.
+    sales = Sale.objects.filter(created_at__date__range=(start, end),
+                                is_returned=False)
+    ph_revenue = sales.aggregate(s=Sum('total'))['s'] or zero
+    ph_cost = (SaleItem.objects
+               .filter(sale__in=sales)
+               .aggregate(s=Sum(ExpressionWrapper(
+                   F('cost_price') * F('quantity'),
+                   output_field=DecimalField(max_digits=14, decimal_places=2))))['s'] or zero)
+
+    # --- Everything else comes off the invoices, classified by description.
+    items = (InvoiceItem.objects
+             .filter(invoice__status='ACTIVE',
+                     invoice__created_at__date__range=(start, end))
+             .select_related('invoice', 'invoice__appointment',
+                             'invoice__appointment__doctor'))
+
+    billed = {}
+    opd_cost = zero
+    for item in items:
+        kind = rev.classify(item.description)
+        billed[kind] = billed.get(kind, zero) + (item.amount or zero)
+        if kind == rev.OPD:
+            doctor = getattr(getattr(item.invoice, 'appointment', None), 'doctor', None)
+            if doctor is not None and doctor.share_percent is not None:
+                opd_cost += ((item.amount or zero) * D(doctor.share_percent)
+                             / D('100')).quantize(D('0.01'))
+
+    # --- Lab cost: the reagent went out of the door whether or not the bill was
+    # later voided, so it is counted off the tests themselves.
+    lab_cost = (TestResult.objects
+                .filter(is_cancelled=False,
+                        test_order__order_date__date__range=(start, end))
+                .aggregate(s=Sum('lab_test__cost_price'))['s'] or zero)
+
+    rows = [{
+        'key': 'PHARMACY',
+        'label': 'Pharmacy',
+        'revenue': ph_revenue,
+        'cost': ph_cost,
+        'cost_tracked': True,
+        'note': 'Batch cost frozen at the time of each sale.',
+    }]
+
+    for key in (rev.OPD, rev.LAB, rev.IMAGING, rev.IPD, rev.OT,
+                rev.EMERGENCY, rev.MATERNITY, rev.OTHER):
+        amount = billed.get(key, zero)
+        if key == rev.LAB:
+            cost, tracked = lab_cost, True
+            note = ("Reagent / consumable cost from the lab price list."
+                    if lab_cost else
+                    "No cost entered yet — set it per test on the Lab Test Prices "
+                    "screen and this row becomes a real margin.")
+        elif key == rev.OPD:
+            cost, tracked = opd_cost, True
+            note = ("The doctor's share of the fee." if opd_cost else
+                    "Every doctor keeps 100% of the fee, so the hospital's OPD "
+                    "margin is nil. Set a share on the doctor's record to change that.")
+        else:
+            cost, tracked, note = zero, False, 'Cost is not recorded for this module.'
+
+        if amount == zero and cost == zero:
+            continue                       # a module with no activity says nothing
+        rows.append({
+            'key': key, 'label': rev.LABELS[key], 'revenue': amount,
+            'cost': cost, 'cost_tracked': tracked, 'note': note,
+        })
+
+    for row in rows:
+        row['profit'] = row['revenue'] - row['cost']
+        row['margin'] = (row['profit'] / row['revenue'] * 100) if row['revenue'] else None
+
+    totals = {
+        'revenue': sum((r['revenue'] for r in rows), zero),
+        'cost': sum((r['cost'] for r in rows), zero),
+    }
+    totals['profit'] = totals['revenue'] - totals['cost']
+    totals['partial'] = any(not r['cost_tracked'] and r['revenue'] for r in rows)
+    return rows, totals

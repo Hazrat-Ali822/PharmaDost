@@ -520,6 +520,12 @@
           Profit Report
         </a>
         {% endif %}
+        {% if nav.profit %}
+        <a href="{% url 'module_profit_report' %}" class="{% if '/reports/modules/' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          Profit by Module
+        </a>
+        {% endif %}
         {% if nav.reports %}
         <a href="{% url 'inventory_report' %}" class="{% if '/reports/inventory/' in request.path %}active{% endif %}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v14H4z"/><path d="M4 9h16M9 5v14"/></svg>

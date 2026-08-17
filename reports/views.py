@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from accounts.decorators import role_required, feature_required
 from .utils import (resolve_range, sales_report_data, profit_report_data,
-                    inventory_snapshot, daybook_data)
+                    inventory_snapshot, daybook_data, module_profit_data)
 
 REPORT_ROLES = ["ADMIN", "PHARMACIST", "ACCOUNTANT"]
 
@@ -25,6 +25,20 @@ def daybook_report(request):
     rng = resolve_range(request)
     data = daybook_data(rng['start'], rng['end'])
     return render(request, 'reports/daybook.html', {'data': data, 'rng': rng})
+
+
+@feature_required('profit')
+def module_profit_report(request):
+    """Revenue, cost and profit per module — "which part of the hospital earns".
+
+    Only the modules the tenant actually bought produce rows (a module with no
+    activity is dropped), so a pharmacy-only install sees one line rather than a
+    column of zeroes for departments it does not have.
+    """
+    rng = resolve_range(request)
+    rows, totals = module_profit_data(rng['start'], rng['end'])
+    return render(request, 'reports/module_profit.html',
+                  {'rows': rows, 'totals': totals, 'rng': rng})
 
 
 @feature_required('reports')

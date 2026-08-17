@@ -3,7 +3,7 @@
 {% block page_title %}Lab Test Prices{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h2>🧪 Lab Test Prices</h2><div class="muted">Set the fee for each lab test. These prices are used when a test is ordered.</div></div>
+  <div><h2>🧪 Lab Test Prices</h2><div class="muted">Set the fee for each lab test. These prices are used when a test is ordered. <b>Cost</b> is what the test costs you to run (reagent, strip, kit share) — optional, and only used by the <i>Profit by Module</i> report.</div></div>
   <a class="btn alt" href="{% url 'user_mgmt:site_settings' %}">Back to Settings</a>
 </div>
 
@@ -26,6 +26,7 @@
     </div>
     <div class="form-row">
       <div><label>Price ({{ currency }})</label><input name="price" type="number" step="0.01" min="0" value="0"></div>
+      <div><label>Cost ({{ currency }})</label><input name="cost_price" type="number" step="0.01" min="0" value="0" title="What this test costs the lab to run — reagent, strip, kit share. Optional; used by the Profit by Module report."></div>
       <div><label>Unit</label><input name="unit" placeholder="e.g. mg/dL"></div>
       <div><label>Normal range</label><input name="normal_range" placeholder="e.g. 70–110"></div>
     </div>
@@ -39,7 +40,7 @@
   <div class="card" style="margin-bottom:14px">
     <h3>{{ category.name }}</h3>
     <table class="tbl">
-      <thead><tr><th style="width:32%">Test</th><th>Unit</th><th>Normal range <span class="muted" style="font-weight:400">(optional)</span></th><th style="width:130px">Price ({{ currency }})</th></tr></thead>
+      <thead><tr><th style="width:32%">Test</th><th>Unit</th><th>Normal range <span class="muted" style="font-weight:400">(optional)</span></th><th style="width:130px">Price ({{ currency }})</th><th style="width:130px">Cost ({{ currency }})</th></tr></thead>
       <tbody>
         {% for t in tests %}
         <tr>
@@ -47,9 +48,10 @@
           <td><input name="unit_{{ t.id }}" value="{{ t.unit }}" placeholder="e.g. mg/dL" style="width:100%"></td>
           <td><input name="nr_{{ t.id }}" value="{{ t.normal_range }}" placeholder="e.g. 70–110 (optional)" style="width:100%"></td>
           <td><input name="price_{{ t.id }}" type="number" step="0.01" min="0" value="{{ t.price }}" style="width:115px"></td>
+          <td><input name="cost_{{ t.id }}" type="number" step="0.01" min="0" value="{{ t.cost_price }}" style="width:115px"></td>
         </tr>
         {% empty %}
-        <tr><td colspan="4" class="muted">No tests in this category.</td></tr>
+        <tr><td colspan="5" class="muted">No tests in this category.</td></tr>
         {% endfor %}
       </tbody>
     </table>

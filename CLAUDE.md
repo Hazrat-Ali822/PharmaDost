@@ -787,6 +787,45 @@ the money. Three traps, each of which has shipped:
 
 Guarded by `tests/test_module_packaging.py`.
 
+`billing.revenue.classify` returns `OPD` / `LAB` / `IMAGING` / `IPD` / `OT` /
+`EMERGENCY` / `MATERNITY` / `OTHER`. The dashboard and the analytics chart only
+use the first three and let the rest fall into their `else`, so **adding a
+category is backward compatible** — but the prefixes live in `revenue._PREFIXES`
+and must match what the create paths actually write (`'IPD Bed Charges:'`,
+`'Medicine:'`, `'OT Surgery:'`, `'Delivery'`, `'Emergency Consultation'`). Order
+matters there: `'Emergency Consultation'` is tested before `'OPD Consultation'`.
+
+### Profit by module
+
+`/reports/modules/` (`reports.views.module_profit_report`, feature `profit`) is
+"which part of the hospital actually earns". `reports.utils.module_profit_data`
+builds it, and two things about it are deliberate:
+
+- **Basis is billed, not collected.** Profit only means something when the cost
+  sits next to the sale that incurred it, so a bill raised in the period counts
+  in the period. The **dashboard is the opposite** (cash received) — the screen
+  says so in as many words, because two figures that disagree with nothing on the
+  page to explain why is exactly how this app has misled people before.
+- **An unrecorded cost is never treated as zero.** Cost exists in only three
+  places: `SaleItem.cost_price` (pharmacy — batch COGS frozen at sale),
+  **`LabTest.cost_price`** (lab — reagent/consumable, entered by the admin on
+  `/lab/tests/`, optional and 0 by default) and `Doctor.share_percent` (OPD — the
+  doctor's cut *is* the hospital's cost of the consultation, read live because it
+  is a standing arrangement). Every other module reports revenue with
+  `cost_tracked = False`, renders "not recorded", and sets `totals['partial']` so
+  the page states the total profit is a **floor**. Subtracting zero would report
+  imaging and IPD at 100% margin, which an owner would act on.
+
+Modules with no activity are dropped from the table, so a pharmacy-only install
+sees one row rather than a column of zeroes.
+
+Two known gaps, both fine to leave and worth knowing: ward medication given from
+pharmacy stock bills on the **IPD** invoice, so its stock cost is invisible to
+both pharmacy and IPD (`MedicationLog` freezes `unit_price` but no COGS — mirror
+`SaleItem.cost_price` there if IPD profit is ever wanted); and imaging/OT have no
+cost field at all. Adding either is the same shape as `LabTest.cost_price` plus a
+row in `module_profit_data`. Guarded by `tests/test_module_profit.py`.
+
 ### Inventory & dispensing
 
 Stock lives in `StockBatch` rows; `Medicine.quantity` is an aggregate that can drift from `batch_quantity` (hence `reconcile_stock`). Use the derived properties rather than raw `quantity`:

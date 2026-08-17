@@ -1,0 +1,95 @@
+{% extends 'partials/base.html' %}
+{% block title %}Profit by Module{% endblock %}
+{% block page_title %}Profit by Module{% endblock %}
+{% block content %}
+<div class="page-head"><h2>Profit by Module</h2></div>
+{% include 'reports/_range_filter.html' %}
+
+<div class="stat-grid">
+  <div class="stat">
+    <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+    <div class="meta"><span class="value">{{ currency }} {{ totals.revenue|floatformat:0 }}</span><span class="label">Revenue billed</span></div>
+  </div>
+  <div class="stat">
+    <div class="ic amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7 12 3 4 7v10l8 4 8-4z"/><path d="M4 7l8 4 8-4M12 21V11"/></svg></div>
+    <div class="meta"><span class="value">{{ currency }} {{ totals.cost|floatformat:0 }}</span><span class="label">Recorded cost</span></div>
+  </div>
+  <div class="stat">
+    <div class="ic green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V4M20 20H4"/><path d="M7 14l4-4 3 3 4-6"/></svg></div>
+    <div class="meta"><span class="value">{{ currency }} {{ totals.profit|floatformat:0 }}</span><span class="label">Profit</span></div>
+  </div>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">Module by module</h3>
+  <p class="muted" style="margin-top:0; font-size:13px;">
+    Figures are what was <b>billed</b> in this period, not what has been collected —
+    a cost only means something next to the sale that caused it. The dashboard is
+    the other way round (money actually received), so the two will differ while
+    anything is unpaid.
+  </p>
+  <table class="tbl">
+    <thead>
+      <tr>
+        <th>Module</th>
+        <th>Revenue</th>
+        <th>Cost</th>
+        <th>Profit</th>
+        <th>Margin</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>
+          <b>{{ row.label }}</b>
+          <div class="muted" style="font-size:12px;">{{ row.note }}</div>
+        </td>
+        <td>{{ currency }} {{ row.revenue|floatformat:0 }}</td>
+        <td>
+          {% if row.cost_tracked %}
+            {{ currency }} {{ row.cost|floatformat:0 }}
+          {% else %}
+            <span class="muted">not recorded</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if row.cost_tracked %}
+            <b>{{ currency }} {{ row.profit|floatformat:0 }}</b>
+          {% else %}
+            <span class="muted">&mdash;</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if row.cost_tracked and row.margin is not None %}
+            {{ row.margin|floatformat:1 }}%
+          {% else %}
+            <span class="muted">&mdash;</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="muted">Nothing was billed in this period.</td></tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <th>Total</th>
+        <th>{{ currency }} {{ totals.revenue|floatformat:0 }}</th>
+        <th>{{ currency }} {{ totals.cost|floatformat:0 }}</th>
+        <th>{{ currency }} {{ totals.profit|floatformat:0 }}</th>
+        <th></th>
+      </tr>
+    </tfoot>
+  </table>
+
+  {% if totals.partial %}
+  <p class="muted" style="font-size:13px; margin-bottom:0;">
+    Rows marked <i>not recorded</i> have no cost stored anywhere, so their revenue
+    is counted in the total but their profit is not claimed. Treating an unknown
+    cost as zero would report those modules at 100% margin, which is why the
+    total profit above is a <b>floor</b>, not a final figure.
+  </p>
+  {% endif %}
+</div>
+{% endblock %}
