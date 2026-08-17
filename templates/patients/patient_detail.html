@@ -154,6 +154,40 @@
   });
 </script>
 
+<!-- Photographed paper: prescriptions, outside reports, ID cards -->
+<div class="card" style="margin-bottom:16px">
+  <div class="page-head"><h3>Photos &amp; Scanned Papers</h3>
+    <a class="btn sm" href="{% url 'patient_document_add' patient.pk %}">+ Add Photo</a></div>
+  {% if documents %}
+  <div class="doc-grid">
+    {% for d in documents %}
+    <figure class="doc-tile">
+      <a href="{{ d.image.url }}" target="_blank" rel="noopener" title="Open full size">
+        <img src="{{ d.image.url }}" alt="{{ d.label }}" loading="lazy">
+      </a>
+      <figcaption>
+        <strong>{{ d.label }}</strong>
+        <span class="muted">{{ d.doc_date|date:'d/m/Y' }}{% if d.uploaded_by %} · {{ d.uploaded_by.get_full_name|default:d.uploaded_by.email }}{% endif %}</span>
+        {% if d.note %}<span class="muted">{{ d.note }}</span>{% endif %}
+        {% if user.is_superuser or user.role == 'ADMIN' or d.uploaded_by_id == user.pk %}
+        <form method="post" action="{% url 'patient_document_delete' d.pk %}"
+              onsubmit="return confirm('Remove this photo?');">{% csrf_token %}
+          <button class="linklike" style="border:none;background:none;color:#ef4444;cursor:pointer;padding:0;font-size:12px;">Remove</button>
+        </form>
+        {% endif %}
+      </figcaption>
+    </figure>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted" style="margin:0;">
+    Nothing photographed yet. Use this for a handwritten prescription, a report
+    brought from another lab, or an ID card — snap it with the phone camera and it
+    stays on the record.
+  </p>
+  {% endif %}
+</div>
+
 <!-- Clinical records: consultations, procedures, operations, scans -->
 <div class="card" style="margin-bottom:16px">
   <div class="page-head"><h3>Clinical Records (Diagnosis / Operations / Scans)</h3>

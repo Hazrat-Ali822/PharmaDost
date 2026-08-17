@@ -1,6 +1,8 @@
 import calendar
+import uuid
 from decimal import Decimal
 
+from django.conf import settings
 from django.db import models
 from django.db.models import Q, UniqueConstraint
 from django.utils import timezone
@@ -153,3 +155,74 @@ class Patient(models.Model):
 
     def __str__(self):
         return f"{self.full_name} ({self.mrn})"
+
+
+def _document_path(instance, filename):
+    """One folder per patient, so a records request is one directory."""
+    import os
+    ext = (os.path.splitext(filename)[1] or '.jpg').lower()
+    return f'patient_docs/{instance.patient_id}/{uuid.uuid4().hex}{ext}'
+
+
+class PatientDocument(models.Model):
+    """A photograph of a paper document, attached to the patient's record.
+
+    Most doctors here write on paper and are not going to stop. The system
+    already worked around that — reception books the visit, the pharmacist sells
+    from the paper prescription at the POS, and the money and stock come out
+    right — but the *paper itself* was never kept, so a year later nobody could
+    answer "what was she given last time".
+
+    This does one thing: somebody photographs the sheet and it joins the record.
+    Nothing is read out of the image. Handwriting OCR on a doctor's prescription
+    is 60–70% at best, and a system that reads `Amlodipine` as `Amoxicillin` or
+    `5mg` as `50mg` is not a partly-working feature, it is a dangerous one —
+    people stop checking exactly because it usually works. So the lab, the
+    pharmacy and the ward keep entering what they enter today, and this is the
+    evidence sitting beside it.
+
+    **Not offline.** `static/js/offline.js` cannot queue a file input (it drops
+    them with a toast and re-attaches once online), so the upload needs a
+    connection. The clinical entry it accompanies does not.
+    """
+
+    KIND_CHOICES = [
+        ('RX', 'Prescription'),
+        ('LAB', 'Lab report'),
+        ('SCAN', 'Scan / X-ray report'),
+        ('DISCHARGE', 'Discharge / referral letter'),
+        ('ID', 'ID card / Sehat Card'),
+        ('CONSENT', 'Signed consent'),
+        ('OTHER', 'Other'),
+    ]
+
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='documents')
+    # Which visit it belongs to, when it is known. Optional: a photo brought in
+    # off the street belongs to the patient, not to any appointment.
+    appointment = models.ForeignKey('opd.Appointment', on_delete=models.SET_NULL,
+                                    null=True, blank=True, related_name='documents')
+    image = models.ImageField(upload_to=_document_path)
+    kind = models.CharField(max_length=12, choices=KIND_CHOICES, default='RX')
+    title = models.CharField(max_length=120, blank=True,
+                             help_text='Optional — "Dr. Sara, BP medicines"')
+    doc_date = models.DateField(default=timezone.localdate,
+                                help_text='The date on the paper, not today')
+    note = models.CharField(max_length=255, blank=True)
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+                                    null=True, blank=True, related_name='+')
+    uploaded_at = models.DateTimeField(default=timezone.now)
+    hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE,
+                                 null=True, blank=True, related_name='patient_documents')
+
+    objects = TenantManager()
+    all_objects = models.Manager()
+
+    class Meta:
+        ordering = ('-doc_date', '-uploaded_at')
+
+    def __str__(self):
+        return f'{self.get_kind_display()} — {self.patient.full_name} ({self.doc_date})'
+
+    @property
+    def label(self):
+        return self.title or self.get_kind_display()

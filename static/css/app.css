@@ -842,3 +842,36 @@ input[type="radio"]:focus-visible {
 /* 3. Pointer affordance on clickables the browser leaves as a text cursor —
    a <label> wired to a control, a <summary>, anything role=button. */
 [role="button"], summary, label[for] { cursor: pointer; }
+
+/* Photographed paper on the patient record (patients/patient_detail.html).
+   A thumbnail grid rather than a list: the point of a photo is that you
+   recognise it at a glance. `object-fit: cover` keeps the tiles even without
+   distorting a portrait phone shot. */
+.doc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+}
+.doc-tile { margin: 0; }
+.doc-tile img {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  display: block;
+}
+.doc-tile figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  margin-top: 6px;
+  word-break: break-word;
+}
+@media (max-width: 560px) {
+  /* Still two up: these are recognised by shape, and one column costs a
+     screenful of scrolling per photo. */
+  .doc-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+  .doc-tile img { height: 120px; }
+}

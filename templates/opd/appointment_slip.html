@@ -10,6 +10,9 @@
 {% block actions %}
   <a href="{% url 'reception_desk' %}">Next Patient</a>
   <a href="{% url 'patient_detail' appointment.patient.pk %}">History</a>
+  {# This sheet is already the pad the doctor writes the Rx on, so it is the one #}
+  {# place where photographing it back onto the record is the obvious next step. #}
+  <a href="{% url 'patient_document_add' appointment.patient.pk %}?appointment_id={{ appointment.pk }}">Attach Photo</a>
 {% endblock %}
 
 {% block body %}

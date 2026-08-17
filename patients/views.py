@@ -171,6 +171,7 @@ def patient_detail(request, pk):
     pharmacy_sales = (patient.pharmacy_sales
                       .prefetch_related('items', 'items__medicine')
                       .order_by('-created_at'))
+    documents = patient.documents.select_related('uploaded_by').all()
 
     # Gather chronological vital signs history (OPD + IPD)
     import json
@@ -239,6 +240,7 @@ def patient_detail(request, pk):
         'imaging_studies': imaging_studies,
         'invoices': invoices,
         'pharmacy_sales': pharmacy_sales,
+        'documents': documents,
         'vitals_json': vitals_json,
     })
 
@@ -262,3 +264,70 @@ def record_add(request, pk):
     else:
         form = ClinicalRecordForm()
     return render(request, 'patients/record_form.html', {'form': form, 'patient': patient})
+
+
+# --------------------------------------------------------------- documents
+# Photographs of paper: the prescription a doctor wrote by hand, a lab report
+# brought from outside, an ID card. Nothing is read out of the image — see the
+# note on `PatientDocument`. Gated on `patients` **or** `pos`, because the
+# pharmacist is often the one holding the paper and does not hold `patients`.
+
+@feature_required('patients', 'pos')
+def document_add(request, pk):
+    from .forms import PatientDocumentForm
+    from .images import compress
+
+    patient = _document_patient(request, pk)
+    if request.method == 'POST':
+        form = PatientDocumentForm(request.POST, request.FILES)
+        if form.is_valid():
+            doc = form.save(commit=False)
+            doc.patient = patient
+            doc.uploaded_by = request.user
+            doc.hospital = patient.hospital
+            if doc.image:
+                doc.image = compress(doc.image)
+            appt_id = request.POST.get('appointment_id')
+            if appt_id:
+                doc.appointment = patient.appointments.filter(pk=appt_id).first()
+            doc.save()
+            messages.success(request, 'Photo saved to the patient record.')
+            return redirect(request.POST.get('next') or 'patient_detail', pk=patient.pk)
+    else:
+        form = PatientDocumentForm(initial={'kind': request.GET.get('kind') or 'RX'})
+    return render(request, 'patients/document_form.html', {
+        'form': form, 'patient': patient,
+        'appointment_id': request.GET.get('appointment_id') or '',
+        'next': request.GET.get('next') or '',
+    })
+
+
+@feature_required('patients', 'pos')
+def document_delete(request, pk):
+    """Remove a photo. The file goes with the row — a wrong or duplicate picture
+    left on disk is a record of nothing, and this is not a clinical entry whose
+    history has to survive."""
+    from .models import PatientDocument
+
+    doc = get_object_or_404(PatientDocument.objects.select_related('patient'), pk=pk)
+    _document_patient(request, doc.patient_id)      # tenant + role scope
+    if request.method == 'POST':
+        if not (request.user.is_superuser or request.user.role == 'ADMIN'
+                or doc.uploaded_by_id == request.user.pk):
+            raise PermissionDenied('Only an admin or whoever uploaded it can remove a photo.')
+        patient_id = doc.patient_id
+        doc.image.delete(save=False)
+        doc.delete()
+        messages.success(request, 'Photo removed.')
+        return redirect('patient_detail', pk=patient_id)
+    return redirect('patient_detail', pk=doc.patient_id)
+
+
+def _document_patient(request, pk):
+    """The patient, scoped — reusing the same rule as every other patient screen.
+
+    A pharmacist holds `pos` but not `patients`, so `_visible_patients` would
+    show them everyone; that is correct here (they serve whoever walks up to the
+    counter) and the tenant filter still applies through `Patient.objects`.
+    """
+    return _get_scoped_patient(request, pk)

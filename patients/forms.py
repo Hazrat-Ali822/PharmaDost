@@ -2,7 +2,7 @@ import calendar
 from datetime import date, timedelta
 
 from django import forms
-from .models import Patient
+from .models import Patient, PatientDocument
 from opd.models import ClinicalRecord
 
 
@@ -157,3 +157,36 @@ class ClinicalRecordForm(forms.ModelForm):
             'date': forms.DateInput(attrs={'type': 'date'}),
             'details': forms.Textarea(attrs={'rows': 4}),
         }
+
+
+class PatientDocumentForm(forms.ModelForm):
+    """Upload a photograph of a paper document.
+
+    `capture="environment"` opens the phone's rear camera straight from the
+    button, which is the whole workflow: point at the sheet, shoot, done. On a
+    desktop it degrades to an ordinary file picker.
+    """
+
+    class Meta:
+        model = PatientDocument
+        fields = ['image', 'kind', 'title', 'doc_date', 'note']
+        widgets = {
+            'image': forms.ClearableFileInput(attrs={
+                'accept': 'image/*', 'capture': 'environment'}),
+            'doc_date': forms.DateInput(attrs={'type': 'date'}),
+            'title': forms.TextInput(attrs={'placeholder': 'Optional — "Dr. Sara, BP medicines"'}),
+            'note': forms.TextInput(attrs={'placeholder': 'optional'}),
+        }
+
+    def clean_image(self):
+        from .images import MAX_UPLOAD_BYTES
+
+        image = self.cleaned_data.get('image')
+        # Only a fresh upload has `.size`; leaving an existing file alone does not.
+        size = getattr(image, 'size', 0)
+        if size and size > MAX_UPLOAD_BYTES:
+            mb = MAX_UPLOAD_BYTES // (1024 * 1024)
+            raise forms.ValidationError(
+                f'That picture is {size / 1024 / 1024:.0f} MB — the limit is {mb} MB. '
+                f'Photograph it again at a lower resolution.')
+        return image

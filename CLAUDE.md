@@ -1022,6 +1022,42 @@ a fixed number of days — 31 Jan to 1 Mar borrows 28 from February and yields a
 count. `templates/patients/patient_form.html` mirrors the same algorithm in JS; the two
 must agree.
 
+### Photographed paper (the doctor who writes by hand)
+
+Most doctors in this market write the prescription on paper and are not going to
+stop. The system already worked around that — reception books the visit, and the
+pharmacist sells straight from the paper at the POS, so money and stock come out
+right — but **the paper itself was never kept**, so a year later nobody could
+answer "what was she given last time".
+
+`patients.PatientDocument` is a photograph attached to the record: patient FK,
+optional `appointment`, `image`, a `kind` (Rx / lab report / scan / discharge
+letter / ID card / consent / other), the date on the paper, and who uploaded it.
+Tenant-scoped, with `all_objects` for the unscoped case. Entry points are the
+patient record and the **OPD appointment slip**, which is already the pad the
+doctor writes on.
+
+Four things are deliberate:
+
+- **Nothing is read out of the image, and that is the design, not a shortcut.**
+  Handwriting OCR on a doctor's prescription is 60–70% at best, and a system that
+  reads `Amlodipine` as `Amoxicillin` or `5mg` as `50mg` is not partly working —
+  it is dangerous, because people stop checking exactly when it usually works. If
+  extraction is ever added it must present a *draft* the pharmacist confirms line
+  by line, and never save anything on its own.
+- **Gated on `patients` OR `pos`.** The pharmacist is often the one holding the
+  paper and does not hold `patients`; without the second key the person standing
+  in front of the patient cannot do this (same reasoning as the Rx cancel views).
+- **Uploads are shrunk** (`patients/images.py`: 1600px long edge, JPEG q78,
+  EXIF rotation applied). A phone writes 3–8 MB a shot, and on the desktop build
+  every megabyte is copied into the launch backup zip and then uploaded to the
+  cloud backup — paid three times. If Pillow cannot process a file it is stored
+  unchanged: losing the record to save disk is the wrong trade. Over
+  `images.MAX_UPLOAD_BYTES` the form refuses with a readable message.
+- **Not offline.** `static/js/offline.js` cannot queue a file input (it drops
+  them with a toast and re-attaches once online), so the upload needs a
+  connection — the clinical entry it accompanies does not.
+
 ### Branding & print
 
 `user_mgmt.SiteSettings` is a per-hospital singleton (`OneToOneField` to `Hospital`, nullable) holding brand name, logo, colours, receipt header/footer, print theme, enabled modules, and `show_doctor_to_pharmacy`. `SiteSettings.load()` resolves it from `get_current_hospital()`, creating the row on first access; with no hospital it reuses the single hospital-less row.
