@@ -39,7 +39,7 @@
         {% endif %}
       </td>
       <td><a href="{% url 'patient_detail' o.patient.pk %}">{{ o.patient.full_name }}</a></td>
-      <td>Dr. {{ o.ordered_by.get_full_name|default:o.ordered_by.email|default:"External / Self" }}</td>
+      <td>{% if o.ordered_by %}{% if o.ordered_by.role == 'DOCTOR' %}Dr. {% endif %}{{ o.ordered_by.display_name }}{% else %}External / Self{% endif %}</td>
       {# |length off the prefetched list — .count issues a COUNT query per row #}
       <td>{{ o.results.all|length }} test{{ o.results.all|length|pluralize }}</td>
       <td>
