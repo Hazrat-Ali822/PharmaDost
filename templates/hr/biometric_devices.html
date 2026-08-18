@@ -11,6 +11,12 @@
   }
   .setup-step.done > .n { background: #16a34a; }
   .setup-step h4 { margin: 3px 0 4px; font-size: 15px; }
+  .where {
+    display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px;
+    font-size: 11px; font-weight: 700; letter-spacing: .3px; vertical-align: 2px;
+  }
+  .where.machine { background: #fde68a; color: #78350f; }
+  .where.here    { background: #cffafe; color: #164e63; }
   .setup-step p { margin: 0; font-size: 13.5px; color: var(--muted); }
   .kv { border-collapse: collapse; }
   .kv th { text-align: left; padding: 5px 18px 5px 0; font-weight: 600; white-space: nowrap; }
@@ -25,7 +31,7 @@
     <div class="muted">A thumb on the reader becomes an attendance record, on its own.</div>
   </div>
   <div class="btn-row">
-    <a class="btn alt sm" href="{% url 'hr_biometric_punches' %}">Punch log</a>
+    <a class="btn alt sm" href="{% url 'hr_biometric_scans' %}">Scan log</a>
     <a class="btn sm" href="{% url 'hr_biometric_build' %}">Build attendance</a>
   </div>
 </div>
@@ -34,7 +40,7 @@
   <div class="card" style="border-left:4px solid #f59e0b;">
     <strong>A machine on your network is trying to connect.</strong>
     <p class="muted" style="margin:6px 0 10px;">
-      It is sending punches, but no machine here has its serial number, so they are
+      It is sending scans, but no machine here has its serial number, so they are
       being refused. If this is yours, register it below with this exact serial.
     </p>
     <ul style="margin:0;">
@@ -52,7 +58,7 @@
     <div class="setup-step {% if devices %}done{% endif %}">
       <div class="n">1</div>
       <div>
-        <h4>Register the machine here</h4>
+        <h4>Register the machine here<span class="where here">IN SEHATYAR</span></h4>
         <p>Once, per machine. You need its serial number — the form is at the bottom of this page.</p>
       </div>
     </div>
@@ -60,7 +66,7 @@
     <div class="setup-step {% if any_contact %}done{% endif %}">
       <div class="n">2</div>
       <div>
-        <h4>Type this server's address into the machine</h4>
+        <h4>Type this server's address into the machine<span class="where machine">ON THE MACHINE</span></h4>
         <p>Once, per machine. The exact values are in the next box. After this the
            machine sends everything by itself — you never export or upload a file.</p>
       </div>
@@ -69,7 +75,7 @@
     <div class="setup-step">
       <div class="n">3</div>
       <div>
-        <h4>Add each employee to Sehatyar</h4>
+        <h4>Add each employee to Sehatyar<span class="where here">IN SEHATYAR</span></h4>
         <p>
           Once, per person — <a href="{% url 'hr_employee_add' %}">Add employee</a>:
           name, designation, salary. They do <em>not</em> need a login or an email
@@ -81,7 +87,7 @@
     <div class="setup-step">
       <div class="n">4</div>
       <div>
-        <h4>Enrol their thumb on the machine, and note the number it gives them</h4>
+        <h4>Enrol their thumb, and note the number it gives them<span class="where machine">ON THE MACHINE</span></h4>
         <p>
           On the machine: <strong>Menu → User Management → New User</strong>. It
           assigns a User ID — 1, 2, 3 and so on — then scans the finger. Write that
@@ -93,11 +99,11 @@
     <div class="setup-step">
       <div class="n">5</div>
       <div>
-        <h4>Put that number against the person here</h4>
+        <h4>Put that number against the person<span class="where here">IN SEHATYAR</span></h4>
         <p>
           <a href="{% url 'hr_biometric_enrolment' %}">Map staff</a>. This is the only
           link between the two — the machine knows numbers, Sehatyar knows people.
-          Do it whenever suits: punches recorded before the mapping existed are kept,
+          Do it whenever suits: scans recorded before the mapping existed are kept,
           and they count the moment you add it.
         </p>
       </div>
@@ -108,7 +114,10 @@
       <div>
         <h4>That is all — from here it runs itself</h4>
         <p>
-          Every punch arrives within seconds. At month end open
+          <strong>A "scan" is one touch of the reader.</strong> Coming in is one,
+          going home is another — so a normal day is two scans per person, and
+          Sehatyar works the day out from the first and the last.
+          Each one arrives within seconds. At month end open
           <a href="{% url 'hr_biometric_build' %}">Build attendance</a> to turn them
           into present / half / absent days, check what it proposes, and the
           <a href="{% url 'hr_salary_create' %}">payslip</a> picks up the deduction.
@@ -145,7 +154,7 @@
       <table>
         <thead><tr>
           <th>Name</th><th>Serial</th><th>Where</th>
-          <th>Last heard from</th><th>Punches</th><th></th>
+          <th>Last heard from</th><th>Scans</th><th></th>
         </tr></thead>
         <tbody>
         {% for d in devices %}
@@ -164,7 +173,7 @@
             </td>
             <td>{{ d.punches_received }}</td>
             <td>
-              <form method="post" onsubmit="return confirm('Remove {{ d.name }}? Its punches are deleted with it.');" style="display:inline;">
+              <form method="post" onsubmit="return confirm('Remove {{ d.name }}? Its scans are deleted with it.');" style="display:inline;">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="delete">
                 <input type="hidden" name="pk" value="{{ d.pk }}">
@@ -192,7 +201,7 @@
     <p class="muted" style="margin:-6px 0 12px; font-size:12.5px;">
       On the machine: <strong>Menu → System / Info → Device Info</strong>. Usually
       also printed on a sticker on the back. It must match exactly — this is how the
-      server knows the punches are yours.
+      server knows the scans are yours.
     </p>
     <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:0 14px;">
       <label>Name<input type="text" name="name" placeholder="e.g. Front desk"></label>
@@ -204,7 +213,7 @@
 
 {% if unmapped_count %}
   <div class="card" style="border-left:4px solid #f59e0b;">
-    <strong>{{ unmapped_count }} punch{{ unmapped_count|pluralize:"es" }} from
+    <strong>{{ unmapped_count }} scan{{ unmapped_count|pluralize }} from
     {{ unmapped|length }} enrolment number{{ unmapped|pluralize }} nobody is mapped to.</strong>
     <p class="muted" style="margin:6px 0 10px;">
       Nothing is lost — they are kept, and they count the moment you say who they

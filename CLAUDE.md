@@ -1328,6 +1328,19 @@ Three moving parts:
   **site root** in `pharma_mgmt/urls.py` (`/iclock/cdata`, `/iclock/getrequest`,
   `/iclock/devicecmd`), not under `/hr/`, because the firmware hard-codes
   `/iclock/` and most models only let you set an IP and a port.
+**On screen the word is "scan", never "punch".** "Punch" is the protocol's term
+and every vendor manual's, so the *model* keeps it (`BiometricPunch`,
+`punched_at`) — code that renamed it would stop matching what you read when a
+device misbehaves. But it means nothing to a clinic admin: the owner read the
+setup steps and asked what a punch was. The view layer therefore follows the
+screen (`/hr/devices/scans/`, `hr_biometric_scans`, `scan_list`, `scan_count`),
+the page defines the word where it first appears, and each setup step is
+labelled **ON THE MACHINE** or **IN SEHATYAR** — half of them are done standing
+at the terminal and half sitting at a screen, and not saying which was the
+actual source of the confusion. Guarded in `hr/tests_biometric.py`; keep the
+boundary at the model, or the vocabulary ends up half-renamed, which is worse
+than either name.
+
 - **`hr.models.BiometricPunch`** — the raw events, kept for ever. Deliberately
   not attendance rows: the machine reports moments, payroll needs a verdict per
   person per day, and keeping the events means the verdict can be recomputed

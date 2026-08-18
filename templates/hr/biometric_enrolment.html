@@ -11,7 +11,7 @@
 <p class="muted" style="margin-top:-6px; max-width:680px;">
   When you enrol somebody's thumb, the machine gives them a number — 1, 2, 3 and
   so on. It has no idea who that is. Put the same number here once and every
-  punch from then on lands on the right person. Done once per employee.
+  scan from then on lands on the right person. Done once per employee.
 </p>
 
 {% if unmapped %}
@@ -19,7 +19,7 @@
     <strong>Numbers the machine has used that nobody is mapped to</strong>
     <p class="muted" style="margin:6px 0 0;">
       {% for uid, n in unmapped %}
-        <code>{{ uid }}</code> ({{ n }} punch{{ n|pluralize:"es" }}){% if not forloop.last %} &nbsp; {% endif %}
+        <code>{{ uid }}</code> ({{ n }} scan{{ n|pluralize:"es" }}){% if not forloop.last %} &nbsp; {% endif %}
       {% endfor %}
     </p>
   </div>

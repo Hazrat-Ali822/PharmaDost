@@ -4,7 +4,7 @@
 {% block content %}
 
 <div class="page-head">
-  <h2>Turn punches into attendance days</h2>
+  <h2>Turn scans into attendance days</h2>
   <a class="btn alt" href="{% url 'hr_biometric_devices' %}">← Machines</a>
 </div>
 
@@ -22,7 +22,7 @@
     <div><button class="btn alt" type="submit" name="action" value="preview">Show me what it will do</button></div>
   </div>
   <p class="muted" style="margin:10px 0 0; font-size:13px;">
-    {{ punch_count }} punch{{ punch_count|pluralize:"es" }} recorded in this period.
+    {{ scan_count }} scan{{ scan_count|pluralize }} recorded in this period.
   </p>
 
   {% if report %}
@@ -47,7 +47,7 @@
 
     {% if report.no_data_days %}
       <div class="card" style="border-left:4px solid var(--warn, #f59e0b); margin-top:12px;">
-        <strong>{{ report.no_data_days|length }} day{{ report.no_data_days|pluralize }} with no punches from anybody.</strong>
+        <strong>{{ report.no_data_days|length }} day{{ report.no_data_days|pluralize }} with no scans from anybody.</strong>
         <p class="muted" style="margin:6px 0 0;">
           A closed day, a holiday, or the machine was switched off — from here
           they look identical, so nobody is marked absent on them. Mark them by
@@ -60,7 +60,7 @@
 
     {% if report.unmapped %}
       <div class="card" style="border-left:4px solid var(--warn, #f59e0b); margin-top:12px;">
-        <strong>Punches from numbers nobody is mapped to</strong>
+        <strong>Scans from numbers nobody is mapped to</strong>
         <p class="muted" style="margin:6px 0 10px;">
           These are not counted for anyone yet, and they are not thrown away.
           {% for uid, n in report.unmapped.items %}<code>{{ uid }}</code> ({{ n }}){% if not forloop.last %}, {% endif %}{% endfor %}

@@ -100,7 +100,7 @@ def _device_save(request, hospital):
                                    pk=request.POST.get('pk'), hospital=hospital)
         name = device.name
         device.delete()
-        messages.success(request, f'{name} removed. Its punches went with it.')
+        messages.success(request, f'{name} removed. Its scans went with it.')
         return redirect('hr_biometric_devices')
 
     serial = (request.POST.get('serial') or '').strip()
@@ -156,7 +156,7 @@ def enrolment_map(request):
                 p.biometric_id = value
                 p.save(update_fields=['biometric_id'])
         linked = _relink(hospital)
-        messages.success(request, f'Saved. {linked} punch(es) matched to a person.'
+        messages.success(request, f'Saved. {linked} scan(s) matched to a person.'
                          if linked else 'Saved.')
         return redirect('hr_biometric_enrolment')
 
@@ -218,7 +218,7 @@ def build_attendance(request):
     return render(request, 'hr/biometric_build.html', {
         'start': start, 'end': end, 'report': report,
         'done': request.GET.get('done'),
-        'punch_count': BiometricPunch.all_objects.filter(
+        'scan_count': BiometricPunch.all_objects.filter(
             hospital=hospital, punched_at__date__gte=start,
             punched_at__date__lte=end).count(),
     })
@@ -226,12 +226,12 @@ def build_attendance(request):
 
 @feature_required('hr')
 @role_required(['ADMIN'])
-def punch_list(request):
+def scan_list(request):
     """The raw events, newest first — for the day somebody disputes a deduction."""
     hospital = _hospital(request)
     qs = (BiometricPunch.all_objects.filter(hospital=hospital)
           .select_related('user', 'device')[:300])
-    return render(request, 'hr/biometric_punches.html', {'punches': qs})
+    return render(request, 'hr/biometric_scans.html', {'scans': qs})
 
 
 def _date(raw, default):

@@ -1,10 +1,10 @@
 {% extends 'partials/base.html' %}
-{% block title %}Punch Log{% endblock %}
-{% block page_title %}Punch Log{% endblock %}
+{% block title %}Scan Log{% endblock %}
+{% block page_title %}Scan Log{% endblock %}
 {% block content %}
 
 <div class="page-head">
-  <h2>Raw punches, newest first</h2>
+  <h2>Raw scans, newest first</h2>
   <a class="btn alt" href="{% url 'hr_biometric_devices' %}">← Machines</a>
 </div>
 
@@ -14,12 +14,12 @@
 </p>
 
 <div class="card">
-  {% if punches %}
+  {% if scans %}
     <div class="table-scroll">
       <table>
         <thead><tr><th>When</th><th>Enrolment no.</th><th>Person</th><th>Machine</th></tr></thead>
         <tbody>
-        {% for p in punches %}
+        {% for p in scans %}
           <tr>
             <td>{{ p.punched_at|date:"d/m/Y H:i:s" }}</td>
             <td><code>{{ p.device_user_id }}</code></td>
@@ -38,7 +38,7 @@
     </p>
   {% else %}
     <p class="muted">Nothing yet. Once a machine is registered and can reach this
-      server, punches appear here within seconds of a thumb touching it.</p>
+      server, scans appear here within seconds of a thumb touching it.</p>
   {% endif %}
 </div>
 

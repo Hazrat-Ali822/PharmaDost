@@ -420,3 +420,17 @@ class AddEmployeeTest(BiometricTestBase):
         self.assertIn('User Management', html)      # where to enrol the thumb
         self.assertIn('/hr/staff/add/', html)       # where to add the person
         self.assertIn('/hr/devices/enrolment/', html)   # where to link the two
+
+    def test_each_step_says_where_it_happens(self):
+        """Half of them are done standing at the machine and half sitting at a
+        screen, and not saying which is the thing that confused the owner."""
+        html = self.c.get('/hr/devices/').content.decode()
+        self.assertIn('ON THE MACHINE', html)
+        self.assertIn('IN SEHATYAR', html)
+
+    def test_the_word_scan_is_explained_rather_than_assumed(self):
+        """"Punch" is the protocol's word and means nothing to a clinic admin.
+        The screens say "scan", and the page defines it."""
+        html = self.c.get('/hr/devices/').content.decode()
+        self.assertIn('one touch of the reader', html)
+        self.assertNotIn('punch', html.lower())
