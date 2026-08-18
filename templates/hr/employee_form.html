@@ -21,7 +21,7 @@
     <label>Joining date{{ form.joining_date }}{{ form.joining_date.errors }}</label>
     <label>Enrolment number{{ form.biometric_id }}{{ form.biometric_id.errors }}</label>
   </div>
-  <p class="muted" style="margin:-4px 0 14px; font-size:12.5px;">
+  <p class="field-help">
     The enrolment number is what the attendance machine calls this person — 1, 2,
     3 and so on. Leave it blank if their thumb is not on the machine yet; you can
     add it later from <a href="{% url 'hr_biometric_enrolment' %}">Map staff</a>,
@@ -33,7 +33,7 @@
       {{ form.wants_login }}
       <span>This person also signs in to the system</span>
     </label>
-    <p class="muted" style="margin:8px 0 0; font-size:12.5px;">
+    <p class="field-help" style="margin-bottom:0;">
       Most staff never do. A guard, a cleaner, a ward boy or a driver is on the
       attendance machine and on the salary sheet and never touches a screen —
       leave this off for them, and they need no email address at all.

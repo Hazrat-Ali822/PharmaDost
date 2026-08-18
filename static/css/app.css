@@ -531,6 +531,21 @@ form p label { display: block; margin-bottom: 5px; color: var(--muted); font-siz
 
 .total-wrap { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: 18px; margin: 12px 0; font-weight: 700; letter-spacing: -.01em; }
 
+/* Help text under a field. Use this instead of hand-tuning a margin inline.
+   Every text input is `width: 100%` with a border, so a paragraph given a
+   negative top margin to "tighten the gap" slides up *into* that border and the
+   border draws a line straight through the first line of the sentence. It looks
+   like a stray <hr>, and it is impossible to diagnose from the template — which
+   is where it shipped from, twice, because a negative margin written without
+   rendering the page is a guess. */
+.field-help {
+  margin: 6px 0 14px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.field-help:last-child { margin-bottom: 0; }
+
 /* checkbox lists (e.g. lab tests) get a little breathing room */
 input[type=checkbox], input[type=radio] { accent-color: var(--primary); width: 16px; height: 16px; }
 

@@ -1838,8 +1838,20 @@ template that links it — there are six: `partials/base.html`,
 is worse than missing all of them: that page keeps serving the *old* stylesheet
 out of the browser cache while every other page has the new one, so a layout fix
 works everywhere except the screen somebody is looking at, and it reads as a CSS
-bug rather than a stale file. Guarded by `tests/test_stylesheet_version.py`,
+bug rather than a stale file. Guarded by `tests/test_stylesheet.py`,
 which fails if the six ever disagree.
+
+**Help text under a field is `.field-help`, never a hand-tuned inline margin.**
+Every text input is `width: 100%` **with a border**, so a `<p>` given a negative
+top margin to close the gap slides up *into* that border and the border draws a
+line straight through the first line of the sentence. On screen it reads as a
+stray `<hr>` across the text; in the template it is invisible, which is why it
+shipped twice — a negative margin written without rendering the page is a guess.
+A negative top margin after a `.page-head` or a heading is fine and is the
+existing convention; after a *field* it is the bug. Guarded by
+`tests/test_stylesheet.py::NegativeMarginUnderAFieldTest`, which allows
+intervening closing tags — the help paragraph usually follows the `</div>` that
+ends a grid of labels, and a stricter pattern walks straight past it.
 
 **`.form-actions` is styled in `app.css`, not per template.** It wraps the submit
 row in ~40 templates and for a long time was styled in exactly one of them (the
