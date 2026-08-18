@@ -1883,6 +1883,16 @@ takes those to 3 lines and 79px. Those tests wait on elements rather than
 `networkidle` — every page polls notifications on a timer, so "the network went quiet"
 is a race, and that was making the E2E run flaky.
 
+## Working with the owner
+
+The product owner is the solo developer on this repo and **writes in Roman Urdu**
+mixed with English technical vocabulary. Read it — it is how requirements arrive.
+
+**Answer in English.** Asked for directly, and the reason is practical: they find
+Roman Urdu written back harder to read than English, so a reply in the same
+register is slower for them, not friendlier. Keep answers concise, and keep code,
+file paths and identifiers in English as they already are.
+
 ## Keeping this file current
 
 **This file is maintained alongside the code, in the same commit as the change.** It is the
