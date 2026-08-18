@@ -375,7 +375,31 @@ shop has **no patients at all**. Two rules:
 - **A nav group whose every link is feature-gated needs the group itself gated
   too.** The sidebar's "Price List" heading was `{% if nav.catalog %}` while both
   links inside were `nav.lab` / `nav.imaging`, so a pharmacy-only tenant got a
-  section title over nothing.
+  section title over nothing. Guarded generically now by
+  `tests/test_nav_groups.py`, which renders the real sidebar across ten module
+  packages × eight roles and fails if **any** group contains no links — so a
+  group added tomorrow is covered without touching the test.
+
+**The clinical links are seven groups, not one.** "Clinical" was a single heading
+over 26 links for a full hospital, and the sidebar groups are collapsible
+accordions, so one enormous group defeated the only mechanism there is for
+shortening the menu. They are now **Patients** (patients, diagnoses, referrals,
+certificates, consent), **OPD**, **Diagnostics** (lab, imaging, blood bank — the
+same staff and the same part of the building; LABTECH holds all three),
+**Ward (IPD)**, **Emergency** (emergency + ambulance), **Theatre**, and
+**Mother & Child** (maternity + vaccination, the way a clinic already names that
+pair). Note this is *presentation only* — the sellable `MODULES` were already
+this granular, so a tenant could always buy IPD without OT.
+
+Each group's condition is a `nav.grp_*` flag computed in
+`accounts.context_processors._nav_groups`, **not** a chain of
+`{% if nav.a or nav.b %}` in the template: it has to be the union of exactly the
+links inside it, gated on less shows an empty heading and gated on more hides
+links the user is entitled to, and neither is visible unless you are signed in as
+the affected tenant in the affected role. In Python a test can reach it.
+`grp_patients_link` exists for the same reason — the Patients link is hidden from
+LABTECH/SONOGRAPHER, and that condition has to be stated once or the group
+outlives its only link.
 
 The `ward` feature (nurses) is deliberately narrower than `ipd`: ward views take
 `feature_required('ipd', 'ward')`, while admitting, discharging and ward setup stay

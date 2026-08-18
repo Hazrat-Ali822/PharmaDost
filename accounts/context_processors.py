@@ -15,7 +15,43 @@ def nav_permissions(request):
         return {'nav': {}}
     inst = installed_features()
     nav = {key: (key in inst and user_has_feature(user, key)) for key in FEATURES}
+    nav.update(_nav_groups(nav, user))
     return {'nav': nav}
+
+
+# The sidebar's clinical links, split into headings. "Clinical" was one group of
+# 26 links for a full hospital — which is not a menu, it is a list — and the
+# sidebar groups are collapsible accordions, so one enormous group defeats the
+# only mechanism there is for shortening it.
+#
+# The flags live here, next to the per-link flags, rather than as a pile of
+# `{% if nav.a or nav.b or nav.c %}` in the template. A group whose every link
+# is feature-gated needs the *group* gated on the same set, or a tenant gets a
+# heading with nothing under it (that shipped once, as "Price List" over two
+# hidden links) — and getting that wrong is invisible unless you happen to be
+# logged in as the tenant it affects. In Python it is testable.
+def _nav_groups(nav, user):
+    role = getattr(user, 'role', None)
+    # Patients is hidden from lab and radiology staff, who reach a patient
+    # through the order they are working on. Mirrored here so the group does not
+    # survive its only link.
+    patients_link = nav.get('patients') and role not in ('LABTECH', 'SONOGRAPHER')
+    return {
+        'grp_patients': any([patients_link, nav.get('diagnosis'), nav.get('referral'),
+                             nav.get('certificates'), nav.get('consent')]),
+        'grp_patients_link': bool(patients_link),
+        'grp_opd': any([nav.get('appointments'), nav.get('opd'), nav.get('doctors'),
+                        nav.get('prescriptions')]),
+        'grp_ward': any([nav.get('ipd'), nav.get('ward')]),
+        # Blood bank sits with the lab: it is the same staff (LABTECH holds all
+        # three) and the same part of the building.
+        'grp_diagnostics': any([nav.get('lab'), nav.get('imaging'), nav.get('bloodbank')]),
+        # Theatre is hidden from doctors, who advise rather than schedule.
+        'grp_theatre': bool(nav.get('ot') and role != 'DOCTOR'),
+        'grp_emergency': any([nav.get('emergency'), nav.get('ambulance')]),
+        # MCH — the way a Pakistani clinic already names this pair.
+        'grp_mch': any([nav.get('maternity'), nav.get('vaccination')]),
+    }
 
 
 def site_branding(request):

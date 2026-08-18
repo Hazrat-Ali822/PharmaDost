@@ -220,15 +220,59 @@
       </a>
       {% endif %}
 
-      {% if nav.patients or nav.opd or nav.prescriptions or nav.lab or nav.imaging or nav.ipd or nav.ward or nav.ot or nav.emergency or nav.maternity or nav.diagnosis or nav.referral or nav.bloodbank or nav.vaccination or nav.certificates or nav.consent or nav.ambulance %}
+      {% comment %}
+      "Clinical" used to be one heading over 26 links. The sidebar groups are
+      collapsible accordions, so a single enormous group defeats the only
+      mechanism there is for shortening the menu — and nobody scans 26 items.
+
+      Each group is gated on `nav.grp_*`, computed in
+      `accounts.context_processors._nav_groups` from the same per-link flags used
+      inside it. Gated on less than its contents, a group renders a heading with
+      nothing under it (that shipped once, as "Price List"); gated on more, it
+      hides links the user is entitled to. Neither is visible unless you are
+      signed in as the affected tenant in the affected role, so the condition
+      lives in Python where a test can reach it — tests/test_nav_groups.py
+      renders this sidebar across packages and roles and fails on an empty group.
+      {% endcomment %}
+      {% if nav.grp_patients %}
       <div class="nav-group">
-        <div class="nav-group-title">Clinical</div>
-        {% if nav.patients and request.user.role != 'LABTECH' and request.user.role != 'SONOGRAPHER' %}
+        <div class="nav-group-title">Patients</div>
+        {% if nav.grp_patients_link %}
         <a href="{% url 'patient_list' %}" class="{% if '/patients/' in request.path %}active{% endif %}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
           Patients
         </a>
         {% endif %}
+        {% if nav.diagnosis %}
+        <a href="{% url 'diagnosis_list' %}" class="{% if '/diagnosis/' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-4"/><path d="M9 3v4h6V3M9 13h6M9 17h4"/></svg>
+          Diagnoses (ICD-10)
+        </a>
+        {% endif %}
+        {% if nav.referral %}
+        <a href="{% url 'referral_list' %}" class="{% if '/referral/' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M17 7H8M17 7v9"/></svg>
+          Referrals
+        </a>
+        {% endif %}
+        {% if nav.certificates %}
+        <a href="{% url 'certificate_list' %}" class="{% if '/certificates/' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+          Certificates
+        </a>
+        {% endif %}
+        {% if nav.consent %}
+        <a href="{% url 'consent_list' %}" class="{% if '/consent/' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M9 15l2 2 4-4"/></svg>
+          Consent Forms
+        </a>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {% if nav.grp_opd %}
+      <div class="nav-group">
+        <div class="nav-group-title">OPD</div>
         {% if nav.appointments %}
         <a href="{% url 'reception_desk' %}" class="{% if '/opd/reception' in request.path %}active{% endif %}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V8l7-5 7 5v13"/><path d="M10 21v-5h4v5"/></svg>
@@ -270,6 +314,12 @@
           Rx Presets
         </a>
         {% endif %}
+      </div>
+      {% endif %}
+
+      {% if nav.grp_diagnostics %}
+      <div class="nav-group">
+        <div class="nav-group-title">Diagnostics</div>
         {% if nav.lab %}
         <a href="{% url 'lab:order_list' %}" class="{% if '/lab/' in request.path %}active{% endif %}" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
           <div style="display:flex; align-items:center; gap:12px; min-width:0;">
@@ -292,6 +342,18 @@
           {% endif %}
         </a>
         {% endif %}
+        {% if nav.bloodbank %}
+        <a href="{% url 'bloodbank_dashboard' %}" class="{% if '/bloodbank/' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11Z"/></svg>
+          Blood Bank
+        </a>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {% if nav.grp_ward %}
+      <div class="nav-group">
+        <div class="nav-group-title">Ward (IPD)</div>
         {% if nav.ipd or nav.ward %}
         <a href="{% url 'ipd:admission_list' %}" class="{% if '/ipd/' in request.path %}active{% endif %}" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
           <div style="display:flex; align-items:center; gap:12px; min-width:0;">
@@ -334,6 +396,30 @@
           <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px;">My Duties</span>
         </a>
         {% endif %}
+      </div>
+      {% endif %}
+
+      {% if nav.grp_emergency %}
+      <div class="nav-group">
+        <div class="nav-group-title">Emergency</div>
+        {% if nav.emergency %}
+        <a href="{% url 'emergency_board' %}" class="{% if '/emergency/' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 0 0-2 2v6H4a2 2 0 0 0-2 2v0a2 2 0 0 0 2 2h6v6a2 2 0 0 0 2 2v0a2 2 0 0 0 2-2v-6h6a2 2 0 0 0 2-2v0a2 2 0 0 0-2-2h-6V4a2 2 0 0 0-2-2Z"/></svg>
+          Emergency / Casualty
+        </a>
+        {% endif %}
+        {% if nav.ambulance %}
+        <a href="{% url 'ambulance:dispatch_board' %}" class="{% if '/ambulance/' in request.path %}active{% endif %}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17V7a1 1 0 0 1 1-1h10v11M14 9h4l3 3.5V17"/><circle cx="7.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/><path d="M8 9v4M6 11h4"/></svg>
+          Ambulance
+        </a>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {% if nav.grp_theatre %}
+      <div class="nav-group">
+        <div class="nav-group-title">Theatre</div>
         {% if nav.ot and request.user.role != 'DOCTOR' %}
         <a href="{% url 'ot:surgery_list' %}" class="{% if '/ot/' in request.path %}active{% endif %}" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
           <div style="display:flex; align-items:center; gap:12px; min-width:0;">
@@ -351,34 +437,16 @@
           {% endif %}
         </a>
         {% endif %}
-        {% if nav.emergency %}
-        <a href="{% url 'emergency_board' %}" class="{% if '/emergency/' in request.path %}active{% endif %}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 0 0-2 2v6H4a2 2 0 0 0-2 2v0a2 2 0 0 0 2 2h6v6a2 2 0 0 0 2 2v0a2 2 0 0 0 2-2v-6h6a2 2 0 0 0 2-2v0a2 2 0 0 0-2-2h-6V4a2 2 0 0 0-2-2Z"/></svg>
-          Emergency / Casualty
-        </a>
-        {% endif %}
+      </div>
+      {% endif %}
+
+      {% if nav.grp_mch %}
+      <div class="nav-group">
+        <div class="nav-group-title">Mother &amp; Child</div>
         {% if nav.maternity %}
         <a href="{% url 'maternity_list' %}" class="{% if '/maternity/' in request.path %}active{% endif %}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="6" r="3"/><path d="M12 9c-3 0-5 2-5 6 0 3 2 6 5 6s5-3 5-6c0-4-2-6-5-6Z"/></svg>
           Maternity / ANC
-        </a>
-        {% endif %}
-        {% if nav.diagnosis %}
-        <a href="{% url 'diagnosis_list' %}" class="{% if '/diagnosis/' in request.path %}active{% endif %}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-4"/><path d="M9 3v4h6V3M9 13h6M9 17h4"/></svg>
-          Diagnoses (ICD-10)
-        </a>
-        {% endif %}
-        {% if nav.referral %}
-        <a href="{% url 'referral_list' %}" class="{% if '/referral/' in request.path %}active{% endif %}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M17 7H8M17 7v9"/></svg>
-          Referrals
-        </a>
-        {% endif %}
-        {% if nav.bloodbank %}
-        <a href="{% url 'bloodbank_dashboard' %}" class="{% if '/bloodbank/' in request.path %}active{% endif %}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11Z"/></svg>
-          Blood Bank
         </a>
         {% endif %}
         {% if nav.vaccination %}
@@ -387,26 +455,9 @@
           Vaccination / EPI
         </a>
         {% endif %}
-        {% if nav.ambulance %}
-        <a href="{% url 'ambulance:dispatch_board' %}" class="{% if '/ambulance/' in request.path %}active{% endif %}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17V7a1 1 0 0 1 1-1h10v11M14 9h4l3 3.5V17"/><circle cx="7.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/><path d="M8 9v4M6 11h4"/></svg>
-          Ambulance
-        </a>
-        {% endif %}
-        {% if nav.certificates %}
-        <a href="{% url 'certificate_list' %}" class="{% if '/certificates/' in request.path %}active{% endif %}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
-          Certificates
-        </a>
-        {% endif %}
-        {% if nav.consent %}
-        <a href="{% url 'consent_list' %}" class="{% if '/consent/' in request.path %}active{% endif %}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M9 15l2 2 4-4"/></svg>
-          Consent Forms
-        </a>
-        {% endif %}
       </div>
       {% endif %}
+
 
       {% if nav.pos or nav.inventory or nav.customers or nav.suppliers %}
       <div class="nav-group">
