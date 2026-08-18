@@ -354,6 +354,29 @@ a.btn.danger, a.btn.primary, a.btn.success, button.btn.danger, button.btn.primar
 .card + .card { margin-top: 16px; }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 
+/* ---------- Form action rows --------------------------------------------- */
+/* `.form-actions` wraps the submit row in ~40 templates and was styled in
+   exactly one of them — the POS, in its own <style> block. Everywhere else it
+   was a bare <div>, so the button sat hard against whatever came before it: a
+   table's scrollbar, the last input, the edge of the card. Nothing separated
+   the thing you are about to do from the thing you were just reading. */
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+/* Never `flex: 1` here. That is `flex: 1 1 0%` — a zero basis, so a button
+   shrinks below its own label, and `.btn` is `white-space: nowrap; overflow:
+   hidden`, which clips it in silence: "Save & Print Bill" rendered as "Save &
+   Print B" on every phone. Size each button to its label and let the row wrap
+   instead. The POS keeps its own `1 1 auto` because those two buttons are meant
+   to share the width. */
+.form-actions > .btn,
+.form-actions > button,
+.form-actions > a { flex: 0 0 auto; }
+
 /* ---------- Layout utilities -------------------------------------------- */
 /* Generic grid used across many screens (bloodbank, certificates, emergency,
    maternity, reports, …). Templates supply their own grid-template-columns

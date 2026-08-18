@@ -1830,7 +1830,26 @@ it in `HANDLERS`, marking the form `data-offline-kind` **with any parent id as a
 input**, adding its page to `pwa_views.SHELL_URL_NAMES`, and adding a payload to
 `tests_coverage.py`.
 
-`base.html` injects tenant colours as CSS variables over `app.css`. When editing `static/css/app.css`, bump the `?v=X.X` cache-busting query string in every template that links it (`partials/base.html`, `registration/login.html`, `user_mgmt/setup.html`).
+`base.html` injects tenant colours as CSS variables over `app.css`. When editing
+`static/css/app.css`, bump the `?v=X.X` cache-busting query string in **every**
+template that links it — there are six: `partials/base.html`,
+`registration/login.html`, `registration/password_reset_request.html`,
+`user_mgmt/setup.html`, `saas/login.html` and `saas/suspended.html`. Missing one
+is worse than missing all of them: that page keeps serving the *old* stylesheet
+out of the browser cache while every other page has the new one, so a layout fix
+works everywhere except the screen somebody is looking at, and it reads as a CSS
+bug rather than a stale file. Guarded by `tests/test_stylesheet_version.py`,
+which fails if the six ever disagree.
+
+**`.form-actions` is styled in `app.css`, not per template.** It wraps the submit
+row in ~40 templates and for a long time was styled in exactly one of them (the
+POS, in its own `<style>`), so everywhere else the button sat hard against
+whatever came before it — a table's scrollbar, the last field, the edge of the
+card. Its buttons are `flex: 0 0 auto` and the row wraps: **never `flex: 1`**,
+which is `flex: 1 1 0%` — a zero basis, and `.btn` is `white-space: nowrap;
+overflow: hidden`, so a squeezed button silently loses the end of its label
+("Save & Print Bill" → "Save & Print B"). The POS keeps its own `1 1 auto`
+because those two buttons are meant to share the width.
 
 ### Back, and pages that show pre-edit data
 
