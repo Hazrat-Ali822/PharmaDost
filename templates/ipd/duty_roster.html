@@ -12,7 +12,7 @@
 </div>
 
 {% if not wards %}
-  <div class="msg info">No wards yet. <a href="{% url 'ipd:ward_create' %}">Create a ward</a> first.</div>
+  <div class="msg info">No wards yet. {% if nav.ipd %}<a href="{% url 'ipd:ward_create' %}">Create a ward</a> first.{% else %}Ask an administrator to set up a ward before a roster can be built.{% endif %}</div>
 {% else %}
 
 {# Ward + week picker #}

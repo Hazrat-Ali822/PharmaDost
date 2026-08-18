@@ -21,7 +21,7 @@
         <a class="btn sm" href="{% url 'supplier_ledger' s.id %}">Ledger</a>
         <a class="btn sm alt" href="{% url 'supplier_payment_add' s.id %}">Pay</a>
         <a class="btn sm alt" href="{% url 'supplier_edit' s.id %}">Edit</a>
-        <a class="btn sm danger" href="{% url 'supplier_delete' s.id %}">Delete</a>
+        {% if request.user.role == 'ADMIN' or request.user.role == 'PHARMACIST' or request.user.is_superuser %}<a class="btn sm danger" href="{% url 'supplier_delete' s.id %}">Delete</a>{% endif %}
       </td>
     </tr>
     {% empty %}

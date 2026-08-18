@@ -10,7 +10,7 @@ def supplier_list(request):
     suppliers = Supplier.objects.all()
     return render(request, 'suppliers/supplier_list.html', {'suppliers': suppliers})
 
-@role_required(["ADMIN", "PHARMACIST"])
+@feature_required('suppliers')
 def supplier_create(request):
     if request.method == 'POST':
         form = SupplierForm(request.POST)
@@ -22,7 +22,7 @@ def supplier_create(request):
         form = SupplierForm()
     return render(request, 'suppliers/supplier_form.html', {'form': form, 'title': 'Add Supplier'})
 
-@role_required(["ADMIN", "PHARMACIST"])
+@feature_required('suppliers')
 def supplier_edit(request, pk):
     obj = get_object_or_404(Supplier, pk=pk)
     if request.method == 'POST':

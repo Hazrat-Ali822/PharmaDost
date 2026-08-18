@@ -6,7 +6,7 @@
   <h2>Nursing Board <span class="muted" style="font-weight:400; font-size:14px;">· {{ shift_label }} shift · {{ today|date:'d/m/Y' }}</span></h2>
   <div style="display:flex; gap:10px; flex-wrap:wrap;">
     {% if nav.ward_manage %}<a class="btn alt" href="{% url 'ipd:patient_allocation' %}">Patient Allocation</a>{% endif %}
-    <a class="btn alt" href="{% url 'ipd:duty_roster' %}">Duty Roster</a>
+    {% if nav.ward %}<a class="btn alt" href="{% url 'ipd:duty_roster' %}">Duty Roster</a>{% endif %}
   </div>
 </div>
 

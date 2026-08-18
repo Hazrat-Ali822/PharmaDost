@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-head">
   <h2>{% if is_doctor %}My Patients{% else %}Patient Registry{% endif %}</h2>
-  {% if not is_doctor %}<a class="btn" href="{% url 'patient_add' %}">Register Patient</a>{% endif %}
+  {% if request.user.role == 'ADMIN' or request.user.role == 'RECEPTIONIST' or request.user.is_superuser %}<a class="btn" href="{% url 'patient_add' %}">Register Patient</a>{% endif %}
 </div>
 {% if is_doctor %}<div class="msg info" style="margin-bottom:12px">Showing only patients assigned to you (via appointments).</div>{% endif %}
 <form class="search" method="get">

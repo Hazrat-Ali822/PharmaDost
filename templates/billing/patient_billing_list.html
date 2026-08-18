@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-head">
   <div><h2>💳 Patient Billing</h2><div class="muted">Find a patient and collect their payment. Walk-in? Register them first, then bill.</div></div>
-  <a class="btn alt" href="{% url 'patient_add' %}">+ Register / Walk-in Patient</a>
+  {% if request.user.role == 'ADMIN' or request.user.role == 'RECEPTIONIST' or request.user.is_superuser %}<a class="btn alt" href="{% url 'patient_add' %}">+ Register / Walk-in Patient</a>{% endif %}
 </div>
 
 <div class="card" style="margin-bottom:16px">

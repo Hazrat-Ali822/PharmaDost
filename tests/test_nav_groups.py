@@ -234,3 +234,51 @@ class EverySidebarLinkOpensTest(TestCase):
         self.assertEqual(
             broken, [],
             'dashboard links that lead to an error:' + chr(10) + detail)
+
+    def test_no_page_a_role_can_open_offers_a_link_it_cannot(self):
+        """The second hop — and the one that matters most.
+
+        Checking the sidebar and the landing page is not enough: three of the
+        twenty findings were buttons sitting on *other* screens. The accountant
+        could open Suppliers from her sidebar and every "Edit" on it 403'd (the
+        list is gated on the `suppliers` feature, which she holds; add and edit
+        were gated on a hard-coded ADMIN/PHARMACIST pair), and Patient Billing —
+        also hers — led with "+ Register / Walk-in Patient", which is reception's.
+
+        So: open every sidebar page, then follow every link *on* it. That is
+        what a browser agent did by hand across nine roles, and it is the only
+        way this class of defect gets caught before a customer taps it.
+
+        Same rule as above: 404 is fine, 403 and 500 are not. GET only — a
+        destructive POST is never fired.
+        """
+        broken = []
+        for n, role in enumerate(self.ROLES, start=700):
+            h = Hospital.objects.create(name=f'P{n}', slug=f'p-{n}',
+                                        expiry_date=_future(), enabled_modules=[])
+            User.objects.create_user(email=f'p{n}@t.com', password='pw',
+                                     role=role, hospital=h)
+            c = Client()
+            self.assertTrue(c.login(email=f'p{n}@t.com', password='pw'))
+            first = c.get('/dashboard/', follow=True).content.decode()
+            checked = set()
+            for page in self._sidebar_links(first):
+                resp = c.get(page, follow=True)
+                if resp.status_code != 200:
+                    continue
+                html = resp.content.decode()
+                body = html.split('<aside')[0] + html.split('</aside>')[-1]
+                for chunk in body.split('href="')[1:]:
+                    href = chunk.split('"', 1)[0]
+                    if not href.startswith('/') or href.startswith(self.SKIP):
+                        continue
+                    if 'delete' in href or 'remove' in href or href in checked:
+                        continue
+                    checked.add(href)
+                    code = c.get(href, follow=True).status_code
+                    if code in (403, 500):
+                        broken.append(f'{role}: {page} links to {href} = {code}')
+        detail = chr(10).join('  ' + b for b in broken)
+        self.assertEqual(
+            broken, [],
+            'in-page links that lead to an error:' + chr(10) + detail)
