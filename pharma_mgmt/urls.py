@@ -9,7 +9,8 @@ from django.conf import settings
 from hr import biometric as biometric_views
 from pharma_mgmt.media import serve_media
 from saas.views import hospital_login
-from accounts.views import demo_login, smart_login, custom_password_reset_request
+from accounts.views import (custom_password_reset_request, demo_login,
+                            demo_login_as, smart_login)
 
 
 urlpatterns = [
@@ -48,6 +49,10 @@ urlpatterns = [
     # One-click public demo. Explicit route so it wins over the <hospital_slug>
     # catch-all at the bottom of this list.
     path('demo/', demo_login, name='demo_login'),
+    # Switch demo role, still without a password. Under /demo/as/ rather than
+    # /demo/<role>/ so it cannot swallow /demo/login/, which is the demo
+    # tenant's own branded sign-in page via the <hospital_slug> route below.
+    path('demo/as/<slug:role>/', demo_login_as, name='demo_login_as'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     # Root: dashboard for signed-in users, the public marketing landing for an
     # anonymous visitor on the bare platform domain (so the homepage a crawler

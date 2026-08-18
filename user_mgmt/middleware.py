@@ -30,7 +30,7 @@ ALLOWED_NAMES = {
 'password_reset', 'password_reset_done', 'password_reset_confirm', 'password_reset_complete',
 'admin:login', 'admin:index',
 'hospital_login', 'hospital_login_landing',
-'demo_login',
+'demo_login', 'demo_login_as',
 # Public SEO / AEO pages — a search engine or AI crawler must reach these
 # without a session, or the site has nothing to index and login-walls them.
 # 'dashboard' is the root '/': its view (seo_views.home) serves the marketing

@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=3.1">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=3.2">
 
   {# Install-as-app (PWA). The manifest and icon are per-tenant, so an install #}
   {# carries this hospital's own name, logo and colour. #}
@@ -788,6 +788,29 @@
     </header>
 
     <main class="content">
+      {% comment %}
+      Role switching for the public demo, with no password — because `/demo/`
+      already admits anyone as the demo ADMIN, which is the most privileged of
+      the eight, so the others widen nothing. Rendered on every page rather than
+      one screen: seeing the doctor's and the pharmacist's view is most of what
+      the demo is for, and it is also the only way to drive the demo without a
+      keyboard. `demo_role_switch` is empty for every real tenant, so this whole
+      block costs them one integer comparison. See
+      `accounts.context_processors.demo_roles`.
+      {% endcomment %}
+      {% if demo_role_switch %}
+      <div class="demo-switch">
+        <strong>Demo</strong> — viewing as:
+        {% for r in demo_role_switch %}
+          {% if r.current %}
+            <span class="demo-role is-current">{{ r.label }}</span>
+          {% else %}
+            <a class="demo-role" href="{% url 'demo_login_as' r.role %}">{{ r.label }}</a>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+
       {% if request.subscription_warning %}
       <div class="msg warning" style="background:#fffbeb; color:#b45309; border:1px solid #fde68a; border-radius:8px; padding:12px; margin-bottom:15px; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
         <span>⚠️ Subscription Alert: Your subscription is expiring in {{ request.subscription_days_left }} days. Please clear your payment to prevent access disruption.</span>

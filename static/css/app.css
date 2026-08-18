@@ -354,6 +354,26 @@ a.btn.danger, a.btn.primary, a.btn.success, button.btn.danger, button.btn.primar
 .card + .card { margin-top: 16px; }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 
+/* ---------- Public demo role switcher ------------------------------------ */
+/* Only ever rendered inside the demo tenant (see accounts.context_processors
+   .demo_roles). Wraps rather than scrolls: eight roles do not fit one phone
+   line, and a row that scrolls sideways would take the page with it. */
+.demo-switch {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  padding: 9px 12px; margin-bottom: 14px;
+  border: 1px dashed var(--border-strong); border-radius: var(--radius-sm);
+  background: var(--bg); font-size: 12.5px; color: var(--muted);
+}
+.demo-switch strong { color: var(--text); }
+.demo-role {
+  padding: 3px 10px; border-radius: 999px; text-decoration: none;
+  border: 1px solid var(--border-strong); color: var(--text); font-weight: 600;
+}
+.demo-role:hover { border-color: var(--primary); color: var(--primary); }
+.demo-role.is-current {
+  background: var(--primary); border-color: var(--primary); color: #fff; cursor: default;
+}
+
 /* ---------- Form action rows --------------------------------------------- */
 /* `.form-actions` wraps the submit row in ~40 templates and was styled in
    exactly one of them — the POS, in its own <style> block. Everywhere else it

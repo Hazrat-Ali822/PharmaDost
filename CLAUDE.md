@@ -601,6 +601,26 @@ mis-tap from the app icon.
 
 **Public demo.** `/demo/` (`accounts.views.demo_login`, in `LoginRequiredMiddleware.ALLOWED_NAMES` so it's reachable signed-out) signs a visitor straight in — no password — as `demo@sehatyar.online`, a non-superuser ADMIN scoped to the isolated demo tenant (`seed_public_demo`). The login page carries a "Try the live demo" button to it. Because the demo user is tenant-scoped and never a superuser, playing in the demo can't touch a real hospital's data. The explicit `path('demo/', ...)` sits above the `<slug:hospital_slug>` catch-all so it wins.
 
+**`/demo/as/<role>/` switches role, also without a password**
+(`accounts.views.demo_login_as`). This widens nothing: `/demo/` already admits
+anyone as the demo **ADMIN**, the most privileged of that tenant's eight
+accounts, so its doctor and its nurse are strictly less. The query is scoped by
+`hospital__slug=DEMO_SLUG` and `is_superuser=False` — **scoped by hospital, not
+by role name**, which is the property that matters: a real tenant also has a
+DOCTOR. An unknown role falls back to the ordinary demo with a message rather
+than erroring. It lives under `/demo/as/` and not `/demo/<role>/` so it cannot
+swallow `/demo/login/`, which is the demo tenant's own branded sign-in page via
+the `<hospital_slug>` route.
+
+It exists for two reasons: the admin's screen is the *least* representative of
+the eight, and a password box is a wall for anyone driving the demo without a
+keyboard — a browser QA agent included, which is what surfaced it. The strip is
+rendered on every page by `accounts.context_processors.demo_roles`, which costs
+a real tenant one **cached** hospital-id lookup (`DEMO_LOOKUP_SECONDS`) and then
+an integer comparison — no query, asserted in `tests/test_demo_roles.py`. Do not
+turn that into a `slug` comparison, which would be a join on every render of
+every page for every customer.
+
 **Public SEO / AEO surface** (`user_mgmt/seo_views.py`). Everything else is behind a login, so a search engine or AI answer engine reaching `sehatyar.online` would see only a sign-in form — nothing to index or cite. Four crawlable, anonymous endpoints fix that: `/features/` (`seo_landing`, a keyword-rich marketing page carrying `SoftwareApplication` + `Organization` + `FAQPage` JSON-LD and OG tags — the page that ranks), `/robots.txt`, `/sitemap.xml`, and `/llms.txt` (the llmstxt.org convention: a plain-language product brief an LLM reads to describe/recommend the system). All four are in `LoginRequiredMiddleware.ALLOWED_NAMES` and are **tenant-free** (they describe the platform, not any hospital); canonical URLs use the bare `BASE_DOMAIN` so a subdomain never competes with the marketing home. Feature/FAQ copy lives once in `seo_views` and feeds the page, the sitemap and llms.txt together. The `/features/` route sits **above** the `<slug:hospital_slug>` catch-all or the slug pattern would swallow it. No ratings are ever fabricated in the JSON-LD. Guarded by `tests/test_seo.py`.
 
 On top of that, **`seo_views.CONTENT_PAGES`** holds keyword-targeted content pages — one per search intent (`/hospital-management-system/`, `/pharmacy-management-software/`, `/sehat-card-billing-software/`, `/clinic-management-software/`) — each with genuine copy, a FAQ, and `WebPage` + `BreadcrumbList` + `FAQPage` JSON-LD (`seo_views.content_page` + `templates/seo/content_page.html`). Their slugs are top-level URLs, so `pharma_mgmt/urls.py` registers them (looping over `CONTENT_PAGES`) **above** the `<slug:hospital_slug>` catch-all; their view name is `seo_page_<slug>`, which `LoginRequiredMiddleware` allows via a `startswith('seo_page_')` check, and each is in the sitemap at priority 0.9. Add a page by adding a `CONTENT_PAGES` entry (including its short `nav` label) — the URL, sitemap, middleware **and the nav links** pick it up automatically.

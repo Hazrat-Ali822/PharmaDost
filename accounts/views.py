@@ -98,6 +98,41 @@ def demo_login(request):
                   'this is sample data, separate from any real hospital.')
     return redirect('/')
 
+def demo_login_as(request, role):
+    """Sign in as one of the demo tenant's other roles — still no password.
+
+    `/demo/` has always signed any visitor in as the demo **admin**, which is the
+    most privileged account that tenant has, so admitting its receptionist,
+    doctor or nurse the same way adds no exposure at all. It is the same isolated
+    hospital and the same sample data.
+
+    It exists because seeing the system as a doctor or a pharmacist is most of
+    what the demo is *for* — the admin's view is the least representative of the
+    eight — and because a password box is a wall for anyone driving the demo
+    without a keyboard, a browser agent included.
+
+    Strictly scoped: the user must belong to the demo hospital and must not be a
+    superuser. That query cannot return an account from a real tenant, which is
+    the property that matters rather than any check on the role name.
+    """
+    from django.contrib.auth import get_user_model
+    from saas.utils import DEMO_SLUG
+
+    user = (get_user_model().objects
+            .filter(hospital__slug=DEMO_SLUG, role=(role or '').upper(),
+                    is_superuser=False, is_active=True)
+            .order_by('pk').first())
+    if not user:
+        messages.error(request, 'That demo role is not set up. '
+                                'Run: python manage.py seed_public_demo')
+        return redirect('demo_login')
+
+    auth_login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+    messages.info(request, f'Now viewing the demo as {user.get_role_display()} '
+                           f'({user.get_full_name() or user.email}).')
+    return redirect('user_mgmt:post_login_redirect')
+
+
 @login_required
 @require_POST
 def mark_notifications_read(request):

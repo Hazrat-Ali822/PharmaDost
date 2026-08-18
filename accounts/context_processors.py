@@ -54,6 +54,53 @@ def _nav_groups(nav, user):
     }
 
 
+# How long the demo tenant's id is remembered. It is one row that never moves,
+# and this keeps the role-switcher check off the query budget of every render
+# for every other tenant — same trade as BADGE_CACHE_SECONDS below.
+DEMO_LOOKUP_SECONDS = 300
+
+
+def demo_roles(request):
+    """The role-switch strip, and only ever inside the demo tenant.
+
+    `/demo/` signs any visitor in as the demo admin with no password, so the
+    other demo roles are offered the same way — the admin is the most privileged
+    of the eight, so this widens nothing. It is on every page rather than one
+    screen because seeing the doctor's view and the pharmacist's view is most of
+    what the demo is for, and hunting for a sign-in page to do it is where people
+    give up.
+
+    Costs one cached id lookup, then an integer comparison. No query is run for
+    a real tenant.
+    """
+    user = getattr(request, 'user', None)
+    if not user or not user.is_authenticated or not getattr(user, 'hospital_id', None):
+        return {}
+
+    from django.core.cache import cache
+    from saas.models import Hospital
+    from saas.utils import DEMO_SLUG
+
+    demo_id = cache.get('demo_hospital_id', 'miss')
+    if demo_id == 'miss':
+        demo_id = (Hospital.objects.filter(slug=DEMO_SLUG)
+                   .values_list('id', flat=True).first())
+        cache.set('demo_hospital_id', demo_id, DEMO_LOOKUP_SECONDS)
+    if not demo_id or user.hospital_id != demo_id:
+        return {}
+
+    from accounts.models import User
+    roles = (User.objects.filter(hospital_id=demo_id, is_superuser=False,
+                                 is_active=True)
+             .exclude(email__endswith='@no-login.invalid')
+             .values_list('role', flat=True).distinct())
+    labels = dict(User.ROLE_CHOICES)
+    return {'demo_role_switch': [
+        {'role': r.lower(), 'label': labels.get(r, r), 'current': r == user.role}
+        for r in sorted(roles, key=lambda r: list(labels).index(r) if r in labels else 99)
+    ]}
+
+
 def site_branding(request):
     """Expose editable branding (name, logo, colours) to every template.
 
