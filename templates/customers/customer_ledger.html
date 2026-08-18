@@ -1,5 +1,6 @@
 {% extends 'partials/base.html' %}
 {% block title %}Ledger - {{ customer }}{% endblock %}
+{% block page_title %}Ledger - {{ customer }}{% endblock %}
 {% block content %}
 <div class="page-head">
   <h2>Ledger - {{ customer }}</h2>
@@ -22,7 +23,7 @@
     <tbody>
       {% for e in entries %}
       <tr>
-        <td>{{ e.when|date:"Y-m-d H:i" }}</td>
+        <td>{{ e.when|date:"d/m/Y H:i" }}</td>
         <td>{{ e.kind }}</td>
         <td>{{ e.ref }}</td>
         <td>{% if e.debit %}{{ e.debit }}{% endif %}</td>

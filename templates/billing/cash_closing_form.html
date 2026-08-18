@@ -3,18 +3,18 @@
 {% block page_title %}Cash Closing{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h2>Close the Day — {{ day|date:"Y-m-d" }}</h2>
+  <div><h2>Close the Day — {{ day|date:"d/m/Y" }}</h2>
     <div class="muted">Reconcile the cash drawer against the day's cash movement</div></div>
   <a class="btn alt" href="{% url 'cash_closing_list' %}">Back</a>
 </div>
 
 {% if existing %}
-<div class="msg warning">This day is already closed. Expected {{ existing.expected }}, counted {{ existing.counted }},
-  difference {{ existing.difference }}.</div>
+<div class="msg warning">This day is already closed. Expected {{ currency }} {{ existing.expected }}, counted {{ currency }} {{ existing.counted }},
+  difference {{ currency }} {{ existing.difference }}.</div>
 {% endif %}
 
 <div class="card" style="margin-bottom:16px">
-  <h3>Cash movement on {{ day|date:"Y-m-d" }}</h3>
+  <h3>Cash movement on {{ day|date:"d/m/Y" }}</h3>
   <table class="tbl">
     <tbody>
       <tr><td>Cash sales collected</td><td style="text-align:right">+{{ pos.sales_cash }}</td></tr>
@@ -23,10 +23,10 @@
       <tr><td>Cash doctor payouts</td><td style="text-align:right">−{{ pos.payout_cash }}</td></tr>
     </tbody>
     <tfoot>
-      <tr><td style="text-align:right"><strong>Net cash movement</strong></td><td style="text-align:right"><strong>{{ pos.net }}</strong></td></tr>
+      <tr><td style="text-align:right"><strong>Net cash movement</strong></td><td style="text-align:right"><strong>{{ currency }} {{ pos.net }}</strong></td></tr>
     </tfoot>
   </table>
-  <p class="muted" style="margin-top:10px">Expected in drawer = opening ({{ default_opening }}) + net ({{ pos.net }})
+  <p class="muted" style="margin-top:10px">Expected in drawer = opening ({{ default_opening }}) + net ({{ currency }} {{ pos.net }})
     = <strong>{{ expected_preview }}</strong>. Enter the counted cash below.</p>
 </div>
 

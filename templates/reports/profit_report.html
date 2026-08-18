@@ -8,7 +8,7 @@
 <div class="stat-grid">
   <div class="stat">
     <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
-    <div class="meta"><span class="value">{{ data.revenue }}</span><span class="label">Revenue</span></div>
+    <div class="meta"><span class="value">{{ currency }} {{ data.revenue }}</span><span class="label">Revenue</span></div>
   </div>
   <div class="stat">
     <div class="ic amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7 12 3 4 7v10l8 4 8-4z"/><path d="M4 7l8 4 8-4M12 21V11"/></svg></div>
@@ -29,8 +29,8 @@
   <table class="tbl">
     <thead><tr><th>Type</th><th>Revenue</th><th>Cost</th><th>Profit</th></tr></thead>
     <tbody>
-      <tr><td><span class="badge">Retail</span></td><td>{{ data.by_type.RETAIL.revenue }}</td><td>{{ data.by_type.RETAIL.cost }}</td><td>{{ data.by_type.RETAIL.profit }}</td></tr>
-      <tr><td><span class="badge amber">Wholesale</span></td><td>{{ data.by_type.WHOLESALE.revenue }}</td><td>{{ data.by_type.WHOLESALE.cost }}</td><td>{{ data.by_type.WHOLESALE.profit }}</td></tr>
+      <tr><td><span class="badge">Retail</span></td><td>{{ currency }} {{ data.by_type.RETAIL.revenue }}</td><td>{{ data.by_type.RETAIL.cost }}</td><td>{{ currency }} {{ data.by_type.RETAIL.profit }}</td></tr>
+      <tr><td><span class="badge amber">Wholesale</span></td><td>{{ currency }} {{ data.by_type.WHOLESALE.revenue }}</td><td>{{ data.by_type.WHOLESALE.cost }}</td><td>{{ currency }} {{ data.by_type.WHOLESALE.profit }}</td></tr>
     </tbody>
   </table>
 </div>
@@ -45,8 +45,8 @@
         <td>{{ forloop.counter }}</td>
         <td>{{ it.name }}</td>
         <td>{{ it.qty }}</td>
-        <td>{{ it.revenue }}</td>
-        <td class="{% if it.profit < 0 %}danger{% endif %}">{{ it.profit }}</td>
+        <td>{{ currency }} {{ it.revenue }}</td>
+        <td class="{% if it.profit < 0 %}danger{% endif %}">{{ currency }} {{ it.profit }}</td>
       </tr>
       {% empty %}
       <tr><td colspan="5" class="muted">No sales in this period.</td></tr>

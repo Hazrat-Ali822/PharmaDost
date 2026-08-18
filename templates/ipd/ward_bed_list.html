@@ -44,7 +44,7 @@
             {% elif b.status == 'Occupied' %}
               {% if b.active_admission %}
                 {% with adm=b.active_admission %}
-                <div class="bed-card occupied" onclick="showBedDetails('{{ adm.patient.full_name|escapejs }}', '{{ adm.patient.mrn|escapejs }}', 'Dr. {{ adm.attending_doctor.full_name|escapejs }}', '{{ adm.admission_date|date:'Y-m-d H:i' }}', '{% url 'ipd:admission_detail' adm.pk %}', '{% url 'ipd:admission_discharge' adm.pk %}', '{{ b.bed_number|escapejs }}', '{{ w.name|escapejs }}')" title="Occupied - Click for Details">
+                <div class="bed-card occupied" onclick="showBedDetails('{{ adm.patient.full_name|escapejs }}', '{{ adm.patient.mrn|escapejs }}', 'Dr. {{ adm.attending_doctor.full_name|escapejs }}', '{{ adm.admission_date|date:'d/m/Y H:i' }}', '{% url 'ipd:admission_detail' adm.pk %}', '{% url 'ipd:admission_discharge' adm.pk %}', '{{ b.bed_number|escapejs }}', '{{ w.name|escapejs }}')" title="Occupied - Click for Details">
                   <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" style="width:28px; height:28px;">
                     <path d="M2 20V9a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v11M2 17h20M22 20v-5a2 2 0 0 0-2-2h-4v7"/>
                     <circle cx="6" cy="11" r="1.5" fill="#ef4444"/>

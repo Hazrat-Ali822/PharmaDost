@@ -28,7 +28,12 @@
 
 <p class="muted" style="font-size:13px; margin:0 0 12px;">
   Suggested reorder point = avg daily sales × (lead time 7d + safety 5d). Order qty covers 30 days of demand.
-  <strong>{{ needs_count }}</strong> item(s) at or below their suggested point.
+  <strong>{{ needs_count }}</strong> of {{ total_count }} item(s) at or below their suggested point.
+  {% if show_all %}
+    <a href="?days={{ days }}">Show only what needs ordering</a>
+  {% elif total_count > needs_count %}
+    <a href="?days={{ days }}&amp;show=all">Show the whole catalogue ({{ total_count }})</a>
+  {% endif %}
 </p>
 
 <table class="tbl">
@@ -50,7 +55,7 @@
       <td>{% if r.suggested_order %}<span class="badge warn">+{{ r.suggested_order }}</span>{% else %}—{% endif %}</td>
     </tr>
     {% empty %}
-    <tr><td colspan="7" class="muted">No medicines to show.</td></tr>
+    <tr><td colspan="7" class="muted">Nothing needs reordering right now — every medicine is above its reorder point.</td></tr>
     {% endfor %}
   </tbody>
 </table>

@@ -10,7 +10,7 @@
     {# The online view takes the patient from the URL; an offline entry carries #}
     {# only the form, so it has to travel with it or there is nothing to file. #}
     <input type="hidden" name="patient_id" value="{{ patient.pk }}">
-    {{ form.as_p }}
+    {% include 'partials/_form.html' with form=form %}
     <button class="btn" type="submit">Save to History</button>
     <a class="btn alt" href="{% url 'patient_detail' patient.pk %}">Cancel</a>
   </form>

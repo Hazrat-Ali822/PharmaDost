@@ -5,7 +5,7 @@
 <div class="page-head">
   <div>
     <h2>{{ study.get_modality_display }} — {{ study.study_name }}</h2>
-    <div class="muted">{{ study.patient.full_name }} · MRN {{ study.patient.mrn }} · {{ study.study_date|date:"Y-m-d H:i" }}</div>
+    <div class="muted">{{ study.patient.full_name }} · MRN {{ study.patient.mrn }} · {{ study.study_date|date:"d/m/Y H:i" }}</div>
   </div>
   <a class="btn alt" href="{% url 'imaging:study_detail' study.id %}">Back</a>
 </div>

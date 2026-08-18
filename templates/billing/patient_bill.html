@@ -25,15 +25,15 @@ Contact: {{ branding.phone }}{% endif %}{% endfilter %}">💬 Send on WhatsApp</
 <div class="stat-grid">
   <div class="stat">
     <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg></div>
-    <div class="meta"><span class="value">{{ s.charged }}</span><span class="label">Total Charged</span></div>
+    <div class="meta"><span class="value">{{ currency }} {{ s.charged }}</span><span class="label">Total Charged</span></div>
   </div>
   <div class="stat">
     <div class="ic green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></div>
-    <div class="meta"><span class="value">{{ s.paid }}</span><span class="label">Total Paid</span></div>
+    <div class="meta"><span class="value">{{ currency }} {{ s.paid }}</span><span class="label">Total Paid</span></div>
   </div>
   <div class="stat">
     <div class="ic {% if s.outstanding > 0 %}red{% else %}green{% endif %}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg></div>
-    <div class="meta"><span class="value">{{ s.outstanding }}</span><span class="label">Outstanding</span></div>
+    <div class="meta"><span class="value">{{ currency }} {{ s.outstanding }}</span><span class="label">Outstanding</span></div>
   </div>
 </div>
 
@@ -64,20 +64,20 @@ Contact: {{ branding.phone }}{% endif %}{% endfilter %}">💬 Send on WhatsApp</
     <tbody>
       {% for inv in s.invoices %}
       <tr>
-        <td>{{ inv.created_at|date:"Y-m-d" }}</td>
+        <td>{{ inv.created_at|date:"d/m/Y" }}</td>
         <td><span class="badge">Service</span></td>
         <td><a href="{% url 'invoice_detail' inv.id %}">{% for it in inv.items.all %}{{ it.description }}{% if not forloop.last %}, {% endif %}{% empty %}Invoice {{ inv.display_no }}{% endfor %}</a></td>
-        <td>{{ inv.total }}</td><td>{{ inv.paid }}</td>
-        <td>{% if inv.balance > 0 %}<span class="danger">{{ inv.balance }}</span>{% else %}0{% endif %}</td>
+        <td>{{ currency }} {{ inv.total }}</td><td>{{ currency }} {{ inv.paid }}</td>
+        <td>{% if inv.balance > 0 %}<span class="danger">{{ currency }} {{ inv.balance }}</span>{% else %}0{% endif %}</td>
       </tr>
       {% endfor %}
       {% for sale in s.sales %}
       <tr>
-        <td>{{ sale.created_at|date:"Y-m-d" }}</td>
+        <td>{{ sale.created_at|date:"d/m/Y" }}</td>
         <td><span class="badge amber">Pharmacy</span></td>
         <td><a href="{% url 'sale_detail' sale.id %}">{% for it in sale.items.all %}{{ it.medicine.name }} ×{{ it.quantity }}{% if not forloop.last %}, {% endif %}{% endfor %}</a></td>
-        <td>{{ sale.total }}</td><td>{{ sale.paid }}</td>
-        <td>{% if sale.balance > 0 %}<span class="danger">{{ sale.balance }}</span>{% else %}0{% endif %}</td>
+        <td>{{ currency }} {{ sale.total }}</td><td>{{ currency }} {{ sale.paid }}</td>
+        <td>{% if sale.balance > 0 %}<span class="danger">{{ currency }} {{ sale.balance }}</span>{% else %}0{% endif %}</td>
       </tr>
       {% endfor %}
       {% if not s.invoices and not s.sales %}
@@ -86,8 +86,8 @@ Contact: {{ branding.phone }}{% endif %}{% endfilter %}">💬 Send on WhatsApp</
     </tbody>
     <tfoot>
       <tr><td colspan="3" style="text-align:right"><strong>Grand Total</strong></td>
-        <td><strong>{{ s.charged }}</strong></td><td><strong>{{ s.paid }}</strong></td>
-        <td><strong>{{ s.outstanding }}</strong></td></tr>
+        <td><strong>{{ currency }} {{ s.charged }}</strong></td><td><strong>{{ currency }} {{ s.paid }}</strong></td>
+        <td><strong>{{ currency }} {{ s.outstanding }}</strong></td></tr>
     </tfoot>
   </table>
 </div>
@@ -99,8 +99,8 @@ Contact: {{ branding.phone }}{% endif %}{% endfilter %}">💬 Send on WhatsApp</
     <tbody>
       {% for p in s.payments %}
       <tr>
-        <td>{{ p.created_at|date:"Y-m-d H:i" }}</td>
-        <td><strong>{{ p.amount }}</strong></td>
+        <td>{{ p.created_at|date:"d/m/Y H:i" }}</td>
+        <td><strong>{{ currency }} {{ p.amount }}</strong></td>
         <td>{{ p.payment_method }}</td>
         <td class="muted">{{ p.collected_by.display_name }}</td>
         <td>{{ p.note|default:"—" }}</td>

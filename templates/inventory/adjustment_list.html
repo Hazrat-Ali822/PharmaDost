@@ -13,7 +13,7 @@
   <tbody>
     {% for a in adjustments %}
     <tr>
-      <td>{{ a.created_at|date:"Y-m-d H:i" }}</td>
+      <td>{{ a.created_at|date:"d/m/Y H:i" }}</td>
       <td>{{ a.batch.medicine.name }}</td>
       <td>{{ a.batch.batch_number|default:a.batch.id }}</td>
       <td class="{% if a.qty_change < 0 %}danger{% else %}warn{% endif %}">{{ a.qty_change }}</td>

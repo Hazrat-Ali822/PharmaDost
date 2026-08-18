@@ -1,5 +1,6 @@
 {% extends 'partials/base.html' %}
 {% block title %}Prescriptions — Sehatyar{% endblock %}
+{% block page_title %}Prescriptions{% endblock %}
 {% block content %}
 <div class="page-head">
   <h2>Prescriptions</h2>
@@ -41,7 +42,7 @@
             <span class="muted">—</span>
           {% endif %}
         </td>
-        <td>{{ prescription.created_at|date:"Y-m-d h:i A" }}</td>
+        <td>{{ prescription.created_at|date:"d/m/Y H:i" }}</td>
       </tr>
       {% empty %}
       <tr>

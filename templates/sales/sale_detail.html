@@ -1,5 +1,6 @@
 {% extends 'partials/base.html' %}
 {% block title %}Bill #{{ sale.id }}{% endblock %}
+{% block page_title %}Bill #{{ sale.id }}{% endblock %}
 {% block content %}
 <div class="page-head noprint">
   <h2>Bill #{{ sale.id }} {% if sale.is_returned %}<span class="danger">(RETURNED)</span>{% endif %}</h2>
@@ -90,7 +91,7 @@ function printReceipt() {
       <span><strong>Type:</strong> {{ sale.get_sale_type_display }}</span>
     </div>
     <div class="receipt-info-row">
-      <span><strong>Date:</strong> {{ sale.created_at|date:"Y-m-d H:i" }}</span>
+      <span><strong>Date:</strong> {{ sale.created_at|date:"d/m/Y H:i" }}</span>
     </div>
     {% comment %}
       `sale.patient` comes first. Selling against a prescription links the sale to
@@ -121,8 +122,8 @@ function printReceipt() {
           <div class="muted" style="font-size:10px;">{{ it.medicine.brand }}{% if it.batch.batch_number %} · B: {{ it.batch.batch_number }}{% endif %}</div>
         </td>
         <td class="num">{{ it.quantity }}</td>
-        <td class="num">{{ it.unit_price }}</td>
-        <td class="num">{{ it.line_total }}</td>
+        <td class="num">{{ currency }} {{ it.unit_price }}</td>
+        <td class="num">{{ currency }} {{ it.line_total }}</td>
       </tr>
       {% endfor %}
     </tbody>

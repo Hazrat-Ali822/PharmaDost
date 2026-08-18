@@ -1,6 +1,6 @@
 {% extends 'partials/base.html' %}
 {% block title %}Create Bill{% endblock %}
-{% block page_title %}Point of Sale{% endblock %}
+{% block page_title %}Create Bill{% endblock %}
 {% block content %}
 <h2>Create Bill</h2>
 
@@ -26,7 +26,7 @@
   <div class="muted no-print" style="font-size:12.5px; margin-bottom:8px;">
     Loaded from Rx #{{ prescription_id }}. Patient doesn't want one of these?
     <a href="{% url 'prescription_detail' prescription_id %}">Mark it declined on the prescription</a>
-    — it then leaves the pending queue instead of sitting here for ever.
+    — it then leaves the pending queue instead of sitting here forever.
   </div>
   {% endif %}
   <div class="card" style="margin-bottom:12px">
@@ -210,7 +210,7 @@
         </div>
         <div class="total-wrap">
           <span>Grand Total:</span>
-          <strong id="grand-total">0</strong>
+          <strong>{{ currency }} <span id="grand-total">0</span></strong>
         </div>
         <script>
           window.BILL_TAX_PCT = parseFloat('{{ branding.default_tax_percent|default:0 }}') || 0;
@@ -272,6 +272,7 @@
        generic: "{{ m.generic_name|escapejs }}",
        price: {{ m.price }}, wprice: {{ m.wholesale_price|default:0 }},
        upp: {{ m.units_per_pack|default:1 }}, barcode: "{{ m.barcode|escapejs }}",
+       pack: "{{ m.pack_size|escapejs }}",
        qty: {{ m.quantity }} },
     {% endfor %}
   ];
@@ -356,7 +357,27 @@
 
   function optionsHtml(selectedId){
     return '<option value="">-- select --</option>' +
-      meds.map(m => `<option value="${m.id}" ${m.id==selectedId?'selected':''}>${m.name} (${m.brand})</option>`).join('');
+      // Catalogues really do hold two rows with the same visible name —
+      // "Ventolin Inhaler (GSK)" and "Ventolin Inhaler (Ventolin)", with stock
+      // split across them — and a cashier picking blind between two identical
+      // lines will sell from the wrong one. Show whatever tells them apart:
+      // pack size, then the generic, then the row number as a last resort, and
+      // only when the name and brand are not already unique.
+      meds.map(m => `<option value="${m.id}" ${m.id==selectedId?'selected':''}>${m.name} (${m.brand})${medSuffix(m)}</option>`).join('');
+  }
+
+  // How many catalogue rows share this exact name + brand.
+  const _dupKey = m => `${m.name}||${m.brand}`;
+  const _dupCounts = meds.reduce((acc, m) => {
+    acc[_dupKey(m)] = (acc[_dupKey(m)] || 0) + 1; return acc;
+  }, {});
+  function medSuffix(m){
+    if ((_dupCounts[_dupKey(m)] || 0) < 2) return '';
+    const marks = [];
+    if (m.pack) marks.push(m.pack);
+    if (m.generic) marks.push(m.generic);
+    marks.push(`#${m.id}`);
+    return ` — ${marks.join(', ')}`;
   }
 
   function renderRow(selectedId, customName = '', qtyIn = 1, priceIn = '', discIn = 0){

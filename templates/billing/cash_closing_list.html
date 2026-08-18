@@ -13,16 +13,16 @@
     <tbody>
       {% for c in closings %}
       <tr>
-        <td><strong>{{ c.date|date:"Y-m-d" }}</strong></td>
-        <td>{{ c.opening }}</td>
+        <td><strong>{{ c.date|date:"d/m/Y" }}</strong></td>
+        <td>{{ currency }} {{ c.opening }}</td>
         <td class="muted">+{{ c.cash_in }}</td>
         <td class="muted">−{{ c.cash_out }}</td>
-        <td>{{ c.expected }}</td>
-        <td>{{ c.counted }}</td>
+        <td>{{ currency }} {{ c.expected }}</td>
+        <td>{{ currency }} {{ c.counted }}</td>
         <td>
           {% if c.difference == 0 %}<span class="badge green">0 (tallied)</span>
-          {% elif c.difference > 0 %}<span class="badge amber">+{{ c.difference }} (excess)</span>
-          {% else %}<span class="badge red">{{ c.difference }} (short)</span>{% endif %}
+          {% elif c.difference > 0 %}<span class="badge amber">+{{ currency }} {{ c.difference }} (excess)</span>
+          {% else %}<span class="badge red">{{ currency }} {{ c.difference }} (short)</span>{% endif %}
         </td>
         <td class="muted">{{ c.closed_by.display_name }}</td>
       </tr>

@@ -110,6 +110,17 @@
     .lh-foot{position:static;left:auto;right:auto;bottom:auto;margin-top:26px}
     table{font-size:12px}
     th,td{padding:6px 7px}
+
+    /* A print sheet is designed at A4 and previewed on a phone, so any fixed
+       width inside it pushes the whole page sideways. Two did: the signature
+       rule (`min-width:200px` plus its right-aligned parent and padding) and
+       the discharge summary's totals table (`width:300px`). Neither matters on
+       paper — @media print below restores both — but on a 320px screen they
+       made the preview scroll horizontally, which is exactly the width where a
+       ward nurse checks a summary before printing it. */
+    .sign{text-align:left}
+    .sign .line{min-width:0;width:100%;max-width:260px}
+    table[style*="width:300px"]{width:100% !important;margin-left:0 !important}
   }
 
   @media print{

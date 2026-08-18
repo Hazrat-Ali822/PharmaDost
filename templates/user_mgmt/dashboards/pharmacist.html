@@ -74,7 +74,7 @@
     <tbody>
       {% for rx in pending_prescriptions %}
       <tr>
-        <td>{{ rx.created_at|date:"Y-m-d H:i" }}</td>
+        <td>{{ rx.created_at|date:"d/m/Y H:i" }}</td>
         <td><strong>{{ rx.appointment.patient.full_name }}</strong></td>
         <td>Dr. {{ rx.appointment.doctor.full_name }}</td>
         <td>

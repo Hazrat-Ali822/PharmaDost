@@ -4,7 +4,7 @@
 {% block content %}
 <h2>{{ title }}</h2>
 <form method="post" class="form-card" enctype="multipart/form-data" data-offline-kind="medicine">{% csrf_token %}
-{{ form.as_p }}
+{% include 'partials/_form.html' with form=form %}
 <button class="btn" type="submit">Save</button>
 <a class="btn alt" href="{% url 'medicine_list' %}">Cancel</a>
 </form>

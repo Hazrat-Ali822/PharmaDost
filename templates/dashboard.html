@@ -39,7 +39,9 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:20px; height:20px; color:var(--primary);"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
       Departmental Revenue Summary
     </div>
-    <span style="font-size:18px; font-weight:800; color:var(--success);">Total Income: {{ currency }} {{ total_income_range|floatformat:0 }}</span>
+    <span style="font-size:18px; font-weight:800; color:var(--success);">Total Income: {{ currency }} {{ total_income_range|floatformat:0 }}
+      <span class="muted" style="font-weight:500; font-size:12px; display:block; text-align:right;">money received {{ range_start|date:'d/m/Y' }} – {{ range_end|date:'d/m/Y' }}</span>
+    </span>
   </h3>
   {% comment %}
     A class, not an inline `grid-template-columns`: a stylesheet media query
@@ -84,13 +86,13 @@
     <div class="ic green">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
     </div>
-    <div class="meta"><span class="value" style="font-size:20px; font-weight:800;">{{ currency }} {{ total_income_30d|floatformat:0 }}</span><span class="label">30-Day Revenue</span></div>
+    <div class="meta"><span class="value" style="font-size:20px; font-weight:800;">{{ currency }} {{ total_income_30d|floatformat:0 }}</span><span class="label">Income · last 30 days</span></div>
   </div>
   <div class="stat">
     <div class="ic red" style="background:rgba(239,68,68,0.1); color:#ef4444;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
     </div>
-    <div class="meta"><span class="value" style="font-size:20px; font-weight:800;">{{ currency }} {{ total_expense_30d|floatformat:0 }}</span><span class="label">30-Day Expenses</span></div>
+    <div class="meta"><span class="value" style="font-size:20px; font-weight:800;">{{ currency }} {{ total_expense_30d|floatformat:0 }}</span><span class="label">Expenses · last 30 days</span></div>
   </div>
 </div>
 
@@ -152,7 +154,7 @@
           {% for m in expiring|slice:":5" %}
           <tr>
             <td><strong>{{ m.name }}</strong> <small class="muted" style="display:block;">{{ m.brand }}</small></td>
-            <td style="text-align:right;"><span class="badge red" style="background:#ef4444; color:white; padding:2px 6px; border-radius:4px; font-weight:700;">{{ m.expiry_date|date:"Y-m-d" }}</span></td>
+            <td style="text-align:right;"><span class="badge red" style="background:#ef4444; color:white; padding:2px 6px; border-radius:4px; font-weight:700;">{{ m.expiry_date|date:"d/m/Y" }}</span></td>
           </tr>
           {% empty %}
           <tr><td colspan="2" class="muted text-center">No batches expiring soon. Great!</td></tr>

@@ -58,7 +58,7 @@
       {% csrf_token %}
       {# offline replay needs the parent pregnancy in the form (the online view takes it from the URL) #}
       <input type="hidden" name="pregnancy_id" value="{{ preg.pk }}">
-      {{ form.as_p }}
+      {% include 'partials/_form.html' with form=form %}
       <div class="btn-row" style="margin-top:8px;"><button class="btn" type="submit">Save Visit</button></div>
     </form>
   </div>

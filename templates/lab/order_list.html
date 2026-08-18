@@ -31,7 +31,7 @@
     <tr>
       <td>{{ o.id }}</td>
       <td>
-        {{ o.order_date|date:"Y-m-d H:i" }}<br>
+        {{ o.order_date|date:"d/m/Y H:i" }}<br>
         {% if o.status == 'Completed' or o.status == 'Verified' or o.status == 'Delivered' %}
           <small class="muted" style="font-size:11px; font-weight:600; color:var(--success);">⏱️ {{ o.order_date|timesince }} ago</small>
         {% else %}

@@ -308,6 +308,11 @@ if SENTRY_DSN:
         pass
 
 LANGUAGE_CODE = "en-us"
+# Dates read DD/MM/YYYY everywhere. Without this Django's `en` locale renders
+# "Aug. 15, 2027" for any date printed without an explicit `|date:` filter, which
+# is how the app ended up showing five different formats for the same kind of
+# data — two of them on one screen. See pharma_mgmt/formats/en/formats.py.
+FORMAT_MODULE_PATH = ["pharma_mgmt.formats"]
 TIME_ZONE = "Asia/Karachi"
 USE_I18N = True
 USE_TZ = True

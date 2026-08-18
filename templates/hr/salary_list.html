@@ -14,9 +14,9 @@
       <tr>
         <td>{{ s.user.display_name }}</td>
         <td>{{ s.period }}</td>
-        <td class="num">{{ s.basic|floatformat:0 }}</td>
-        <td class="num">{{ s.allowances|floatformat:0 }}</td>
-        <td class="num">{{ s.deductions|floatformat:0 }}</td>
+        <td class="num">{{ currency }} {{ s.basic|floatformat:0 }}</td>
+        <td class="num">{{ currency }} {{ s.allowances|floatformat:0 }}</td>
+        <td class="num">{{ currency }} {{ s.deductions|floatformat:0 }}</td>
         <td class="num"><strong>{{ currency }} {{ s.net|floatformat:0 }}</strong></td>
         <td>{{ s.paid_on|date:"d/m/Y" }}</td>
         <td><a class="btn sm alt" href="{% url 'hr_salary_slip' s.pk %}">Slip</a></td>

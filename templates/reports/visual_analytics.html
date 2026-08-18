@@ -7,6 +7,8 @@
   <div>
     <h2>Visual Analytics Dashboard</h2>
     <div class="muted">Live performance overview from <strong>{{ start_date|date:"d M Y" }}</strong> to <strong>{{ end_date|date:"d M Y" }}</strong></div>
+
+{% include 'reports/_range_filter.html' %}
   </div>
 </div>
 

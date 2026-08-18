@@ -1,12 +1,13 @@
 {% extends 'partials/base.html' %}
 {% block title %}Prescription #{{ prescription.pk }} — {{ prescription.appointment.patient.full_name }}{% endblock %}
+{% block page_title %}Prescription #{{ prescription.pk }}{% endblock %}
 {% block content %}
 <div class="no-print" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
   <div>
     <h2 style="margin:0;">Prescription Details</h2>
     <div class="muted">Patient: {% if nav.patients %}<a href="{% url 'patient_detail' prescription.appointment.patient.pk %}">{{ prescription.appointment.patient.full_name }}</a>{% else %}{{ prescription.appointment.patient.full_name }}{% endif %}</div>
   </div>
-  <div style="display: flex; gap: 8px;">
+  <div class="form-actions" style="margin-top:0;">
     <button class="btn success" onclick="window.print();" style="display:inline-flex; align-items:center; gap:8px;">
       🖨️ Print Prescription
     </button>
@@ -77,7 +78,7 @@
     </div>
     <div>
       <strong style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; display: block; margin-bottom: 2px;">Date</strong>
-      <span style="font-weight: 600; color: var(--text);">{{ prescription.created_at|date:"Y-m-d h:i A" }}</span>
+      <span style="font-weight: 600; color: var(--text);">{{ prescription.created_at|date:"d/m/Y H:i" }}</span>
     </div>
   </div>
 

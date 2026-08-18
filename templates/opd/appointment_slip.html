@@ -23,7 +23,7 @@ comments are single-line — a multi-line one prints, so use {% comment %} here.
 {% endcomment %}
 <div class="who">
   <div>
-    <b>{{ appointment.patient.full_name }}</b>{% if appointment.patient.guardian_name %} · s/o {{ appointment.patient.guardian_name }}{% endif %}<br>
+    <b>{{ appointment.patient.full_name }}</b>{% if appointment.patient.guardian_name %} · {{ appointment.patient.guardian_label }} {{ appointment.patient.guardian_name }}{% endif %}<br>
     <b>MRN:</b> {{ appointment.patient.mrn }}
     {% if appointment.patient.age_display %} · <b>Age:</b> {{ appointment.patient.age_display }}{% endif %}
     {% if appointment.patient.get_gender_display %} · {{ appointment.patient.get_gender_display }}{% endif %}

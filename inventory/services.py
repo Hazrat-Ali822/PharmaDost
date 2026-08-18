@@ -29,13 +29,27 @@ def reorder_suggestions(*, days=30, lead_days=7, safety_days=5, cover_days=30):
     Rows that are at/below their reorder point (or already low) come first."""
     vel = sales_velocity(days)
     out = []
-    for med in Medicine.objects.all():
+    # prefetch_related('batches') is required, not an optimisation: `on_hand` and
+    # `is_low_stock` both read the medicine's batches, so without it a 210-item
+    # catalogue is 400+ queries and this was the slowest page in the app at ~2.6s
+    # (every other page answered in under 700ms). The stock properties use the
+    # prefetch cache when it is present — see CLAUDE.md, "Performance".
+    for med in Medicine.objects.prefetch_related('batches'):
         sold = vel.get(med.id, 0)
         adu = sold / days if days else 0                     # average daily usage
         suggested_level = int(round(adu * (lead_days + safety_days)))
         on_hand = med.sellable_quantity
         suggested_order = max(0, int(round(adu * cover_days)) - on_hand)
-        needs = on_hand <= suggested_level or med.is_low_stock
+        low_by_hand = med.is_low_stock
+        # A medicine with no sales history has zero velocity, so the formula
+        # above suggests ordering nothing — even when the pharmacist has typed a
+        # reorder level of 20 and there are 3 on the shelf. The manual level is
+        # the only signal there is for a new or slow line, so honour it: top up
+        # to it. Without this the page said "needs reordering" and then suggested
+        # "—" in the same row.
+        if suggested_order == 0 and low_by_hand:
+            suggested_order = max(0, med.reorder_level - on_hand)
+        needs = on_hand <= suggested_level or low_by_hand
         out.append({
             'medicine': med, 'sold': sold, 'adu': round(adu, 2),
             'on_hand': on_hand, 'reorder_level': med.reorder_level,

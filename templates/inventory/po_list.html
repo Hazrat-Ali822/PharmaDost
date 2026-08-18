@@ -13,7 +13,7 @@
       {% for o in orders %}
       <tr>
         <td>{{ o.id }}</td>
-        <td>{{ o.created_at|date:"Y-m-d H:i" }}</td>
+        <td>{{ o.created_at|date:"d/m/Y H:i" }}</td>
         <td>{{ o.display_supplier }}</td>
         <td>{{ o.item_count }} lines · {{ o.total_qty }} units</td>
         <td>{{ currency }} {{ o.total }}</td>

@@ -1,11 +1,12 @@
 {% extends 'partials/base.html' %}
 {% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
 {% block content %}
 <div class="form-card">
   <h2>{{ title }}</h2>
   <form method="post" data-offline-kind="doctor">
     {% csrf_token %}
-    {{ form.as_p }}
+    {% include 'partials/_form.html' with form=form %}
 
     <hr style="border:none; border-top:1px solid var(--border); margin:22px 0 16px;">
     <h3 style="margin:0 0 4px 0;">OPD Timings</h3>

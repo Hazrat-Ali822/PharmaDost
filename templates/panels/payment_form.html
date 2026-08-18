@@ -14,7 +14,7 @@
   </p>
   <form method="post">
     {% csrf_token %}
-    {{ form.as_p }}
+    {% include 'partials/_form.html' with form=form %}
     <div class="btn-row" style="margin-top:12px;">
       <button class="btn" type="submit">Record Payment</button>
       <a class="btn alt" href="{% url 'panel_ledger' panel.pk %}">Cancel</a>

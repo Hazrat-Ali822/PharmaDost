@@ -93,14 +93,14 @@ def visual_analytics(request):
     from sales.models import Sale
     from opd.models import Appointment
 
-    # Determine date range (current month)
+    # Every other report offers Today / Yesterday / This Week / This Month /
+    # Custom through the shared range filter; this one was hard-wired to the
+    # current month, so the one screen built for spotting a trend could not be
+    # pointed at last month. `resolve_range` defaults to this month, so the
+    # page opens exactly as it did before.
+    rng = resolve_range(request)
     today = timezone.localdate()
-    start_date = today.replace(day=1)
-    
-    if today.month == 12:
-        end_date = today.replace(year=today.year + 1, month=1, day=1) - datetime.timedelta(days=1)
-    else:
-        end_date = today.replace(month=today.month + 1, day=1) - datetime.timedelta(days=1)
+    start_date, end_date = rng['start'], rng['end']
 
     hospital = request.user.hospital
 
@@ -186,6 +186,7 @@ def visual_analytics(request):
         'trend_values_json': json.dumps(trend_values),
         'start_date': start_date,
         'end_date': end_date,
+        'rng': rng,          # drives reports/_range_filter.html
         'pharmacy_rev': pharmacy_rev,
         'opd_rev': opd_rev,
         'lab_rev': lab_rev,
@@ -193,4 +194,14 @@ def visual_analytics(request):
         'other_rev': other_rev,
         'total_rev': pharmacy_rev + opd_rev + lab_rev + imaging_rev + other_rev
     }
+    if wants_csv(request):
+        return csv_response(
+            'visual-analytics',
+            ['Measure', 'Value'],
+            [('Period', f"{start_date} to {end_date}"),
+             ('Pharmacy', pharmacy_rev), ('OPD', opd_rev), ('Lab', lab_rev),
+             ('Imaging', imaging_rev), ('Other', other_rev),
+             ('Total', pharmacy_rev + opd_rev + lab_rev + imaging_rev + other_rev)]
+            + [('Revenue on ' + lbl, val)
+               for lbl, val in zip(trend_labels, trend_values)])
     return render(request, 'reports/visual_analytics.html', context)

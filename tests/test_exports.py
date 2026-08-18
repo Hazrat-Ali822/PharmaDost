@@ -33,6 +33,7 @@ PAGES = {
     'reports/module_profit.html': 'module_profit_report',
     'reports/profit_report.html': 'profit_report',
     'reports/sales_report.html': 'sales_report',
+    'reports/visual_analytics.html': 'visual_analytics',
 }
 
 
@@ -83,3 +84,55 @@ class CsvExportTest(TestCase):
         from reports.export import _safe
         self.assertEqual(_safe('=cmd|/c calc'), "'=cmd|/c calc")
         self.assertEqual(_safe('Panadol'), 'Panadol')
+
+
+class OneDateFormatTest(TestCase):
+    """#19 — five formats for the same kind of data, two of them regularly on
+    one screen.
+
+    Most were not anybody's decision: Django localises through the active locale
+    and `en` renders "Aug. 15, 2027", so every template printing a date without
+    an explicit `|date:` filter got the American format for free. The fix is one
+    format module (`pharma_mgmt/formats/en/formats.py`) rather than 45 template
+    edits, because the 46th template added next month would be wrong again.
+    """
+
+    def test_an_unfiltered_date_renders_day_first(self):
+        from datetime import date, datetime
+
+        from django.template import Context, Template
+        out = Template('{{ d }}|{{ dt }}').render(Context({
+            'd': date(2027, 8, 15), 'dt': datetime(2026, 8, 18, 18, 37)}))
+        self.assertEqual(out, '15/08/2027|18/08/2026 18:37')
+
+    def test_a_day_first_date_is_accepted_when_typed(self):
+        """03/04/2026 must be 3 April — the reading staff here intend."""
+        from django import forms
+        field = forms.DateField()
+        self.assertEqual(field.clean('03/04/2026').isoformat(), '2026-04-03')
+
+    def test_iso_is_still_accepted_from_a_date_input(self):
+        from django import forms
+        field = forms.DateField()
+        self.assertEqual(field.clean('2026-04-03').isoformat(), '2026-04-03')
+
+    def test_no_template_shows_an_iso_date_outside_an_input_value(self):
+        """`Y-m-d` is correct for the `value` of an <input type="date">, which
+        the HTML spec fixes as ISO. Anywhere else it is the defect."""
+        import re
+        from pathlib import Path
+
+        from django.conf import settings
+        offenders = []
+        for path in Path(settings.BASE_DIR).rglob('templates/**/*.html'):
+            if 'dist' in path.parts or 'build' in path.parts:
+                continue
+            for i, line in enumerate(path.read_text(encoding='utf-8',
+                                                    errors='ignore').split('\n'), 1):
+                if not re.search(r'date:.Y-m-d', line):
+                    continue
+                if 'type="date"' in line or 'value=' in line:
+                    continue
+                offenders.append(f'{path.name}:{i}')
+        self.assertEqual(offenders, [],
+                         'ISO dates shown to a user: ' + ', '.join(offenders))

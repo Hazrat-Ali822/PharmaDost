@@ -10,7 +10,7 @@
 <div class="card" style="max-width:640px;">
   <form method="post">
     {% csrf_token %}
-    {{ form.as_p }}
+    {% include 'partials/_form.html' with form=form %}
     <div class="btn-row" style="margin-top:12px;">
       <button class="btn" type="submit">Save</button>
       <a class="btn alt" href="{% url 'panel_list' %}">Cancel</a>

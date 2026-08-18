@@ -16,20 +16,21 @@
      style="padding:26px; text-decoration:none; color:var(--text); border:2px solid var(--primary); border-radius:12px; display:block;">
     <div style="font-size:30px; line-height:1; margin-bottom:12px;">🆕</div>
     <h3 style="margin:0 0 6px 0; font-weight:800;">New Patient</h3>
-    <p class="muted" style="margin:0; font-size:13.5px;">
+    <p class="muted" style="margin:0 0 16px; font-size:13.5px;">
       First time here. Register and book the visit together — one form, one token slip.
     </p>
+    <span class="btn" style="pointer-events:none;">Register &amp; book →</span>
   </a>
 
   <div class="card" style="padding:26px; border:1px solid var(--border); border-radius:12px;">
     <div style="font-size:30px; line-height:1; margin-bottom:12px;">🔁</div>
-    <h3 style="margin:0 0 6px 0; font-weight:800;">Old Patient</h3>
+    <h3 style="margin:0 0 6px 0; font-weight:800;">Returning Patient</h3>
     <p class="muted" style="margin:0 0 14px 0; font-size:13.5px;">
       Already registered. Find them by MRN, mobile number, CNIC or name.
     </p>
     <form method="get" style="display:flex; gap:8px;">
       <input type="text" name="q" value="{{ q }}" autofocus
-             placeholder="MRN or mobile number…"
+             placeholder="MRN, mobile number, CNIC or name…"
              style="flex:1; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:var(--card-bg); color:var(--text);">
       <button class="btn" type="submit">Find</button>
     </form>
@@ -50,7 +51,7 @@
       {% for p in results %}
       <tr>
         <td><strong>{{ p.mrn }}</strong></td>
-        <td>{{ p.full_name }}{% if p.guardian_name %}<br><span class="muted" style="font-size:12px;">s/o {{ p.guardian_name }}</span>{% endif %}</td>
+        <td>{{ p.full_name }}{% if p.guardian_name %}<br><span class="muted" style="font-size:12px;">{{ p.guardian_label }} {{ p.guardian_name }}</span>{% endif %}</td>
         <td>{{ p.age_display|default:"—" }}</td>
         <td>{{ p.phone|default:"—" }}</td>
         <td>{% with last=p.appointments.first %}{% if last %}{{ last.appointment_date|date:"d M Y" }}{% else %}<span class="muted">—</span>{% endif %}{% endwith %}</td>

@@ -1,5 +1,6 @@
 {% extends 'partials/base.html' %}
 {% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
 {% block content %}
 <div class="form-card">
   <h2>{{ title }}</h2>
@@ -8,7 +9,7 @@
     {# Carried for the offline outbox — the live view reads it from the URL. #}
     <input type="hidden" name="customer_id" value="{{ customer.pk }}">
     {% csrf_token %}
-    {{ form.as_p }}
+    {% include 'partials/_form.html' with form=form %}
     <button class="btn" type="submit">Record Payment</button>
     <a class="btn alt" href="{% url 'customer_ledger' customer.pk %}">Cancel</a>
   </form>

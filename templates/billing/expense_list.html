@@ -34,11 +34,11 @@
     <tbody>
       {% for e in expenses %}
       <tr>
-        <td>{{ e.date|date:"Y-m-d" }}</td>
+        <td>{{ e.date|date:"d/m/Y" }}</td>
         <td><span class="badge amber">{{ e.get_category_display }}</span></td>
         <td>{{ e.description }}</td>
         <td>{{ e.payment_method }}</td>
-        <td style="text-align:right"><strong>{{ e.amount }}</strong></td>
+        <td style="text-align:right"><strong>{{ currency }} {{ e.amount }}</strong></td>
         <td class="muted">{{ e.recorded_by.display_name }}</td>
       </tr>
       {% empty %}

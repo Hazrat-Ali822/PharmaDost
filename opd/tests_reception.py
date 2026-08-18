@@ -126,7 +126,9 @@ class ReceptionDeskTest(ReceptionBase):
     def test_the_desk_offers_new_and_old(self):
         resp = self.client.get(reverse('reception_desk'))
         self.assertContains(resp, 'New Patient')
-        self.assertContains(resp, 'Old Patient')
+        # "Old Patient" everywhere else in the app is a returning/registered
+        # patient; the desk was the only screen using that wording.
+        self.assertContains(resp, 'Returning Patient')
 
     def test_an_old_patient_is_found_by_mrn(self):
         p = Patient.objects.create(full_name='Sara Bibi', phone='03001234567',

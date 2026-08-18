@@ -51,7 +51,7 @@
       {% for s in pending_studies %}
       <tr>
         <td>{{ s.id }}</td>
-        <td>{{ s.study_date|date:"Y-m-d H:i" }}</td>
+        <td>{{ s.study_date|date:"d/m/Y H:i" }}</td>
         <td>{{ s.patient.full_name }}</td>
         <td><span class="badge">{{ s.get_modality_display }}</span></td>
         <td>{{ s.study_name }}</td>

@@ -14,7 +14,7 @@
     {% for r in returns %}
     <tr>
       <td>{{ r.id }}</td>
-      <td>{{ r.created_at|date:"Y-m-d H:i" }}</td>
+      <td>{{ r.created_at|date:"d/m/Y H:i" }}</td>
       <td>{{ r.supplier|default:"—" }}</td>
       <td><span class="badge gray">{{ r.get_reason_display }}</span></td>
       <td>{{ r.items.count }}</td>

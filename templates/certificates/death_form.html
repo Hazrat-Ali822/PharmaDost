@@ -9,7 +9,7 @@
 <div class="card" style="max-width:760px;">
   <form method="post" data-offline-kind="death_certificate">
     {% csrf_token %}
-    {{ form.as_p }}
+    {% include 'partials/_form.html' with form=form %}
     <div class="btn-row" style="margin-top:8px;">
       <button class="btn" type="submit">Issue Certificate</button>
       <a class="btn alt" href="{% url 'certificate_list' %}">Cancel</a>

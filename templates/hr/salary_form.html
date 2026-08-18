@@ -9,7 +9,7 @@
 <div class="card" style="max-width:560px;">
   <form method="post">
     {% csrf_token %}
-    {{ form.as_p }}
+    {% include 'partials/_form.html' with form=form %}
     <p class="muted" style="font-size:12.5px;">Net = Basic + Allowances − Deductions.</p>
     <div class="btn-row" style="margin-top:10px;">
       <button class="btn" type="submit">Save &amp; Print Slip</button>

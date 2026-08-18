@@ -1,15 +1,43 @@
 {% extends 'partials/base.html' %}
+{% block title %}Purchases{% endblock %}
+{% block page_title %}Purchases{% endblock %}
 {% block content %}
-<h2>Purchases</h2>
-<table>
-  <tr><th>ID</th><th>Supplier</th><th>Received</th><th>Lines</th></tr>
-  {% for o in orders %}
-  <tr>
-    <td><a href="{% url 'purchase_detail' pk=o.id %}">{{ o.id }}</a></td>
-    <td>{{ o.supplier }}</td>
-    <td>{{ o.received_at }}</td>
-    <td>{{ o.items.count }}</td>
-  </tr>
-  {% endfor %}
-</table>
+{% comment %}
+Was a bare <table> with no card, no title block and no action button — it did
+not look like the rest of the product, and it printed a raw Python "None" in
+the Supplier column for any stock received without one (which is every
+purchase entered straight onto a medicine).
+{% endcomment %}
+<div class="page-head">
+  <h2>Purchases</h2>
+  <a class="btn" href="{% url 'purchase_create' %}">+ Record stock-in</a>
+</div>
+
+<p class="field-help">
+  Stock received into the pharmacy. Each row is one delivery; open it to see the
+  batches, quantities and costs that came in.
+</p>
+
+<div class="card">
+  <div class="table-scroll">
+    <table class="tbl">
+      <thead>
+        <tr><th>#</th><th>Supplier</th><th>Received</th><th>Lines</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for o in orders %}
+        <tr>
+          <td><strong>{{ o.id }}</strong></td>
+          <td>{% if o.supplier %}{{ o.supplier }}{% else %}<span class="muted">No supplier recorded</span>{% endif %}</td>
+          <td>{{ o.received_at|date:"d/m/Y H:i" }}</td>
+          <td>{{ o.items.count }}</td>
+          <td><a class="btn sm alt" href="{% url 'purchase_detail' pk=o.id %}">Open</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="muted">No stock has been received yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
 {% endblock %}

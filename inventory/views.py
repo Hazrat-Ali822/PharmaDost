@@ -168,6 +168,13 @@ def dashboard(request):
         'today': today,
         'start_date': start_date.strftime('%Y-%m-%d'),
         'end_date': end_date.strftime('%Y-%m-%d'),
+        # The date objects too: the two above are strings for the <input
+        # type=date> values, and `|date:'d/m/Y'` on a string is a no-op. The
+        # heading has to be able to name the period its total covers — there
+        # are two revenue figures on this screen (this one follows the filter,
+        # the stat tile is a fixed 30 days) and nothing said which was which.
+        'range_start': start_date,
+        'range_end': end_date,
         'finance_labels': json.dumps(labels),
         'finance_income': json.dumps(daily_income),
         'finance_expense': json.dumps(daily_expense),
@@ -828,9 +835,36 @@ def expiry_report(request):
             soon.append(b)
             soon_value += b.value
 
+    # Stock entered straight on Add Medicine never becomes a StockBatch — the
+    # quantity and expiry sit on the Medicine row itself — so this screen, which
+    # reads only batches, could not see it. The dashboard's "Expiring Batches
+    # (30d)" tile and /reports/inventory/ both count it (their stock properties
+    # fall back to Medicine.quantity when there are no batches), so an expiring
+    # drug was flagged in two places, absent from the screen dedicated to
+    # expiry, and stayed on the shelf and sellable.
+    #
+    # Listed separately because they cannot be returned from here: the
+    # supplier-return flow works batch by batch, and there is no batch. The
+    # pharmacist has to adjust that stock out instead, which the page now says.
+    loose = []
+    loose_value = Decimal('0.00')
+    for med in (Medicine.objects
+                .filter(quantity__gt=0, expiry_date__isnull=False,
+                        expiry_date__lte=horizon)
+                .prefetch_related('batches')):
+        if med.batches.all():
+            continue                      # already counted above, as batches
+        med.is_exp = med.expiry_date < today
+        med.days_left = (med.expiry_date - today).days
+        med.value = (med.cost_price or Decimal('0.00')) * med.quantity
+        loose.append(med)
+        loose_value += med.value
+    loose.sort(key=lambda m: m.expiry_date)
+
     return render(request, 'inventory/expiry_report.html', {
         'expired': expired, 'soon': soon, 'days': days,
         'expired_value': expired_value, 'soon_value': soon_value,
+        'loose': loose, 'loose_value': loose_value,
     })
 
 
@@ -883,8 +917,18 @@ def reorder_report(request):
     days = max(7, min(days, 180))
     rows = reorder_suggestions(days=days)
     needs = [r for r in rows if r['needs']]
-    return render(request, 'inventory/reorder_report.html',
-                  {'rows': rows, 'needs_count': len(needs), 'days': days})
+    # Show what needs ordering. The page said "4 item(s) at or below their
+    # suggested point" and then rendered all ~210 rows of the catalogue, 206 of
+    # which suggest nothing — a worklist you have to search through is not a
+    # worklist. `?show=all` keeps the full table one click away.
+    show_all = request.GET.get('show') == 'all'
+    return render(request, 'inventory/reorder_report.html', {
+        'rows': rows if show_all else needs,
+        'needs_count': len(needs),
+        'total_count': len(rows),
+        'show_all': show_all,
+        'days': days,
+    })
 
 
 @feature_required('inventory')
@@ -912,6 +956,14 @@ def reorder_to_po(request):
     for r in rows:
         by_supplier.setdefault(r['medicine'].supplier_id, []).append(r)
 
+    # One query for every medicine's most recent batch cost, not one per line.
+    last_costs = {}
+    for med_id, cost in (StockBatch.objects
+                         .filter(medicine_id__in=[r['medicine'].id for r in rows])
+                         .order_by('medicine_id', '-received_at')
+                         .values_list('medicine_id', 'cost_price')):
+        last_costs.setdefault(med_id, cost)
+
     made = 0
     for supplier_id, items in by_supplier.items():
         pr = PurchaseRequest.objects.create(
@@ -922,10 +974,19 @@ def reorder_to_po(request):
             created_by=request.user)
         for r in items:
             med = r['medicine']
-            last_cost = (StockBatch.objects.filter(medicine=med).order_by('-received_at')
-                         .values_list('cost_price', flat=True).first()) or Decimal('0.00')
+            # Cost, best available source first. This used to read the last
+            # StockBatch and nothing else, so every medicine that has never been
+            # received against a purchase — which is all ~200 of the ones the
+            # "Load Standard Catalog" button files — came through at 0.00, and a
+            # PO for 2062 units across 208 lines estimated Rs 1050, the same as
+            # a two-unit order. A total built from two priced lines out of 208 is
+            # not an estimate, it is a number that looks like one.
+            last_cost = last_costs.get(med.id)
+            if not last_cost:
+                last_cost = med.cost_price or Decimal('0.00')
             PurchaseRequestItem.objects.create(
-                request=pr, medicine=med, quantity=r['suggested_order'], cost_price=last_cost)
+                request=pr, medicine=med, quantity=r['suggested_order'],
+                cost_price=last_cost)
         made += 1
 
     messages.success(request, f"Created {made} draft purchase order(s) from reorder suggestions — review &amp; send from the PO desk.")

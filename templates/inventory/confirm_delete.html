@@ -1,5 +1,6 @@
 {% extends 'partials/base.html' %}
 {% block title %}Confirm Delete{% endblock %}
+{% block page_title %}Confirm Delete{% endblock %}
 {% block content %}
 <h3>Delete: {{ object }}?</h3>
 <form method="post">{% csrf_token %}

@@ -14,7 +14,7 @@
   <tbody>
     {% for r in pending %}
     <tr>
-      <td>{{ r.created_at|date:"Y-m-d H:i" }}</td>
+      <td>{{ r.created_at|date:"d/m/Y H:i" }}</td>
       <td>{{ r.patient.full_name }} <span class="muted">{{ r.patient.mrn }}</span></td>
       <td><span class="badge {% if r.urgency == 'Emergency' %}danger{% elif r.urgency == 'Urgent' %}warn{% else %}gray{% endif %}">{{ r.get_urgency_display }}</span></td>
       <td>{{ r.procedure.name|default:"—" }}</td>
@@ -40,7 +40,7 @@
   <tbody>
     {% for r in recent %}
     <tr>
-      <td>{{ r.created_at|date:"Y-m-d H:i" }}</td>
+      <td>{{ r.created_at|date:"d/m/Y H:i" }}</td>
       <td>{{ r.patient.full_name }}</td>
       <td><span class="badge {% if r.status == 'Scheduled' %}success{% else %}gray{% endif %}">{{ r.status }}</span></td>
       <td>{% if r.surgery %}<a href="{% url 'ot:surgery_detail' r.surgery.id %}">View surgery</a>{% endif %}</td>

@@ -14,7 +14,7 @@
   <tbody>
     {% for r in pending %}
     <tr>
-      <td>{{ r.created_at|date:"Y-m-d H:i" }}</td>
+      <td>{{ r.created_at|date:"d/m/Y H:i" }}</td>
       <td>{{ r.patient.full_name }} <span class="muted">{{ r.patient.mrn }}</span></td>
       <td>{{ r.reason }}</td>
       <td>Dr. {{ r.advised_by.first_name|default:r.advised_by.email }}</td>
@@ -39,7 +39,7 @@
   <tbody>
     {% for r in recent %}
     <tr>
-      <td>{{ r.created_at|date:"Y-m-d H:i" }}</td>
+      <td>{{ r.created_at|date:"d/m/Y H:i" }}</td>
       <td>{{ r.patient.full_name }}</td>
       <td><span class="badge {% if r.status == 'Admitted' %}success{% else %}gray{% endif %}">{{ r.status }}</span></td>
       <td>{% if r.admission %}<a href="{% url 'ipd:admission_detail' r.admission.id %}">View admission</a>{% endif %}</td>

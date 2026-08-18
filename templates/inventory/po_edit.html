@@ -75,7 +75,7 @@
       <form method="post" action="{% url 'po_repeat' req.id %}" style="display:flex;gap:8px;align-items:end">{% csrf_token %}
         <div style="flex:1"><label>This supplier's past orders</label>
           <select name="source">
-            {% for o in repeatable %}<option value="{{ o.id }}">#{{ o.id }} · {{ o.created_at|date:"Y-m-d" }} · {{ o.item_count }} items</option>{% endfor %}
+            {% for o in repeatable %}<option value="{{ o.id }}">#{{ o.id }} · {{ o.created_at|date:"d/m/Y" }} · {{ o.item_count }} items</option>{% endfor %}
           </select>
         </div>
         <button class="btn alt" type="submit">Load items</button>
@@ -108,7 +108,7 @@
         {% else %}
         <td>{{ it.quantity }}</td><td>{{ currency }} {{ it.cost_price }}</td>
         {% endif %}
-        <td>{{ currency }} {{ it.line_total }}</td>
+        <td>{% if it.cost_price %}{{ currency }} {{ it.line_total }}{% else %}<span class="muted" title="No cost is recorded for this medicine, so it is not in the total below">cost not known</span>{% endif %}</td>
         {% if req.status == 'DRAFT' %}<td><a class="btn sm danger" href="{% url 'po_item_delete' req.id it.id %}">✕</a></td>{% endif %}
       </tr>
       {% empty %}
@@ -118,6 +118,19 @@
     <tfoot><tr><th colspan="6" style="text-align:right">Estimated total</th><th>{{ currency }} {{ req.total }}</th>{% if req.status == 'DRAFT' %}<th></th>{% endif %}</tr></tfoot>
   </table>
 </div>
+{% if unpriced_count %}
+{% comment %}
+A total built from a handful of priced lines reads as an estimate of the whole
+order. Say how much of it is actually missing rather than let the figure
+speak for an order it does not cover.
+{% endcomment %}
+<p class="field-help">
+  <strong>{{ unpriced_count }}</strong> of {{ item_count }} line{{ item_count|pluralize }}
+  ha{{ unpriced_count|pluralize:"s,ve" }} no cost recorded, so the estimated total above
+  covers only the rest. Type a cost against them, or receive them once and the
+  price will be remembered.
+</p>
+{% endif %}
 </form>
 
 {% if req.status == 'DRAFT' and req.item_count %}

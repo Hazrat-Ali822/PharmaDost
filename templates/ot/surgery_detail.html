@@ -37,10 +37,10 @@
         </table>
       </div>
       <hr style="border:0; border-top:1px solid var(--border); margin:5px 0;" />
-      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Start Time</span><strong>{{ record.start_time|date:"Y-m-d H:i" }}</strong></p>
+      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Start Time</span><strong>{{ record.start_time|date:"d/m/Y H:i" }}</strong></p>
       <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">End Time</span>
         {% if record.end_time %}
-        <strong>{{ record.end_time|date:"Y-m-d H:i" }}</strong>
+        <strong>{{ record.end_time|date:"d/m/Y H:i" }}</strong>
         {% else %}
         <span class="badge warning" style="background:#f59e0b; color:white; padding:2px 6px; border-radius:4px; font-size:10px;">In Progress</span>
         {% endif %}

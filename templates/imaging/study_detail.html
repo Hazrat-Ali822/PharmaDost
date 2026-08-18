@@ -7,7 +7,7 @@
     <h2>{{ study.get_modality_display }} — {{ study.study_name }}</h2>
     <div class="muted">
       <a href="{% url 'patient_detail' study.patient.pk %}">{{ study.patient.full_name }}</a>
-      · MRN {{ study.patient.mrn }} · {{ study.study_date|date:"Y-m-d H:i" }}
+      · MRN {{ study.patient.mrn }} · {{ study.study_date|date:"d/m/Y H:i" }}
       · <span class="badge {% if study.is_cancelled %}red{% elif study.status == 'Reported' or study.status == 'Delivered' %}green{% else %}gray{% endif %}">{{ study.status }}</span>
     </div>
   </div>

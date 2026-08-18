@@ -121,7 +121,7 @@
     </div>
 
     <p id="no-doctors" class="muted" style="display:none; padding:16px 0; margin:0;">
-      No doctor from this department is sitting right now. Tick the box below to book one anyway.
+      <span data-dept-chosen>No doctor from this department is sitting right now.</span><span data-dept-any style="display:none;">No doctor is sitting right now.</span> Tick the box below to book one anyway.
     </p>
 
     {% if away %}
@@ -182,7 +182,16 @@
       // never leave a hidden doctor selected
       if (!show) { const r = card.querySelector('input'); if (r) r.checked = false; }
     });
-    if (empty) empty.style.display = visible ? 'none' : 'block';
+    if (empty) {
+      empty.style.display = visible ? 'none' : 'block';
+      // "this department" names nothing when none has been picked.
+      const chosen = empty.querySelector('[data-dept-chosen]');
+      const any = empty.querySelector('[data-dept-any]');
+      if (chosen && any) {
+        chosen.style.display = wanted ? '' : 'none';
+        any.style.display = wanted ? 'none' : '';
+      }
+    }
   }
 
   dept.addEventListener('change', apply);

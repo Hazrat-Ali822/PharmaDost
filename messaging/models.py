@@ -44,6 +44,18 @@ class MessageLog(models.Model):
     # What this message was for ('appointment_reminder', 'lab_ready', ...) —
     # lets the outbox screen and the reminder command filter by purpose.
     kind = models.CharField(max_length=50, blank=True, db_index=True)
+
+    # What each `kind` is called on screen. The filter dropdown showed the raw
+    # key ('lab_ready'), which is a developer's word for it.
+    KIND_LABELS = {
+        'appointment_reminder': 'Appointment reminder',
+        'lab_ready': 'Lab result ready',
+        'vaccination_due': 'Vaccination due',
+    }
+
+    @property
+    def kind_label(self):
+        return self.KIND_LABELS.get(self.kind, self.kind.replace('_', ' ').capitalize())
     # Stable identity of "this message, for this thing, on this day". The
     # reminder command refuses to send when a SENT row already carries the same
     # key, so re-running the cron (or running it twice by accident) does not

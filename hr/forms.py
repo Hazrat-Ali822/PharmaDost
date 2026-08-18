@@ -1,3 +1,4 @@
+from datetime import date
 from django import forms
 
 from accounts.models import NO_LOGIN_EMAIL_DOMAIN, NO_LOGIN_ROLE, User
@@ -68,9 +69,41 @@ class SalaryPaymentForm(forms.ModelForm):
         fields = ['user', 'period', 'basic', 'allowances', 'deductions', 'paid_on', 'method', 'note']
         widgets = {'paid_on': forms.DateInput(attrs={'type': 'date'})}
 
+    # How many months back the picker offers. Payroll is entered for the month
+    # just gone, occasionally one before that; a longer list is a longer scroll.
+    PERIOD_MONTHS = 18
+
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         _scope_user_field(self.fields['user'], user)
+
+        # `period` is a free-text CharField, and a free-text period cannot be
+        # reconciled: the ledger held "August 2026" next to "Last month", which
+        # names a different month every time it is read and cannot be summed,
+        # filtered or compared with anything. The column stays text (old rows
+        # must keep reading correctly, and a hospital may want "Aug 2026 bonus"),
+        # but the FORM now offers real months.
+        self.fields['period'] = forms.ChoiceField(
+            choices=self._period_choices(), label='Salary for',
+            help_text='The month this payment covers — not the day it is paid.')
+
+    @classmethod
+    def _period_choices(cls):
+        from django.utils import timezone
+        today = timezone.localdate()
+        months, year, month = [], today.year, today.month
+        for _ in range(cls.PERIOD_MONTHS):
+            label = date(year, month, 1).strftime('%B %Y')
+            months.append((label, label))
+            month -= 1
+            if month == 0:
+                month, year = 12, year - 1
+        return months
+
+    def clean_period(self):
+        # A stored value from before this was a dropdown (or from an import)
+        # must not be rejected when an old payslip is re-saved.
+        return self.cleaned_data.get('period') or self.initial.get('period', '')
 
 
 class EmployeeForm(forms.Form):

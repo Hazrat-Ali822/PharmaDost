@@ -23,9 +23,9 @@
     </select>
   </label>
   <span style="display:inline-flex; gap:6px; align-items:center;">
-    <a class="btn sm alt" href="?ward={{ ward.pk }}&week={{ prev_week|date:'Y-m-d' }}">‹ Prev</a>
+    <a class="btn sm alt" href="?ward={{ ward.pk }}&week={{ prev_week|date:'d/m/Y' }}">‹ Prev</a>
     <strong>Week of {{ week_start|date:'d/m/Y' }}</strong>
-    <a class="btn sm alt" href="?ward={{ ward.pk }}&week={{ next_week|date:'Y-m-d' }}">Next ›</a>
+    <a class="btn sm alt" href="?ward={{ ward.pk }}&week={{ next_week|date:'d/m/Y' }}">Next ›</a>
   </span>
   {% if ward.in_charge %}<span class="muted" style="font-size:13px;">In-charge: <strong>{{ ward.in_charge.display_name }}</strong></span>{% endif %}
 </form>
@@ -78,7 +78,7 @@
     </label>
     <label>Day<br>
       <select name="date" required>
-        {% for d in days %}<option value="{{ d|date:'Y-m-d' }}" {% if d == today %}selected{% endif %}>{{ d|date:'D d/m' }}</option>{% endfor %}
+        {% for d in days %}<option value="{{ d|date:'d/m/Y' }}" {% if d == today %}selected{% endif %}>{{ d|date:'D d/m' }}</option>{% endfor %}
       </select>
     </label>
     <label>Shift<br>

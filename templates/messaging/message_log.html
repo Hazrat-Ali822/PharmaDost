@@ -10,14 +10,14 @@
     Email:
     {% if email_ready %}<span class="badge green">configured</span>
     {% else %}<span class="badge">not set up</span>
-      <span class="muted" style="font-size:13px">— set <code>DJANGO_EMAIL_HOST</code> and the related values in <code>.env</code>.</span>
+      <span class="muted" style="font-size:13px">— no mail server has been connected, so nothing can be emailed yet. Ask whoever set the system up to connect one.</span>
     {% endif %}
   </p>
   <p style="margin:6px 0">
     SMS:
     {% if sms_ready %}<span class="badge green">configured</span>
     {% else %}<span class="badge">not set up</span>
-      <span class="muted" style="font-size:13px">— set <code>PHARMADOST_SMS_URL</code> and <code>PHARMADOST_SMS_PARAMS</code> in <code>.env</code>.</span>
+      <span class="muted" style="font-size:13px">— no SMS company has been connected, so nothing can be texted yet. Ask whoever set the system up to connect one.</span>
     {% endif %}
   </p>
   <p class="muted" style="font-size:13px;margin-bottom:0">
@@ -43,7 +43,7 @@
   </select>
   <select name="kind">
     <option value="">All kinds</option>
-    {% for k in kinds %}<option value="{{ k }}" {% if kind == k %}selected{% endif %}>{{ k }}</option>{% endfor %}
+    {% for key, label in kinds %}<option value="{{ key }}" {% if kind == key %}selected{% endif %}>{{ label }}</option>{% endfor %}
   </select>
   <button class="btn" type="submit">Filter</button>
 </form>
@@ -59,7 +59,7 @@
         <td>{{ m.created_at|date:"d/m/Y H:i" }}</td>
         <td>{{ m.get_channel_display }}</td>
         <td>{{ m.to }}</td>
-        <td>{{ m.kind }}</td>
+        <td>{{ m.kind_label }}</td>
         <td>
           {% if m.status == 'SENT' %}<span class="badge green">Sent</span>
           {% elif m.status == 'FAILED' %}<span class="badge" style="background:#ef4444;color:#fff">Failed</span>

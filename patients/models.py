@@ -111,6 +111,19 @@ class Patient(models.Model):
         return self.age_on(self.dob) if self.dob else self.age_years
 
     @property
+    def guardian_label(self):
+        """"s/o" or "d/o" — the guardian relation, matched to the patient.
+
+        Both the reception search results and the printed OPD token slip said
+        **s/o** ("son of") for everybody, so a female patient was handed a slip
+        with her father's name and the wrong relation on it. Nothing in the
+        record says whether an adult woman is d/o or w/o, so d/o is used: it is
+        right for a child and for an unmarried woman, and a hospital slip is not
+        the place to infer a marital status the patient never gave.
+        """
+        return {'M': 's/o', 'F': 'd/o'}.get(self.gender, 'c/o')
+
+    @property
     def age_display(self):
         """What to print: '34y 5m 12d', '7m 3d', '4d'.
 

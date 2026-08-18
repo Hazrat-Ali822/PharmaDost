@@ -239,10 +239,10 @@
   <h3>Prescriptions</h3>
   {% for p in prescriptions %}
   <div style="border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px">
-    <div class="muted" style="font-size:12px">{{ p.created_at|date:"Y-m-d" }} · {{ p.appointment.doctor.display_name }}{% if p.diagnosis %} · Dx: {{ p.diagnosis }}{% endif %}</div>
+    <div class="muted" style="font-size:12px">{{ p.created_at|date:"d/m/Y" }} · {{ p.appointment.doctor.display_name }}{% if p.diagnosis %} · Dx: {{ p.diagnosis }}{% endif %}</div>
     {% if p.complaint %}<div><strong>Complaint:</strong> {{ p.complaint }}</div>{% endif %}
     <ul style="margin:6px 0 0;padding-left:18px">
-      {% for it in p.items.all %}<li>{{ it.medicine }} — {{ it.dosage }}{% if it.duration_days %} × {{ it.duration_days }}d{% endif %}{% if it.instructions %} ({{ it.instructions }}){% endif %}</li>{% endfor %}
+      {% for it in p.items.all %}<li>{{ it.display_name|default:"Medicine not recorded" }} — {{ it.dosage }}{% if it.duration_days %} × {{ it.duration_days }}d{% endif %}{% if it.instructions %} ({{ it.instructions }}){% endif %}</li>{% endfor %}
     </ul>
   </div>
   {% empty %}
@@ -256,7 +256,7 @@
   {% for o in lab_orders %}
   <div style="border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px">
     <div class="muted" style="font-size:12px;display:flex;justify-content:space-between;align-items:center">
-      <span>Order #{{ o.id }} · {{ o.order_date|date:"Y-m-d" }} · {{ o.status }}</span>
+      <span>Order #{{ o.id }} · {{ o.order_date|date:"d/m/Y" }} · {{ o.status }}</span>
       <a class="btn sm alt" href="{% url 'lab:order_report' o.id %}" target="_blank">Print report</a>
     </div>
     <table class="tbl" style="margin-top:6px">
@@ -281,7 +281,7 @@
     <div class="muted" style="font-size:12px">
       <span class="badge">{{ s.get_modality_display }}</span>
       <a href="{% url 'imaging:study_detail' s.id %}">{{ s.study_name }}</a>
-      · {{ s.study_date|date:"Y-m-d" }} · {{ s.status }}
+      · {{ s.study_date|date:"d/m/Y" }} · {{ s.status }}
       {% if s.performed_by %}· by {{ s.performed_by.display_name }}{% endif %}
     </div>
     {% if s.impression %}<div style="margin-top:4px"><strong>Impression:</strong> {{ s.impression }}</div>
@@ -302,7 +302,7 @@
   {% for s in pharmacy_sales %}
   <div style="border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px">
     <div class="muted" style="font-size:12px">
-      <a href="{% url 'sale_detail' s.id %}">Bill #{{ s.id }}</a> · {{ s.created_at|date:"Y-m-d" }} · {{ s.get_sale_type_display }} · Total {{ s.total }}{% if s.is_returned %} · <span class="danger">RETURNED</span>{% endif %}
+      <a href="{% url 'sale_detail' s.id %}">Bill #{{ s.id }}</a> · {{ s.created_at|date:"d/m/Y" }} · {{ s.get_sale_type_display }} · Total {{ s.total }}{% if s.is_returned %} · <span class="danger">RETURNED</span>{% endif %}
     </div>
     <div>{% for it in s.items.all %}{{ it.medicine.name }} ×{{ it.quantity }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>
   </div>
@@ -322,7 +322,7 @@
         {# display_no, not the raw pk: the billing list and the invoice page both #}
         {# call this record INV-2026-00022, so "# 32" here cannot be matched to it. #}
         <td>{% if nav.billing %}<a href="{% url 'invoice_detail' inv.id %}">{{ inv.display_no }}</a>{% else %}{{ inv.display_no }}{% endif %}</td>
-        <td>{{ inv.created_at|date:"Y-m-d" }}</td>
+        <td>{{ inv.created_at|date:"d/m/Y" }}</td>
         <td>{% for it in inv.items.all %}{{ it.description }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
         <td>{{ inv.total }}</td>
         <td>{{ inv.paid }}</td>

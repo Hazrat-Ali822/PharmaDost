@@ -37,7 +37,7 @@
     <h3 style="margin-top:0;">Add code</h3>
     <form method="post">
       {% csrf_token %}
-      {{ form.as_p }}
+      {% include 'partials/_form.html' with form=form %}
       <div class="btn-row" style="margin-top:8px;"><button class="btn" type="submit">Add</button></div>
     </form>
   </div>

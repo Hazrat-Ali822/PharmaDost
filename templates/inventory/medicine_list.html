@@ -1,9 +1,9 @@
 {% extends 'partials/base.html' %}
-{% block title %}Medicines{% endblock %}
+{% block title %}Inventory{% endblock %}
 {% block page_title %}Inventory{% endblock %}
 {% block content %}
 <div class="page-head">
-  <h2>Medicines</h2>
+  <h2>Inventory</h2>
   <div style="display:flex; gap:8px;">
     {% if request.user.role == 'ADMIN' or request.user.is_superuser %}
       <form method="post" action="{% url 'medicine_import_catalog' %}" style="margin:0;">
@@ -50,7 +50,7 @@
       {# An unpriced row is not "free", it is unfinished — and the POS now #}
       {# refuses to sell it. Say so here, where it can be fixed.            #}
       <td>{% if m.price %}{{ currency }} {{ m.price }}{% else %}<span class="badge red" title="This medicine cannot be sold until it has a price">No price set</span>{% endif %}</td>
-      <td>{% if m.wholesale_price %}{{ m.wholesale_price }}{% else %}<span class="muted">—</span>{% endif %}</td>
+      <td>{% if m.wholesale_price %}{{ currency }} {{ m.wholesale_price }}{% else %}<span class="muted">—</span>{% endif %}</td>
       <td>{% if m.is_low_stock %}<span class="badge amber">{{ m.quantity }}</span>{% else %}{{ m.quantity }}{% endif %}</td>
       <td class="{% if m.is_expired %}danger{% endif %}">{{ m.expiry_date }}</td>
       <td>

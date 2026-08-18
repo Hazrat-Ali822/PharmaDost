@@ -3,7 +3,7 @@
 {% block doctitle %}PURCHASE ORDER{% endblock %}
 {% block headmeta %}
   <b>PO #:</b> {{ req.id }}<br>
-  <b>Date:</b> {{ req.created_at|date:"Y-m-d" }}<br>
+  <b>Date:</b> {{ req.created_at|date:"d/m/Y" }}<br>
   <b>Supplier:</b> {{ req.display_supplier }}
 {% endblock %}
 

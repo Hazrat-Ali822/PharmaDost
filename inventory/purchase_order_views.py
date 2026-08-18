@@ -75,11 +75,17 @@ def po_edit(request, pk):
     if req.supplier_id:
         repeatable = (PurchaseRequest.objects.filter(supplier=req.supplier)
                       .exclude(pk=req.pk).order_by('-created_at')[:15])
+    items = list(req.items.select_related('medicine'))
     return render(request, 'inventory/po_edit.html', {
         'req': req,
-        'items': req.items.select_related('medicine'),
+        'items': items,
         'medicines': Medicine.objects.order_by('name'),
         'repeatable': repeatable,
+        # How much of the order the "estimated total" does NOT cover. A total
+        # built from two priced lines out of 208 reads as an estimate of the
+        # whole order; saying so is the difference between a figure and a guess.
+        'item_count': len(items),
+        'unpriced_count': sum(1 for it in items if not it.cost_price),
     })
 
 

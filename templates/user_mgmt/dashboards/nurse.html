@@ -33,7 +33,7 @@
         <td>{{ a.bed.ward.name }}</td>
         <td>{{ a.bed.bed_number }}</td>
         <td>{{ a.attending_doctor.full_name }}</td>
-        <td>{{ a.admission_date|date:"Y-m-d H:i" }}</td>
+        <td>{{ a.admission_date|date:"d/m/Y H:i" }}</td>
         <td style="white-space:nowrap;">
           <a class="btn sm" href="{% url 'ipd:medication_log_add' a.pk %}">💊 Medication</a>
           <a class="btn sm alt" href="{% url 'ipd:doctor_round_add' a.pk %}">🩺 Round</a>

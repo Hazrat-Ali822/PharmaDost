@@ -43,7 +43,7 @@
         <td>{{ b.medicine.name }} <span class="muted">{{ b.medicine.brand }}</span></td>
         <td>{{ b.batch_number|default:b.id }}</td>
         <td>{{ b.quantity }}</td>
-        <td><span class="badge danger">{{ b.expiry_date|date:"Y-m-d" }}</span></td>
+        <td><span class="badge danger">{{ b.expiry_date|date:"d/m/Y" }}</span></td>
         <td>{{ b.supplier|default:"—" }}</td>
         <td>{{ currency }} {{ b.value }}</td>
       </tr>
@@ -65,7 +65,7 @@
         <td>{{ b.medicine.name }} <span class="muted">{{ b.medicine.brand }}</span></td>
         <td>{{ b.batch_number|default:b.id }}</td>
         <td>{{ b.quantity }}</td>
-        <td>{{ b.expiry_date|date:"Y-m-d" }}</td>
+        <td>{{ b.expiry_date|date:"d/m/Y" }}</td>
         <td><span class="badge warn">{{ b.days_left }} day(s)</span></td>
         <td>{{ b.supplier|default:"—" }}</td>
         <td>{{ currency }} {{ b.value }}</td>
@@ -83,4 +83,44 @@
     <span class="muted" style="font-size:12px;">Groups the ticked batches by supplier and raises one purchase return each.</span>
   </div>
 </form>
+
+{% if loose %}
+{% comment %}
+Stock entered on Add Medicine, which never created a batch. It cannot be
+returned from here — the supplier-return flow works batch by batch — so this
+block deliberately has no checkboxes and says what to do instead.
+{% endcomment %}
+<div class="card" style="margin-top:22px;">
+  <h3 style="margin-top:0;">Also expiring — stock with no batch record
+    <span class="muted" style="font-weight:400; font-size:13px;">({{ loose|length }}, worth {{ currency }} {{ loose_value|floatformat:2 }})</span>
+  </h3>
+  <p class="field-help">
+    These were entered directly on the medicine rather than received against a
+    purchase, so there is no batch to send back to a supplier. Take them off the
+    shelf and write the stock off with a stock adjustment.
+  </p>
+  <div class="table-scroll">
+    <table class="tbl">
+      <thead>
+        <tr><th>Medicine</th><th>Qty</th><th>Expiry</th><th>Status</th><th>Value</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for m in loose %}
+        <tr>
+          <td>{{ m.name }} <span class="muted">{{ m.brand }}</span></td>
+          <td>{{ m.quantity }}</td>
+          <td>{{ m.expiry_date|date:'d/m/Y' }}</td>
+          <td>
+            {% if m.is_exp %}<span class="badge" style="background:var(--danger-bg); color:var(--danger);">Expired</span>
+            {% else %}<span class="badge warn">{{ m.days_left }} day{{ m.days_left|pluralize }} left</span>{% endif %}
+          </td>
+          <td>{{ currency }} {{ m.value|floatformat:2 }}</td>
+          <td><a class="btn sm alt" href="{% url 'adjustment_create' %}?medicine={{ m.pk }}">Write off…</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
 {% endblock %}

@@ -50,7 +50,7 @@
     <tbody>
       {% for p in payouts %}
       <tr>
-        <td>{{ p.date|date:"Y-m-d" }}</td>
+        <td>{{ p.date|date:"d/m/Y" }}</td>
         <td><strong>{{ p.amount }}</strong></td>
         <td>{{ p.payment_method }}</td>
         <td>{{ p.note|default:"—" }}</td>

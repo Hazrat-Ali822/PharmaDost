@@ -71,8 +71,8 @@
 
     {% if not done %}
       <div class="form-actions" style="margin-top:16px;">
-        <input type="hidden" name="start" value="{{ report.start|date:'Y-m-d' }}">
-        <input type="hidden" name="end" value="{{ report.end|date:'Y-m-d' }}">
+        <input type="hidden" name="start" value="{{ report.start|date:'d/m/Y' }}">
+        <input type="hidden" name="end" value="{{ report.end|date:'d/m/Y' }}">
         <button class="btn" type="submit" name="action" value="apply">Write these {{ report.start|date:"d/m" }}–{{ report.end|date:"d/m" }} days</button>
       </div>
     {% else %}

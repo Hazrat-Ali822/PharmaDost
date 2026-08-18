@@ -53,14 +53,14 @@
       <hr style="border:0; border-top:1px solid var(--border); margin:5px 0;" />
       <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Assigned Bed / Ward</span><strong style="color:var(--primary)">Bed {{ admission.bed.bed_number }}</strong> ({{ admission.bed.ward.name }})</p>
       <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Attending Doctor</span><strong>Dr. {{ admission.attending_doctor.full_name }}</strong></p>
-      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Admission Date & Time</span><strong>{{ admission.admission_date|date:"Y-m-d H:i" }}</strong></p>
+      <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Admission Date & Time</span><strong>{{ admission.admission_date|date:"d/m/Y H:i" }}</strong></p>
       <p style="margin:0;"><span class="muted" style="display:block; font-size:12px;">Reason for Admission</span>{{ admission.admission_reason }}</p>
       
       {% if admission.status == 'Discharged' %}
       <hr style="border:0; border-top:1px solid var(--border); margin:5px 0;" />
       <div style="background:rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); padding:12px; border-radius:8px;">
         <span class="badge success" style="margin-bottom:6px; background:#22c55e;">Discharged</span>
-        <p style="margin:0 0 4px 0; font-size:12px;"><span class="muted">Discharged On:</span> <strong>{{ admission.discharge_date|date:"Y-m-d H:i" }}</strong></p>
+        <p style="margin:0 0 4px 0; font-size:12px;"><span class="muted">Discharged On:</span> <strong>{{ admission.discharge_date|date:"d/m/Y H:i" }}</strong></p>
       </div>
       {% endif %}
     </div>
@@ -175,7 +175,7 @@
           <div style="width:11px; height:11px; border-radius:50%; background:var(--primary); position:absolute; left:-7px; top:4px;"></div>
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
             <strong style="font-size:14.5px;">Round Checklist</strong>
-            <span class="muted" style="font-size:12px;">{{ r.round_time|date:"Y-m-d H:i" }}</span>
+            <span class="muted" style="font-size:12px;">{{ r.round_time|date:"d/m/Y H:i" }}</span>
           </div>
           
           <div style="display:flex; gap:15px; margin-bottom:10px; font-size:12.5px; flex-wrap:wrap;">
@@ -205,7 +205,7 @@
       <div style="border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:10px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
           <strong style="font-size:14px;">{{ rx.diagnosis|default:"—" }}</strong>
-          <span class="muted" style="font-size:12px;">{{ rx.created_at|date:"Y-m-d" }} · Dr. {{ rx.appointment.doctor.full_name }}</span>
+          <span class="muted" style="font-size:12px;">{{ rx.created_at|date:"d/m/Y" }} · Dr. {{ rx.appointment.doctor.full_name }}</span>
         </div>
         <ul style="margin:0; padding-left:18px; font-size:13px; color:var(--text);">
           {% for item in rx.items.all %}
@@ -223,7 +223,7 @@
       {% for order in lab_orders %}
       <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px dashed var(--border); font-size:13px;">
         <span>{% for r in order.results.all %}{{ r.lab_test.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</span>
-        <span><span class="badge gray">{{ order.status }}</span> <span class="muted" style="font-size:12px;">{{ order.order_date|date:"Y-m-d" }}</span></span>
+        <span><span class="badge gray">{{ order.status }}</span> <span class="muted" style="font-size:12px;">{{ order.order_date|date:"d/m/Y" }}</span></span>
       </div>
       {% empty %}
       <p class="muted" style="margin:0; font-size:13px;">No lab tests ordered.</p>
@@ -233,7 +233,7 @@
       {% for study in imaging_studies %}
       <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px dashed var(--border); font-size:13px;">
         <span>{{ study.get_modality_display }}: {{ study.study_name }}</span>
-        <span><span class="badge gray">{{ study.status }}</span> <span class="muted" style="font-size:12px;">{{ study.study_date|date:"Y-m-d" }}</span></span>
+        <span><span class="badge gray">{{ study.status }}</span> <span class="muted" style="font-size:12px;">{{ study.study_date|date:"d/m/Y" }}</span></span>
       </div>
       {% empty %}
       <p class="muted" style="margin:0; font-size:13px;">No scans ordered.</p>
@@ -254,7 +254,7 @@
           <div style="width:11px; height:11px; border-radius:50%; background:#22c55e; position:absolute; left:-7px; top:4px;"></div>
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
             <strong style="font-size:14.5px; color:var(--primary);">{{ log.medicine_name }}{% if log.quantity > 1 %} <span class="muted" style="font-weight:400;">x{{ log.quantity }}</span>{% endif %}</strong>
-            <span class="muted" style="font-size:12px;">{{ log.administered_at|date:"Y-m-d H:i" }}</span>
+            <span class="muted" style="font-size:12px;">{{ log.administered_at|date:"d/m/Y H:i" }}</span>
           </div>
           <p style="margin:0 0 4px 0; font-size:13.5px;"><span class="muted">Dosage:</span> <strong>{{ log.dosage }}</strong></p>
           <p style="margin:0 0 4px 0; font-size:13px; color:var(--text);"><span class="muted">Administered by:</span> {{ log.administered_by.display_name }}</p>

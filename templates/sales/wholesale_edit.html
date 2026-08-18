@@ -68,7 +68,7 @@
       <form method="post" action="{% url 'wholesale_order_repeat' order.id %}" style="display:flex;gap:8px;align-items:end">{% csrf_token %}
         <div style="flex:1"><label>This customer's past orders</label>
           <select name="source">
-            {% for o in repeatable %}<option value="{{ o.id }}">#{{ o.id }} · {{ o.created_at|date:"Y-m-d" }} · {{ o.item_count }} items</option>{% endfor %}
+            {% for o in repeatable %}<option value="{{ o.id }}">#{{ o.id }} · {{ o.created_at|date:"d/m/Y" }} · {{ o.item_count }} items</option>{% endfor %}
           </select>
         </div>
         <button class="btn alt" type="submit">Load items</button>

@@ -11,7 +11,7 @@
       <option value="">All</option>
       {% for val, lbl in actions %}<option value="{{ val }}" {% if f.action == val %}selected{% endif %}>{{ lbl }}</option>{% endfor %}
     </select></div>
-  <div><label class="muted" style="font-size:12px;display:block">Model</label>
+  <div><label class="muted" style="font-size:12px;display:block">Type</label>
     <select name="model" onchange="this.form.submit()">
       <option value="">All</option>
       {% for m in models %}<option value="{{ m }}" {% if f.model == m %}selected{% endif %}>{{ m }}</option>{% endfor %}
@@ -22,7 +22,7 @@
       {% for u in users %}<option value="{{ u.id }}" {% if f.user == u.id|stringformat:'s' %}selected{% endif %}>{{ u.display_name }}</option>{% endfor %}
     </select></div>
   <div><label class="muted" style="font-size:12px;display:block">Search</label>
-    <input type="search" name="q" value="{{ f.q }}" placeholder="object…"></div>
+    <input type="search" name="q" value="{{ f.q }}" placeholder="Search by name or number…"></div>
   <button class="btn" type="submit">Filter</button>
 </form>
 
@@ -32,7 +32,7 @@
     <tbody>
       {% for log in page %}
       <tr>
-        <td class="muted" style="white-space:nowrap">{{ log.timestamp|date:"Y-m-d H:i:s" }}</td>
+        <td class="muted" style="white-space:nowrap">{{ log.timestamp|date:"d/m/Y H:i:s" }}</td>
         <td>{% if log.user %}{{ log.user.display_name }}{% else %}<span class="muted">system</span>{% endif %}</td>
         <td>
           {% if log.action == 'CREATE' %}<span class="badge green">Create</span>

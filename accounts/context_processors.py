@@ -143,7 +143,10 @@ def site_branding(request):
         'branding': branding,
         # short handle for the currency symbol, used in front of every amount.
         # Defaults to Rs so a template still renders when branding can't be loaded.
-        'currency': (branding.currency_symbol if branding else 'Rs') or 'Rs',
+        # .strip(): a tenant who typed "Rs " into the settings box otherwise gets
+        # a double space in front of every amount in the product, because the
+        # templates all write `{{ currency }} {{ amount }}`.
+        'currency': ((branding.currency_symbol if branding else '') or '').strip() or 'Rs',
         'brand_icon_url': icon_url,
         'site_defaults': SITE_DEFAULTS,
         # Set only by the desktop build acting as a LAN server (see

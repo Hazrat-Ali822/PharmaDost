@@ -22,7 +22,7 @@
     <tbody>
       {% for e in entries %}
       <tr>
-        <td>{{ e.when|date:"Y-m-d H:i" }}</td>
+        <td>{{ e.when|date:"d/m/Y H:i" }}</td>
         <td>{{ e.kind }}</td>
         <td>{{ e.ref }}</td>
         <td>{% if e.debit %}{{ e.debit }}{% endif %}</td>

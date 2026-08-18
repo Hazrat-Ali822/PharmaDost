@@ -6,7 +6,7 @@
     <h2>Lab Order #{{ order.id }}</h2>
     <div class="muted">
       <a href="{% url 'patient_detail' order.patient.pk %}">{{ order.patient.full_name }}</a>
-      · {{ order.order_date|date:"Y-m-d H:i" }}
+      · {{ order.order_date|date:"d/m/Y H:i" }}
       · <span class="badge {% if order.is_cancelled %}red{% elif order.status == 'Completed' or order.status == 'Verified' or order.status == 'Delivered' %}green{% else %}gray{% endif %}">{{ order.status }}</span>
     </div>
   </div>

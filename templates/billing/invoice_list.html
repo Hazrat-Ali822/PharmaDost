@@ -19,12 +19,12 @@
       {% for invoice in invoices %}
       <tr>
         <td>{{ invoice.display_no }}</td>
-        <td>{{ invoice.created_at|date:"Y-m-d" }}</td>
+        <td>{{ invoice.created_at|date:"d/m/Y" }}</td>
         <td>{{ invoice.patient.full_name }}</td>
         <td>{% for it in invoice.items.all %}{{ it.description }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
-        <td>{{ invoice.total }}</td>
-        <td>{{ invoice.paid }}</td>
-        <td>{{ invoice.balance }}</td>
+        <td>{{ currency }} {{ invoice.total }}</td>
+        <td>{{ currency }} {{ invoice.paid }}</td>
+        <td>{{ currency }} {{ invoice.balance }}</td>
         <td>{% if invoice.is_paid %}<span class="badge green">Paid</span>{% else %}<span class="badge amber">Unpaid</span>{% endif %}</td>
         <td><a class="btn sm alt" href="{% url 'invoice_detail' invoice.pk %}">View</a></td>
       </tr>

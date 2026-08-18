@@ -18,7 +18,7 @@
 
 <form method="post">
   {% csrf_token %}
-  <input type="hidden" name="date" value="{{ day|date:'Y-m-d' }}">
+  <input type="hidden" name="date" value="{{ day|date:'d/m/Y' }}">
   <div class="card">
     <table class="tbl">
       <thead><tr><th>Staff</th><th>Status</th><th>Note</th></tr></thead>

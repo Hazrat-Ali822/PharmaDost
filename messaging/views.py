@@ -33,8 +33,15 @@ def message_log(request):
         'page': paginate(request, qs),
         'status': status,
         'kind': kind,
-        'kinds': sorted(k for k in MessageLog.objects.values_list('kind', flat=True)
-                        .distinct() if k),
+        # `.order_by()` before `.distinct()` is load-bearing: Meta.ordering is
+        # ('-created_at',), and Django adds an ORDER BY column to the SELECT, so
+        # `values_list('kind').distinct()` was really DISTINCT (kind, created_at)
+        # — one row per message, and the dropdown listed 'lab_ready' twice.
+        'kinds': [(k, MessageLog.KIND_LABELS.get(
+                      k, k.replace('_', ' ').capitalize()))
+                  for k in sorted(set(
+                      MessageLog.objects.order_by()
+                      .values_list('kind', flat=True).distinct())) if k],
         'email_ready': email_configured(),
         'sms_ready': sms_configured(),
         'failed_count': MessageLog.objects.filter(status=MessageLog.FAILED).count(),

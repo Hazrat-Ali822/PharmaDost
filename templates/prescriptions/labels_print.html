@@ -38,7 +38,7 @@
   <div class="label">
     <div class="top">
       <span class="brand">{{ branding.brand_name|default:"Sehatyar" }}</span>
-      <span>{{ prescription.created_at|date:"Y-m-d" }}</span>
+      <span>{{ prescription.created_at|date:"d/m/Y" }}</span>
     </div>
     <div class="med">{{ item.medicine.name|default:item.custom_medicine_name }}</div>
     {% if item.dosage %}<div class="dose">{{ item.dosage }}</div>{% endif %}

@@ -32,7 +32,9 @@ def current_currency():
     never inside a loop or a hot path.
     """
     try:
-        return SiteSettings.load().currency_symbol or "Rs"
+        # .strip() — see the matching note in accounts.context_processors: a
+        # symbol typed as "Rs " puts a double space in front of every amount.
+        return (SiteSettings.load().currency_symbol or "").strip() or "Rs"
     except Exception:
         return "Rs"
 

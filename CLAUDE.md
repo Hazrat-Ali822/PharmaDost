@@ -2320,4 +2320,27 @@ almost always means a query moved inside a loop; find that before raising the nu
 - Dates the staff type use **DD/MM/YYYY**, not a native `<input type="date">` — that renders
   in the *browser's* locale, so the same record reads `29/01/2002` at one desk and
   `01/29/2002` at another.
+- **Dates DISPLAY as DD/MM/YYYY everywhere, set once in
+  `pharma_mgmt/formats/en/formats.py`** (`FORMAT_MODULE_PATH` in settings). There
+  were five formats for the same kind of data, two of them regularly on one
+  screen — and most were nobody's decision: Django localises through the active
+  locale and `en` renders `Aug. 15, 2027`, so **every template printing a date
+  without an explicit `|date:` filter got the American format for free**. Fixing
+  that template by template is 45 edits and the 46th added next month is wrong
+  again. The module also sets `DATE_INPUT_FORMATS` day-first, so `03/04/2026` is
+  3 April. `Y-m-d` stays correct in exactly one place — the `value` of an
+  `<input type="date">`, which the HTML spec fixes as ISO regardless of display
+  — and `tests/test_exports.py::OneDateFormatTest` fails on an ISO date shown
+  anywhere else.
+- **Money is written `{{ currency }} {{ amount }}`.** The convention already
+  existed and was simply missing on the patient bill, the printed receipt's line
+  items, the medicine list, three reports, payroll, expenses, cash closing and
+  the POS grand total. `currency` and `current_currency()` both `.strip()` the
+  stored symbol — a tenant who typed "Rs " otherwise gets a double space in
+  front of every amount in the product.
+- **A form rendered with `{{ form.as_p }}` looks like a different application**
+  — trailing colons on labels, `---------` as the empty option, unstyled errors.
+  Use `{% include 'partials/_form.html' with form=form %}` instead; all 32
+  `as_p` screens now do. `empty_label` still has to be set on the field in the
+  form's `__init__` (a template cannot reach it).
 - Do not commit `.claude/settings.local.json`. `desktop/build.bat` and `desktop/launcher.py` have repeatedly shown as deleted in the working tree without being touched — restore them before committing.

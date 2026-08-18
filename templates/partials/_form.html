@@ -1,0 +1,41 @@
+{% comment %}
+Render a Django form the way the rest of this product looks.
+
+Django's own `as_p` output shows: labels carry a trailing
+colon ("Name:", "Basic:", "Is active:"), errors come out as an unstyled bulleted
+list, and a `ModelChoiceField` offers `---------` as its empty option. Three
+screens rendered that way — Add Medicine, Pay Salary and Departments — and next
+to the hand-built forms in the same product they read as a different, unfinished
+application.
+
+Usage:
+
+    {% include 'partials/_form.html' with form=form %}
+
+Nothing here is clever: it renders label, widget, errors and help text in the
+app's own classes. The two things it cannot fix from a template are the empty
+option's text (`empty_label`, set on the field in the form's `__init__`) and the
+field ORDER, which is `Meta.fields`.
+{% endcomment %}
+{% if form.non_field_errors %}
+  <ul class="errorlist nonfield">
+    {% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}
+  </ul>
+{% endif %}
+
+{% for field in form.hidden_fields %}{{ field }}{% endfor %}
+
+{% for field in form.visible_fields %}
+  <div class="form-field">
+    <label for="{{ field.id_for_label }}">
+      {{ field.label }}{% if field.field.required %} <span class="req" aria-hidden="true">*</span>{% endif %}
+    </label>
+    {% if field.errors %}
+      <ul class="errorlist">
+        {% for e in field.errors %}<li>{{ e }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+    {{ field }}
+    {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}
+  </div>
+{% endfor %}

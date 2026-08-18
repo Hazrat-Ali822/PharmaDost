@@ -9,7 +9,7 @@
 <div class="card" style="margin-bottom:12px">
   <strong>Supplier:</strong> {{ ret.supplier|default:"—" }} &nbsp;|&nbsp;
   <strong>Reason:</strong> {{ ret.get_reason_display }} &nbsp;|&nbsp;
-  <strong>Date:</strong> {{ ret.created_at|date:"Y-m-d H:i" }}
+  <strong>Date:</strong> {{ ret.created_at|date:"d/m/Y H:i" }}
   {% if ret.notes %}<div class="muted" style="margin-top:6px">{{ ret.notes }}</div>{% endif %}
 </div>
 <table class="tbl">
