@@ -57,7 +57,7 @@ def admission_create(request):
     adm_req = AdmissionRequest.objects.filter(pk=req_id, status='Pending').first() if req_id else None
 
     if request.method == 'POST':
-        form = AdmissionForm(request.POST)
+        form = AdmissionForm(request.POST, user=request.user)
         if form.is_valid():
             from .services import admit_patient
             admission = form.save(commit=False)
@@ -79,7 +79,7 @@ def admission_create(request):
         if adm_req:
             initial['patient'] = adm_req.patient
             initial['admission_reason'] = adm_req.reason
-        form = AdmissionForm(initial=initial)
+        form = AdmissionForm(initial=initial, user=request.user)
     return render(request, 'ipd/admission_form.html', {
         'form': form,
         'title': 'Admit New Patient',
@@ -141,7 +141,7 @@ def admission_detail(request, pk):
         'care_tasks': care_tasks,
     })
 
-@feature_required('ipd', 'ward')
+@feature_required('ward')
 def medication_log_add(request, pk):
     admission = get_object_or_404(_scoped_admissions(request), pk=pk)
     if request.method == 'POST':
@@ -242,7 +242,7 @@ def _pharmacy_medicines():
             .prefetch_related('batches')
             .order_by('name', 'brand'))
 
-@feature_required('ipd', 'ward')
+@feature_required('ward')
 def doctor_round_add(request, pk):
     admission = get_object_or_404(_scoped_admissions(request), pk=pk)
     if request.method == 'POST':
@@ -635,7 +635,7 @@ def my_duties(request):
     })
 
 
-@feature_required('ipd', 'ward')
+@feature_required('ward')
 def vitals_add(request, pk):
     """Record a nursing vitals set (the TPR chart). Nurses do this; MEWS is scored
     on save and a red/amber score warns the nurse to escalate."""
@@ -657,7 +657,7 @@ def vitals_add(request, pk):
     return render(request, 'ipd/vitals_form.html', {'form': form, 'admission': admission})
 
 
-@feature_required('ipd', 'ward')
+@feature_required('ward')
 def fluid_add(request, pk):
     """Add an intake or output entry to the fluid balance chart."""
     admission = get_object_or_404(_scoped_admissions(request), pk=pk)
@@ -718,7 +718,7 @@ def nursing_board(request):
     })
 
 
-@feature_required('ipd', 'ward')
+@feature_required('ward')
 def nursing_note_add(request, pk):
     """Add a nurse's shift progress note."""
     admission = get_object_or_404(_scoped_admissions(request), pk=pk)
@@ -735,7 +735,7 @@ def nursing_note_add(request, pk):
     return render(request, 'ipd/nursing_note_form.html', {'form': form, 'admission': admission})
 
 
-@feature_required('ipd', 'ward')
+@feature_required('ward')
 def care_task_add(request, pk):
     """Log a routine care task (turning, hygiene, catheter care…)."""
     admission = get_object_or_404(_scoped_admissions(request), pk=pk)
@@ -751,7 +751,7 @@ def care_task_add(request, pk):
     return render(request, 'ipd/care_task_form.html', {'form': form, 'admission': admission})
 
 
-@feature_required('ipd', 'ward')
+@feature_required('ward')
 def handover_add(request, pk):
     """Write an SBAR end-of-shift handover for one patient."""
     admission = get_object_or_404(_scoped_admissions(request), pk=pk)
@@ -769,7 +769,7 @@ def handover_add(request, pk):
     return render(request, 'ipd/handover_form.html', {'form': form, 'admission': admission})
 
 
-@feature_required('ipd', 'ward')
+@feature_required('ward')
 def handover_ack(request, pk):
     """Incoming nurse acknowledges a handover. Online-only — it records who took
     over and when, against live server state."""

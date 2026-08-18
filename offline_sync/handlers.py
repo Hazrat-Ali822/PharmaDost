@@ -104,7 +104,7 @@ def handle_visit(request, data):
     patient_id = data.get("patient_id")
     is_new = not patient_id
 
-    visit_form = VisitForm(data)
+    visit_form = VisitForm(data, user=request.user)
     patient_form = PatientForm(data) if is_new else None
 
     errors = {}
@@ -170,7 +170,7 @@ def handle_appointment(request, data):
     from opd.forms import AppointmentForm
     from opd.services import bill_and_notify
     _require(request.user, "appointments")
-    appointment = bill_and_notify(_valid(AppointmentForm(data)).save(), request.user)
+    appointment = bill_and_notify(_valid(AppointmentForm(data, user=request.user)).save(), request.user)
     return {"appointment_id": appointment.id, "token_no": appointment.token_no,
             "patient": appointment.patient.full_name}
 
@@ -626,7 +626,7 @@ def handle_admission(request, data):
     from ipd.services import admit_patient
 
     _require(request.user, "ipd")
-    admission = _valid(AdmissionForm(data)).save(commit=False)
+    admission = _valid(AdmissionForm(data, user=request.user)).save(commit=False)
     adm_req = _parent(AdmissionRequest, data.get("request_id"), "admission request",
                       required=False)
     res = admit_patient(admission, request.user,

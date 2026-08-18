@@ -4,7 +4,7 @@
 {% block content %}
 <h2>Create Bill</h2>
 
-{% if pending_prescriptions %}
+{% if pending_prescriptions and nav.rx_access %}
 <div class="card" style="margin-bottom:15px; border-left:4px solid var(--primary); padding:12px;">
   <span style="font-weight:700; color:var(--text); font-size:13.5px; display:block; margin-bottom:8px;">
     📥 Load Pending Doctor Prescriptions:

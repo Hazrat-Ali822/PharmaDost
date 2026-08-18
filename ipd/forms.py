@@ -1,4 +1,6 @@
 from django import forms
+
+from opd.scoping import scoped_doctors
 from .models import (Ward, Bed, Admission, DoctorRound, VitalsObservation,
                     FluidBalanceEntry, NursingNote, ShiftHandover, CareTask)
 from patients.models import Patient
@@ -32,10 +34,17 @@ class AdmissionForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        # Filter patients, doctors, and beds by current hospital (TenantManager does it, but we can double check)
+        # `Patient` has a TenantManager, so `objects` is already scoped.
+        # `Doctor` has NO hospital column and no manager of its own, so an
+        # unscoped `Doctor.objects.all()` here listed every tenant's doctors in
+        # the admit form — and a ModelChoiceField validates the POSTed id
+        # against its own queryset, so it would also have *accepted* one. Same
+        # defect the theatre form had. Always go through `scoped_doctors`.
         self.fields['patient'].queryset = Patient.objects.all().order_by('full_name')
-        self.fields['attending_doctor'].queryset = Doctor.objects.all().order_by('full_name')
+        self.fields['attending_doctor'].queryset = scoped_doctors(
+            self.user, Doctor.objects.filter(is_active=True)).order_by('full_name')
         
         # Only show available beds, plus the currently assigned bed if editing
         avail_beds = Bed.objects.filter(status='Available')

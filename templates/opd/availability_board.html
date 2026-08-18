@@ -8,7 +8,7 @@
     <h2>Today's OPD Board</h2>
     <div class="muted" style="font-size:13px;">{{ today|date:"l, d M Y" }}</div>
   </div>
-  <a class="btn alt" href="{% url 'reception_desk' %}">Reception Desk</a>
+  {% if nav.appointments %}<a class="btn alt" href="{% url 'reception_desk' %}">Reception Desk</a>{% endif %}
 </div>
 
 <p class="muted" style="font-size:13px; margin-bottom:18px;">

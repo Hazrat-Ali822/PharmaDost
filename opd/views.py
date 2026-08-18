@@ -25,8 +25,19 @@ PAYOUT_ROLES = ["ADMIN", "ACCOUNTANT"]
 def doctor_list(request):
     # Fail-closed via the shared helper: a hospital-less non-superuser must not
     # see every tenant's doctors.
-    doctors = scoped_doctors(request.user, Doctor.objects.filter(is_active=True))
-    return render(request, 'opd/doctor_list.html', {'doctors': doctors})
+    # Inactive doctors are LISTED, not hidden. Filtering them out here was the
+    # only screen in the app that could edit a doctor's fee, share % and OPD
+    # timings, so a doctor who had been deactivated — by anyone, at any time —
+    # disappeared from it completely while still showing on the departments
+    # page and in every booking dropdown. There was then no way back: nothing
+    # in the product could reach the row to re-activate it. They are shown last
+    # and badged instead.
+    doctors = scoped_doctors(request.user, Doctor.objects.all()).order_by(
+        '-is_active', 'full_name')
+    return render(request, 'opd/doctor_list.html', {
+        'doctors': doctors,
+        'inactive_count': sum(0 if d.is_active else 1 for d in doctors),
+    })
 
 
 @feature_required('doctors')
@@ -308,7 +319,7 @@ def visit_create(request):
     is_new = patient is None
 
     if request.method == 'POST':
-        visit_form = VisitForm(request.POST)
+        visit_form = VisitForm(request.POST, user=request.user)
         patient_form = PatientForm(request.POST) if is_new else None
         forms_ok = visit_form.is_valid() and (patient_form.is_valid() if is_new else True)
         if forms_ok:
@@ -321,7 +332,7 @@ def visit_create(request):
                 f"Dr. {appointment.doctor.full_name} — token {appointment.token_no}.")
             return redirect('appointment_slip', pk=appointment.pk)
     else:
-        visit_form = VisitForm()
+        visit_form = VisitForm(user=request.user)
         patient_form = PatientForm() if is_new else None
 
     return render(request, 'opd/visit_form.html', _reception_context(
@@ -352,7 +363,7 @@ def appointment_slip(request, pk):
 @feature_required('appointments')
 def appointment_create(request):
     if request.method == 'POST':
-        form = AppointmentForm(request.POST)
+        form = AppointmentForm(request.POST, user=request.user)
         if form.is_valid():
             from .services import bill_and_notify
             with transaction.atomic():
@@ -362,7 +373,7 @@ def appointment_create(request):
     else:
         from django.utils import timezone
         now = timezone.localtime(timezone.now())
-        form = AppointmentForm(initial={'slot_time': now.time().strftime('%H:%M')})
+        form = AppointmentForm(initial={'slot_time': now.time().strftime('%H:%M')}, user=request.user)
     return render(request, 'opd/appointment_form.html', {'form': form, 'title': 'Book Appointment'})
 
 

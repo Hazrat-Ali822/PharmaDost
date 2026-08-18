@@ -1,5 +1,4 @@
 from functools import wraps
-from django.http import HttpResponseForbidden
 from django.contrib.auth.decorators import login_required
 
 
@@ -38,6 +37,7 @@ def roles_required(*roles):
         def _wrapped(request, *args, **kwargs):
             if user_has_role(request.user, roles):
                 return view_func(request, *args, **kwargs)
-            return HttpResponseForbidden('Not allowed for your role')
+            from accounts.decorators import denied
+            return denied(request)
         return _wrapped
     return deco

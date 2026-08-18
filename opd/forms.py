@@ -1,4 +1,6 @@
 from django import forms
+
+from .scoping import scoped_doctors
 from django.forms import inlineformset_factory
 from .models import (Appointment, Department, Doctor, DoctorPayout, DoctorSchedule)
 from patients.models import Patient
@@ -88,9 +90,11 @@ class AppointmentForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         from patients.models import Patient
-        self.fields['doctor'].queryset = Doctor.objects.filter(is_active=True)
+        self.fields['doctor'].queryset = scoped_doctors(
+            self.user, Doctor.objects.filter(is_active=True))
         self.fields['patient'].queryset = Patient.objects.filter(is_active=True)
 
 
@@ -110,12 +114,15 @@ class VisitForm(forms.Form):
     slot_time = forms.TimeField(required=False, widget=forms.TimeInput(attrs={'type': 'time'}))
 
     def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         from django.utils import timezone
         self.fields['department'].queryset = Department.objects.filter(is_active=True)
         # Every active doctor is valid to POST — reception can knowingly book an
         # off-duty doctor for an emergency. The screen just hides them by default.
-        self.fields['doctor'].queryset = Doctor.objects.filter(is_active=True)
+        # Scoped, because `Doctor` has no hospital column of its own.
+        self.fields['doctor'].queryset = scoped_doctors(
+            self.user, Doctor.objects.filter(is_active=True))
         now = timezone.localtime()
         self.fields['appointment_date'].initial = now.date()
         self.fields['slot_time'].initial = now.time().strftime('%H:%M')

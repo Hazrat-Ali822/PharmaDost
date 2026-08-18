@@ -4,7 +4,8 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
-from accounts.decorators import feature_required, role_required
+from accounts.decorators import denied, feature_required, role_required
+from accounts.permissions import can_handle_prescriptions
 from opd.models import Appointment
 from .forms import PrescriptionForm, PrescriptionItemFormSet, RxPresetForm, RxPresetItemFormSet
 from .models import Prescription, PrescriptionItem, RxPreset, RxPresetItem
@@ -201,6 +202,8 @@ def prescription_list(request):
 # This shows them nothing new — the POS already pre-loads the Rx contents into the cart.
 @feature_required('prescriptions', 'pos')
 def prescription_detail(request, pk):
+    if not can_handle_prescriptions(request.user):
+        return denied(request)
     prescription = get_object_or_404(
         _scoped_prescriptions(request).select_related('appointment__patient', 'appointment__doctor').prefetch_related('items__medicine'),
         pk=pk
@@ -211,10 +214,12 @@ def prescription_detail(request, pk):
                   {'prescription': prescription, 'can_cancel': can_cancel})
 
 
-@feature_required('prescriptions')
+@feature_required('prescriptions', 'pos')
 def prescription_labels(request, pk):
     """Printable dosage stickers — one label per prescribed medicine (name, dosage,
     duration, instructions, patient) to stick on the dispensed pack."""
+    if not can_handle_prescriptions(request.user):
+        return denied(request)
     prescription = get_object_or_404(
         _scoped_prescriptions(request)
         .select_related('appointment__patient', 'appointment__doctor')
@@ -287,6 +292,8 @@ def item_cancel(request, pk, item_id):
     fixes is the queue — without it the Rx sits PENDING for ever waiting for a
     medicine nobody is coming back for.
     """
+    if not can_handle_prescriptions(request.user):
+        return denied(request)
     prescription = get_object_or_404(
         _scoped_prescriptions(request).select_related('appointment__patient'), pk=pk)
     item = get_object_or_404(
@@ -313,6 +320,8 @@ def item_cancel(request, pk, item_id):
 @role_required(CANCEL_ROLES)
 def prescription_cancel(request, pk):
     """The patient declined the whole prescription (or the doctor withdrew it)."""
+    if not can_handle_prescriptions(request.user):
+        return denied(request)
     prescription = get_object_or_404(
         _scoped_prescriptions(request).select_related('appointment__patient'), pk=pk)
 

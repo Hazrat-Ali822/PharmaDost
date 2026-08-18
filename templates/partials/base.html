@@ -384,17 +384,21 @@
           <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px;">Ward Census</span>
         </a>
         {% endif %}
+{% if nav.ward %}
         <a href="{% url 'ipd:duty_roster' %}" class="{% if '/ipd/roster' in request.path %}active{% endif %}" style="display:flex; align-items:center; width:100%; padding-left:44px;">
           <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px;">Duty Roster</span>
         </a>
+        {% endif %}
         {% if nav.ward_manage %}
         <a href="{% url 'ipd:patient_allocation' %}" class="{% if '/ipd/allocation' in request.path %}active{% endif %}" style="display:flex; align-items:center; width:100%; padding-left:44px;">
           <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px;">Patient Allocation</span>
         </a>
         {% endif %}
+{% if nav.ward %}
         <a href="{% url 'ipd:my_duties' %}" class="{% if '/ipd/my-duties' in request.path %}active{% endif %}" style="display:flex; align-items:center; width:100%; padding-left:44px;">
           <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px;">My Duties</span>
         </a>
+        {% endif %}
         {% endif %}
       </div>
       {% endif %}
@@ -420,7 +424,7 @@
       {% if nav.grp_theatre %}
       <div class="nav-group">
         <div class="nav-group-title">Theatre</div>
-        {% if nav.ot and request.user.role != 'DOCTOR' %}
+        {% if nav.ot %}
         <a href="{% url 'ot:surgery_list' %}" class="{% if '/ot/' in request.path %}active{% endif %}" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
           <div style="display:flex; align-items:center; gap:12px; min-width:0;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>

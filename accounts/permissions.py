@@ -17,10 +17,22 @@ FEATURES = {
     'prescriptions': {'ADMIN', 'DOCTOR', 'RECEPTIONIST'},
     'lab':           {'ADMIN', 'DOCTOR', 'LABTECH', 'RECEPTIONIST'},
     'imaging':       {'ADMIN', 'DOCTOR', 'SONOGRAPHER', 'RECEPTIONIST'},
-    'ipd':           {'ADMIN', 'RECEPTIONIST', 'DOCTOR', 'ACCOUNTANT'},
-    # ward/nursing work inside IPD (medication logs, nursing rounds, bed status) —
-    # NOT admitting/discharging/billing. Given to nurses; admins have it too.
-    'ward':          {'ADMIN', 'NURSE'},
+    # Admitting, discharging, ward & bed setup. The paperwork half of IPD, so
+    # reception is in. ACCOUNTANT is deliberately NOT: an accountant's interest in
+    # an inpatient is the bill, which is `billing`, and holding `ipd` gave them the
+    # whole ward — including a live Discharge button, which raises the bed-charge
+    # invoice.
+    'ipd':           {'ADMIN', 'RECEPTIONIST', 'DOCTOR'},
+    # Bedside clinical work: medication administration, vitals, fluid balance,
+    # nursing notes, care tasks, shift handover and doctor rounds.
+    #
+    # This is the CLINICAL-STAFF key, and that is why the doctor is in it. The
+    # charting views used to accept `ipd` OR `ward`, so every receptionist could
+    # record that a drug had been given and every accountant could chart a
+    # patient's vitals — a record nobody in that job is qualified to write and
+    # which the ward then reads as fact. They take `ward` alone now. An admin can
+    # still grant it to an individual if a particular clinic works differently.
+    'ward':          {'ADMIN', 'NURSE', 'DOCTOR'},
     # Ward In-charge / Charge Nurse: builds the duty roster and allocates the
     # ward's patients among the nurses on shift. A management capability — default
     # ADMIN only; the admin promotes a senior nurse to In-charge by granting this.
@@ -212,3 +224,29 @@ def user_has_feature(user, key):
     if getattr(user, 'is_superuser', False):
         return True
     return key in effective_features(user)
+
+
+def can_handle_prescriptions(user):
+    """May this user open a patient's prescription?
+
+    Three different jobs collide on one screen, so the rule cannot be a single
+    feature key:
+
+    * `prescriptions` is the **doctor's** key — write and edit an Rx.
+    * The **pharmacist** does not hold it, but has to open the Rx they are
+      dispensing from and mark a refused line declined. So `pos` counts too;
+      that is why `prescription_detail` is gated on either.
+    * The **wholesale operator** also holds `pos`, and must not count. That
+      counter sells to other shops, has no patients at all, and a list of a
+      named patient's prescribed medicines with their doctor is a medical
+      record. A browser audit found `/prescriptions/<id>/` opening for them and
+      the POS offering them a panel of six patients by name.
+
+    Superusers pass, as everywhere else.
+    """
+    if getattr(user, 'is_superuser', False):
+        return True
+    if user_has_feature(user, 'prescriptions'):
+        return True
+    return (user_has_feature(user, 'pos')
+            and getattr(user, 'role', None) != 'WHOLESALE')

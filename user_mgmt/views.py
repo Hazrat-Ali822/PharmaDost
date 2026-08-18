@@ -8,7 +8,7 @@ from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from accounts.decorators import role_required, feature_required
+from accounts.decorators import denied, feature_required, role_required
 from accounts.models import User
 from accounts.permissions import (FEATURE_GROUPS, EDITABLE_FEATURES,
                                   default_features_for_role, MODULES, MODULE_KEYS)
@@ -100,7 +100,11 @@ def dashboard_router(request):
         studies = ImagingStudy.objects.all()
         if scope_by_hospital:
             studies = studies.filter(patient__hospital=hospital)
-        pending = studies.exclude(status__in=['Reported', 'Delivered'])
+        # 'Cancelled' has to be named explicitly. A withdrawn study is not
+        # outstanding work, and excluding only the finished states filed it as
+        # such — it appeared on the worklist with a live action button and was
+        # counted in the badge, so the dashboard and /imaging/ disagreed.
+        pending = studies.exclude(status__in=['Reported', 'Delivered', 'Cancelled'])
         ctx['pending_studies'] = pending.order_by('study_date')[:15]
         ctx['pending_count'] = pending.count()
         ctx['reported_count'] = studies.filter(status__in=['Reported', 'Delivered'], study_date__date__range=[start_date, end_date]).count()
@@ -111,7 +115,11 @@ def dashboard_router(request):
         if scope_by_hospital:
             orders = orders.filter(patient__hospital=hospital)
         done = ['Completed', 'Verified', 'Delivered']
-        pending = orders.exclude(status__in=done)
+        # Same trap as imaging above: a cancelled order is neither done nor
+        # pending. The lab tech's own landing page listed a withdrawn order
+        # under "Pending Lab Orders" with an "Enter Results" button, and typing
+        # a result into it would have made it chargeable again.
+        pending = orders.exclude(status__in=done + ['Cancelled'])
         ctx['pending_orders'] = pending.order_by('order_date')[:15]
         ctx['pending_count'] = pending.count()
         ctx['completed_count'] = orders.filter(status__in=done, order_date__date__range=[start_date, end_date]).count()
@@ -447,7 +455,8 @@ def backup_download(request):
     hosted site must not have this.
     """
     if not can_download_raw_backup(request.user):
-        return HttpResponseForbidden(
+        return denied(
+            request,
             "This download contains the whole system's database, not just your "
             "hospital's records, so it is limited to the system owner. Ask your "
             "provider for a copy of your hospital's data."
@@ -459,7 +468,8 @@ def backup_download(request):
     # believe you have is worse than none.
     engine = settings.DATABASES['default']['ENGINE']
     if 'sqlite' not in engine:
-        return HttpResponseForbidden(
+        return denied(
+            request,
             "This server runs on PostgreSQL, where the database is not a file "
             "that can be zipped up. Take the backup with pg_dump (or your "
             "host's database backup tool) instead — a download from here would "

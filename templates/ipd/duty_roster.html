@@ -5,7 +5,7 @@
 <div class="page-head">
   <h2>Duty Roster{% if ward %} — {{ ward.name }}{% endif %}</h2>
   <div style="display:flex; gap:10px; flex-wrap:wrap;">
-    <a class="btn alt" href="{% url 'ipd:patient_allocation' %}{% if ward %}?ward={{ ward.pk }}{% endif %}">Patient Allocation →</a>
+    {% if nav.ward_manage %}<a class="btn alt" href="{% url 'ipd:patient_allocation' %}{% if ward %}?ward={{ ward.pk }}{% endif %}">Patient Allocation →</a>{% endif %}
     <a class="btn alt" href="{% url 'ipd:my_duties' %}">My Duties</a>
     {% if can_manage %}<a class="btn alt" href="{% url 'hr_shift_list' %}">Edit Shifts</a>{% endif %}
   </div>

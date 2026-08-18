@@ -1,0 +1,40 @@
+{% extends 'partials/base.html' %}
+{% comment %}
+The permission-denied page.
+
+Django's `HttpResponseForbidden("some text")` renders exactly that string and
+nothing else: black serif on white, no logo, no navigation, no way back. To a
+nurse who has tapped a link in her own sidebar that reads as a crashed server,
+not as "this screen is not for you" — and a browser QA pass counted twenty
+visible links that dumped staff onto it.
+
+So `accounts.decorators.denied()` renders this instead: inside the app shell,
+in the hospital's own branding, with a plain sentence and a Back button. It is
+still HTTP 403 — only the presentation changes.
+
+`reason` is the one-line explanation the decorator passes. It has to be
+readable by the person in front of it, so it never names a feature key.
+{% endcomment %}
+{% block title %}Not available to you{% endblock %}
+{% block page_title %}Access{% endblock %}
+{% block content %}
+<div class="card" style="max-width:620px; margin:32px auto; text-align:center;">
+  <div style="font-size:44px; line-height:1; margin-bottom:14px;" aria-hidden="true">🔒</div>
+
+  <h2 style="margin:0 0 10px;">This screen is not part of your job</h2>
+
+  <p class="muted" style="margin:0 auto 6px; max-width:44ch;">
+    {{ reason|default:"Your account does not have access to this page." }}
+  </p>
+
+  <p class="muted" style="margin:0 auto 22px; max-width:44ch; font-size:13px;">
+    Nothing has gone wrong, and you have not been signed out. If you need this
+    screen for your work, ask your hospital administrator to grant it.
+  </p>
+
+  <div class="form-actions" style="justify-content:center; margin-top:0;">
+    <button type="button" class="btn alt" onclick="if(history.length>1){history.back()}else{location.href='{% url 'user_mgmt:post_login_redirect' %}'}">← Go back</button>
+    <a class="btn" href="{% url 'user_mgmt:post_login_redirect' %}">My dashboard</a>
+  </div>
+</div>
+{% endblock %}

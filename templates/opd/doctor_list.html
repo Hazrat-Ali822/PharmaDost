@@ -6,6 +6,9 @@
   <a class="btn" href="{% url 'doctor_add' %}">Add Doctor</a>
 </div>
 <div class="card">
+  {% if inactive_count %}
+  <p class="field-help" style="margin-top:0;">{{ inactive_count }} doctor{{ inactive_count|pluralize }} {{ inactive_count|pluralize:"is,are" }} marked not in service. They are listed last so their fees and timings can still be corrected, and so they can be put back in service.</p>
+  {% endif %}
   <table class="tbl">
     <thead>
       <tr><th>Name</th><th>Specialty</th><th>OPD Fee</th><th>Follow-up Fee</th><th>Share %</th><th></th></tr>
@@ -13,7 +16,7 @@
     <tbody>
       {% for doctor in doctors %}
       <tr>
-        <td>{{ doctor.full_name }}</td>
+        <td>{{ doctor.full_name }}{% if not doctor.is_active %} <span class="badge" style="background:var(--border-strong); color:var(--text);">Not in service</span>{% endif %}</td>
         <td>{{ doctor.specialty }}</td>
         <td>{{ currency }} {{ doctor.opd_fee }}</td>
         <td>{{ currency }} {{ doctor.followup_fee }}</td>

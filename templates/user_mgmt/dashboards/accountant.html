@@ -27,9 +27,9 @@
 <div class="card">
   <h3>Quick Links</h3>
   <p style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-    <a class="btn alt" href="{% url 'inventory_report' %}">Inventory Report</a>
-    <a class="btn alt" href="{% url 'invoice_list' %}">Billing</a>
-    <a class="btn alt" href="{% url 'sale_list' %}">Bills</a>
+    {% if nav.reports %}<a class="btn alt" href="{% url 'inventory_report' %}">Inventory Report</a>{% endif %}
+    {% if nav.billing %}<a class="btn alt" href="{% url 'invoice_list' %}">Billing</a>{% endif %}
+    {% if nav.pos %}<a class="btn alt" href="{% url 'sale_list' %}">Bills</a>{% endif %}
   </p>
 </div>
 {% endblock %}

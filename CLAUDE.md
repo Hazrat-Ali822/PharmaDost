@@ -401,17 +401,61 @@ the affected tenant in the affected role. In Python a test can reach it.
 LABTECH/SONOGRAPHER, and that condition has to be stated once or the group
 outlives its only link.
 
-The `ward` feature (nurses) is deliberately narrower than `ipd`: ward views take
-`feature_required('ipd', 'ward')`, while admitting, discharging and ward setup stay
-`ipd`-only. `lab.order_create` and `imaging.study_create` also accept `ward` so the ward
-can raise an order for an admitted patient — entering results or writing reports remains
-role-gated to lab/radiology.
+**`ipd` is the paperwork half; `ward` is the clinical half.** `ipd` (ADMIN,
+RECEPTIONIST, DOCTOR) admits, discharges and sets up wards and beds. `ward`
+(ADMIN, NURSE, DOCTOR) is the **bedside charting key**: medication
+administration, vitals, fluid balance, nursing notes, care tasks, shift handover
+and doctor rounds all take `feature_required('ward')` alone.
+
+Two corrections are baked into that split, both found by a nine-role browser
+audit and both worth keeping straight:
+
+- Those charting views used to accept `ipd` **or** `ward`, so **every
+  receptionist could record that a drug had been given** and chart a patient's
+  vitals — a clinical record nobody in that job is qualified to write, which the
+  ward then reads as fact. `ward` alone now. An admin can still grant `ward` to
+  an individual if a particular clinic works that way.
+- `ACCOUNTANT` no longer holds `ipd` at all. An accountant's interest in an
+  inpatient is the bill, which is `billing`; holding `ipd` handed them the whole
+  ward including a live **Discharge** button, and discharge raises the
+  bed-charge invoice.
+
+`DOCTOR` is in `ward` because a doctor writes rounds at the bedside. Read-only
+ward boards (`nursing_board`, `handover_board`, `ward_census`, `discharge_summary`)
+still take `('ipd', 'ward')`. `lab.order_create` and `imaging.study_create` also
+accept `ward` so the ward can raise an order for an admitted patient — entering
+results or writing reports remains role-gated to lab/radiology.
+
+**A visible link that leads to 403 is a defect, and it is now tested.** The
+sidebar, each role's own dashboard tiles and every page header button each
+decided independently who saw a link, while the view decided who could open it,
+and the two drifted apart in twenty places across nine roles — a receptionist
+with "Duty Roster" in her sidebar (gated `ward`), an accountant whose landing
+page offered "Bills" (gated `pos`). `tests/test_nav_groups.py` has two guards
+that walk it generically: `EverySidebarLinkOpensTest` signs in as all nine roles,
+follows every sidebar link and every link on the landing page, and fails on any
+403 or 500. A 404 passes — an empty test database has no rows for a detail page.
+
+**403 is a real page** (`templates/403.html`, rendered by
+`accounts.decorators.denied`). `HttpResponseForbidden("some text")` returns that
+bare string as the whole document — no shell, no branding, no way back — which
+to the person who tapped their own sidebar reads as a crashed server rather than
+a permission message. Status code unchanged; use `denied(request)` rather than
+`HttpResponseForbidden` anywhere a **human** can land. The device endpoints in
+`hr/biometric.py` deliberately keep the bare form: nothing there renders HTML.
 
 Doctors hold `ipd`, so the IPD sidebar link is shown to them as **"My Inpatients"** and
 lands on the same `admission_list`, narrowed by `_scoped_admissions`. Buttons that need
 the full `ipd` feature (Admit Patient, Discharge) are gated on `nav.ipd` in
 `templates/ipd/admission_list.html` so a nurse never gets a link into a 403; "Admit
 Patient" is additionally hidden from doctors, who advise instead of admitting.
+
+Doctors also get the **Theatre** sidebar group. It was hidden from them on the
+reasoning that they advise surgery rather than schedule it — but the doctor role
+holds `ot`, every OT view opens for them, and their own patient page carries an
+"Advise Surgery" button, so they could put a case into the theatre queue and
+then had no way to navigate to it. Hiding a link to a screen somebody is allowed
+to open is a dead end, not a permission.
 
 **`ward_manage` (Ward In-charge / Charge Nurse)** is a third tier above `ward`. `ward`
 (every nurse) can *view* the duty roster and their own duties and do bedside work;
@@ -926,17 +970,37 @@ they never have that conversation. `lab.views.CANCEL_ROLES` = ADMIN/DOCTOR/LABTE
 `imaging.views.CANCEL_ROLES` = ADMIN/DOCTOR/SONOGRAPHER,
 `prescriptions.views.CANCEL_ROLES` = ADMIN/DOCTOR/PHARMACIST. The views pass
 `can_cancel` into the detail templates so a button never links into a 403.
-`prescription_detail` and the two Rx cancel views are gated
-`feature_required('prescriptions', 'pos')` — **the pharmacist holds `pos`, not
-`prescriptions`**, and without the second key the one person standing in front of the
-patient cannot do this. It shows them nothing new; the POS already pre-loads the Rx.
+`prescription_detail`, `prescription_labels` and the two Rx cancel views are
+gated `feature_required('prescriptions', 'pos')` — **the pharmacist holds `pos`,
+not `prescriptions`**, and without the second key the one person standing in
+front of the patient cannot do this. It shows them nothing new; the POS already
+pre-loads the Rx.
+
+But `pos` is also held by **WHOLESALE**, and that counter sells to other shops:
+it has no patients, and a named patient's prescribed medicines with their doctor
+is a medical record. So those four views additionally call
+**`accounts.permissions.can_handle_prescriptions(user)`** — `prescriptions`, or
+`pos` and not WHOLESALE — and the POS's "Load Pending Doctor Prescriptions"
+panel (a list of six patients by name) is gated on the matching **`nav.rx_access`**.
+It is not a feature key because the rule spans two of them and excludes one role.
+The buttons on that page are gated to match: Edit and Back to List on
+`nav.prescriptions` (the pharmacist has no list to go back to, so they get
+"← Back to the till" instead), and the patient's name is only a link when the
+reader holds `nav.patients`.
 
 The person who ordered it is **notified directly** (`Notification.objects.create` to
 `ordered_by` / `referred_by` / the prescribing doctor) — not `notify_admins`, which
 is reserved for owner-level exceptions. A doctor who is never told waits for a result
 that is not coming.
 
-Cancelled rows leave the working queues: `lab.order_list` gained a `?show=cancelled`
+Cancelled rows leave the working queues — **including the role dashboards**,
+which is the copy of that query it is easiest to forget. The lab tech's own
+landing page built its worklist as `exclude(status__in=['Completed', 'Verified',
+'Delivered'])`, so a withdrawn order sat under "Pending Lab Orders" with a live
+**Enter Results** button and was counted in the total while `/lab/orders/` and
+the sidebar badge both said one fewer. `'Cancelled'` has to be named explicitly
+in every one of these; the imaging worklist beside it had the same hole.
+`lab.order_list` gained a `?show=cancelled`
 tab and its `completed` tab excludes `Cancelled` explicitly (a bare
 `exclude(status='Pending')` filed a withdrawn order as finished work);
 `imaging.study_list` excludes them by default with a `?show=cancelled` toggle; the
@@ -1090,7 +1154,23 @@ procedure's `standard_charge` — that is what the old single charge covered —
 deliberately leaves the other three at 0 rather than inventing a split.
 
 `SurgeryRecordForm` takes **`user`** and scopes `lead_surgeon` through
-`opd.scoping.scoped_doctors`. It used `Doctor.objects.all()`, and `Doctor` has no
+`opd.scoping.scoped_doctors`.
+
+**Every doctor picker takes `user` and goes through `scoped_doctors`** — the OT
+form was not the only one that missed it. `ipd.forms.AdmissionForm` used a bare
+`Doctor.objects.all()`, so the **admit** screen listed every tenant's doctors and
+would have accepted a POST naming one; `opd.forms.AppointmentForm` and `VisitForm`
+used `Doctor.objects.filter(is_active=True)`, unscoped, which is the same hole on
+the two busiest screens in the product. All three now take `user=` (passed by
+their views **and** by `offline_sync.handlers`) and filter through
+`scoped_doctors`. A `ModelChoiceField` validates the POSTed id against its own
+queryset, so an unscoped queryset here is a write path, not just a display bug.
+
+**`/opd/doctors/` lists inactive doctors too**, badged and sorted last. It filtered
+on `is_active=True`, and it is the only screen in the app that can edit a doctor's
+fee, share % and OPD timings — so a deactivated doctor vanished from it while still
+appearing on the departments page and in booking dropdowns, and **nothing in the
+product could reach the row to put them back in service**. It used `Doctor.objects.all()`, and `Doctor` has no
 `hospital` column and no `TenantManager`, so the theatre form listed every
 tenant's doctors *and* would have accepted a POST naming one. Guarded by
 `ot/tests_charges.py`.

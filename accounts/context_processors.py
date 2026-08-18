@@ -4,7 +4,8 @@ Kept in sync with the role_required gating on the actual views so users only
 see links they can actually open.
 """
 
-from .permissions import FEATURES, user_has_feature, installed_features
+from .permissions import (FEATURES, can_handle_prescriptions, installed_features,
+                          user_has_feature)
 
 
 def nav_permissions(request):
@@ -16,6 +17,9 @@ def nav_permissions(request):
     inst = installed_features()
     nav = {key: (key in inst and user_has_feature(user, key)) for key in FEATURES}
     nav.update(_nav_groups(nav, user))
+    # Not a feature key: "may open a patient's prescription" spans two of them
+    # and excludes one role. See accounts.permissions.can_handle_prescriptions.
+    nav['rx_access'] = 'prescriptions' in inst and can_handle_prescriptions(user)
     return {'nav': nav}
 
 
@@ -46,8 +50,13 @@ def _nav_groups(nav, user):
         # Blood bank sits with the lab: it is the same staff (LABTECH holds all
         # three) and the same part of the building.
         'grp_diagnostics': any([nav.get('lab'), nav.get('imaging'), nav.get('bloodbank')]),
-        # Theatre is hidden from doctors, who advise rather than schedule.
-        'grp_theatre': bool(nav.get('ot') and role != 'DOCTOR'),
+        # Theatre WAS hidden from doctors on the reasoning that they advise
+        # rather than schedule. But a doctor holds `ot`, every OT view opens for
+        # them, and their own patient page carries an "Advise Surgery" button —
+        # so they could put a case into the theatre queue and then had no way to
+        # navigate to it. Hiding a link to a screen somebody can open is a dead
+        # end, not a permission.
+        'grp_theatre': bool(nav.get('ot')),
         'grp_emergency': any([nav.get('emergency'), nav.get('ambulance')]),
         # MCH — the way a Pakistani clinic already names this pair.
         'grp_mch': any([nav.get('maternity'), nav.get('vaccination')]),
