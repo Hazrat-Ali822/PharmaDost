@@ -389,3 +389,10 @@ if USE_SSL:
     # DJANGO_SSL_REDIRECT=false in .env if that happens.
     SECURE_SSL_REDIRECT = os.getenv(
         "DJANGO_SSL_REDIRECT", "true").lower() in ("1", "true", "yes")
+    # ...except the fingerprint terminal's endpoint. Cheap attendance machines
+    # speak plain HTTP only, and the redirect above answers them with a 301
+    # they do not follow: the device reports success, the server logs a
+    # redirect, and not one punch arrives. Scoped to /iclock/ alone, which
+    # carries attendance events and no credentials — the device's own
+    # authentication is its serial number, which is all the protocol has.
+    SECURE_REDIRECT_EXEMPT = [r"^iclock/"]

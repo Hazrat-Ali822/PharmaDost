@@ -1,0 +1,86 @@
+{% extends 'partials/base.html' %}
+{% block title %}Build Attendance{% endblock %}
+{% block page_title %}Build Attendance from the Machine{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <h2>Turn punches into attendance days</h2>
+  <a class="btn alt" href="{% url 'hr_biometric_devices' %}">← Machines</a>
+</div>
+
+<p class="muted" style="margin-top:-6px; max-width:700px;">
+  The machine records moments; the payroll needs a verdict per person per day.
+  This works that out. It is shown to you before anything is written, because
+  these are the rows salary deductions are taken from.
+</p>
+
+<form method="post" class="card">
+  {% csrf_token %}
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; align-items:end;">
+    <label>From<input type="date" name="start" value="{{ start|date:'Y-m-d' }}"></label>
+    <label>To<input type="date" name="end" value="{{ end|date:'Y-m-d' }}"></label>
+    <div><button class="btn alt" type="submit" name="action" value="preview">Show me what it will do</button></div>
+  </div>
+  <p class="muted" style="margin:10px 0 0; font-size:13px;">
+    {{ punch_count }} punch{{ punch_count|pluralize:"es" }} recorded in this period.
+  </p>
+
+  {% if report %}
+    <hr style="margin:18px 0; border:none; border-top:1px solid var(--border);">
+    <h3 style="margin-top:0;">
+      {% if done %}Done{% else %}Preview — nothing written yet{% endif %}
+    </h3>
+    <div class="stat-grid">
+      <div class="card"><small class="muted">Present</small><div style="font-size:22px;font-weight:700;">{{ report.present }}</div></div>
+      <div class="card"><small class="muted">Half day</small><div style="font-size:22px;font-weight:700;">{{ report.half }}</div></div>
+      <div class="card"><small class="muted">On leave</small><div style="font-size:22px;font-weight:700;">{{ report.leave }}</div></div>
+      <div class="card"><small class="muted">Absent</small><div style="font-size:22px;font-weight:700;">{{ report.absent }}</div></div>
+    </div>
+
+    {% if report.skipped_manual %}
+      <p class="muted" style="margin-top:12px;">
+        <strong>{{ report.skipped_manual }}</strong> day{{ report.skipped_manual|pluralize }}
+        entered by hand will be left exactly as they are. A person's correction
+        outranks the machine.
+      </p>
+    {% endif %}
+
+    {% if report.no_data_days %}
+      <div class="card" style="border-left:4px solid var(--warn, #f59e0b); margin-top:12px;">
+        <strong>{{ report.no_data_days|length }} day{{ report.no_data_days|pluralize }} with no punches from anybody.</strong>
+        <p class="muted" style="margin:6px 0 0;">
+          A closed day, a holiday, or the machine was switched off — from here
+          they look identical, so nobody is marked absent on them. Mark them by
+          hand on the <a href="{% url 'hr_attendance' %}">attendance sheet</a> if
+          they were working days.<br>
+          {% for d in report.no_data_days %}{{ d|date:"d/m" }}{% if not forloop.last %}, {% endif %}{% endfor %}
+        </p>
+      </div>
+    {% endif %}
+
+    {% if report.unmapped %}
+      <div class="card" style="border-left:4px solid var(--warn, #f59e0b); margin-top:12px;">
+        <strong>Punches from numbers nobody is mapped to</strong>
+        <p class="muted" style="margin:6px 0 10px;">
+          These are not counted for anyone yet, and they are not thrown away.
+          {% for uid, n in report.unmapped.items %}<code>{{ uid }}</code> ({{ n }}){% if not forloop.last %}, {% endif %}{% endfor %}
+        </p>
+        <a class="btn sm" href="{% url 'hr_biometric_enrolment' %}">Map them</a>
+      </div>
+    {% endif %}
+
+    {% if not done %}
+      <div class="form-actions" style="margin-top:16px;">
+        <input type="hidden" name="start" value="{{ report.start|date:'Y-m-d' }}">
+        <input type="hidden" name="end" value="{{ report.end|date:'Y-m-d' }}">
+        <button class="btn" type="submit" name="action" value="apply">Write these {{ report.start|date:"d/m" }}–{{ report.end|date:"d/m" }} days</button>
+      </div>
+    {% else %}
+      <div class="form-actions" style="margin-top:16px;">
+        <a class="btn" href="{% url 'hr_attendance_summary' %}">Open the monthly summary</a>
+      </div>
+    {% endif %}
+  {% endif %}
+</form>
+
+{% endblock %}

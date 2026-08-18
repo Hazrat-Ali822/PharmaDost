@@ -1,0 +1,45 @@
+{% extends 'partials/base.html' %}
+{% block title %}Punch Log{% endblock %}
+{% block page_title %}Punch Log{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <h2>Raw punches, newest first</h2>
+  <a class="btn alt" href="{% url 'hr_biometric_devices' %}">← Machines</a>
+</div>
+
+<p class="muted" style="margin-top:-6px; max-width:660px;">
+  Exactly what the machine sent, before anything was worked out from it. This is
+  the page to open when somebody disputes a day.
+</p>
+
+<div class="card">
+  {% if punches %}
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>When</th><th>Enrolment no.</th><th>Person</th><th>Machine</th></tr></thead>
+        <tbody>
+        {% for p in punches %}
+          <tr>
+            <td>{{ p.punched_at|date:"d/m/Y H:i:s" }}</td>
+            <td><code>{{ p.device_user_id }}</code></td>
+            <td>
+              {% if p.user %}{{ p.user.get_full_name|default:p.user.email }}
+              {% else %}<span class="muted">not mapped yet</span>{% endif %}
+            </td>
+            <td>{{ p.device.name }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="muted" style="margin:10px 0 0; font-size:12.5px;">
+      Showing the most recent 300.
+    </p>
+  {% else %}
+    <p class="muted">Nothing yet. Once a machine is registered and can reach this
+      server, punches appear here within seconds of a thumb touching it.</p>
+  {% endif %}
+</div>
+
+{% endblock %}

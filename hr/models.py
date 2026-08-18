@@ -152,6 +152,10 @@ class StaffProfile(models.Model):
     allowed_monthly_leaves = models.IntegerField(default=2, help_text="Monthly allowed paid leaves")
     enable_absence_deduction = models.BooleanField(default=True, help_text="Enable dynamic salary deduction for absences/excess leaves")
     deduction_per_absent_day = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="Fixed daily deduction rate, or leave empty for auto (salary / 30)")
+    biometric_id = models.CharField(
+        max_length=32, blank=True,
+        help_text='Enrolment number on the fingerprint machine (the number the '
+                  'device shows next to this person, not their staff id).')
     joining_date = models.DateField(null=True, blank=True)
     phone = models.CharField(max_length=20, blank=True)
     cnic = models.CharField(max_length=20, blank=True)
@@ -160,6 +164,11 @@ class StaffProfile(models.Model):
     hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
 
     objects = TenantManager()
+    # `all_objects` is the unscoped manager. The attendance terminal posts with
+    # no session and no tenant bound — the device is how the hospital is
+    # resolved — so those paths must query by the hospital *value*, exactly as
+    # the lab/imaging catalogue editors do.
+    all_objects = models.Manager()
 
     def __str__(self):
         return self.user.get_full_name() or self.user.email
@@ -178,9 +187,20 @@ class Attendance(models.Model):
     check_in = models.TimeField(null=True, blank=True)
     check_out = models.TimeField(null=True, blank=True)
     notes = models.CharField(max_length=255, blank=True)
+    # Who decided this row. A person's correction outranks the machine: the
+    # fingerprint reader misses a finger, somebody forgets to punch out, the
+    # device clock drifts — and this row is what payroll deducts from. An
+    # import that silently overwrote a corrected day would take money off
+    # somebody's salary with nothing on screen to say why.
+    SOURCE_MANUAL, SOURCE_DEVICE = 'MANUAL', 'DEVICE'
+    SOURCE_CHOICES = [(SOURCE_MANUAL, 'Entered by staff'),
+                      (SOURCE_DEVICE, 'From the attendance machine')]
+    source = models.CharField(max_length=8, choices=SOURCE_CHOICES,
+                              default=SOURCE_MANUAL)
     hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
 
     objects = TenantManager()
+    all_objects = models.Manager()      # see StaffProfile
 
     class Meta:
         # One attendance row per person per day — the grid upserts on this.
@@ -215,6 +235,7 @@ class LeaveRequest(models.Model):
     hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
 
     objects = TenantManager()
+    all_objects = models.Manager()      # see StaffProfile
 
     class Meta:
         ordering = ('-created_at',)
@@ -250,3 +271,146 @@ class SalaryPayment(models.Model):
 
     def __str__(self):
         return f"{self.user} — {self.period} — {self.net}"
+
+
+class BiometricDevice(models.Model):
+    """One fingerprint / face attendance terminal.
+
+    The terminal talks to us, not the other way round: you type this server's
+    address into the machine's own menu, and from then on it POSTs each punch by
+    itself. That direction matters — a clinic's machine sits behind a home
+    router with no public address, so nothing on the internet can reach *in* to
+    poll it. Dialling out works from anywhere, including a LAN with no internet
+    at all, where the address is the desktop build's own `http://<ip>:8000`.
+
+    **The serial number is the credential**, which is the protocol's doing, not
+    a choice: a ZKTeco-style terminal sends `SN=<serial>` and nothing else. Two
+    consequences are load-bearing:
+
+    * `serial` is unique **across the whole platform**, not per hospital. It is
+      what resolves a request to a tenant, so two hospitals cannot both claim
+      one — and a second hospital registering another's serial would otherwise
+      start receiving that hospital's attendance.
+    * A device must be registered *before* it is believed. An unknown serial is
+      refused, and recorded as an `UnknownDeviceContact` so the admin who typed
+      it in wrong can see what actually turned up.
+    """
+
+    serial = models.CharField(
+        max_length=40, unique=True,
+        help_text="The machine's serial number — in its menu under "
+                  "Info / Device Info, and usually printed on the back.")
+    name = models.CharField(max_length=60, help_text='e.g. Main Gate')
+    location = models.CharField(max_length=80, blank=True)
+    is_active = models.BooleanField(
+        default=True,
+        help_text='Turn off to stop accepting punches from this machine '
+                  'without losing the ones it has already sent.')
+    timezone_offset = models.SmallIntegerField(
+        default=5,
+        help_text='Hours ahead of UTC that the machine is set to. Pakistan is 5.')
+    last_seen = models.DateTimeField(null=True, blank=True)
+    last_ip = models.GenericIPAddressField(null=True, blank=True)
+    punches_received = models.PositiveIntegerField(default=0)
+    added_at = models.DateTimeField(auto_now_add=True)
+    hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE,
+                                 null=True, blank=True)
+
+    objects = TenantManager()
+    # The device posts with no session and no tenant bound, so the request has
+    # to be resolved through the unscoped manager — same reason the lab and
+    # imaging catalogue editors use theirs.
+    all_objects = models.Manager()
+
+    class Meta:
+        ordering = ('name',)
+
+    def __str__(self):
+        return f'{self.name} ({self.serial})'
+
+    @property
+    def has_ever_contacted(self):
+        return self.last_seen is not None
+
+    @property
+    def is_silent(self):
+        """No contact for a day. Worth saying out loud on the screen.
+
+        A machine that was switched off, or unplugged from the network, is
+        invisible otherwise — and the way that surfaces today is at month end,
+        when a fortnight of everybody's attendance is missing.
+        """
+        if not self.last_seen:
+            return False
+        return (timezone.now() - self.last_seen).total_seconds() > 24 * 3600
+
+
+class BiometricPunch(models.Model):
+    """One thumb on the reader: an enrolment number and a moment.
+
+    Deliberately *not* an attendance row. The machine reports events; payroll
+    needs a verdict per person per day, and turning one into the other is where
+    every mistake that costs somebody money lives (see
+    `hr/attendance_build.py`). Keeping the raw events means the verdict can be
+    recomputed after a mapping is corrected, without asking anyone to go and
+    fetch the data again.
+
+    `unique_together` is the idempotency: these terminals resend their whole
+    buffer after a network drop, and often on a timer regardless. The second
+    copy of a punch is silently the same row.
+    """
+
+    device = models.ForeignKey(BiometricDevice, on_delete=models.CASCADE,
+                               related_name='punches')
+    device_user_id = models.CharField(
+        max_length=32,
+        help_text='Enrolment number exactly as the machine sent it.')
+    punched_at = models.DateTimeField()
+    # Resolved at write time from StaffProfile.biometric_id. Left null when the
+    # enrolment number is not mapped yet — never dropped. A punch thrown away
+    # for want of a mapping is a day somebody worked and cannot prove.
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+                             null=True, blank=True, related_name='biometric_punches')
+    raw = models.CharField(max_length=200, blank=True)
+    received_at = models.DateTimeField(auto_now_add=True)
+    hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE,
+                                 null=True, blank=True)
+
+    objects = TenantManager()
+    all_objects = models.Manager()
+
+    class Meta:
+        unique_together = [('device', 'device_user_id', 'punched_at')]
+        ordering = ('-punched_at',)
+        indexes = [models.Index(fields=['hospital', 'punched_at'])]
+
+    def __str__(self):
+        return f'{self.device_user_id} @ {self.punched_at:%Y-%m-%d %H:%M}'
+
+
+class UnknownDeviceContact(models.Model):
+    """A terminal that called in with a serial nobody has registered.
+
+    Without this the commonest setup mistake — one digit wrong in the serial —
+    is completely silent: the machine shows a tick, the server says nothing,
+    and the admin has no way to tell "not configured yet" from "configured
+    wrong". One row per stray serial, shown back on the add-device screen.
+
+    **Only shown to an admin on the same connection as the device** (see
+    `hr.views_biometric.strays_for`). The serial is the only credential the
+    protocol has, so listing other tenants' unregistered serials would hand one
+    hospital a way to claim another's machine and start collecting its staff's
+    attendance.
+    """
+
+    serial = models.CharField(max_length=40, unique=True)
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    first_seen = models.DateTimeField(auto_now_add=True)
+    last_seen = models.DateTimeField(auto_now=True)
+    hits = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        ordering = ('-last_seen',)
+
+    def __str__(self):
+        return self.serial

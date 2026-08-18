@@ -6,6 +6,7 @@ from user_mgmt.views import setup_wizard
 from user_mgmt import pwa_views
 from user_mgmt import seo_views
 from django.conf import settings
+from hr import biometric as biometric_views
 from pharma_mgmt.media import serve_media
 from saas.views import hospital_login
 from accounts.views import demo_login, smart_login, custom_password_reset_request
@@ -100,6 +101,13 @@ urlpatterns = [
 # logo fell back to the default mark without anyone noticing. See
 # `pharma_mgmt/media.py`; patient documents are deliberately NOT reachable here.
 urlpatterns += [
+    # A fingerprint terminal hard-codes /iclock/ in its firmware — most models
+    # only let you set an IP and a port — so these cannot live under /hr/.
+    # Authenticated by the device serial (all the protocol offers) and exempt
+    # from the HTTPS redirect in settings; see hr/biometric.py.
+    path('iclock/cdata', biometric_views.cdata, name='biometric_cdata'),
+    path('iclock/getrequest', biometric_views.getrequest, name='biometric_getrequest'),
+    path('iclock/devicecmd', biometric_views.devicecmd, name='biometric_devicecmd'),
     re_path(r'^media/(?P<path>.*)$', serve_media, name='media'),
 ]
 

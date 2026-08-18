@@ -1,0 +1,55 @@
+{% extends 'partials/base.html' %}
+{% block title %}Map Staff to the Machine{% endblock %}
+{% block page_title %}Map Staff to the Machine{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <h2>Which number on the machine is which person</h2>
+  <a class="btn alt" href="{% url 'hr_biometric_devices' %}">← Machines</a>
+</div>
+
+<p class="muted" style="margin-top:-6px; max-width:680px;">
+  When you enrol somebody's thumb, the machine gives them a number — 1, 2, 3 and
+  so on. It has no idea who that is. Put the same number here once and every
+  punch from then on lands on the right person. Done once per employee.
+</p>
+
+{% if unmapped %}
+  <div class="card" style="border-left:4px solid var(--warn, #f59e0b);">
+    <strong>Numbers the machine has used that nobody is mapped to</strong>
+    <p class="muted" style="margin:6px 0 0;">
+      {% for uid, n in unmapped %}
+        <code>{{ uid }}</code> ({{ n }} punch{{ n|pluralize:"es" }}){% if not forloop.last %} &nbsp; {% endif %}
+      {% endfor %}
+    </p>
+  </div>
+{% endif %}
+
+<form method="post" class="card">
+  {% csrf_token %}
+  {% if profiles %}
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Staff</th><th>Designation</th><th>Enrolment number</th></tr></thead>
+        <tbody>
+        {% for p in profiles %}
+          <tr>
+            <td>{{ p.user.get_full_name|default:p.user.email }}</td>
+            <td class="wrap">{{ p.designation|default:"—" }}</td>
+            <td><input type="text" name="bio_{{ p.pk }}" value="{{ p.biometric_id }}"
+                       inputmode="numeric" placeholder="e.g. 7" style="max-width:140px;"></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="form-actions"><button class="btn" type="submit">Save mapping</button></div>
+  {% else %}
+    <p class="muted">
+      No staff profiles yet. Add them under <a href="{% url 'hr_staff_list' %}">Staff</a>
+      first — the mapping hangs off the profile, not the login.
+    </p>
+  {% endif %}
+</form>
+
+{% endblock %}

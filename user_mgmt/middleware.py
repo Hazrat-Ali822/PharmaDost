@@ -42,6 +42,11 @@ ALLOWED_NAMES = {
 # PWA plumbing the browser fetches without a session (install prompt, offline
 # fallback) — these must never redirect to login or the install breaks.
 'pwa_service_worker', 'pwa_manifest', 'pwa_icon', 'pwa_offline',
+# The fingerprint terminal. It is a machine on a wall, not a browser: no
+# session, no cookies, authenticated by its serial. A redirect to the login
+# page is a 302 it does not follow, so the punches simply never arrive and
+# nothing anywhere says so.
+'biometric_cdata', 'biometric_getrequest', 'biometric_devicecmd',
 }
 
 

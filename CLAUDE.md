@@ -1311,6 +1311,72 @@ one that is in use rather than deleting it; old rosters must keep reading
 correctly. Migration `ipd/0010` clones the old three into every hospital and
 re-points existing rows (same shape as `lab/0009`). Guarded by `hr/tests_shifts.py`.
 
+### The attendance machine (biometric)
+
+A fingerprint / face terminal fills the attendance sheet by itself. **The device
+dials out; nothing dials in** — a clinic's terminal sits behind a home router
+with no public address, so polling it from the hosted site would need port
+forwarding. You type this server's address into the machine's own menu (Comm →
+Cloud Server / ADMS / Push, depending on model) and it POSTs each punch. The
+*same* endpoint serves the desktop/LAN build, where the address is
+`http://<lan-ip>:8000` and there is no internet at all; that is why there is no
+second polling mechanism.
+
+Three moving parts:
+
+- **`hr/biometric.py`** — the endpoint the terminal talks to. Registered at the
+  **site root** in `pharma_mgmt/urls.py` (`/iclock/cdata`, `/iclock/getrequest`,
+  `/iclock/devicecmd`), not under `/hr/`, because the firmware hard-codes
+  `/iclock/` and most models only let you set an IP and a port.
+- **`hr.models.BiometricPunch`** — the raw events, kept for ever. Deliberately
+  not attendance rows: the machine reports moments, payroll needs a verdict per
+  person per day, and keeping the events means the verdict can be recomputed
+  after a mapping is fixed rather than re-collected from the machine.
+- **`hr/attendance_build.py`** — the translation, previewed on screen
+  (`preview_attendance` runs it inside a rolled-back transaction) before it
+  writes anything.
+
+**The serial number is the whole credential**, because that is all the protocol
+sends. Hence: `BiometricDevice.serial` is unique **platform-wide** (it is what
+resolves a request to a tenant, and a second hospital registering another's
+serial would start collecting that hospital's attendance); a device must be
+registered before it is believed; and an unknown serial is *recorded* as an
+`UnknownDeviceContact`, not merely refused — one digit wrong is the commonest
+setup mistake and the machine shows a tick either way. Those strays are shown
+back **only to an admin on the same connection** (`views_biometric._same_connection`:
+same IP, or the same /24 on a LAN), or the list would hand one hospital another's
+serial to claim. Everything device-facing goes through `all_objects`: there is no
+session and no tenant bound.
+
+Two settings entries are load-bearing and both fail silently if removed. The
+three view names are in `LoginRequiredMiddleware.ALLOWED_NAMES` — a machine on a
+wall has no session, and a 302 to the login page is a reply it does not follow.
+And `SECURE_REDIRECT_EXEMPT = [r"^iclock/"]` in `settings.py`: cheap terminals
+speak plain HTTP only, and `SECURE_SSL_REDIRECT` answers them with a 301 they
+also do not follow, so the device reports success and not one punch arrives.
+
+**The build rules are conservative in one direction on purpose** — when the data
+does not say somebody was absent, neither does this. Four of them, and each is a
+way to take money off a salary by accident:
+
+1. **A day nobody punched on is never marked absent.** A switched-off machine, a
+   public holiday and a Sunday are indistinguishable from here; a naive import
+   marks the whole staff absent for the three days the device was unplugged.
+   Reported as `no_data_days` for a human.
+2. **A missing punch-out is not an absence** — one punch is present with the
+   out-time unknown.
+3. **A hand-entered row always wins.** `Attendance.source` (MANUAL/DEVICE)
+   records who decided a day and a rebuild skips MANUAL. A correction that a
+   later import silently reverses is worse than no import at all.
+4. **An unmapped enrolment number is never discarded.** The punch is stored with
+   `user = None` and listed; adding the mapping and rebuilding recovers the day.
+
+`StaffProfile.biometric_id` is the mapping (the machine's enrolment number, set
+once on `/hr/devices/enrolment/`). `HALF_DAY_HOURS` is a module constant, not a
+setting — making it per-hospital is a `SiteSettings` field and one line, the day
+somebody asks. **Not offline**, and not a candidate: the device needs the server
+reachable, and on a LAN it is. Guarded by `hr/tests_biometric.py`.
+
 **Absence deductions** are computed, never stored on the profile.
 `StaffProfile.allowed_monthly_leaves` is the paid-leave quota, and deductible days
 = absents + half-days×0.5 + leaves *beyond* the quota. The rate is

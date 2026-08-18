@@ -1,0 +1,126 @@
+{% extends 'partials/base.html' %}
+{% block title %}Attendance Machine{% endblock %}
+{% block page_title %}Attendance Machine{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <h2>Fingerprint / face terminals</h2>
+  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+    <a class="btn alt sm" href="{% url 'hr_biometric_enrolment' %}">Map staff</a>
+    <a class="btn alt sm" href="{% url 'hr_biometric_punches' %}">Punch log</a>
+    <a class="btn sm" href="{% url 'hr_biometric_build' %}">Build attendance</a>
+  </div>
+</div>
+
+{% if strays %}
+  <div class="card" style="border-left:4px solid var(--warn, #f59e0b);">
+    <strong>A machine on your network is trying to connect.</strong>
+    <p class="muted" style="margin:6px 0 10px;">
+      It is sending punches but no device here has its serial number, so they are
+      being refused. If this is your machine, register it below with this exact serial.
+    </p>
+    <ul style="margin:0;">
+      {% for s in strays %}
+        <li><code>{{ s.serial }}</code> — {{ s.hits }} attempt{{ s.hits|pluralize }}, last {{ s.last_seen|timesince }} ago</li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+<div class="card">
+  <h3 style="margin-top:0;">What to type into the machine</h3>
+  <p class="muted" style="margin-top:-4px;">
+    In the machine's menu look for <strong>Comm → Cloud Server</strong>, or
+    <strong>ADMS</strong>, or <strong>Network → Server</strong> — the wording
+    differs by model. Enter:
+  </p>
+  <table class="table-plain" data-no-scroll-wrap>
+    <tr><th style="text-align:left; padding-right:18px;">Server address</th>
+        <td><code style="font-size:15px;">{{ server.host }}</code></td></tr>
+    <tr><th style="text-align:left;">Port</th>
+        <td><code style="font-size:15px;">{{ server.port }}</code></td></tr>
+    <tr><th style="text-align:left;">Mode</th><td>HTTP / ADMS / Push — whichever it calls it</td></tr>
+    <tr><th style="text-align:left;">Real-time upload</th><td>On</td></tr>
+  </table>
+  <p class="muted" style="margin-bottom:0; font-size:13px;">
+    Leave any "path" or "URL" box at its default. The machine adds
+    <code>/iclock/</code> itself and that is what this server is listening on.
+    Nothing else needs setting up — once the machine can reach this address it
+    sends every punch on its own.
+  </p>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0;">Registered machines</h3>
+  {% if devices %}
+    <div class="table-scroll">
+      <table>
+        <thead><tr>
+          <th>Name</th><th>Serial</th><th>Where</th>
+          <th>Last heard from</th><th>Punches</th><th></th>
+        </tr></thead>
+        <tbody>
+        {% for d in devices %}
+          <tr>
+            <td>{{ d.name }}</td>
+            <td><code>{{ d.serial }}</code></td>
+            <td class="wrap">{{ d.location|default:"—" }}</td>
+            <td>
+              {% if not d.has_ever_contacted %}
+                <span class="muted">Never — waiting for its first contact</span>
+              {% elif d.is_silent %}
+                <span style="color:var(--danger);">Silent since {{ d.last_seen|date:"d/m/Y H:i" }}</span>
+              {% else %}
+                {{ d.last_seen|timesince }} ago
+              {% endif %}
+            </td>
+            <td>{{ d.punches_received }}</td>
+            <td>
+              <form method="post" onsubmit="return confirm('Remove {{ d.name }}? Its punches are deleted with it.');" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="pk" value="{{ d.pk }}">
+                <button class="btn sm danger" type="submit">Remove</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="muted">No machine registered yet.</p>
+  {% endif %}
+</div>
+
+<div class="card" style="max-width:560px;">
+  <h3 style="margin-top:0;">Register a machine</h3>
+  <form method="post">
+    {% csrf_token %}
+    <label>Serial number
+      <input type="text" name="serial" required placeholder="e.g. AGL7154900032">
+    </label>
+    <p class="muted" style="margin:-6px 0 12px; font-size:12.5px;">
+      On the machine: Menu → System / Info → Device Info. Usually also printed
+      on a sticker on the back.
+    </p>
+    <label>Name<input type="text" name="name" placeholder="e.g. Front desk"></label>
+    <label>Where it is<input type="text" name="location" placeholder="e.g. Ground floor"></label>
+    <div class="form-actions"><button class="btn" type="submit">Register</button></div>
+  </form>
+</div>
+
+{% if unmapped_count %}
+  <div class="card" style="border-left:4px solid var(--warn, #f59e0b);">
+    <strong>{{ unmapped_count }} punch{{ unmapped_count|pluralize:"es" }} from
+    {{ unmapped|length }} enrolment number{{ unmapped|pluralize }} nobody is mapped to.</strong>
+    <p class="muted" style="margin:6px 0 10px;">
+      Nothing is lost — they are kept, and they will be counted the moment you
+      say who they belong to.
+      Numbers waiting: {% for u in unmapped %}<code>{{ u }}</code>{% if not forloop.last %}, {% endif %}{% endfor %}
+    </p>
+    <a class="btn sm" href="{% url 'hr_biometric_enrolment' %}">Map them to staff</a>
+  </div>
+{% endif %}
+
+{% endblock %}
