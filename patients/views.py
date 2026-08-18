@@ -8,6 +8,7 @@ from pharma_mgmt.pagination import paginate
 
 from accounts.decorators import role_required, feature_required
 from .forms import PatientForm, ClinicalRecordForm
+from .search import apply_search
 from .models import Patient
 
 
@@ -34,13 +35,9 @@ def _visible_patients(user):
 def patient_list(request):
     q = request.GET.get('q', '').strip()
     patients = _visible_patients(request.user)
-    if q:
-        patients = patients.filter(
-            Q(full_name__icontains=q) |
-            Q(phone__icontains=q) |
-            Q(mrn__icontains=q) |
-            Q(cnic__icontains=q)
-        )
+    # One shared implementation — see patients/search.py for why a plain
+    # `phone__icontains` and a single-substring name match both fail on real data.
+    patients = apply_search(patients, q)
     is_doctor = getattr(request.user, 'role', None) == 'DOCTOR' and not request.user.is_superuser
     page = paginate(request, patients)
     return render(request, 'patients/patient_list.html',

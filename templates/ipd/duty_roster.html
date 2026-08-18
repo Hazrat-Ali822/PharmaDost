@@ -27,7 +27,7 @@
     <strong>Week of {{ week_start|date:'d/m/Y' }}</strong>
     <a class="btn sm alt" href="?ward={{ ward.pk }}&week={{ next_week|date:'Y-m-d' }}">Next ›</a>
   </span>
-  {% if ward.in_charge %}<span class="muted" style="font-size:13px;">In-charge: <strong>{{ ward.in_charge.get_full_name|default:ward.in_charge.email }}</strong></span>{% endif %}
+  {% if ward.in_charge %}<span class="muted" style="font-size:13px;">In-charge: <strong>{{ ward.in_charge.display_name }}</strong></span>{% endif %}
 </form>
 
 <div class="card">
@@ -46,7 +46,7 @@
         <td style="vertical-align:top; min-width:120px;">
           {% for e in cell.entries %}
           <div style="display:flex; align-items:center; gap:4px; margin-bottom:4px; font-size:13px;">
-            <span>{% if e.duty == 'INCHARGE' %}<span title="Shift In-charge" style="color:#b45309;">★</span> {% endif %}{{ e.nurse.get_full_name|default:e.nurse.email }}</span>
+            <span>{% if e.duty == 'INCHARGE' %}<span title="Shift In-charge" style="color:#b45309;">★</span> {% endif %}{{ e.nurse.display_name }}</span>
             {% if can_manage %}
             <form method="post" action="{% url 'ipd:roster_remove' e.pk %}" style="display:inline;">{% csrf_token %}
               <button class="linklike" title="Remove" style="border:none; background:none; color:#ef4444; cursor:pointer; font-size:13px; padding:0 2px;">×</button>
@@ -73,7 +73,7 @@
     <label>Nurse<br>
       <select name="nurse" required>
         <option value="">— select —</option>
-        {% for n in nurses %}<option value="{{ n.pk }}">{{ n.get_full_name|default:n.email }}{% if n.role == 'ADMIN' %} (admin){% endif %}</option>{% endfor %}
+        {% for n in nurses %}<option value="{{ n.pk }}">{{ n.display_name }}{% if n.role == 'ADMIN' %} (admin){% endif %}</option>{% endfor %}
       </select>
     </label>
     <label>Day<br>

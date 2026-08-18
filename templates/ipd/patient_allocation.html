@@ -39,7 +39,7 @@
   <div style="display:flex; gap:10px; flex-wrap:wrap;">
     {% for nr in nurse_rows %}
     <span style="border:1px solid var(--border); border-radius:20px; padding:5px 12px; font-size:13px;">
-      {% if nr.duty == 'INCHARGE' %}★ {% endif %}{{ nr.nurse.get_full_name|default:nr.nurse.email }}
+      {% if nr.duty == 'INCHARGE' %}★ {% endif %}{{ nr.nurse.display_name }}
       <strong style="color:var(--primary);">· {{ nr.load }} patient{{ nr.load|pluralize }}</strong>
     </span>
     {% endfor %}
@@ -62,7 +62,7 @@
           <td>
             <select name="alloc_{{ r.admission.pk }}">
               <option value="">— unassigned —</option>
-              {% for n in nurses %}<option value="{{ n.pk }}" {% if r.allocated_to == n.pk %}selected{% endif %}>{% if n.role == 'ADMIN' %}(admin) {% endif %}{{ n.get_full_name|default:n.email }}</option>{% endfor %}
+              {% for n in nurses %}<option value="{{ n.pk }}" {% if r.allocated_to == n.pk %}selected{% endif %}>{% if n.role == 'ADMIN' %}(admin) {% endif %}{{ n.display_name }}</option>{% endfor %}
             </select>
           </td>
         </tr>

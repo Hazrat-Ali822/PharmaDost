@@ -15,7 +15,7 @@
     </h2>
     <div class="muted">
       <a href="{% url 'patient_detail' invoice.patient.pk %}">{{ invoice.patient.full_name }}</a>
-      · {{ invoice.created_at|date:"Y-m-d H:i" }} · by {{ invoice.created_by.get_full_name|default:invoice.created_by.email }}
+      · {{ invoice.created_at|date:"Y-m-d H:i" }} · by {{ invoice.created_by.display_name }}
     </div>
     {% if invoice.panel %}
     <div style="margin-top:6px;">

@@ -61,7 +61,7 @@
           <span style="color:#b45309;">Out {{ r.balance.output }}</span><br>
           <strong>Bal {{ r.balance.balance }}</strong>
         </td>
-        <td style="font-size:12.5px;">{% if r.nurse %}{{ r.nurse.get_full_name|default:r.nurse.email }}{% else %}<span class="muted">unassigned</span>{% endif %}</td>
+        <td style="font-size:12.5px;">{% if r.nurse %}{{ r.nurse.display_name }}{% else %}<span class="muted">unassigned</span>{% endif %}</td>
         <td>
           <a class="btn sm" href="{% url 'ipd:vitals_add' r.adm.pk %}">+ Vitals</a>
           <a class="btn sm alt" href="{% url 'ipd:fluid_add' r.adm.pk %}">+ Fluid</a>

@@ -15,7 +15,7 @@
   </div>
   <div style="text-align:right">
     <b>Phone:</b> {{ order.patient.phone|default:'—' }}<br>
-    {% if order.ordered_by %}<b>Referred by:</b> {{ order.ordered_by.get_full_name|default:order.ordered_by.email }}{% endif %}
+    {% if order.ordered_by %}<b>Referred by:</b> {{ order.ordered_by.display_name }}{% endif %}
   </div>
 </div>
 

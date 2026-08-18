@@ -19,9 +19,23 @@
   </div>
 </div>
 
+{% if not prescription.is_cancelled %}
+<div class="no-print" style="max-width:800px; margin:0 auto 14px;">
+  {% if prescription.status == 'DISPENSED' %}
+    <div class="msg success">✅ Dispensed — every medicine on this prescription has been sold at the pharmacy.</div>
+  {% elif prescription.status == 'PARTIAL' %}
+    <div class="msg warning">◐ Partly dispensed — some medicines have been sold, some are still waiting.</div>
+  {% elif prescription.status == 'CANCELLED' %}
+    <div class="msg error">🚫 Every medicine on this prescription was declined, so it is no longer in the pharmacy queue.</div>
+  {% else %}
+    <div class="msg">⏳ Waiting at the pharmacy — nothing has been dispensed yet.</div>
+  {% endif %}
+</div>
+{% endif %}
+
 {% if prescription.is_cancelled %}
 <div class="msg error no-print" style="margin-bottom:14px; max-width:800px; margin-left:auto; margin-right:auto;">
-  🚫 This prescription was cancelled{% if prescription.cancelled_by %} by {{ prescription.cancelled_by.get_full_name|default:prescription.cancelled_by.email }}{% endif %}
+  🚫 This prescription was cancelled{% if prescription.cancelled_by %} by {{ prescription.cancelled_by.display_name }}{% endif %}
   on {{ prescription.cancelled_at|date:"d/m/Y H:i" }} — {{ prescription.cancel_reason }}
 </div>
 {% endif %}
@@ -114,8 +128,9 @@
             <td style="padding: 12px 0; font-size: 13px; color: var(--text); font-style: italic;">{{ item.instructions|default:"—" }}</td>
             <td class="no-print" style="padding: 12px 0; text-align:right;">
               {% if can_cancel and not item.is_cancelled and not prescription.is_cancelled %}
-                <a class="btn danger" style="padding:3px 10px; font-size:12px;"
-                   href="{% url 'rx_item_cancel' prescription.pk item.pk %}">Declined</a>
+                <a class="btn alt" style="padding:3px 10px; font-size:12px;"
+                   href="{% url 'rx_item_cancel' prescription.pk item.pk %}"
+                   title="The patient does not want this medicine">Mark declined…</a>
               {% endif %}
             </td>
           </tr>

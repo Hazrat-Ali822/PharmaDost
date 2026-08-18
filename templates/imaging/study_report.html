@@ -16,7 +16,7 @@
   </div>
   <div style="text-align:right">
     <b>Study:</b> {{ study.study_name }}<br>
-    {% if study.referred_by %}<b>Referred by:</b> {{ study.referred_by.get_full_name|default:study.referred_by.email }}{% endif %}
+    {% if study.referred_by %}<b>Referred by:</b> {{ study.referred_by.display_name }}{% endif %}
   </div>
 </div>
 
@@ -37,6 +37,6 @@
 {% endif %}
 
 <div class="sign">
-  <span class="line">{% if study.performed_by %}{{ study.performed_by.get_full_name|default:study.performed_by.email }}{% else %}Radiologist / Sonographer{% endif %}</span>
+  <span class="line">{% if study.performed_by %}{{ study.performed_by.display_name }}{% else %}Radiologist / Sonographer{% endif %}</span>
 </div>
 {% endblock %}

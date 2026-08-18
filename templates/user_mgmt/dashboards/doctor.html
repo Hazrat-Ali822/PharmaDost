@@ -3,7 +3,7 @@
 {% block page_title %}Doctor{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h2>Consultation Desk 🩺</h2><div class="muted">{{ request.user.get_full_name|default:request.user.email }}</div></div>
+  <div><h2>Consultation Desk 🩺</h2><div class="muted">{{ request.user.display_name }}</div></div>
   <a class="btn" href="{% url 'appointment_list' %}">Today's Appointments</a>
 </div>
 <form method="get" class="card" style="padding:15px; margin-bottom:20px; display:flex; gap:15px; align-items:center; flex-wrap:wrap; background:rgba(0,0,0,0.02); border: 1px solid var(--border);">

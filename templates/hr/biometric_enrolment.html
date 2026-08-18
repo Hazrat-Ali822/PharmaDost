@@ -34,7 +34,7 @@
         <tbody>
         {% for p in profiles %}
           <tr>
-            <td>{{ p.user.get_full_name|default:p.user.email }}</td>
+            <td>{{ p.user.display_name }}</td>
             <td class="wrap">{{ p.designation|default:"—" }}</td>
             <td><input type="text" name="bio_{{ p.pk }}" value="{{ p.biometric_id }}"
                        inputmode="numeric" placeholder="e.g. 7" style="max-width:140px;"></td>

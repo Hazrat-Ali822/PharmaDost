@@ -3,7 +3,7 @@
 {% block page_title %}Staff Profile{% endblock %}
 {% block content %}
 <div class="page-head">
-  <h2>{{ staff_user.get_full_name|default:staff_user.email }}</h2>
+  <h2>{{ staff_user.display_name }}</h2>
   <a class="btn alt" href="{% url 'hr_staff_list' %}">Back</a>
 </div>
 <div class="card" style="max-width:600px;">
@@ -11,7 +11,7 @@
     <div style="margin-bottom:16px;display:flex;align-items:center;gap:16px;">
       <img src="{{ profile.photo.url }}" alt="Profile Photo" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid var(--primary, #4f46e5);">
       <div>
-        <strong style="display:block;font-size:16px;">{{ staff_user.get_full_name|default:staff_user.email }}</strong>
+        <strong style="display:block;font-size:16px;">{{ staff_user.display_name }}</strong>
         <span class="muted" style="font-size:13px;">{{ staff_user.get_role_display }}</span>
       </div>
     </div>

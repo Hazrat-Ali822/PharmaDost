@@ -14,6 +14,7 @@ from .forms import (AppointmentForm, DepartmentForm, DoctorForm, DoctorPayoutFor
                     DoctorScheduleFormSet, VisitForm)
 from .models import (Appointment, Department, Doctor, DoctorAvailabilityOverride)
 from .scoping import scoped_doctors
+from reports.export import csv_response, wants_csv
 from .services import doctor_earnings, payouts_total, payout_summary
 
 PAYOUT_ROLES = ["ADMIN", "ACCOUNTANT"]
@@ -285,25 +286,13 @@ def reception_desk(request):
     q = (request.GET.get('q') or '').strip()
     results = None
     if q:
-        from django.db.models import Value
-        from django.db.models.functions import Replace
         from patients.models import Patient
+        from patients.search import apply_search
 
-        lookup = Q(mrn__icontains=q) | Q(phone__icontains=q) | Q(full_name__icontains=q)
-        digits = ''.join(ch for ch in q if ch.isdigit())
-        if digits:
-            # CNICs are stored dashed (35202-1234567-1) and phones however they
-            # were typed, so compare against a stripped copy — the desk reads the
-            # number off a card and types it straight through.
-            lookup |= Q(cnic_digits__contains=digits) | Q(phone_digits__contains=digits)
-        results = (Patient.objects.filter(is_active=True)
-                   .annotate(
-                       cnic_digits=Replace(Replace('cnic', Value('-'), Value('')),
-                                           Value(' '), Value('')),
-                       phone_digits=Replace(Replace('phone', Value('-'), Value('')),
-                                            Value(' '), Value('')))
-                   .filter(lookup)
-                   .order_by('full_name')[:20])
+        # Shared with the patient registry — the desk and the registry must not
+        # disagree about what counts as a match. See patients/search.py.
+        results = apply_search(
+            Patient.objects.filter(is_active=True), q).order_by('full_name')[:20]
     return render(request, 'opd/reception_desk.html', {'q': q, 'results': results})
 
 
@@ -389,6 +378,18 @@ def payout_list(request):
         'paid': sum((r['paid'] for r in rows), Decimal('0.00')),
         'balance': sum((r['balance'] for r in rows), Decimal('0.00')),
     }
+    # The page has carried a "Download as CSV" button since exports were added,
+    # but this view never answered `?export=csv` — so the link returned the HTML
+    # page with a text/html content type and the browser simply re-rendered it.
+    # Nothing downloaded, and nothing said why. The other six reports include
+    # `reports/_range_filter.html`, which is where the button lives, so adding
+    # the partial to a screen silently promises an export the view has to honour.
+    if wants_csv(request):
+        return csv_response(
+            'doctor-payouts',
+            ['Doctor', 'Consultations', 'Earned', 'Paid', 'Balance'],
+            [[r['doctor'].display_name, r['consultations'], r['earned'],
+              r['paid'], r['balance']] for r in rows])
     return render(request, 'opd/payout_list.html', {'rows': rows, 'totals': totals, 'rng': rng})
 
 

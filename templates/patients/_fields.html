@@ -19,6 +19,7 @@ inside, which is exactly how this file rendered the whole form twice.
   <div class="pf-field pf-span2">
     <label for="{{ form.mrn.id_for_label }}">{{ form.mrn.label }}</label>
     {{ form.mrn }}
+    {% for e in form.mrn.errors %}<div class="pf-err">{{ e }}</div>{% endfor %}
     {% if form.mrn.help_text %}<small>{{ form.mrn.help_text }}</small>{% endif %}
   </div>
 
@@ -30,6 +31,7 @@ inside, which is exactly how this file rendered the whole form twice.
   <div class="pf-field">
     <label for="{{ form.guardian_name.id_for_label }}">Guardian / father's name</label>
     {{ form.guardian_name }}
+    {% for e in form.guardian_name.errors %}<div class="pf-err">{{ e }}</div>{% endfor %}
   </div>
 
   <div class="pf-field">
@@ -40,6 +42,7 @@ inside, which is exactly how this file rendered the whole form twice.
   <div class="pf-field">
     <label for="{{ form.phone.id_for_label }}">Mobile number</label>
     {{ form.phone }}
+    {% for e in form.phone.errors %}<div class="pf-err">{{ e }}</div>{% endfor %}
   </div>
 
   {# Date of birth and the age boxes fill each other in, so they sit side by #}
@@ -49,6 +52,7 @@ inside, which is exactly how this file rendered the whole form twice.
     <div class="dob-row">
       <div class="dob-wrap">
         {{ form.dob }}
+    {% for e in form.dob.errors %}<div class="pf-err">{{ e }}</div>{% endfor %}
         <button type="button" id="dob-pick-btn" class="dob-btn" title="Pick from a calendar"
                 aria-label="Pick date of birth from a calendar">📅</button>
         <input type="date" id="dob-picker" class="dob-native" tabindex="-1" aria-hidden="true">
@@ -56,14 +60,17 @@ inside, which is exactly how this file rendered the whole form twice.
       <div class="age-box">
         <span>{{ form.age_years.label }}</span>
         {{ form.age_years }}
+    {% for e in form.age_years.errors %}<div class="pf-err">{{ e }}</div>{% endfor %}
       </div>
       <div class="age-box">
         <span>{{ form.age_months.label }}</span>
         {{ form.age_months }}
+    {% for e in form.age_months.errors %}<div class="pf-err">{{ e }}</div>{% endfor %}
       </div>
       <div class="age-box">
         <span>{{ form.age_days.label }}</span>
         {{ form.age_days }}
+    {% for e in form.age_days.errors %}<div class="pf-err">{{ e }}</div>{% endfor %}
       </div>
     </div>
     <small id="dob-note" style="display:none;"></small>
@@ -76,19 +83,23 @@ inside, which is exactly how this file rendered the whole form twice.
   <div class="pf-field">
     <label for="{{ form.gender.id_for_label }}">Gender</label>
     {{ form.gender }}
+    {% for e in form.gender.errors %}<div class="pf-err">{{ e }}</div>{% endfor %}
   </div>
   <div class="pf-field">
     <label for="{{ form.blood_group.id_for_label }}">Blood group</label>
     {{ form.blood_group }}
+    {% for e in form.blood_group.errors %}<div class="pf-err">{{ e }}</div>{% endfor %}
   </div>
 
   <div class="pf-field pf-span2">
     <label for="{{ form.address.id_for_label }}">Address</label>
     {{ form.address }}
+    {% for e in form.address.errors %}<div class="pf-err">{{ e }}</div>{% endfor %}
   </div>
   <div class="pf-field pf-span2">
     <label for="{{ form.allergies.id_for_label }}">Allergies</label>
     {{ form.allergies }}
+    {% for e in form.allergies.errors %}<div class="pf-err">{{ e }}</div>{% endfor %}
     <small>Shown as a red banner wherever a drug is about to be given.</small>
   </div>
 
@@ -96,18 +107,21 @@ inside, which is exactly how this file rendered the whole form twice.
   <div class="pf-field">
     <label for="{{ form.panel.id_for_label }}">Panel / Insurance (optional)</label>
     {{ form.panel }}
+    {% for e in form.panel.errors %}<div class="pf-err">{{ e }}</div>{% endfor %}
     <small>If set, this patient's bills are billed to the panel.</small>
     {% for e in form.panel.errors %}<div class="pf-err">{{ e }}</div>{% endfor %}
   </div>
   <div class="pf-field">
     <label for="{{ form.panel_member_id.id_for_label }}">Card / Policy number</label>
     {{ form.panel_member_id }}
+    {% for e in form.panel_member_id.errors %}<div class="pf-err">{{ e }}</div>{% endfor %}
     <small>e.g. the Sehat Card or insurance policy number.</small>
     {% for e in form.panel_member_id.errors %}<div class="pf-err">{{ e }}</div>{% endfor %}
   </div>
   <div class="pf-field">
     <label for="{{ form.panel_coverage_limit.id_for_label }}">Coverage limit</label>
     {{ form.panel_coverage_limit }}
+    {% for e in form.panel_coverage_limit.errors %}<div class="pf-err">{{ e }}</div>{% endfor %}
     <small>Max the panel will cover for this patient. 0 = unlimited; excess is charged to the patient.</small>
     {% for e in form.panel_coverage_limit.errors %}<div class="pf-err">{{ e }}</div>{% endfor %}
   </div>

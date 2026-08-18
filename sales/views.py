@@ -19,6 +19,7 @@ SALE_ROLES = ["ADMIN", "PHARMACIST", "WHOLESALE"]
 @feature_required('pos')
 @transaction.atomic
 def sale_create(request):
+    from prescriptions.dosing import dispense_quantity
     from prescriptions.models import Prescription
     import json
     
@@ -51,14 +52,15 @@ def sale_create(request):
             # active_items, not items: a medicine the patient already declined must
             # not reappear in the cart for the cashier to sell by accident.
             for item in prescription.active_items:
-                estimated_qty = item.duration_days or 1
-                if item.dosage:
-                    parts = item.dosage.replace('-', '+').split('+')
-                    try:
-                        daily = sum(float(p) for p in parts if p.strip())
-                        estimated_qty = int(daily * (item.duration_days or 1))
-                    except ValueError:
-                        pass
+                # See prescriptions/dosing.py. This used to understand only
+                # `1+0+1` and fall back to the DAY COUNT for anything else, so
+                # "1 tab TDS x 5 days" (15 tablets) loaded as 5 — a plausible
+                # small number in a quantity box, which is the dangerous kind of
+                # wrong. None means the dosage could not be read (or is PRN);
+                # leave it at the course length for the pharmacist to set rather
+                # than invent a figure.
+                estimated_qty = (dispense_quantity(item.dosage, item.duration_days)
+                                 or item.duration_days or 1)
                 rx_items.append({
                     'medicine_id': item.medicine_id or '',
                     'custom_medicine_name': item.custom_medicine_name or '',

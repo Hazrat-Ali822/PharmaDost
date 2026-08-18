@@ -1215,6 +1215,18 @@ both be holding the same one. An MRN passed in code (seeds, imports) is still ke
 and does not consume a sequence number. Changing the prefix never rewrites MRNs already
 issued.
 
+**Patient search is `patients/search.py`, and both screens share it.** The
+registry and the reception desk had separate implementations that disagreed, and
+both had the same two holes: a phone number **typed without dashes** found
+nothing (numbers are stored however they were entered — `0311-1111111` in one
+row, `03001234567` in the next — so a plain `phone__icontains` only matches
+people whose number happens to have been typed the same way), and **a first name
+plus a surname** found nothing, because `full_name__icontains` is one substring
+and almost every registered name here carries a middle or father's name. The
+rule is now: **digits match digits, and every word must appear somewhere in the
+name**, ANDed — "ali khan" must not return every Ali and every Khan. Use
+`apply_search(qs, q)`; do not re-roll it in a third place.
+
 **CNIC** is stored in exactly one shape — `XXXXX-XXXXXXX-X`. `PatientForm.clean_cnic`
 strips everything non-numeric, requires 13 digits and re-inserts the dashes, so an import
 or a JS-off browser lands in the same format the reception search expects. The dashes
@@ -1552,7 +1564,23 @@ way to take money off a salary by accident:
    `user = None` and listed; adding the mapping and rebuilding recovers the day.
 
 `StaffProfile.biometric_id` is the mapping (the machine's enrolment number, set
-once on `/hr/devices/enrolment/`). Adding staff goes through
+once on `/hr/devices/enrolment/`). **A payroll-only employee has role `NO_LOGIN_ROLE` ('NOLOGIN'), not a real
+one.** They still get a `User` row — `Attendance`, `LeaveRequest` and
+`SalaryPayment` all point at one — but the row said `role='PHARMACIST'`, which
+was never a decision: it is the model default, copied. So a ward boy appeared as
+a Pharmacist in the staff list, the users list, the attendance sheet and the Pay
+Salary picker, with his generated `staff-<hex>@no-login.invalid` address printed
+beside his name as though it were real. No entry in `FEATURES` names the role,
+so it grants nothing (on top of the unusable password and `custom_features=[]`).
+Three display helpers on `User` exist so this cannot leak again and must be used
+in templates instead of `email` or `get_full_name|default:email`:
+**`display_name`** (name, falling back to the address only for a real account),
+**`display_email`** (blank for payroll-only) and **`initials`** (from the NAME —
+five demo staff all showed "D" because every address began `demo.`).
+`accounts/0008` backfills the rows already created wrongly, keyed on the address
+rather than the role so a real pharmacist is untouched.
+
+Adding staff goes through
 **`hr.forms.EmployeeForm`** (`/hr/staff/add/`, ADMIN), which exists because
 **most of a clinic's payroll does not sign in** — a guard, a cleaner, a ward boy,
 a driver — and the only previous route onto the attendance sheet was creating a
@@ -1657,7 +1685,13 @@ trail that cannot say *where from* is half a trail. It is filled from
 for anything raised outside one (commands, cron).
 
 **Every report exports to CSV** via `?export=csv` (`reports/export.py`,
-`csv_response`). CSV rather than .xlsx: Excel opens it, it needs no dependency on
+`csv_response`). The download link lives in `reports/_range_filter.html`, so
+**including that partial silently promises an export the view has to honour
+separately** — `/opd/payouts/` included it and never handled `?export=csv`, so
+the button returned the HTML page as `text/html` and nothing downloaded, with
+nothing on screen to say why. `tests/test_exports.py` derives the page list from
+the templates themselves and fails if one shows the button without sending a
+CSV. CSV rather than .xlsx: Excel opens it, it needs no dependency on
 a shared host, and `_safe()` defuses **formula injection** — a medicine or patient
 named `=cmd|...` would otherwise execute when the accountant opens the file. The
 file carries a UTF-8 BOM or Excel on Windows renders non-ASCII names as mojibake.
@@ -2007,6 +2041,22 @@ out of the browser cache while every other page has the new one, so a layout fix
 works everywhere except the screen somebody is looking at, and it reads as a CSS
 bug rather than a stale file. Guarded by `tests/test_stylesheet.py`,
 which fails if the six ever disagree.
+
+**A rejected form must be able to say so on screen.** Django emits
+`<ul class="errorlist">` and `<span class="helptext">`, and **neither had a
+single rule in app.css**. With no colour and no weight a rejection renders as a
+small grey bulleted line in body text above a field that still holds what you
+typed — a QA pass set a medicine price to -1, got the validation error the
+server correctly produced, and reported the screen as *"silently fails, no error
+is shown anywhere"*. An invisible error is worse than none: the user believes the
+save worked. Both are styled now.
+
+The same defect has a second form in **hand-rolled field templates**:
+`patients/_fields.html` renders each widget itself, and rendered `.errors` for
+some fields and not others — so `clean_phone` could reject a number and the
+screen would show nothing at all. If a template renders `{{ form.x }}` by hand it
+must render `{{ form.x.errors }}` beside it. Guarded by
+`tests/test_qa_defects_b.py`.
 
 **Help text under a field is `.field-help`, never a hand-tuned inline margin.**
 Every text input is `width: 100%` **with a border**, so a `<p>` given a negative

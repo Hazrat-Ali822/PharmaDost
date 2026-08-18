@@ -397,6 +397,47 @@ a.btn.danger, a.btn.primary, a.btn.success, button.btn.danger, button.btn.primar
 .form-actions > button,
 .form-actions > a { flex: 0 0 auto; }
 
+/* ---------- Django's own form output ------------------------------------
+   `{{ form.as_p }}` emits `<ul class="errorlist">` and `<span class="helptext">`,
+   and NEITHER had a single rule in this file. That is not a cosmetic gap: with
+   no colour and no weight, a rejected field renders as a small grey bulleted
+   line in body text, above a field that still holds what you typed. A QA pass
+   set a medicine's price to -1, got the validation error the server correctly
+   produced, and reported the page as "silently fails, no error is shown
+   anywhere" — because on screen there is nothing to see. An invisible error
+   message is worse than none: the user believes the save worked.
+
+   Styled here rather than per-template so every form in the app is covered,
+   including the ones still rendering with `as_p`. */
+.errorlist {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--danger-bg);
+  border: 1px solid #fecaca;
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 600;
+}
+.errorlist li + li { margin-top: 4px; }
+/* A non-field error belongs at the top of the form, not tucked in a row. */
+.errorlist.nonfield { margin-bottom: 14px; }
+
+/* Mark the field itself, so a long form does not have to be read twice to find
+   which row was rejected. */
+.errorlist + input,
+.errorlist + select,
+.errorlist + textarea { border-color: var(--danger); }
+
+.helptext {
+  display: block;
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 /* ---------- Layout utilities -------------------------------------------- */
 /* Generic grid used across many screens (bloodbank, certificates, emergency,
    maternity, reports, …). Templates supply their own grid-template-columns

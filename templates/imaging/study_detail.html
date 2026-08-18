@@ -31,15 +31,15 @@
 
 {% if study.is_cancelled %}
 <div class="msg error" style="margin-bottom:14px">
-  🚫 This scan was cancelled{% if study.cancelled_by %} by {{ study.cancelled_by.get_full_name|default:study.cancelled_by.email }}{% endif %}
+  🚫 This scan was cancelled{% if study.cancelled_by %} by {{ study.cancelled_by.display_name }}{% endif %}
   on {{ study.cancelled_at|date:"d/m/Y H:i" }} — {{ study.cancel_reason }}
 </div>
 {% endif %}
 
 <div class="card" style="margin-bottom:16px">
   <div class="muted" style="font-size:13px">
-    Referred by: {% if study.referred_by %}{{ study.referred_by.get_full_name|default:study.referred_by.email }}{% else %}—{% endif %}
-    · Performed by: {% if study.performed_by %}{{ study.performed_by.get_full_name|default:study.performed_by.email }}{% else %}—{% endif %}
+    Referred by: {% if study.referred_by %}{{ study.referred_by.display_name }}{% else %}—{% endif %}
+    · Performed by: {% if study.performed_by %}{{ study.performed_by.display_name }}{% else %}—{% endif %}
     {% if study.price %}· Fee: {{ study.price }}{% endif %}
   </div>
   {% if study.clinical_note %}<p style="margin-top:8px"><strong>Referring note:</strong> {{ study.clinical_note }}</p>{% endif %}

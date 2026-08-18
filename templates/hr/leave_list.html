@@ -12,7 +12,7 @@
     <tbody>
       {% for l in leaves %}
       <tr>
-        <td>{{ l.user.get_full_name|default:l.user.email }}</td>
+        <td>{{ l.user.display_name }}</td>
         <td>{{ l.get_leave_type_display }}</td>
         <td>{{ l.start_date|date:"d/m/Y" }}</td>
         <td>{{ l.end_date|date:"d/m/Y" }}</td>

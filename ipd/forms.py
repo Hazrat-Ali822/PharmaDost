@@ -137,8 +137,46 @@ class VitalsObservationForm(forms.ModelForm):
             'notes': forms.TextInput(attrs={'placeholder': 'e.g. resting, on O₂ 2L'}),
         }
 
+    # Physiological bounds, deliberately WIDE. These are not clinical judgement
+    # — a MEWS of 3 is the system's opinion and a nurse may disagree — they are
+    # a check that the number came from a patient at all. SpO2 500%, a pain
+    # score of 99/10 and a temperature of 999 F all saved, and a nonsense vital
+    # in a chart is worse than a missing one because MEWS then scores it.
+    #
+    # (low, high, unit) — inclusive.
+    RANGES = {
+        'temperature': (80, 115, '°F'),
+        'pulse': (20, 300, 'bpm'),
+        'respiratory_rate': (4, 80, 'breaths/min'),
+        'systolic_bp': (40, 300, 'mmHg'),
+        'diastolic_bp': (20, 200, 'mmHg'),
+        'spo2': (10, 100, '%'),
+        'pain_score': (0, 10, '/10'),
+        'blood_glucose': (10, 1000, 'mg/dL'),
+    }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Mirrored onto the widget so the phone keyboard and the browser stop it
+        # before a round trip. The server check below is the one that counts.
+        for name, (low, high, unit) in self.RANGES.items():
+            if name in self.fields:
+                self.fields[name].widget.attrs.update(
+                    {'min': low, 'max': high, 'inputmode': 'decimal'})
+
     def clean(self):
         cleaned = super().clean()
+        for name, (low, high, unit) in self.RANGES.items():
+            value = cleaned.get(name)
+            if value in (None, ''):
+                continue
+            try:
+                number = float(value)
+            except (TypeError, ValueError):
+                continue          # vitals are free-text in places; see CLAUDE.md
+            if not (low <= number <= high):
+                self.add_error(name, f'{number:g}{unit} is outside anything a '
+                                     f'patient can be — expected {low}–{high}{unit}.')
         # At least one measured value — an empty obs is not an observation.
         measured = ['temperature', 'pulse', 'respiratory_rate', 'systolic_bp',
                     'diastolic_bp', 'spo2', 'pain_score', 'blood_glucose']

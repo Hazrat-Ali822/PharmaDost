@@ -169,7 +169,7 @@
       </a>
       <figcaption>
         <strong>{{ d.label }}</strong>
-        <span class="muted">{{ d.doc_date|date:'d/m/Y' }}{% if d.uploaded_by %} · {{ d.uploaded_by.get_full_name|default:d.uploaded_by.email }}{% endif %}</span>
+        <span class="muted">{{ d.doc_date|date:'d/m/Y' }}{% if d.uploaded_by %} · {{ d.uploaded_by.display_name }}{% endif %}</span>
         {% if d.note %}<span class="muted">{{ d.note }}</span>{% endif %}
         {% if user.is_superuser or user.role == 'ADMIN' or d.uploaded_by_id == user.pk %}
         <form method="post" action="{% url 'patient_document_delete' d.pk %}"
@@ -282,7 +282,7 @@
       <span class="badge">{{ s.get_modality_display }}</span>
       <a href="{% url 'imaging:study_detail' s.id %}">{{ s.study_name }}</a>
       · {{ s.study_date|date:"Y-m-d" }} · {{ s.status }}
-      {% if s.performed_by %}· by {{ s.performed_by.get_full_name|default:s.performed_by.email }}{% endif %}
+      {% if s.performed_by %}· by {{ s.performed_by.display_name }}{% endif %}
     </div>
     {% if s.impression %}<div style="margin-top:4px"><strong>Impression:</strong> {{ s.impression }}</div>
     {% elif s.findings %}<div style="margin-top:4px">{{ s.findings|truncatewords:30 }}</div>{% endif %}

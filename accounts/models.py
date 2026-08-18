@@ -3,6 +3,13 @@ from django.db import models
 from .managers import UserManager
 
 
+# An employee who does not sign in. See ROLE_CHOICES below.
+NO_LOGIN_ROLE = 'NOLOGIN'
+# The domain their placeholder address is minted in. Reserved by RFC 2606, so it
+# can never resolve and can never be emailed by accident.
+NO_LOGIN_EMAIL_DOMAIN = '@no-login.invalid'
+
+
 class User(AbstractUser):
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
@@ -17,6 +24,15 @@ class User(AbstractUser):
         ('LABTECH', 'Lab Technician'),
         ('SONOGRAPHER', 'Sonographer'),
         ('ACCOUNTANT', 'Accountant'),
+        # Most of a clinic's payroll does not sign in — a guard, a cleaner, a
+        # ward boy, a driver. They still need a User row, because Attendance,
+        # LeaveRequest and SalaryPayment all point at one, but they are not a
+        # pharmacist and must not be shown as one. No entry in
+        # `permissions.FEATURES` names this role, so it grants nothing on its
+        # own; `hr.forms.EmployeeForm` additionally sets `custom_features = []`
+        # and an unusable password, so three independent things would each have
+        # to be wrong before such an account could get in.
+        (NO_LOGIN_ROLE, 'No system access'),
     )
 
     username = None
@@ -29,7 +45,47 @@ class User(AbstractUser):
 
     objects = UserManager()
 
+    @property
+    def signs_in(self):
+        """False for a payroll-only employee (see NO_LOGIN_ROLE)."""
+        return not (self.email or '').endswith(NO_LOGIN_EMAIL_DOMAIN)
+
+    @property
+    def display_email(self):
+        """The address to SHOW. Blank for a payroll-only employee, whose address
+        is a generated placeholder — it was rendered verbatim in the staff list,
+        the users list and the Pay Salary dropdown, where a ward boy appeared as
+        `staff-d448b32bae@no-login.invalid`."""
+        return self.email if self.signs_in else ''
+
+    @property
+    def display_name(self):
+        """Name first, address only as a fallback — and never the placeholder.
+
+        `get_full_name()` is blank for a user with no name set, which is why so
+        many screens fell back to the email and ended up printing the
+        placeholder. This never does."""
+        name = (self.get_full_name() or '').strip()
+        if name:
+            return name
+        return self.email if self.signs_in else 'Unnamed employee'
+
+    @property
+    def initials(self):
+        """For the avatar circle. Taken from the NAME, not the address — every
+        demo user showed a "D" because their addresses all began `demo.`, and
+        payroll-only staff showed "S" for `staff-`."""
+        parts = [p for p in (self.first_name, self.last_name) if p]
+        if parts:
+            return ''.join(p[0] for p in parts[:2]).upper()
+        name = (self.get_full_name() or '').strip()
+        if name:
+            return ''.join(w[0] for w in name.split()[:2]).upper()
+        return (self.email[:1] or '?').upper() if self.signs_in else '—'
+
     def __str__(self):
+        if not self.signs_in:
+            return f"{self.display_name} (no system access)"
         return f"{self.email} ({self.get_role_display()})"
 
     def effective_features(self):

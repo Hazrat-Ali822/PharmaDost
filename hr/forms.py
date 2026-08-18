@@ -1,6 +1,6 @@
 from django import forms
 
-from accounts.models import User
+from accounts.models import NO_LOGIN_EMAIL_DOMAIN, NO_LOGIN_ROLE, User
 
 from .models import LeaveRequest, SalaryPayment, StaffProfile
 
@@ -16,11 +16,29 @@ class StaffProfileForm(forms.ModelForm):
         widgets = {'joining_date': forms.DateInput(attrs={'type': 'date'})}
 
 
+def _employee_label(u):
+    """What the staff dropdowns show for one person.
+
+    They showed `str(user)` — the email address and the role — so paying a ward
+    boy meant picking `staff-d448b32bae@no-login.invalid (Pharmacist)` out of a
+    list, which is neither his name nor his job. Payroll is chosen by name.
+    """
+    profile = getattr(u, 'staff_profile', None)
+    job = (getattr(profile, 'designation', '') or '').strip()
+    if not job and u.signs_in:
+        job = u.get_role_display()
+    return f'{u.display_name} — {job}' if job else u.display_name
+
+
 def _scope_user_field(field, user):
-    qs = User.objects.filter(is_active=True)
+    qs = User.objects.filter(is_active=True).select_related('staff_profile')
     if user is not None and not user.is_superuser:
         qs = qs.filter(hospital=user.hospital)
-    field.queryset = qs.order_by('email')
+    # By name, not by address — the address is a placeholder for most of payroll.
+    field.queryset = qs.order_by('first_name', 'last_name', 'email')
+    field.label_from_instance = _employee_label
+    field.label = 'Employee'
+    field.empty_label = 'Choose an employee…'
 
 
 class LeaveRequestForm(forms.ModelForm):
@@ -97,7 +115,11 @@ class EmployeeForm(forms.Form):
     email = forms.EmailField(required=False)
     password = forms.CharField(required=False, widget=forms.PasswordInput,
                                min_length=6)
-    role = forms.ChoiceField(choices=User.ROLE_CHOICES, required=False)
+    # "No system access" is what NOT ticking the box already means, so offering
+    # it here as well would be two controls for one decision.
+    role = forms.ChoiceField(
+        choices=[(k, v) for k, v in User.ROLE_CHOICES if k != NO_LOGIN_ROLE],
+        required=False)
 
     def __init__(self, *args, hospital=None, **kwargs):
         self.hospital = hospital
@@ -144,9 +166,14 @@ class EmployeeForm(forms.Form):
             else:
                 # An address nobody can receive at, in a domain that cannot
                 # exist, so it never gets mistaken for a real one or emailed.
+                # role=NO_LOGIN_ROLE, not a real one. This used to say
+                # 'PHARMACIST' — chosen only because it is the model default —
+                # so a ward boy appeared as a Pharmacist in the staff list, the
+                # users list and the attendance sheet, and his generated address
+                # was printed beside it as though it were real.
                 user = User.objects.create(
-                    email=f'staff-{uuid.uuid4().hex[:10]}@no-login.invalid',
-                    role='PHARMACIST', hospital=self.hospital,
+                    email=f'staff-{uuid.uuid4().hex[:10]}{NO_LOGIN_EMAIL_DOMAIN}',
+                    role=NO_LOGIN_ROLE, hospital=self.hospital,
                     custom_features=[])
                 user.set_unusable_password()
                 user.save(update_fields=['password'])

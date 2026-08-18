@@ -30,7 +30,7 @@
       {% for u in staff %}
       <tr>
         <td>
-          <strong>{{ u.get_full_name|default:u.email }}</strong><br>
+          <strong>{{ u.display_name }}</strong><br>
           <small class="muted">{{ u.get_role_display }}</small>
         </td>
         <td class="num">{{ u.tally.PRESENT|default:0 }}</td>

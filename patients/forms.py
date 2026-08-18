@@ -141,11 +141,41 @@ class PatientForm(forms.ModelForm):
         raw = (self.cleaned_data.get('cnic') or '').strip()
         digits = ''.join(ch for ch in raw if ch.isdigit())
         if not digits:
+            # Blank is fine — a CNIC is optional. Something that is not blank and
+            # yet holds no digit at all is a typo in the wrong box, and silently
+            # throwing it away told the user their entry had been accepted.
+            if raw:
+                raise forms.ValidationError(
+                    'That does not look like a CNIC — it has no digits in it.')
             return ''
         if len(digits) != 13:
             raise forms.ValidationError(
                 f'A CNIC has 13 digits — you entered {len(digits)}.')
         return f'{digits[:5]}-{digits[5:12]}-{digits[12]}'
+
+    def clean_phone(self):
+        """A phone number is how the hospital reaches the patient, and it had no
+        validation at all: `not-a-phone` saved and showed in the registry exactly
+        like that. Reminders then fail silently against it for ever.
+
+        Normalised to one shape for the same reason the CNIC is — a Pakistani
+        mobile is stored `03XX-XXXXXXX`, so the reception search has something
+        predictable to match. Anything else (a landline, an international number)
+        is kept as the user typed it once it clears the digit check, because this
+        market has too many shapes to enumerate and refusing a real number is
+        worse than storing an unusual one.
+        """
+        raw = (self.cleaned_data.get('phone') or '').strip()
+        if not raw:
+            return ''
+        digits = ''.join(ch for ch in raw if ch.isdigit())
+        if len(digits) < 7:
+            raise forms.ValidationError(
+                'That does not look like a phone number. Enter it as '
+                '03XX-XXXXXXX.')
+        if len(digits) == 11 and digits.startswith('03'):
+            return f'{digits[:4]}-{digits[4:]}'
+        return raw
 
 
 class ClinicalRecordForm(forms.ModelForm):

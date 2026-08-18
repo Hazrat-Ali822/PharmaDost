@@ -29,7 +29,7 @@
 
 {% if order.is_cancelled %}
 <div class="msg error" style="margin-bottom:14px">
-  🚫 This order was cancelled{% if order.cancelled_by %} by {{ order.cancelled_by.get_full_name|default:order.cancelled_by.email }}{% endif %}
+  🚫 This order was cancelled{% if order.cancelled_by %} by {{ order.cancelled_by.display_name }}{% endif %}
   on {{ order.cancelled_at|date:"d/m/Y H:i" }} — {{ order.cancel_reason }}
 </div>
 {% endif %}

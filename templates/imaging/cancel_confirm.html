@@ -33,7 +33,7 @@
   <p class="muted" style="font-size:13px">
     Nothing is deleted — the study stays on the patient's record marked
     <em>Cancelled</em>, with your name, the time and the reason.
-    {% if study.referred_by %}{{ study.referred_by.get_full_name|default:study.referred_by.email }} will be notified.{% endif %}
+    {% if study.referred_by %}{{ study.referred_by.display_name }} will be notified.{% endif %}
   </p>
 
   <form method="post" action="{% url 'imaging:study_cancel' study.id %}" style="margin-top:16px">

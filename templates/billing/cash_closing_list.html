@@ -24,7 +24,7 @@
           {% elif c.difference > 0 %}<span class="badge amber">+{{ c.difference }} (excess)</span>
           {% else %}<span class="badge red">{{ c.difference }} (short)</span>{% endif %}
         </td>
-        <td class="muted">{{ c.closed_by.get_full_name|default:c.closed_by.email }}</td>
+        <td class="muted">{{ c.closed_by.display_name }}</td>
       </tr>
       {% empty %}
       <tr><td colspan="8" class="muted">No days closed yet.</td></tr>

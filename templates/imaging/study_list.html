@@ -55,7 +55,7 @@
           <span class="badge gray">{{ s.status }}</span>
         {% endif %}
       </td>
-      <td>{% if s.performed_by %}{{ s.performed_by.get_full_name|default:s.performed_by.email }}{% else %}—{% endif %}</td>
+      <td>{% if s.performed_by %}{{ s.performed_by.display_name }}{% else %}—{% endif %}</td>
       {% if request.user.role != 'DOCTOR' %}
       <td>
         {% if s.payment_status == 'Paid' %}

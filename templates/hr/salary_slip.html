@@ -7,7 +7,7 @@
 {% endblock %}
 {% block body %}
 <table style="width:100%; border-collapse:collapse; margin-bottom:16px;">
-  <tr><td style="padding:6px 0;"><strong>Employee</strong></td><td style="text-align:right;">{{ slip.user.get_full_name|default:slip.user.email }}</td></tr>
+  <tr><td style="padding:6px 0;"><strong>Employee</strong></td><td style="text-align:right;">{{ slip.user.display_name }}</td></tr>
   <tr><td style="padding:6px 0;">Role</td><td style="text-align:right;">{{ slip.user.get_role_display }}</td></tr>
   {% if slip.user.staff_profile.designation %}<tr><td style="padding:6px 0;">Designation</td><td style="text-align:right;">{{ slip.user.staff_profile.designation }}</td></tr>{% endif %}
 </table>
@@ -21,7 +21,7 @@
 </table>
 
 <p style="margin-top:14px;">Paid via {{ slip.method }}{% if slip.note %} — {{ slip.note }}{% endif %}.</p>
-{% if slip.paid_by %}<p class="muted" style="font-size:12px;">Processed by {{ slip.paid_by.get_full_name|default:slip.paid_by.email }}.</p>{% endif %}
+{% if slip.paid_by %}<p class="muted" style="font-size:12px;">Processed by {{ slip.paid_by.display_name }}.</p>{% endif %}
 
 <div style="margin-top:48px; display:flex; justify-content:space-between;">
   <div>_______________________<br>Employee signature</div>

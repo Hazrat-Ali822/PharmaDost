@@ -3,7 +3,7 @@
 {% block page_title %}Ward / Nursing{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h2>Ward Desk 👩‍⚕️</h2><div class="muted">{{ request.user.get_full_name|default:request.user.email }}</div></div>
+  <div><h2>Ward Desk 👩‍⚕️</h2><div class="muted">{{ request.user.display_name }}</div></div>
   <div style="display:flex; gap:8px; flex-wrap:wrap;">
     <a class="btn alt" href="{% url 'ipd:ward_bed_list' %}">🛏️ Beds / Wards</a>
     <a class="btn" href="{% url 'ipd:admission_list' %}">All Admissions</a>

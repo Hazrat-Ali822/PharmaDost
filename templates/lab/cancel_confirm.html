@@ -42,7 +42,7 @@
   <p class="muted" style="font-size:13px">
     Nothing is deleted. The test stays on the record marked <em>Cancelled</em>, with your
     name, the time and the reason — so "why was this never done" can still be answered.
-    {% if order.ordered_by %}{{ order.ordered_by.get_full_name|default:order.ordered_by.email }} will be notified.{% endif %}
+    {% if order.ordered_by %}{{ order.ordered_by.display_name }} will be notified.{% endif %}
   </p>
 
   <form method="post" action="{{ action_url }}" style="margin-top:16px">

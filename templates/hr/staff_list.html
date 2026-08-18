@@ -39,16 +39,16 @@
       <tr>
         <td>
           {% if u.hr_profile.photo %}
-            <img src="{{ u.hr_profile.photo.url }}" alt="{{ u.get_full_name|default:u.email }}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:1px solid rgba(255,255,255,0.15);">
+            <img src="{{ u.hr_profile.photo.url }}" alt="{{ u.display_name }}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:1px solid rgba(255,255,255,0.15);">
           {% else %}
             <div style="width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;color:var(--muted);">
-              {{ u.email|first|upper }}
+              {{ u.initials }}
             </div>
           {% endif %}
         </td>
         <td>
-          <strong>{{ u.get_full_name|default:u.email }}</strong><br>
-          <small class="muted">{{ u.email }}</small>
+          <strong>{{ u.display_name }}</strong><br>
+          <small class="muted">{% if u.display_email %}{{ u.display_email }}{% else %}Payroll only — does not sign in{% endif %}</small>
         </td>
         <td>
           {{ u.get_role_display }}

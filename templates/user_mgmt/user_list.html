@@ -13,7 +13,7 @@
     <tbody>
       {% for u in users %}
       <tr>
-        <td><strong>{{ u.email }}</strong></td>
+        <td><strong>{{ u.display_name }}</strong>{% if u.display_email %}<br><small class="muted">{{ u.display_email }}</small>{% else %}<br><small class="muted">Payroll only — does not sign in</small>{% endif %}</td>
         <td>{{ u.get_full_name|default:"—" }}</td>
         <td><span class="badge">{{ u.get_role_display }}</span>{% if u.is_superuser %} <span class="badge amber">Superuser</span>{% endif %}</td>
         <td>{% if u.is_customized %}<span class="badge amber">Custom</span>{% else %}<span class="badge gray">Role default</span>{% endif %}</td>

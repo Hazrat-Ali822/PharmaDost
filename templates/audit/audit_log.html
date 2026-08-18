@@ -19,7 +19,7 @@
   <div><label class="muted" style="font-size:12px;display:block">User</label>
     <select name="user" onchange="this.form.submit()">
       <option value="">All</option>
-      {% for u in users %}<option value="{{ u.id }}" {% if f.user == u.id|stringformat:'s' %}selected{% endif %}>{{ u.get_full_name|default:u.email }}</option>{% endfor %}
+      {% for u in users %}<option value="{{ u.id }}" {% if f.user == u.id|stringformat:'s' %}selected{% endif %}>{{ u.display_name }}</option>{% endfor %}
     </select></div>
   <div><label class="muted" style="font-size:12px;display:block">Search</label>
     <input type="search" name="q" value="{{ f.q }}" placeholder="object…"></div>
@@ -33,7 +33,7 @@
       {% for log in page %}
       <tr>
         <td class="muted" style="white-space:nowrap">{{ log.timestamp|date:"Y-m-d H:i:s" }}</td>
-        <td>{% if log.user %}{{ log.user.get_full_name|default:log.user.email }}{% else %}<span class="muted">system</span>{% endif %}</td>
+        <td>{% if log.user %}{{ log.user.display_name }}{% else %}<span class="muted">system</span>{% endif %}</td>
         <td>
           {% if log.action == 'CREATE' %}<span class="badge green">Create</span>
           {% elif log.action == 'DELETE' %}<span class="badge red">Delete</span>

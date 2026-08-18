@@ -146,7 +146,7 @@
       {% for n in nursing_notes %}
       <div style="border-left:3px solid #0ea5e9; padding-left:14px; margin-bottom:12px;">
         <div style="display:flex; justify-content:space-between; font-size:12px;" class="muted">
-          <span>{{ n.noted_by.get_full_name|default:n.noted_by.email }}{% if n.shift %} · {{ n.shift.name }}{% endif %}</span>
+          <span>{{ n.noted_by.display_name }}{% if n.shift %} · {{ n.shift.name }}{% endif %}</span>
           <span>{{ n.noted_at|date:'d/m H:i' }}</span>
         </div>
         <p style="margin:4px 0 0; font-size:13.5px; white-space:pre-wrap;">{{ n.note }}</p>
@@ -159,7 +159,7 @@
       {% for t in care_tasks %}
       <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed var(--border); font-size:13px;">
         <span>✔ {{ t.get_task_display }}{% if t.notes %} <span class="muted">— {{ t.notes }}</span>{% endif %}</span>
-        <span class="muted" style="font-size:12px;">{{ t.done_by.get_full_name|default:t.done_by.email }} · {{ t.done_at|date:'d/m H:i' }}</span>
+        <span class="muted" style="font-size:12px;">{{ t.done_by.display_name }} · {{ t.done_at|date:'d/m H:i' }}</span>
       </div>
       {% empty %}
       <p class="muted" style="margin:0; font-size:13px;">No care tasks logged.</p>
@@ -257,7 +257,7 @@
             <span class="muted" style="font-size:12px;">{{ log.administered_at|date:"Y-m-d H:i" }}</span>
           </div>
           <p style="margin:0 0 4px 0; font-size:13.5px;"><span class="muted">Dosage:</span> <strong>{{ log.dosage }}</strong></p>
-          <p style="margin:0 0 4px 0; font-size:13px; color:var(--text);"><span class="muted">Administered by:</span> {{ log.administered_by.get_full_name|default:log.administered_by.email }}</p>
+          <p style="margin:0 0 4px 0; font-size:13px; color:var(--text);"><span class="muted">Administered by:</span> {{ log.administered_by.display_name }}</p>
           {% comment %}
           `log.issue_note` says what actually happened. This used to test
           `log.charge`, which answers a different question: a catalogue medicine

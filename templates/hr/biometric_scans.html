@@ -24,7 +24,7 @@
             <td>{{ p.punched_at|date:"d/m/Y H:i:s" }}</td>
             <td><code>{{ p.device_user_id }}</code></td>
             <td>
-              {% if p.user %}{{ p.user.get_full_name|default:p.user.email }}
+              {% if p.user %}{{ p.user.display_name }}
               {% else %}<span class="muted">not mapped yet</span>{% endif %}
             </td>
             <td>{{ p.device.name }}</td>

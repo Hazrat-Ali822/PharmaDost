@@ -35,9 +35,9 @@
       {% if r.handover.recommendation %}<p style="margin:2px 0 0;"><strong>R:</strong> {{ r.handover.recommendation }}</p>{% endif %}
     </div>
     <div style="margin-top:10px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-      <span class="muted" style="font-size:12px;">{{ r.handover.shift.name|default:'—' }} · {{ r.handover.from_nurse.get_full_name|default:r.handover.from_nurse.email }} · {{ r.handover.created_at|date:'d/m H:i' }}</span>
+      <span class="muted" style="font-size:12px;">{{ r.handover.shift.name|default:'—' }} · {{ r.handover.from_nurse.display_name }} · {{ r.handover.created_at|date:'d/m H:i' }}</span>
       {% if r.handover.acknowledged_by %}
-        <span class="badge success" style="background:#22c55e; color:#fff;">✓ acknowledged by {{ r.handover.acknowledged_by.get_full_name|default:r.handover.acknowledged_by.email }}</span>
+        <span class="badge success" style="background:#22c55e; color:#fff;">✓ acknowledged by {{ r.handover.acknowledged_by.display_name }}</span>
       {% else %}
         <form method="post" action="{% url 'ipd:handover_ack' r.handover.pk %}" style="display:inline;">{% csrf_token %}
           <button class="btn sm success" type="submit" style="background:#22c55e; color:#fff;">Acknowledge</button>
