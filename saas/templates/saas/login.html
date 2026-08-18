@@ -118,7 +118,13 @@
     <div class="login-hero">
       {% if branding.logo_image %}
         <div class="logo-image-wrap" style="margin-bottom: 22px;">
-          <img src="{{ branding.logo_image.url }}" alt="{{ hospital.name }} Logo" style="max-height: 64px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.15);">
+          {# onerror: the row can name an upload whose file is no longer on disk (a #}
+          {# DB restored without its media). Django's {% if %} only checks the field #}
+          {# is set, not that the file exists, so without this the hospital's own    #}
+          {# sign-in page leads with a broken-image icon.                            #}
+          {% static 'img/sehatyar-logo.png' as fallback_logo %}
+          <img src="{{ branding.logo_image.url }}" alt="{{ hospital.name }} Logo" style="max-height: 64px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.15);"
+               onerror="this.onerror=null;this.src='{{ fallback_logo }}';this.style.boxShadow='none'">
         </div>
       {% else %}
         <div class="logo">
@@ -157,7 +163,9 @@
       <div class="card login-card">
         <div class="mobile-logo-header">
           {% if branding.logo_image %}
-            <img src="{{ branding.logo_image.url }}" alt="{{ hospital.name }} Logo" class="mobile-logo-img">
+            {% static 'img/sehatyar-logo.png' as fallback_logo_m %}
+            <img src="{{ branding.logo_image.url }}" alt="{{ hospital.name }} Logo" class="mobile-logo-img"
+                 onerror="this.onerror=null;this.src='{{ fallback_logo_m }}';this.style.boxShadow='none'">
           {% else %}
             <div class="mobile-logo-fallback">
               {% if branding.logo_text %}{{ branding.logo_text }}{% else %}🏨{% endif %}

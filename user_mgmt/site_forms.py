@@ -48,6 +48,30 @@ class SiteSettingsForm(forms.ModelForm):
                 cleaned[name] = default
         return cleaned
 
+    def clean_logo_image(self):
+        """Refuse an enormous file, and shrink everything else.
+
+        The logo is fetched on every page of every visit, so an unshrunk phone
+        photograph is paid for over and over — the public demo's logo was a 1 MB
+        photograph of a pair of trainers until this existed.
+
+        Only an actual upload is touched. Leaving the field alone hands back the
+        existing `FieldFile`, and re-processing that would rewrite a stored logo
+        every time an unrelated setting is saved.
+        """
+        from django.core.files.uploadedfile import UploadedFile
+        from .branding_images import MAX_LOGO_BYTES, compress_logo
+
+        value = self.cleaned_data.get('logo_image')
+        if not isinstance(value, UploadedFile):
+            return value
+        if value.size > MAX_LOGO_BYTES:
+            raise forms.ValidationError(
+                'That picture is %.1f MB. A logo should be under %d MB — '
+                'this looks like a photograph rather than a logo.'
+                % (value.size / 1048576.0, MAX_LOGO_BYTES // 1048576))
+        return compress_logo(value)
+
     def clean_mrn_prefix(self):
         """Uppercase letters/digits only — it is printed on the patient card and
         typed at the counter, so a space or a slash there is a support call."""

@@ -587,6 +587,20 @@ The sign-in page itself (`registration/login.html`) is the platform's shop windo
 
 **The public demo's branding is locked** (`saas.utils.is_demo_hospital`, slug `demo`). `/demo/` signs any visitor in as an ADMIN of that tenant, so without the lock one passer-by's uploaded logo and renamed hospital would greet everybody after them. `user_mgmt.views.site_settings` still *renders* for the demo (it is part of what the demo shows) but refuses the POST. Guarded by `tests/test_seo.py::DemoBrandingLockTest`, which also asserts a real tenant can still save.
 
+**The lock is on the read side too, and that is not belt-and-braces.** Refusing
+the next write does nothing about a write that already happened, and one had:
+the demo's row held a 1 MB, 3369x4160 photograph of a pair of trainers, which
+`sehatyar.online/demo/login/` served as the hospital's logo. It went unnoticed
+only because `/media/` was 404ing at the time (see "Branding & print"), so every
+logo fell back to the default mark — and it appeared the moment media was
+actually served, which reads as the media fix having broken something. So
+`SiteSettings.load()` blanks `logo_image` in memory for the demo tenant: a slug
+comparison on an object already in hand, no query. `user_mgmt/0018` clears the
+stored row as well, but the read guard is what makes it permanent. The migration
+deliberately leaves the **file** in `MEDIA_ROOT` — a migration that deletes files
+cannot be reversed, and being wrong about which row referenced it would cost a
+tenant their logo. Guarded by `user_mgmt/tests_branding_logo.py`.
+
 `/` maps to **`user_mgmt.seo_views.home`**: a signed-in user is handed straight to `inventory.views.dashboard` (the pharmacy dashboard, unchanged); **anyone else is redirected to `login`**, on every host. `'dashboard'` (the root) is still in `LoginRequiredMiddleware.ALLOWED_NAMES` because the view decides for itself; the login-walled app dashboard is also reachable at `/dashboard/` (`dashboard_page`).
 
 The root briefly served the **marketing landing** to anonymous visitors instead, on the SEO reasoning that an indexable homepage beats a login wall. That is true in the abstract and was the wrong trade here: `sehatyar.online` is what staff type to get to work, and meeting a brochure instead of the sign-in form costs more every day than the ranking is worth. **Do not move it back** without asking. The public surface is not lost by this — the marketing page keeps its own URL at `/features/`, which the sign-in navbar links to — but two things have to stay true or it silently *is*: `landing()`'s **canonical must name `/features/`, not the bare root** (a canonical pointing at a redirect gets the page dropped from the index entirely), and **`sitemap_xml` must not list `/`** (advertising a redirect as the homepage teaches the crawler there is nothing there). `tests/test_seo.py::test_the_marketing_page_is_still_reachable_and_canonical` asserts both. The dashboard itself is **not** feature-gated with a hard 403 — users lacking `inventory` are redirected to `post_login_redirect` instead, and `dashboard_router` avoids bouncing back for admins whose pharmacy module is off. Preserve both sides of that guard or you create a redirect loop.
@@ -1152,9 +1166,27 @@ it, because Django's test runner also has `DEBUG = False`.
 
 **Never call `SiteSettings.load()` from a management command to brand a specific tenant.** It resolves through the thread-local hospital, which no command binds, so it falls through to the hospital-less **platform** row — `seed_public_demo` renamed the whole site "Sehatyar Demo" this way while leaving the demo tenant with no settings of its own. Address the row explicitly: `SiteSettings.objects.get_or_create(hospital=<tenant>)`.
 
-**Every `branding.logo_image` `<img>` carries an `onerror` fallback** to `static/img/sehatyar-logo.png` (`base.html`, `registration/login.html`, `print/base_print.html`). A row can name an upload whose file is no longer on disk — a DB restored without its media, a wiped upload — and Django's `{% if branding.logo_image %}` only checks the field is set, not that the file exists, so the sidebar rendered a broken-image icon on every screen. Verifying server-side would be a filesystem stat on every render; the browser already knows. Guarded by `tests/test_seo.py::BrokenLogoFallbackTest`.
+**Every `branding.logo_image` `<img>` carries an `onerror` fallback** to `static/img/sehatyar-logo.png` (`base.html`, `registration/login.html`, `print/base_print.html`, `saas/login.html`). A row can name an upload whose file is no longer on disk — a DB restored without its media, a wiped upload — and Django's `{% if branding.logo_image %}` only checks the field is set, not that the file exists, so the sidebar rendered a broken-image icon on every screen. Verifying server-side would be a filesystem stat on every render; the browser already knows. Guarded by `tests/test_seo.py::BrokenLogoFallbackTest`.
 
 The default logo `static/img/sehatyar-logo.png` must keep its **transparent** corners. It originally shipped with an opaque near-white (246,246,246) background baked in, which showed as white corners everywhere it sat on a coloured surface — the dark sidebar most visibly. If the file is ever regenerated, key the outer background out (flood-fill from the corners, not from every border pixel — the ECG line is white too and exits at the right edge). `pwa_views.icon` composites it onto white for the home-screen icon, which is correct: a transparent app icon renders black or white on Android anyway.
+
+**An uploaded logo is bounded and shrunk** (`user_mgmt/branding_images.py`,
+applied in `SiteSettingsForm.clean_logo_image`). It is the one upload that is on
+the screen all day — sidebar, sign-in page, every printed bill, the PWA
+home-screen icon — and nothing stopped a tenant uploading a photograph straight
+off a phone. Over `MAX_LOGO_BYTES` (4 MB) the form refuses with a message that
+says it looks like a photograph; otherwise it is resized to `MAX_LOGO_EDGE`
+(512px, larger than the biggest place it is drawn). Three rules there:
+**transparency is preserved** (a logo sits on the dark sidebar *and* a white
+letterhead, so flattening alpha onto white recreates the exact defect the default
+mark had to be regenerated to fix — a picture with alpha stays PNG, everything
+else becomes JPEG); a file already under `LEAVE_ALONE_BYTES` is returned
+**untouched**, format and all; and the handle is rewound in a `finally`, because
+the settings view reads the same upload again to pick the theme colour out of it
+and an EOF handle turns that into a silent "could not read a colour from the
+logo". Only an actual `UploadedFile` is processed — an unchanged field hands back
+the existing `FieldFile`, and re-encoding that would rewrite a stored logo every
+time an unrelated setting was saved.
 
 The settings screen can **theme the app from the logo**: ticking "Pick the theme colour from the logo" on save runs `user_mgmt.color_utils.dominant_color()` (Pillow — picks the most common vivid, non-white/black, non-transparent pixel) over the uploaded/current logo and sets `primary_color` + a `darker()` accent. It only fires when the box is ticked, so a hand-set colour is never overwritten silently.
 

@@ -215,6 +215,22 @@ class SiteSettings(models.Model):
                     license_no=SITE_DEFAULTS["license_no"],
                     receipt_footer=SITE_DEFAULTS["receipt_footer"],
                 )
+            # The public demo signs every visitor in as an ADMIN of it, so the
+            # logo is something a passer-by can set for everyone who comes
+            # after. `user_mgmt.views.site_settings` refuses that POST — but the
+            # lock arrived after somebody had already uploaded, and refusing a
+            # write does not undo a write that already happened. What was left
+            # in the row was a 1 MB photograph of a pair of trainers, greeting
+            # every visitor as the hospital's logo, invisible for as long as
+            # /media/ was 404ing and back the moment that was fixed.
+            #
+            # So the read side holds too: the demo always shows the platform
+            # mark, whatever the row says. This is a slug comparison on an
+            # object already in hand — no query — and it is what makes the
+            # accompanying data migration permanent rather than a one-off tidy.
+            from saas.utils import is_demo_hospital
+            if obj.logo_image and is_demo_hospital(hospital):
+                obj.logo_image = None
             return obj
         # global (hospital-less) singleton: reuse the existing hospital-less row
         # (historically pk=1), else create one via the id sequence
