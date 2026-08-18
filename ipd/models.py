@@ -211,6 +211,13 @@ class MedicationLog(models.Model):
     # Frozen at administration: the catalogue price may change before discharge,
     # and the patient must be billed what it cost on the day it was given.
     unit_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    # Did the pharmacy actually hand this over? Recorded, never inferred.
+    # The chart used to work it out from `unit_price > 0`, which is a different
+    # question: a catalogue medicine with no price set came off the shelf, the
+    # inventory count dropped, and the chart printed "Not issued by the pharmacy
+    # — no stock movement or charge". The record contradicted the stock ledger,
+    # which is the one thing a drug chart may never do.
+    stock_deducted = models.BooleanField(default=False)
     administered_at = models.DateTimeField(default=timezone.now, verbose_name="Administered Date & Time")
     administered_by = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='medications_administered')
     notes = models.CharField(max_length=255, blank=True)
@@ -222,6 +229,21 @@ class MedicationLog(models.Model):
     def charge(self):
         """What this dose adds to the patient's bill."""
         return (self.unit_price or Decimal('0.00')) * self.quantity
+
+    @property
+    def issue_note(self):
+        """One sentence for the chart saying what really happened.
+
+        Three states, and they are genuinely different. Keying the wording on
+        the charge alone merged the last two and made the chart lie.
+        """
+        from user_mgmt.models import current_currency
+        if not self.stock_deducted:
+            return "Not issued by the pharmacy — no stock movement or charge."
+        if self.charge > 0:
+            return f"Billed: {current_currency()} {self.charge} (from pharmacy stock)"
+        return ("Issued from pharmacy stock — not billed, because this medicine "
+                "has no price set in Inventory.")
 
     def __str__(self):
         return f"{self.medicine_name} ({self.dosage}) to {self.admission.patient.full_name} by {self.administered_by.email}"

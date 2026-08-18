@@ -102,6 +102,7 @@ def dashboard(request):
         daily_expense.append(float(exp_by_day.get(day, 0)))
         
     # Departmental Revenue & Activity Calculations for Selected Date Range
+    by_kind = {}
     # Scoping is the managers' job here: Invoice and Sale both carry a `hospital`
     # FK and a TenantManager, which is already fail-closed (a hospital-less
     # non-superuser matches only hospital-less rows).
@@ -135,6 +136,7 @@ def dashboard(request):
         # already in the till, so withholding a consultation until the doctor
         # marks it DONE made the parts stop summing to the whole.
         kind = classify(desc)
+        by_kind[kind] = by_kind.get(kind, Decimal('0.00')) + scaled_amt
         if kind == revenue.OPD:
             opd_rev += scaled_amt
         elif kind == revenue.LAB:
@@ -147,6 +149,7 @@ def dashboard(request):
     pharmacy_sales = Sale.objects.filter(created_at__date__range=[start_date, end_date],
                                          is_returned=False)
     pharmacy_rev = pharmacy_sales.aggregate(s=Sum('paid'))['s'] or Decimal('0.00')
+    by_kind['PHARMACY'] = pharmacy_rev
 
     # Total Income and Expense for the selected date range
     total_income_range = float(opd_rev + lab_rev + imaging_rev + other_rev + pharmacy_rev)
@@ -170,7 +173,16 @@ def dashboard(request):
         'finance_expense': json.dumps(daily_expense),
         'total_income_30d': total_income_30d,
         'total_expense_30d': total_expense_30d,
-        # Departmental Breakdown
+        # Departmental Breakdown. `dept_cards` is what the tiles render: every
+        # category that earned anything, and NOTHING is left out — the tiles have
+        # to sum to the "Total Income" printed in the same heading (CLAUDE.md).
+        # They did not, twice over. IPD, OT, emergency and maternity revenue all
+        # fell into `other_rev`, which had no tile at all, so a day with an
+        # inpatient bill visibly failed to add up. And each tile was gated on
+        # `nav.<module>` while the total was not, so an accountant without the
+        # lab feature saw lab money in the total with no tile to explain it.
+        # Building the list from the money itself makes both impossible.
+        'dept_cards': _dept_cards(by_kind),
         'opd_rev': opd_rev,
         'lab_rev': lab_rev,
         'imaging_rev': imaging_rev,
@@ -179,6 +191,45 @@ def dashboard(request):
         'total_income_range': total_income_range,
         'total_expense_range': total_expense_range,
     })
+
+
+# Label, emoji and colour for each revenue category the dashboard tiles show.
+# Keyed by what `billing.revenue.classify` returns, plus PHARMACY for counter
+# sales. A category missing from here still gets a tile (falling back to its own
+# key as the label) — silently dropping it would put the tiles back out of step
+# with the total, which is the bug this exists to prevent.
+_DEPT_STYLE = {
+    'OPD':       ('OPD Consultations', '🩺', '#4f46e5'),
+    'PHARMACY':  ('Pharmacy Sales', '💊', '#10b981'),
+    'LAB':       ('Laboratory', '🔬', '#ec4899'),
+    'IMAGING':   ('Radiology / Scans', '🩻', '#3b82f6'),
+    'IPD':       ('Inpatient / Ward', '🛏️', '#f59e0b'),
+    'OT':        ('Operation Theatre', '⚕️', '#ef4444'),
+    'EMERGENCY': ('Emergency', '🚑', '#dc2626'),
+    'MATERNITY': ('Maternity', '👶', '#a855f7'),
+    'OTHER':     ('Other Services', '📋', '#64748b'),
+}
+_DEPT_ORDER = ['OPD', 'PHARMACY', 'LAB', 'IMAGING', 'IPD', 'OT',
+               'EMERGENCY', 'MATERNITY', 'OTHER']
+
+
+def _dept_cards(by_kind):
+    """One tile per category that earned something, in a stable order.
+
+    Zero-earning categories are dropped so the row stays readable, which is safe
+    precisely because they contribute nothing to the total either.
+    """
+    from decimal import Decimal
+    ordered = _DEPT_ORDER + [k for k in by_kind if k not in _DEPT_ORDER]
+    cards = []
+    for key in ordered:
+        amount = by_kind.get(key) or Decimal('0.00')
+        if amount <= 0:
+            continue
+        label, icon, colour = _DEPT_STYLE.get(key, (key.title(), '💰', '#64748b'))
+        cards.append({'key': key, 'label': label, 'icon': icon,
+                      'colour': colour, 'amount': amount})
+    return cards
 
 
 @feature_required('inventory')
@@ -730,7 +781,11 @@ def medicine_import_catalog(request):
                 pass
                 
     if count > 0:
-        messages.success(request, f"Successfully loaded {count} standard medicines. You can now configure their quantities, prices and batches.")
+        messages.success(
+            request,
+            f"Loaded {count} medicine names. They have no price and no stock yet, "
+            f"so the till will refuse to sell them until you set a price — that is "
+            f"deliberate, not a fault. Set prices in Inventory as you stock each one.")
     else:
         messages.info(request, "All standard medicines are already loaded in your inventory.")
         

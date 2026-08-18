@@ -70,11 +70,24 @@ def create_sale(*, items, sale_type=Sale.RETAIL, customer=None, customer_name=""
             raise ValueError("Quantity must be at least 1.")
 
         if it.get("unit_price") not in (None, ""):
+            # An explicit price, including an explicit 0, is the cashier's
+            # decision and is honoured — a hospital does sometimes issue
+            # something free of charge.
             unit_price = _dec(it["unit_price"])
         elif sale_type == Sale.WHOLESALE and med.wholesale_price:
             unit_price = med.wholesale_price
         else:
             unit_price = med.price
+            if unit_price is None or unit_price <= 0:
+                # A medicine nobody has priced yet, sold at the till for nothing.
+                # The "Load Standard Catalog" button files ~200 names at 0.00 for
+                # an admin to price later, and until they do, every one of them
+                # rings up free and lands in the profit report as pure margin.
+                # Refused only where no price was typed: this is an omission, not
+                # a decision, and the cashier can override it on the line.
+                raise ValueError(
+                    f"{med.name} has no price set. Set it in Inventory, or type "
+                    f"a price on this line.")
         line_discount = _dec(it.get("discount"))
 
         sellable = med.sellable_quantity

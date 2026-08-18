@@ -96,12 +96,27 @@ def patient_bill(request, pk):
             amount = Decimal('0.00')
         method = request.POST.get('payment_method', 'CASH')
         note = request.POST.get('note', '').strip()
-        if amount > 0:
+        cur = current_currency()
+        # What is actually owed. A payment larger than this is refused rather
+        # than recorded: `collect_patient_payment` allocates oldest-first and
+        # stops at the balance, so the excess was written to the payment ledger
+        # and allocated nowhere — the patient's history showed Rs 999,999 taken
+        # while the day book showed the real cash, and nothing on either screen
+        # explained the difference. A typo in the amount box is far more likely
+        # than a patient handing over a hundred times their bill.
+        outstanding = patient_billing_summary(patient)['outstanding']
+        if amount <= 0:
+            messages.error(request, 'Enter an amount greater than zero.')
+        elif amount > outstanding:
+            messages.error(
+                request,
+                f'{cur} {amount} is more than the {cur} {outstanding} outstanding. '
+                f'Enter {cur} {outstanding} or less — if the patient handed over '
+                f'more, record {cur} {outstanding} and give the change.')
+        else:
             collect_patient_payment(patient=patient, amount=amount,
                                     method=method, user=request.user, note=note)
-            messages.success(request, f'Payment of {current_currency()} {amount} recorded for {patient.full_name}.')
-        else:
-            messages.error(request, 'Enter an amount greater than zero.')
+            messages.success(request, f'Payment of {cur} {amount} recorded for {patient.full_name}.')
         return redirect('patient_bill', pk=patient.pk)
 
     summary = patient_billing_summary(patient)

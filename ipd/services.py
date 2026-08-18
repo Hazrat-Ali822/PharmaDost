@@ -101,6 +101,10 @@ def log_medication(admission, log, medicine, user):
                 # Freeze the price of the day — the catalogue may change before
                 # this patient is discharged and billed.
                 log.unit_price = med.price or Decimal('0.00')
+                # Stock moved. Say so on the record rather than leaving the
+                # chart to guess from the price — an unpriced medicine still
+                # came off the shelf.
+                log.stock_deducted = True
                 log.save()
         except ValueError as exc:
             stock_short = str(exc)

@@ -46,7 +46,7 @@
     </div>
     <div class="form-row">
       <label>Walk-in Name</label>
-      <input type="text" name="customer_name" placeholder="Optional (for walk-in)">
+      <input type="text" name="customer_name" value="{{ posted.customer_name }}" placeholder="Optional (for walk-in)">
       <label>Patient (optional)</label>
       <select name="patient_id" id="patient_id">
         <option value="">-- link to patient --</option>
@@ -199,7 +199,7 @@
         </h3>
         <div class="form-row">
           <label>Order Discount ({{ currency }})</label>
-          <input type="number" step="0.01" min="0" name="discount" id="discount"
+          <input type="number" step="0.01" min="0" name="discount" id="discount" value="{{ posted.discount }}"
                  value="{% if branding.default_discount_percent %}{% else %}0{% endif %}"
                  placeholder="{% if branding.default_discount_percent %}auto {{ branding.default_discount_percent }}% — leave blank{% else %}0{% endif %}"
                  data-default-pct="{{ branding.default_discount_percent|default:0 }}">
@@ -227,7 +227,7 @@
         </div>
         <div class="form-row">
           <label>Paid Amount</label>
-          <input type="number" step="0.01" min="0" name="paid" id="paid" placeholder="Leave blank = full">
+          <input type="number" step="0.01" min="0" name="paid" id="paid" value="{{ posted.paid }}" placeholder="Leave blank = full">
         </div>
         <div class="total-wrap balance-wrap">
           <span>Remaining Balance:</span>
@@ -359,7 +359,7 @@
       meds.map(m => `<option value="${m.id}" ${m.id==selectedId?'selected':''}>${m.name} (${m.brand})</option>`).join('');
   }
 
-  function renderRow(selectedId, customName = '', qtyIn = 1){
+  function renderRow(selectedId, customName = '', qtyIn = 1, priceIn = '', discIn = 0){
     const tr = document.createElement('tr');
     let optionHtml = optionsHtml(selectedId);
     let customWarning = '';
@@ -389,8 +389,8 @@
         ${customWarning}
       </td>
       <td><input type="number" min="1" step="1" class="dispqty" value="${qtyIn}" style="width:80px"></td>
-      <td><input type="number" step="0.01" min="0" class="dispprice" placeholder="Auto" style="width:110px"></td>
-      <td><input type="number" step="0.01" min="0" name="line_discount[]" value="0" style="width:90px"></td>
+      <td><input type="number" step="0.01" min="0" class="dispprice" placeholder="Auto" value="${priceIn}" style="width:110px"></td>
+      <td><input type="number" step="0.01" min="0" name="line_discount[]" value="${discIn}" style="width:90px"></td>
       <td class="line-total">0</td>
       <td>
         <button type="button" class="btn danger sm remove">×</button>
@@ -641,8 +641,16 @@
     }
   });
 
+  // A rejected sale comes back with what was typed. `cart` wins over `rxItems`:
+  // the cashier has edited the prescription's quantities by then, and throwing
+  // that away to reload the doctor's original numbers is the same loss again.
+  const cart = {% if cart_json %}{{ cart_json|safe }}{% else %}[]{% endif %};
   const rxItems = {% if rx_items_json %}{{ rx_items_json|safe }}{% else %}[]{% endif %};
-  if (rxItems.length > 0) {
+  if (cart.length > 0) {
+    cart.forEach(item => {
+      renderRow(item.medicine_id, '', item.quantity, item.unit_price || '', item.discount || 0);
+    });
+  } else if (rxItems.length > 0) {
     rxItems.forEach(item => {
       renderRow(item.medicine_id, item.custom_medicine_name, item.quantity);
     });

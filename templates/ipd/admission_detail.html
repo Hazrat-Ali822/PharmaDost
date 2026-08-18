@@ -257,13 +257,19 @@
             <span class="muted" style="font-size:12px;">{{ log.administered_at|date:"Y-m-d H:i" }}</span>
           </div>
           <p style="margin:0 0 4px 0; font-size:13.5px;"><span class="muted">Dosage:</span> <strong>{{ log.dosage }}</strong></p>
-          <p style="margin:0 0 4px 0; font-size:13px; color:var(--text);"><span class="muted">Administered by:</span> {{ log.administered_by.email }}</p>
+          <p style="margin:0 0 4px 0; font-size:13px; color:var(--text);"><span class="muted">Administered by:</span> {{ log.administered_by.get_full_name|default:log.administered_by.email }}</p>
+          {% comment %}
+          `log.issue_note` says what actually happened. This used to test
+          `log.charge`, which answers a different question: a catalogue medicine
+          with no price came off the shelf, inventory dropped, and the chart
+          printed "no stock movement or charge" underneath it.
+          {% endcomment %}
           {% if log.charge %}
           <p style="margin:0 0 4px 0; font-size:13px;"><span class="muted">Billed:</span> <strong style="color:#15803d;">{{ currency }} {{ log.charge|floatformat:0 }}</strong> <span class="muted">(from pharmacy stock)</span></p>
           {% elif log.source == 'PATIENT' %}
           <p style="margin:0 0 4px 0; font-size:12.5px;" class="muted">Patient's own supply — no stock movement or charge.</p>
           {% else %}
-          <p style="margin:0 0 4px 0; font-size:12.5px;" class="muted">Not issued by the pharmacy — no stock movement or charge.</p>
+          <p style="margin:0 0 4px 0; font-size:12.5px;" class="muted">{{ log.issue_note }}</p>
           {% endif %}
           {% if log.notes %}
           <p style="margin:0; font-size:13px; font-style:italic; color:var(--muted);"><span class="muted">Notes:</span> "{{ log.notes }}"</p>

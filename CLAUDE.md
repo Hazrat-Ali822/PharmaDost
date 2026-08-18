@@ -831,6 +831,15 @@ These handoffs are the backbone of the app; each creates a record, notifies a ro
 - **Doctor advises admission / surgery**: `AdmissionRequest` / `SurgeryRequest` (status `Pending`) → reception/OT queue → confirming with `?request_id=` creates the `Admission` / `SurgeryRecord` and closes the request.
 - **Ward medication → stock + discharge bill**: logging a `MedicationLog` against a catalogue `Medicine` with `source='PHARMACY'` reduces stock FEFO (locked row, inside `transaction.atomic()`) and freezes `unit_price` at that moment. Discharge then bills bed charges **plus every such dose**. `MedicationLog.charge` is derived (`unit_price × quantity`), never stored, so a later catalogue price change cannot rewrite an old bill.
 
+  **`MedicationLog.stock_deducted` records whether the pharmacy actually handed
+  it over — it is never inferred.** The chart used to work that out from
+  `unit_price > 0`, which answers a different question: a catalogue medicine with
+  no price set came off the shelf, inventory dropped, and the chart printed
+  *"Not issued by the pharmacy — no stock movement or charge"* underneath it,
+  the drug chart contradicting the stock ledger. `MedicationLog.issue_note` is
+  the one place that wording lives, and it has three states, not two — issued and
+  billed, issued but unpriced, not issued. Backfilled by `ipd/0013`.
+
   Three cases record with **no stock movement and no charge**, and none of them may be blocked — the dose is already inside the patient, so refusing to save would leave the chart lying about what was given:
   - `medicine` empty — an off-catalogue drug. Do not make the field required.
   - `source='PATIENT'` — the patient's own supply, bought outside or brought from home. The ward is only administering it; the pharmacy never issued it.
@@ -953,6 +962,40 @@ the money. Three traps, each of which has shipped:
   which made the parts stop adding up to the whole with nothing on screen to
   explain the gap. Money that is `paid` is income. Analytics likewise must
   `exclude(is_returned=True)` — a refunded sale keeps its `total`.
+  **The tiles are therefore built in Python, not written out in the template**
+  (`inventory.views._dept_cards`, one per category that earned anything). Hand-
+  written tiles broke the rule twice more: ward, theatre, emergency and
+  maternity revenue all fell into an `other_rev` bucket that had **no tile at
+  all**, so any day with an inpatient bill visibly failed to add up; and each
+  tile was gated on `nav.<module>` while the total was not, so an accountant
+  without the lab feature saw lab money in the total with nothing to explain it.
+  Adding a category to `billing.revenue` now needs a `_DEPT_STYLE` entry, but
+  forgetting one is safe — an unknown key still gets a tile.
+
+- **The till refuses a medicine with no price**, and that is not a validation
+  nicety. "Load Standard Catalog" files ~200 names at `price = 0` for an admin
+  to price later; until they do, every one of them rings up free *and* lands in
+  the profit report as pure margin, so the numbers look healthy rather than
+  wrong. `sales.services.create_sale` raises when the catalogue price is 0 **and
+  no price was typed on the line** — an explicit price, including an explicit
+  zero, is a decision and is honoured, because a hospital does issue things free.
+
+- **A payment may not exceed what is outstanding.** `collect_patient_payment`
+  allocates oldest-first and stops at the balance, so an over-payment was written
+  to the payment ledger and allocated nowhere: the patient's history showed
+  Rs 999,999 collected while the day book showed the real cash, with nothing on
+  either screen explaining the difference. `billing.views.patient_bill` now
+  refuses it and names the amount owed. A typo in the amount box is far more
+  likely than a patient handing over a hundred times their bill; if they do hand
+  over more, record the balance and give change.
+
+- **A rejected POS sale comes back with the basket intact** (`cart_json` +
+  `posted` in `sales.views.sale_create`, restored by the same `renderRow` the
+  prescription pre-fill uses). It used to re-render an empty form, so one line
+  over stock threw away every other line, quantity, price, line discount, the
+  order discount and the walk-in name. `cart_json` wins over `rx_items_json` —
+  by then the cashier has edited the prescription's quantities, and reloading the
+  doctor's originals is the same loss again.
 
 Guarded by `tests/test_module_packaging.py`.
 

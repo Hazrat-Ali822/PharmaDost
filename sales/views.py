@@ -1,3 +1,5 @@
+import json
+
 from django.contrib import messages
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
@@ -104,12 +106,24 @@ def sale_create(request):
             pending_rx = pending_rx.filter(appointment__patient__hospital=request.user.hospital)
         pending_prescriptions = pending_rx.order_by('-created_at')[:15]
 
+        # Everything the cashier typed, so a rejected sale comes back with the
+        # basket intact. It used to re-render an empty form: one line over stock
+        # and every other line, quantity, price, line discount, order discount
+        # and the walk-in name were gone. At a counter with a queue behind you
+        # that is the difference between a thirty-second sale and starting again.
         ctx = {
             'meds': meds, 'customers': customers, 'patients': patients,
             'prescription_id': prescription_id, 'rx_items_json': rx_items_json,
             'preselected_patient_id': preselected_patient_id,
             'panel_patients': panel_patients,
-            'pending_prescriptions': pending_prescriptions
+            'pending_prescriptions': pending_prescriptions,
+            'cart_json': json.dumps(items),
+            'posted': {
+                'sale_type': sale_type, 'customer_id': customer_id,
+                'patient_id': patient_id, 'customer_name': customer_name,
+                'payment_method': payment_method, 'paid': paid or '',
+                'discount': _raw_discount, 'bill_to_panel': request.POST.get('bill_to_panel'),
+            },
         }
         if not items:
             messages.error(request, 'Please add at least one line item.')
