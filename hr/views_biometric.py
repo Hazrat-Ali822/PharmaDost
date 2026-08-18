@@ -82,6 +82,9 @@ def device_list(request):
                 .values_list('device_user_id', flat=True).distinct())
     return render(request, 'hr/biometric_devices.html', {
         'devices': devices,
+        # Ticks step 2. "Registered" and "actually reachable" are different
+        # things, and the gap between them is where every setup stalls.
+        'any_contact': any(d.has_ever_contacted for d in devices),
         'strays': strays_for(request),
         'server': _server_address(request),
         'unmapped': sorted(set(unmapped)),

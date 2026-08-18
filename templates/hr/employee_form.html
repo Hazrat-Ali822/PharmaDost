@@ -1,0 +1,66 @@
+{% extends 'partials/base.html' %}
+{% block title %}Add Employee{% endblock %}
+{% block page_title %}Add Employee{% endblock %}
+{% block content %}
+
+<div class="page-head">
+  <h2>Add somebody who works here</h2>
+  <a class="btn alt" href="{% url 'hr_staff_list' %}">← Staff</a>
+</div>
+
+<form method="post" class="card" style="max-width:620px;">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+
+  <label>Full name{{ form.full_name }}{{ form.full_name.errors }}</label>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:0 14px;">
+    <label>Designation{{ form.designation }}{{ form.designation.errors }}</label>
+    <label>Monthly salary{{ form.monthly_salary }}{{ form.monthly_salary.errors }}</label>
+    <label>Phone{{ form.phone }}{{ form.phone.errors }}</label>
+    <label>CNIC{{ form.cnic }}{{ form.cnic.errors }}</label>
+    <label>Joining date{{ form.joining_date }}{{ form.joining_date.errors }}</label>
+    <label>Enrolment number{{ form.biometric_id }}{{ form.biometric_id.errors }}</label>
+  </div>
+  <p class="muted" style="margin:-4px 0 14px; font-size:12.5px;">
+    The enrolment number is what the attendance machine calls this person — 1, 2,
+    3 and so on. Leave it blank if their thumb is not on the machine yet; you can
+    add it later from <a href="{% url 'hr_biometric_enrolment' %}">Map staff</a>,
+    and any punches it already recorded are counted then, not lost.
+  </p>
+
+  <div class="card" style="background:var(--bg); margin:0 0 14px;">
+    <label style="display:flex; align-items:center; gap:10px; margin:0;">
+      {{ form.wants_login }}
+      <span>This person also signs in to the system</span>
+    </label>
+    <p class="muted" style="margin:8px 0 0; font-size:12.5px;">
+      Most staff never do. A guard, a cleaner, a ward boy or a driver is on the
+      attendance machine and on the salary sheet and never touches a screen —
+      leave this off for them, and they need no email address at all.
+    </p>
+    <div id="login-fields" style="margin-top:12px; display:none;">
+      <label>Email{{ form.email }}{{ form.email.errors }}</label>
+      <label>Password{{ form.password }}{{ form.password.errors }}</label>
+      <label>What they do in the system{{ form.role }}{{ form.role.errors }}</label>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <button class="btn" type="submit">Add employee</button>
+    <a class="btn alt" href="{% url 'hr_staff_list' %}">Cancel</a>
+  </div>
+</form>
+
+{# Show the login boxes only when they are wanted — three fields that are #}
+{# irrelevant to most of the people entered on this form. #}
+<script>
+(function () {
+  var box = document.getElementById('id_wants_login');
+  var fields = document.getElementById('login-fields');
+  if (!box || !fields) return;
+  function sync() { fields.style.display = box.checked ? 'block' : 'none'; }
+  box.addEventListener('change', sync);
+  sync();
+})();
+</script>
+{% endblock %}

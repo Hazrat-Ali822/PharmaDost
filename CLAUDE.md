@@ -1372,7 +1372,19 @@ way to take money off a salary by accident:
    `user = None` and listed; adding the mapping and rebuilding recovers the day.
 
 `StaffProfile.biometric_id` is the mapping (the machine's enrolment number, set
-once on `/hr/devices/enrolment/`). `HALF_DAY_HOURS` is a module constant, not a
+once on `/hr/devices/enrolment/`). Adding staff goes through
+**`hr.forms.EmployeeForm`** (`/hr/staff/add/`, ADMIN), which exists because
+**most of a clinic's payroll does not sign in** — a guard, a cleaner, a ward boy,
+a driver — and the only previous route onto the attendance sheet was creating a
+`User`, which needs a unique email. So the login half of that form is optional
+and off by default. The person still gets a `User` row (`Attendance`,
+`LeaveRequest` and `SalaryPayment` all point at one, and re-pointing payroll at
+`StaffProfile` is a far larger change than this warrants), but one nobody can
+sign in as: an unusable password **and** `custom_features = []`, two independent
+reasons, because one of them being wrong should not be enough. Adding an
+employee also re-runs `_relink`, since people are normally enrolled on the
+machine before anyone gets round to entering them here and their first days
+arrive unmapped. `HALF_DAY_HOURS` is a module constant, not a
 setting — making it per-hospital is a `SiteSettings` field and one line, the day
 somebody asks. **Not offline**, and not a candidate: the device needs the server
 reachable, and on a LAN it is. Guarded by `hr/tests_biometric.py`.

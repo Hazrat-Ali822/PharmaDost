@@ -4,6 +4,7 @@ from . import views, views_biometric
 
 urlpatterns = [
     path('', views.staff_list, name='hr_staff_list'),
+    path('staff/add/', views.employee_add, name='hr_employee_add'),
     path('staff/<int:user_id>/edit/', views.profile_edit, name='hr_profile_edit'),
     path('attendance/', views.attendance_day, name='hr_attendance'),
     path('attendance/summary/', views.attendance_summary, name='hr_attendance_summary'),

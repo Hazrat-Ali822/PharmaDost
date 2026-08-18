@@ -1,23 +1,41 @@
 {% extends 'partials/base.html' %}
 {% block title %}Attendance Machine{% endblock %}
 {% block page_title %}Attendance Machine{% endblock %}
+{% block extrastyle %}
+<style>
+  .setup-steps { display: grid; gap: 14px; }
+  .setup-step { display: grid; grid-template-columns: 32px 1fr; gap: 14px; align-items: start; }
+  .setup-step > .n {
+    width: 30px; height: 30px; border-radius: 50%; background: var(--primary); color: #fff;
+    display: grid; place-items: center; font-weight: 700; font-size: 14px;
+  }
+  .setup-step.done > .n { background: #16a34a; }
+  .setup-step h4 { margin: 3px 0 4px; font-size: 15px; }
+  .setup-step p { margin: 0; font-size: 13.5px; color: var(--muted); }
+  .kv { border-collapse: collapse; }
+  .kv th { text-align: left; padding: 5px 18px 5px 0; font-weight: 600; white-space: nowrap; }
+  .kv td { padding: 5px 0; }
+</style>
+{% endblock %}
 {% block content %}
 
 <div class="page-head">
-  <h2>Fingerprint / face terminals</h2>
-  <div style="display:flex; gap:8px; flex-wrap:wrap;">
-    <a class="btn alt sm" href="{% url 'hr_biometric_enrolment' %}">Map staff</a>
+  <div>
+    <h2>Attendance machine</h2>
+    <div class="muted">A thumb on the reader becomes an attendance record, on its own.</div>
+  </div>
+  <div class="btn-row">
     <a class="btn alt sm" href="{% url 'hr_biometric_punches' %}">Punch log</a>
     <a class="btn sm" href="{% url 'hr_biometric_build' %}">Build attendance</a>
   </div>
 </div>
 
 {% if strays %}
-  <div class="card" style="border-left:4px solid var(--warn, #f59e0b);">
+  <div class="card" style="border-left:4px solid #f59e0b;">
     <strong>A machine on your network is trying to connect.</strong>
     <p class="muted" style="margin:6px 0 10px;">
-      It is sending punches but no device here has its serial number, so they are
-      being refused. If this is your machine, register it below with this exact serial.
+      It is sending punches, but no machine here has its serial number, so they are
+      being refused. If this is yours, register it below with this exact serial.
     </p>
     <ul style="margin:0;">
       {% for s in strays %}
@@ -28,25 +46,95 @@
 {% endif %}
 
 <div class="card">
-  <h3 style="margin-top:0;">What to type into the machine</h3>
+  <h3 style="margin-top:0;">How this works, start to finish</h3>
+  <div class="setup-steps">
+
+    <div class="setup-step {% if devices %}done{% endif %}">
+      <div class="n">1</div>
+      <div>
+        <h4>Register the machine here</h4>
+        <p>Once, per machine. You need its serial number — the form is at the bottom of this page.</p>
+      </div>
+    </div>
+
+    <div class="setup-step {% if any_contact %}done{% endif %}">
+      <div class="n">2</div>
+      <div>
+        <h4>Type this server's address into the machine</h4>
+        <p>Once, per machine. The exact values are in the next box. After this the
+           machine sends everything by itself — you never export or upload a file.</p>
+      </div>
+    </div>
+
+    <div class="setup-step">
+      <div class="n">3</div>
+      <div>
+        <h4>Add each employee to Sehatyar</h4>
+        <p>
+          Once, per person — <a href="{% url 'hr_employee_add' %}">Add employee</a>:
+          name, designation, salary. They do <em>not</em> need a login or an email
+          address. A guard or a cleaner is on the payroll and never touches a screen.
+        </p>
+      </div>
+    </div>
+
+    <div class="setup-step">
+      <div class="n">4</div>
+      <div>
+        <h4>Enrol their thumb on the machine, and note the number it gives them</h4>
+        <p>
+          On the machine: <strong>Menu → User Management → New User</strong>. It
+          assigns a User ID — 1, 2, 3 and so on — then scans the finger. Write that
+          number down next to the name.
+        </p>
+      </div>
+    </div>
+
+    <div class="setup-step">
+      <div class="n">5</div>
+      <div>
+        <h4>Put that number against the person here</h4>
+        <p>
+          <a href="{% url 'hr_biometric_enrolment' %}">Map staff</a>. This is the only
+          link between the two — the machine knows numbers, Sehatyar knows people.
+          Do it whenever suits: punches recorded before the mapping existed are kept,
+          and they count the moment you add it.
+        </p>
+      </div>
+    </div>
+
+    <div class="setup-step">
+      <div class="n">6</div>
+      <div>
+        <h4>That is all — from here it runs itself</h4>
+        <p>
+          Every punch arrives within seconds. At month end open
+          <a href="{% url 'hr_biometric_build' %}">Build attendance</a> to turn them
+          into present / half / absent days, check what it proposes, and the
+          <a href="{% url 'hr_salary_create' %}">payslip</a> picks up the deduction.
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0;">Step 2 — what to type into the machine</h3>
   <p class="muted" style="margin-top:-4px;">
     In the machine's menu look for <strong>Comm → Cloud Server</strong>, or
     <strong>ADMS</strong>, or <strong>Network → Server</strong> — the wording
-    differs by model. Enter:
+    differs by model.
   </p>
-  <table class="table-plain" data-no-scroll-wrap>
-    <tr><th style="text-align:left; padding-right:18px;">Server address</th>
-        <td><code style="font-size:15px;">{{ server.host }}</code></td></tr>
-    <tr><th style="text-align:left;">Port</th>
-        <td><code style="font-size:15px;">{{ server.port }}</code></td></tr>
-    <tr><th style="text-align:left;">Mode</th><td>HTTP / ADMS / Push — whichever it calls it</td></tr>
-    <tr><th style="text-align:left;">Real-time upload</th><td>On</td></tr>
+  <table class="kv" data-no-scroll-wrap>
+    <tr><th>Server address</th><td><code style="font-size:15px;">{{ server.host }}</code></td></tr>
+    <tr><th>Port</th><td><code style="font-size:15px;">{{ server.port }}</code></td></tr>
+    <tr><th>Mode</th><td>HTTP / ADMS / Push — whichever it calls it</td></tr>
+    <tr><th>Real-time upload</th><td>On</td></tr>
   </table>
   <p class="muted" style="margin-bottom:0; font-size:13px;">
-    Leave any "path" or "URL" box at its default. The machine adds
-    <code>/iclock/</code> itself and that is what this server is listening on.
-    Nothing else needs setting up — once the machine can reach this address it
-    sends every punch on its own.
+    Leave any "path" or "URL" box at its default — the machine adds
+    <code>/iclock/</code> itself, and that is what this server is listening on.
   </p>
 </div>
 
@@ -67,7 +155,7 @@
             <td class="wrap">{{ d.location|default:"—" }}</td>
             <td>
               {% if not d.has_ever_contacted %}
-                <span class="muted">Never — waiting for its first contact</span>
+                <span class="muted">Never — still waiting. Check step 2.</span>
               {% elif d.is_silent %}
                 <span style="color:var(--danger);">Silent since {{ d.last_seen|date:"d/m/Y H:i" }}</span>
               {% else %}
@@ -89,34 +177,38 @@
       </table>
     </div>
   {% else %}
-    <p class="muted">No machine registered yet.</p>
+    <p class="muted">No machine registered yet — start with the form below.</p>
   {% endif %}
 </div>
 
-<div class="card" style="max-width:560px;">
-  <h3 style="margin-top:0;">Register a machine</h3>
+<div class="card" style="max-width:600px;">
+  <h3 style="margin-top:0;">Step 1 — register a machine</h3>
   <form method="post">
     {% csrf_token %}
     <label>Serial number
-      <input type="text" name="serial" required placeholder="e.g. AGL7154900032">
+      <input type="text" name="serial" required placeholder="e.g. AGL7154900032"
+             autocapitalize="characters" autocomplete="off">
     </label>
     <p class="muted" style="margin:-6px 0 12px; font-size:12.5px;">
-      On the machine: Menu → System / Info → Device Info. Usually also printed
-      on a sticker on the back.
+      On the machine: <strong>Menu → System / Info → Device Info</strong>. Usually
+      also printed on a sticker on the back. It must match exactly — this is how the
+      server knows the punches are yours.
     </p>
-    <label>Name<input type="text" name="name" placeholder="e.g. Front desk"></label>
-    <label>Where it is<input type="text" name="location" placeholder="e.g. Ground floor"></label>
-    <div class="form-actions"><button class="btn" type="submit">Register</button></div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:0 14px;">
+      <label>Name<input type="text" name="name" placeholder="e.g. Front desk"></label>
+      <label>Where it is<input type="text" name="location" placeholder="e.g. Ground floor"></label>
+    </div>
+    <div class="form-actions"><button class="btn" type="submit">Register machine</button></div>
   </form>
 </div>
 
 {% if unmapped_count %}
-  <div class="card" style="border-left:4px solid var(--warn, #f59e0b);">
+  <div class="card" style="border-left:4px solid #f59e0b;">
     <strong>{{ unmapped_count }} punch{{ unmapped_count|pluralize:"es" }} from
     {{ unmapped|length }} enrolment number{{ unmapped|pluralize }} nobody is mapped to.</strong>
     <p class="muted" style="margin:6px 0 10px;">
-      Nothing is lost — they are kept, and they will be counted the moment you
-      say who they belong to.
+      Nothing is lost — they are kept, and they count the moment you say who they
+      belong to (step 5).
       Numbers waiting: {% for u in unmapped %}<code>{{ u }}</code>{% if not forloop.last %}, {% endif %}{% endfor %}
     </p>
     <a class="btn sm" href="{% url 'hr_biometric_enrolment' %}">Map them to staff</a>

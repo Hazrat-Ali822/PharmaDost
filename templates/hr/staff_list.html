@@ -10,6 +10,9 @@
   <div class="btn-row">
     <a class="btn alt" href="{% url 'hr_attendance' %}">Attendance</a>
     <a class="btn alt" href="{% url 'hr_salary_create' %}">Pay Salary</a>
+    {% if user.is_superuser or user.role == 'ADMIN' %}
+    <a class="btn" href="{% url 'hr_employee_add' %}">+ Add Employee</a>
+    {% endif %}
   </div>
 </div>
 

@@ -329,3 +329,94 @@ class BuildScreenTest(BiometricTestBase):
         html = c.get('/hr/devices/').content.decode()
         self.assertIn('testserver', html)       # the server address
         self.assertIn('Cloud Server', html)     # where to find it in the menu
+
+
+class AddEmployeeTest(BiometricTestBase):
+    """Somebody on the payroll need not be somebody with a login.
+
+    Before this the only way onto the attendance sheet was a `User`, which needs
+    a unique email — so putting a guard on the machine meant inventing one for
+    him.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.c = Client()
+        self.c.login(email='admin@bio.com', password='pw')
+
+    def test_an_employee_can_be_added_with_no_login_at_all(self):
+        r = self.c.post('/hr/staff/add/', {
+            'full_name': 'Karim Bux', 'designation': 'Guard',
+            'monthly_salary': '25000', 'biometric_id': '12'})
+        self.assertEqual(r.status_code, 302)
+
+        p = StaffProfile.all_objects.get(biometric_id='12')
+        self.assertEqual(p.user.get_full_name(), 'Karim Bux')
+        self.assertEqual(p.designation, 'Guard')
+        self.assertEqual(p.hospital, self.h)
+
+    def test_that_account_cannot_be_signed_in_as(self):
+        self.c.post('/hr/staff/add/', {'full_name': 'Karim Bux', 'biometric_id': '12'})
+        user = StaffProfile.all_objects.get(biometric_id='12').user
+        self.assertFalse(user.has_usable_password())
+        # and no access even if it somehow were: [] is the documented
+        # "exactly this set, even empty" per-user override
+        self.assertEqual(user.custom_features, [])
+
+    def test_a_login_is_created_when_it_is_asked_for(self):
+        self.c.post('/hr/staff/add/', {
+            'full_name': 'Sara Khan', 'wants_login': 'on', 'role': 'RECEPTIONIST',
+            'email': 'sara@bio.com', 'password': 'secret123'})
+        user = User.objects.get(email='sara@bio.com')
+        self.assertTrue(user.check_password('secret123'))
+        self.assertEqual(user.role, 'RECEPTIONIST')
+        self.assertEqual(user.hospital, self.h)
+
+    def test_a_login_without_an_email_is_refused_rather_than_half_made(self):
+        before = User.objects.count()
+        r = self.c.post('/hr/staff/add/', {
+            'full_name': 'Sara Khan', 'wants_login': 'on', 'password': 'secret123'})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(User.objects.count(), before)
+
+    def test_two_people_cannot_hold_one_enrolment_number(self):
+        """The machine only has one of each, so the second would silently
+        collect the first one's days."""
+        self.c.post('/hr/staff/add/', {'full_name': 'One', 'biometric_id': '12'})
+        r = self.c.post('/hr/staff/add/', {'full_name': 'Two', 'biometric_id': '12'})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(StaffProfile.all_objects.filter(biometric_id='12').count(), 1)
+
+    def test_punches_that_arrived_before_the_person_existed_are_picked_up(self):
+        """People get enrolled on the machine before anyone gets round to adding
+        them here, so their first days arrive unmapped."""
+        Client().post(f'/iclock/cdata?SN={SERIAL}&table=ATTLOG',
+                      data=(f'12\t{self.day:%Y-%m-%d} 08:00:00\t0\n'
+                            f'12\t{self.day:%Y-%m-%d} 17:00:00\t0\n'),
+                      content_type='text/plain')
+        self.assertEqual(BiometricPunch.all_objects.filter(user__isnull=True).count(), 2)
+
+        self.c.post('/hr/staff/add/', {'full_name': 'Karim Bux', 'biometric_id': '12'})
+
+        self.assertEqual(BiometricPunch.all_objects.filter(user__isnull=True).count(), 0)
+        rebuild_attendance(self.h, self.day, self.day)
+        user = StaffProfile.all_objects.get(biometric_id='12').user
+        self.assertEqual(
+            Attendance.all_objects.get(user=user, date=self.day).status, 'PRESENT')
+
+    def test_a_nurse_cannot_add_employees(self):
+        c = Client(); c.login(email='nurse@bio.com', password='pw')
+        self.assertIn(c.get('/hr/staff/add/').status_code, (302, 403))
+
+    def test_the_new_employee_shows_on_the_staff_list(self):
+        self.c.post('/hr/staff/add/', {'full_name': 'Karim Bux', 'designation': 'Guard'})
+        html = self.c.get('/hr/').content.decode()
+        self.assertIn('Karim Bux', html)
+
+    def test_the_device_page_explains_the_whole_sequence(self):
+        """The screen has to answer "how do I add an employee", or the serial
+        box on its own is a dead end."""
+        html = self.c.get('/hr/devices/').content.decode()
+        self.assertIn('User Management', html)      # where to enrol the thumb
+        self.assertIn('/hr/staff/add/', html)       # where to add the person
+        self.assertIn('/hr/devices/enrolment/', html)   # where to link the two

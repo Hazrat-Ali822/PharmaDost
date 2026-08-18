@@ -10,7 +10,8 @@ from django.db.models.deletion import ProtectedError
 from accounts.decorators import feature_required, role_required
 from accounts.models import User
 
-from .forms import LeaveRequestForm, SalaryPaymentForm, StaffProfileForm
+from .forms import (EmployeeForm, LeaveRequestForm, SalaryPaymentForm,
+                    StaffProfileForm)
 from .models import Attendance, LeaveRequest, SalaryPayment, Shift, StaffProfile
 
 
@@ -39,6 +40,47 @@ def staff_list(request):
         u.hr_profile = profiles.get(u.id)
     total_payroll = sum((p.monthly_salary for p in profiles.values()), 0)
     return render(request, 'hr/staff_list.html', {'staff': staff, 'total_payroll': total_payroll})
+
+
+@feature_required('hr')
+@role_required(['ADMIN'])
+def employee_add(request):
+    """Put somebody on the payroll — with or without a login.
+
+    Most of a clinic's staff never sign in. Before this the only route in was
+    creating a user account, so a guard had to be given an email address before
+    the attendance machine could count his days.
+    """
+    hospital = None if request.user.is_superuser else request.user.hospital
+    if request.method == 'POST':
+        form = EmployeeForm(request.POST, hospital=hospital)
+        if form.is_valid():
+            profile = form.save()
+            _relink_after_new_staff(hospital)
+            messages.success(
+                request,
+                f'{profile.user.get_full_name() or "Employee"} added.'
+                + (' Their enrolment number is mapped, so punches from the '
+                   'machine will count from now on.' if profile.biometric_id else
+                   ' Add their enrolment number once their thumb is on the machine.'))
+            return redirect('hr_staff_list')
+    else:
+        form = EmployeeForm(hospital=hospital)
+    return render(request, 'hr/employee_form.html', {'form': form})
+
+
+def _relink_after_new_staff(hospital):
+    """A new mapping may match punches the machine already sent.
+
+    Somebody is usually enrolled on the machine before anyone gets round to
+    adding them here, so their first days arrive as unmapped punches. Attaching
+    them at this point is what makes those days recoverable rather than lost.
+    """
+    try:
+        from .views_biometric import _relink
+        _relink(hospital)
+    except Exception:                       # noqa: BLE001 — never block adding staff
+        pass
 
 
 @feature_required('hr')
