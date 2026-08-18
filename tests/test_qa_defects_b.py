@@ -365,3 +365,72 @@ class VitalsAreWithinPhysiologyTest(TenantCase):
 
     def test_but_an_empty_one_is_not(self):
         self.assertFalse(self._form().is_valid())
+
+
+class NoRawDjangoEmptyOptionTest(TenantCase):
+    """#35, second half — `---------` as the first choice in a dropdown.
+
+    It survived the first fix pass because it arrives by **two** different
+    routes and only one had been dealt with: a foreign key uses
+    `ModelChoiceField.empty_label`, while a model field with `choices` and
+    `blank=True` gets `BLANK_CHOICE_DASH` prepended by the model layer. Add
+    Medicine has one of each — Supplier and Category — so the screen still
+    showed the hyphens after the ModelChoiceField half was fixed.
+
+    Neither can be reached from a template, and setting them per field would be
+    a hundred `__init__`s that each have to remember, so both are handled once
+    in `accounts.templatetags.form_extras.friendly_empty_labels`, applied by
+    `partials/_form.html`.
+    """
+    # One screen per rendering path, not an exhaustive list.
+    PAGES = ['/medicines/add/', '/opd/departments/', '/suppliers/add/']
+
+    def test_no_dropdown_offers_nine_hyphens(self):
+        import re
+        for url in self.PAGES:
+            with self.subTest(page=url):
+                resp = self.c.get(url, follow=True)
+                self.assertEqual(resp.status_code, 200, url)
+                options = re.findall(r'<option[^>]*>([^<]*)</option>',
+                                     resp.content.decode())
+                self.assertNotIn('---------', [o.strip() for o in options],
+                                 f'{url} still shows Django\'s raw empty option')
+
+    def test_the_replacement_says_what_to_choose(self):
+        html = self.c.get('/medicines/add/', follow=True).content.decode()
+        self.assertIn('choose a category', html)
+
+    def test_wording_a_form_chose_for_itself_is_left_alone(self):
+        """`VisitForm` deliberately says "All departments" — a filter that
+        overwrote that would be worse than the hyphens."""
+        from opd.forms import VisitForm
+        from accounts.templatetags.form_extras import friendly_empty_labels
+        form = friendly_empty_labels(VisitForm(user=self.admin))
+        self.assertEqual(form.fields['department'].empty_label,
+                         'All departments')
+
+
+class MoneyCarriesItsSymbolTest(TenantCase):
+    """#20 — the patient record and the billing screen disagreed about whether
+    an amount needs its currency, on two views of the same money."""
+
+    def setUp(self):
+        super().setUp()
+        from billing.models import Invoice
+        self.p = Patient.objects.create(full_name='Money Patient',
+                                        hospital=self.h, gender='M')
+        Invoice.objects.create(patient=self.p, hospital=self.h,
+                               total=1500, paid=1500,
+                               created_by=self.admin)
+
+    def test_the_patient_record_prefixes_its_amounts(self):
+        html = self.c.get(f'/patients/{self.p.pk}/', follow=True).content.decode()
+        self.assertNotIn('<td>1500.00</td>', html,
+                         'an amount on the patient record has no currency')
+
+    def test_a_zero_balance_is_written_like_every_other_amount(self):
+        """A fully-paid row showed a bare `0` while every other cell in the
+        column carried the symbol, so one column read as two kinds of number."""
+        html = self.c.get(f'/billing/patient/{self.p.pk}/',
+                          follow=True).content.decode()
+        self.assertNotIn('>0</td>', html)

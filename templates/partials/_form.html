@@ -17,6 +17,8 @@ app's own classes. The two things it cannot fix from a template are the empty
 option's text (`empty_label`, set on the field in the form's `__init__`) and the
 field ORDER, which is `Meta.fields`.
 {% endcomment %}
+{% load form_extras %}
+{% with form=form|friendly_empty_labels %}
 {% if form.non_field_errors %}
   <ul class="errorlist nonfield">
     {% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}
@@ -39,3 +41,4 @@ field ORDER, which is `Meta.fields`.
     {% if field.help_text %}<span class="helptext">{{ field.help_text }}</span>{% endif %}
   </div>
 {% endfor %}
+{% endwith %}

@@ -68,7 +68,7 @@ Contact: {{ branding.phone }}{% endif %}{% endfilter %}">💬 Send on WhatsApp</
         <td><span class="badge">Service</span></td>
         <td><a href="{% url 'invoice_detail' inv.id %}">{% for it in inv.items.all %}{{ it.description }}{% if not forloop.last %}, {% endif %}{% empty %}Invoice {{ inv.display_no }}{% endfor %}</a></td>
         <td>{{ currency }} {{ inv.total }}</td><td>{{ currency }} {{ inv.paid }}</td>
-        <td>{% if inv.balance > 0 %}<span class="danger">{{ currency }} {{ inv.balance }}</span>{% else %}0{% endif %}</td>
+        <td>{% if inv.balance > 0 %}<span class="danger">{{ currency }} {{ inv.balance }}</span>{% else %}{{ currency }} 0.00{% endif %}</td>
       </tr>
       {% endfor %}
       {% for sale in s.sales %}
@@ -77,7 +77,7 @@ Contact: {{ branding.phone }}{% endif %}{% endfilter %}">💬 Send on WhatsApp</
         <td><span class="badge amber">Pharmacy</span></td>
         <td><a href="{% url 'sale_detail' sale.id %}">{% for it in sale.items.all %}{{ it.medicine.name }} ×{{ it.quantity }}{% if not forloop.last %}, {% endif %}{% endfor %}</a></td>
         <td>{{ currency }} {{ sale.total }}</td><td>{{ currency }} {{ sale.paid }}</td>
-        <td>{% if sale.balance > 0 %}<span class="danger">{{ currency }} {{ sale.balance }}</span>{% else %}0{% endif %}</td>
+        <td>{% if sale.balance > 0 %}<span class="danger">{{ currency }} {{ sale.balance }}</span>{% else %}{{ currency }} 0.00{% endif %}</td>
       </tr>
       {% endfor %}
       {% if not s.invoices and not s.sales %}

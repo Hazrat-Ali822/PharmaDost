@@ -302,7 +302,7 @@
   {% for s in pharmacy_sales %}
   <div style="border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:8px">
     <div class="muted" style="font-size:12px">
-      <a href="{% url 'sale_detail' s.id %}">Bill #{{ s.id }}</a> · {{ s.created_at|date:"d/m/Y" }} · {{ s.get_sale_type_display }} · Total {{ s.total }}{% if s.is_returned %} · <span class="danger">RETURNED</span>{% endif %}
+      <a href="{% url 'sale_detail' s.id %}">Bill #{{ s.id }}</a> · {{ s.created_at|date:"d/m/Y" }} · {{ s.get_sale_type_display }} · Total {{ currency }} {{ s.total }}{% if s.is_returned %} · <span class="danger">RETURNED</span>{% endif %}
     </div>
     <div>{% for it in s.items.all %}{{ it.medicine.name }} ×{{ it.quantity }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>
   </div>
@@ -324,9 +324,9 @@
         <td>{% if nav.billing %}<a href="{% url 'invoice_detail' inv.id %}">{{ inv.display_no }}</a>{% else %}{{ inv.display_no }}{% endif %}</td>
         <td>{{ inv.created_at|date:"d/m/Y" }}</td>
         <td>{% for it in inv.items.all %}{{ it.description }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
-        <td>{{ inv.total }}</td>
-        <td>{{ inv.paid }}</td>
-        <td>{{ inv.balance }}</td>
+        <td>{{ currency }} {{ inv.total }}</td>
+        <td>{{ currency }} {{ inv.paid }}</td>
+        <td>{{ currency }} {{ inv.balance }}</td>
         <td>{% if inv.is_paid %}<span class="badge green">Paid</span>{% else %}<span class="badge amber">Unpaid</span>{% endif %}</td>
       </tr>
       {% empty %}
