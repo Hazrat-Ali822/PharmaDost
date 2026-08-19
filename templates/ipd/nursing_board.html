@@ -63,8 +63,10 @@
         </td>
         <td style="font-size:12.5px;">{% if r.nurse %}{{ r.nurse.display_name }}{% else %}<span class="muted">unassigned</span>{% endif %}</td>
         <td>
+          {% if nav.ward %}
           <a class="btn sm" href="{% url 'ipd:vitals_add' r.adm.pk %}">+ Vitals</a>
           <a class="btn sm alt" href="{% url 'ipd:fluid_add' r.adm.pk %}">+ Fluid</a>
+          {% endif %}
         </td>
       </tr>
       {% empty %}

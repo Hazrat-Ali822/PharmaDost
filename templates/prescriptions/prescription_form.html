@@ -2,6 +2,7 @@
 {% block title %}{{ title }}{% endblock %}
 {% block page_title %}Prescription{% endblock %}
 {% block content %}
+{% load form_extras %}{{ form|normalise_choices }}
 <div class="form-card" style="max-width:920px">
   <div class="page-head">
     <div>

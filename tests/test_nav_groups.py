@@ -172,6 +172,40 @@ class EverySidebarLinkOpensTest(TestCase):
     # Links that deliberately need something selected first, or that log you out.
     SKIP = ('/logout', '/accounts/logout', '#')
 
+    def _seed(self, hospital, user):
+        """Enough rows that the crawl reaches DETAIL pages, not just lists.
+
+        This matters more than it looks. The first version of this test ran
+        against an empty database, so every list was empty, no detail page was
+        ever linked, and seven ungated bedside-charting buttons on the admission
+        page went unfound — a browser agent hit them instead. A link checker
+        that only ever sees empty lists is checking the easy half of the app.
+        """
+        from datetime import date as _date
+
+        from ipd.models import Admission, Bed, Ward
+        from inventory.models import Medicine
+        from opd.models import Appointment, Department, Doctor
+        from patients.models import Patient
+        from suppliers.models import Supplier
+
+        patient = Patient.objects.create(full_name='Link Crawl Patient',
+                                         hospital=hospital, gender='F')
+        dept = Department.objects.create(name='Medicine')
+        doctor = Doctor.objects.create(full_name='Crawl Doctor', department=dept,
+                                       pmdc_no=f'CR-{hospital.pk}')
+        Appointment.objects.create(patient=patient, doctor=doctor,
+                                   appointment_date=_date.today())
+        ward = Ward.objects.create(name='General', hospital=hospital)
+        bed = Bed.objects.create(ward=ward, bed_number='B1', hospital=hospital)
+        Admission.objects.create(patient=patient, bed=bed, hospital=hospital,
+                                 attending_doctor=doctor, status='Admitted')
+        Medicine.objects.create(name='Crawl Tablet', hospital=hospital,
+                                price=50, quantity=20, reorder_level=5,
+                                expiry_date=_date.today() + timedelta(days=200))
+        Supplier.objects.create(name='Crawl Supplies', hospital=hospital)
+        return patient
+
     def tearDown(self):
         clear_current_hospital()
 
@@ -235,50 +269,77 @@ class EverySidebarLinkOpensTest(TestCase):
             broken, [],
             'dashboard links that lead to an error:' + chr(10) + detail)
 
+    # How many URLs to open per role. A full crawl of a seeded hospital is
+    # unbounded in principle (every list links every row); this is well past the
+    # depth where the interesting pages live and keeps the suite usable.
+    MAX_PAGES_PER_ROLE = 220
+
     def test_no_page_a_role_can_open_offers_a_link_it_cannot(self):
-        """The second hop — and the one that matters most.
+        """Walk the app as each role and open everything it is shown.
 
-        Checking the sidebar and the landing page is not enough: three of the
-        twenty findings were buttons sitting on *other* screens. The accountant
-        could open Suppliers from her sidebar and every "Edit" on it 403'd (the
-        list is gated on the `suppliers` feature, which she holds; add and edit
-        were gated on a hard-coded ADMIN/PHARMACIST pair), and Patient Billing —
-        also hers — led with "+ Register / Walk-in Patient", which is reception's.
+        This is the defect that a browser agent found twenty times and the unit
+        suite found zero times: the sidebar, the dashboard tiles and the page
+        header buttons each decide who sees a link, the view decides who may
+        open it, and the two drift apart.
 
-        So: open every sidebar page, then follow every link *on* it. That is
-        what a browser agent did by hand across nine roles, and it is the only
-        way this class of defect gets caught before a customer taps it.
+        Breadth-first from the sidebar rather than one hop, because **depth is
+        where it hides**. The bedside charting buttons sit on the admission
+        page, which is three hops in — sidebar → /ipd/ → /ipd/<id>/ → the
+        buttons — and a two-hop version of this test passed while seven of them
+        were leading a receptionist straight into a 403.
 
-        Same rule as above: 404 is fine, 403 and 500 are not. GET only — a
-        destructive POST is never fired.
+        A 404 is fine (a row that does not exist). 403 and 500 are not. GET
+        only; nothing destructive is ever followed.
         """
         broken = []
         for n, role in enumerate(self.ROLES, start=700):
             h = Hospital.objects.create(name=f'P{n}', slug=f'p-{n}',
                                         expiry_date=_future(), enabled_modules=[])
-            User.objects.create_user(email=f'p{n}@t.com', password='pw',
-                                     role=role, hospital=h)
+            u = User.objects.create_user(email=f'p{n}@t.com', password='pw',
+                                         role=role, hospital=h)
+            self._seed(h, u)
             c = Client()
             self.assertTrue(c.login(email=f'p{n}@t.com', password='pw'))
-            first = c.get('/dashboard/', follow=True).content.decode()
-            checked = set()
-            for page in self._sidebar_links(first):
-                resp = c.get(page, follow=True)
+
+            first = c.get('/dashboard/', follow=True)
+            queue = list(self._sidebar_links(first.content.decode()))
+            queue += self._page_links(first.content.decode())
+            seen, opened = set(queue), 0
+
+            while queue and opened < self.MAX_PAGES_PER_ROLE:
+                url = queue.pop(0)
+                resp = c.get(url, follow=True)
+                opened += 1
+                if resp.status_code in (403, 500):
+                    broken.append(f'{role} → {url} = {resp.status_code}')
+                    continue
                 if resp.status_code != 200:
                     continue
-                html = resp.content.decode()
-                body = html.split('<aside')[0] + html.split('</aside>')[-1]
-                for chunk in body.split('href="')[1:]:
-                    href = chunk.split('"', 1)[0]
-                    if not href.startswith('/') or href.startswith(self.SKIP):
-                        continue
-                    if 'delete' in href or 'remove' in href or href in checked:
-                        continue
-                    checked.add(href)
-                    code = c.get(href, follow=True).status_code
-                    if code in (403, 500):
-                        broken.append(f'{role}: {page} links to {href} = {code}')
+                # Some links are files, not pages (the PWA icon, a CSV export).
+                # Opening them is the point; parsing them is not.
+                if not resp.get('Content-Type', '').startswith('text/html'):
+                    continue
+                for href in self._page_links(resp.content.decode()):
+                    if href not in seen:
+                        seen.add(href)
+                        queue.append(href)
+
         detail = chr(10).join('  ' + b for b in broken)
         self.assertEqual(
             broken, [],
-            'in-page links that lead to an error:' + chr(10) + detail)
+            'links a role is shown but cannot open:' + chr(10) + detail)
+
+    def _page_links(self, html):
+        """Every in-page link, excluding the sidebar and anything destructive."""
+        body = html.split('<aside')[0] + html.split('</aside>')[-1]
+        out = []
+        for chunk in body.split('href="')[1:]:
+            href = chunk.split('"', 1)[0]
+            if not href.startswith('/') or href.startswith(self.SKIP):
+                continue
+            low = href.lower()
+            if 'delete' in low or 'remove' in low or 'discharge' in low:
+                continue          # GET on these opens a confirm page, but the
+                                  # intent is destructive — stay away entirely
+            out.append(href)
+        return sorted(set(out))

@@ -13,7 +13,7 @@
   says what is wrong, not which doctor they want.
 </p>
 
-<div style="display:grid; grid-template-columns:2fr 1fr; gap:20px; align-items:start;">
+<div class="list-plus-form">
   <div class="card">
     <table class="tbl">
       <thead><tr><th>Department</th><th>Doctors</th><th></th></tr></thead>
@@ -26,7 +26,7 @@
           </td>
           <td>
             {% for doc in d.doctors.all %}
-              Dr. {{ doc.full_name }}{% if not forloop.last %}, {% endif %}
+              <span{% if not doc.is_active %} class="muted"{% endif %}>Dr. {{ doc.full_name }}{% if not doc.is_active %} <span class="badge" style="background:var(--border-strong); color:var(--text);">not in service</span>{% endif %}</span>{% if not forloop.last %}, {% endif %}
             {% empty %}
               <span class="muted">nobody assigned yet</span>
             {% endfor %}

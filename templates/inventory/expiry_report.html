@@ -92,7 +92,7 @@ block deliberately has no checkboxes and says what to do instead.
 {% endcomment %}
 <div class="card" style="margin-top:22px;">
   <h3 style="margin-top:0;">Also expiring — stock with no batch record
-    <span class="muted" style="font-weight:400; font-size:13px;">({{ loose|length }}, worth {{ currency }} {{ loose_value|floatformat:2 }})</span>
+    <span class="muted" style="font-weight:400; font-size:13px;">({{ loose|length }})</span>
   </h3>
   <p class="field-help">
     These were entered directly on the medicine rather than received against a
@@ -102,7 +102,7 @@ block deliberately has no checkboxes and says what to do instead.
   <div class="table-scroll">
     <table class="tbl">
       <thead>
-        <tr><th>Medicine</th><th>Qty</th><th>Expiry</th><th>Status</th><th>Value</th><th></th></tr>
+        <tr><th>Medicine</th><th>Qty</th><th>Expiry</th><th>Status</th><th>Cost value</th><th></th></tr>
       </thead>
       <tbody>
         {% for m in loose %}
@@ -114,7 +114,7 @@ block deliberately has no checkboxes and says what to do instead.
             {% if m.is_exp %}<span class="badge" style="background:var(--danger-bg); color:var(--danger);">Expired</span>
             {% else %}<span class="badge warn">{{ m.days_left }} day{{ m.days_left|pluralize }} left</span>{% endif %}
           </td>
-          <td>{{ currency }} {{ m.value|floatformat:2 }}</td>
+          <td class="muted" title="Cost is recorded on a purchase batch, and this stock has none">not recorded</td>
           <td><a class="btn sm alt" href="{% url 'adjustment_create' %}?medicine={{ m.pk }}">Write off…</a></td>
         </tr>
         {% endfor %}

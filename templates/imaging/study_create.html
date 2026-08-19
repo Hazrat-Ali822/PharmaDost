@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-head">
   <div><h2>Register Imaging Study</h2><div class="muted">Ultrasound / X-Ray / CT / MRI / ECG</div></div>
-  <a class="btn alt" href="{% url 'imaging:study_list' %}">Back</a>
+  {% if nav.imaging %}<a class="btn alt" href="{% url 'imaging:study_list' %}">Back</a>{% endif %}
 </div>
 
 <form method="post" class="card" style="max-width:640px" data-offline-kind="imaging">{% csrf_token %}

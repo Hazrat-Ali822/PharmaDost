@@ -1,0 +1,28 @@
+{% extends 'partials/base.html' %}
+{% comment %}
+Page-not-found, inside the app shell.
+
+The 403 page was given this treatment and 404 was left as Django's default —
+"Not Found", black serif on white, no logo and no way back — which to somebody
+who followed a stale link reads as a crashed server. Most 404s here are a record
+that has been deleted or a bookmark from another hospital, so the wording says
+that rather than blaming the address.
+{% endcomment %}
+{% block title %}Not found{% endblock %}
+{% block page_title %}Not found{% endblock %}
+{% block content %}
+<div class="card" style="max-width:620px; margin:32px auto; text-align:center;">
+  <div style="font-size:44px; line-height:1; margin-bottom:14px;" aria-hidden="true">🔍</div>
+  <h2 style="margin:0 0 10px;">That page is not here</h2>
+  <p class="muted" style="margin:0 auto 6px; max-width:44ch;">
+    The record may have been deleted, or the link may be out of date.
+  </p>
+  <p class="muted" style="margin:0 auto 22px; max-width:44ch; font-size:13px;">
+    Nothing has gone wrong with the system, and you are still signed in.
+  </p>
+  <div class="form-actions" style="justify-content:center; margin-top:0;">
+    <button type="button" class="btn alt" onclick="if(history.length>1){history.back()}else{location.href='{% url 'user_mgmt:post_login_redirect' %}'}">← Go back</button>
+    <a class="btn" href="{% url 'user_mgmt:post_login_redirect' %}">My dashboard</a>
+  </div>
+</div>
+{% endblock %}

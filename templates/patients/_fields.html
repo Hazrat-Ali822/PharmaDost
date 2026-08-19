@@ -1,4 +1,5 @@
-{% comment %}
+
+{% load form_extras %}{{ form|normalise_choices }}{% comment %}
 Patient details, laid out once and included by both the registration page and the
 reception visit screen. It used to be rendered with as_p in two places, and the
 script below only existed on one of them — so CNIC dashes and the age boxes

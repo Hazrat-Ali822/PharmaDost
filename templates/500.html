@@ -1,0 +1,46 @@
+{% comment %}
+Server error.
+
+Deliberately NOT extending partials/base.html. A 500 means something already
+failed, and the shell runs context processors that hit the database and the
+tenant thread-local — if one of those is what broke, rendering the shell raises
+again and the visitor gets Django's raw traceback page instead. So this is
+standalone and self-contained, with no template tags beyond `static`.
+
+It is also the one error page that must tell the user to do something, because
+unlike a 403 or a 404 there is nothing they can fix by navigating.
+{% endcomment %}
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Something went wrong</title>
+  <style>
+    body { margin:0; min-height:100vh; display:grid; place-items:center;
+           background:#f6f8fb; color:#0f172a;
+           font-family:'Fira Sans',system-ui,-apple-system,Segoe UI,sans-serif; }
+    .box { background:#fff; border:1px solid #e2e8f0; border-radius:14px;
+           padding:34px 30px; max-width:520px; margin:20px; text-align:center;
+           box-shadow:0 4px 16px rgba(15,23,42,.06); }
+    h1 { font-size:20px; margin:0 0 10px; }
+    p { color:#64748b; font-size:14px; line-height:1.55; margin:0 0 8px; }
+    .btn { display:inline-block; margin-top:18px; padding:10px 18px;
+           background:#0891b2; color:#fff; text-decoration:none;
+           border-radius:9px; font-weight:600; font-size:14px; }
+    img { width:52px; height:52px; object-fit:contain; margin-bottom:12px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <img src="{% static 'img/sehatyar-logo.png' %}" alt="">
+    <h1>Something went wrong on our side</h1>
+    <p>This screen could not be loaded. Your work has not been lost — anything
+       you saved before this is still saved.</p>
+    <p>Try again in a moment. If it keeps happening, tell whoever looks after
+       the system, and say which page you were on.</p>
+    <a class="btn" href="/">Back to the dashboard</a>
+  </div>
+</body>
+</html>

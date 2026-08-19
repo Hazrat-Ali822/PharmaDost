@@ -178,8 +178,17 @@ class VitalsObservationForm(forms.ModelForm):
                 self.add_error(name, f'{number:g}{unit} is outside anything a '
                                      f'patient can be — expected {low}–{high}{unit}.')
         # At least one measured value — an empty obs is not an observation.
+        #
+        # Skip this when a field has ALREADY been rejected above. `add_error()`
+        # removes the field from `cleaned_data`, so a form whose only entry was
+        # an out-of-range SpO2 looks empty here, and the precise message ("500%
+        # is outside anything a patient can be") was being replaced by "Record
+        # at least one vital sign" — which names neither the field nor the
+        # problem, and reads as though the entry had simply been ignored.
         measured = ['temperature', 'pulse', 'respiratory_rate', 'systolic_bp',
                     'diastolic_bp', 'spo2', 'pain_score', 'blood_glucose']
+        if any(f in self.errors for f in measured):
+            return cleaned
         if not any(cleaned.get(f) is not None for f in measured):
             raise forms.ValidationError('Record at least one vital sign.')
         return cleaned

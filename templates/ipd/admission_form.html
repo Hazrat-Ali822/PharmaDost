@@ -2,6 +2,7 @@
 {% block title %}{{ title }}{% endblock %}
 {% block page_title %}{{ title }}{% endblock %}
 {% block content %}
+{% load form_extras %}{{ form|normalise_choices }}
 <div class="page-head">
   <h2>{{ title }}</h2>
   <a class="btn alt" href="{% url 'ipd:admission_list' %}">Back to Registry</a>

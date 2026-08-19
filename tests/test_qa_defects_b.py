@@ -383,7 +383,11 @@ class NoRawDjangoEmptyOptionTest(TenantCase):
     `partials/_form.html`.
     """
     # One screen per rendering path, not an exhaustive list.
-    PAGES = ['/medicines/add/', '/opd/departments/', '/suppliers/add/']
+    # One per rendering path: the shared renderer, and the hand-rolled field
+    # templates that never pass through it (patients/_fields.html and friends),
+    # which is exactly where the first fix missed.
+    PAGES = ['/medicines/add/', '/opd/departments/', '/suppliers/add/',
+             '/patients/add/', '/ipd/new/']
 
     def test_no_dropdown_offers_nine_hyphens(self):
         import re
@@ -434,3 +438,44 @@ class MoneyCarriesItsSymbolTest(TenantCase):
         html = self.c.get(f'/billing/patient/{self.p.pk}/',
                           follow=True).content.decode()
         self.assertNotIn('>0</td>', html)
+
+
+class ExpiryReportOpensWithBatchlessStockTest(TenantCase):
+    """The expiry report returned **500** for admin and pharmacist.
+
+    The block that lists stock with no purchase batch read `Medicine.cost_price`,
+    which does not exist — cost lives on `StockBatch`. The smoke test opens this
+    page and passed, because with no such medicine in the fixture the loop body
+    never ran: the crash needed the exact data the feature was written for.
+
+    So the fixture here is the point. Do not simplify it away.
+    """
+
+    def _medicine(self, **kw):
+        from inventory.models import Medicine
+        defaults = dict(name='Loose Syrup', hospital=self.h, price=100,
+                        quantity=3, reorder_level=10)
+        defaults.update(kw)
+        return Medicine.objects.create(**defaults)
+
+    def test_it_opens_when_a_medicine_expires_and_has_no_batch(self):
+        self._medicine(expiry_date=date.today() + timedelta(days=18))
+        resp = self.c.get('/medicines/expiry/', follow=True)
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('Loose Syrup', resp.content.decode())
+
+    def test_it_opens_for_already_expired_batchless_stock_too(self):
+        self._medicine(name='Old Syrup', expiry_date=date.today() - timedelta(days=5))
+        self.assertEqual(self.c.get('/medicines/expiry/').status_code, 200)
+
+    def test_cost_is_reported_as_unknown_never_as_zero(self):
+        """There is no cost field to read, and valuing the write-off at retail
+        would overstate it. Same rule as the profit report."""
+        self._medicine(expiry_date=date.today() + timedelta(days=18))
+        html = self.c.get('/medicines/expiry/', follow=True).content.decode()
+        self.assertIn('not recorded', html)
+
+    def test_stock_that_is_not_expiring_is_left_out(self):
+        self._medicine(name='Fine Syrup', expiry_date=date.today() + timedelta(days=800))
+        html = self.c.get('/medicines/expiry/', follow=True).content.decode()
+        self.assertNotIn('Fine Syrup', html)

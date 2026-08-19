@@ -56,3 +56,18 @@ def friendly_empty_labels(form):
                 choices[0] = ('', wording)
                 field.choices = choices
     return form
+
+
+@register.filter
+def normalise_choices(form):
+    """Same fix, for a template that renders its fields BY HAND.
+
+    `friendly_empty_labels` returns the form so it can be used in
+    `{% with %}`; a hand-rolled template has no such wrapper and printing the
+    form would dump its entire HTML into the page. This does the work and
+    renders nothing, so it can sit on a line of its own:
+
+        {% load form_extras %}{{ form|normalise_choices }}
+    """
+    friendly_empty_labels(form)
+    return ''

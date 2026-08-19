@@ -9,7 +9,7 @@
     <div class="muted">MRN {{ patient.mrn }} · {{ patient.get_gender_display }}{% if patient.age_display %} · {{ patient.age_display }}{% endif %}{% if patient.phone %} · {{ patient.phone }}{% endif %}</div>
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <a class="btn" href="{% url 'patient_record_add' patient.pk %}">+ Add Clinical Record</a>
+    {% if request.user.role == 'ADMIN' or request.user.role == 'DOCTOR' or request.user.is_superuser %}<a class="btn" href="{% url 'patient_record_add' patient.pk %}">+ Add Clinical Record</a>{% endif %}
     {% if nav.billing %}<a class="btn success" href="{% url 'patient_bill' patient.pk %}">💵 Bill / Collect Payment</a>{% endif %}
     {% if nav.lab %}<a class="btn alt" href="{% url 'lab:order_create' %}?patient={{ patient.pk }}">+ Order Lab Test</a>{% endif %}
     {% if nav.imaging %}<a class="btn alt" href="{% url 'imaging:study_create' %}?patient={{ patient.pk }}">+ Imaging Study</a>{% endif %}
@@ -193,7 +193,7 @@
 <!-- Clinical records: consultations, procedures, operations, scans -->
 <div class="card" style="margin-bottom:16px">
   <div class="page-head"><h3>Clinical Records (Diagnosis / Operations / Scans)</h3>
-    <a class="btn sm" href="{% url 'patient_record_add' patient.pk %}">+ Add</a></div>
+    {% if request.user.role == 'ADMIN' or request.user.role == 'DOCTOR' or request.user.is_superuser %}<a class="btn sm" href="{% url 'patient_record_add' patient.pk %}">+ Add</a>{% endif %}</div>
   <table class="tbl">
     <thead><tr><th>Date</th><th>Type</th><th>Title</th><th>Diagnosis</th><th>Details / Vitals</th><th>By</th></tr></thead>
     <tbody>

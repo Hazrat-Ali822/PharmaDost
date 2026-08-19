@@ -468,6 +468,23 @@ input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
 input[type=color]::-webkit-color-swatch { border: none; border-radius: 5px; }
 input[type=color]::-moz-color-swatch { border: none; border-radius: 5px; }
 
+/* A wide list beside a narrow "add one" form. Third time this shape has been
+   written as an inline `grid-template-columns`, and the third time it dragged a
+   page sideways on a phone: an inline style cannot be overridden by a media
+   query, and a grid item defaults to `min-width: auto` so it will not shrink
+   below its content either. Use the class. */
+.list-plus-form {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+.list-plus-form > * { min-width: 0; }
+
+@media (max-width: 900px) {
+  .list-plus-form { grid-template-columns: 1fr; }
+}
+
 /* Settings: form on the left, live preview on the right.
    A CLASS, not an inline `grid-template-columns` — a stylesheet media query
    cannot override an inline style, so the fixed 320px preview column stayed put

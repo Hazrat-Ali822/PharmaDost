@@ -846,8 +846,14 @@ def expiry_report(request):
     # Listed separately because they cannot be returned from here: the
     # supplier-return flow works batch by batch, and there is no batch. The
     # pharmacist has to adjust that stock out instead, which the page now says.
+    #
+    # No value column here, and that is deliberate rather than an omission:
+    # cost lives on `StockBatch.cost_price`, and by definition these rows have
+    # no batch. `Medicine` has no cost field at all — reading one is what made
+    # this page return 500 — and valuing the stock at its RETAIL price would
+    # overstate the write-off. An unrecorded cost is not zero and is not a
+    # guess; the page says so instead (same rule as the profit report).
     loose = []
-    loose_value = Decimal('0.00')
     for med in (Medicine.objects
                 .filter(quantity__gt=0, expiry_date__isnull=False,
                         expiry_date__lte=horizon)
@@ -856,15 +862,13 @@ def expiry_report(request):
             continue                      # already counted above, as batches
         med.is_exp = med.expiry_date < today
         med.days_left = (med.expiry_date - today).days
-        med.value = (med.cost_price or Decimal('0.00')) * med.quantity
         loose.append(med)
-        loose_value += med.value
     loose.sort(key=lambda m: m.expiry_date)
 
     return render(request, 'inventory/expiry_report.html', {
         'expired': expired, 'soon': soon, 'days': days,
         'expired_value': expired_value, 'soon_value': soon_value,
-        'loose': loose, 'loose_value': loose_value,
+        'loose': loose,
     })
 
 

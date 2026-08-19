@@ -16,6 +16,13 @@
     <a class="btn alt" href="{% url 'ipd:admission_list' %}">Back to Registry</a>
     {% include 'patients/_attach_photo.html' with patient=admission.patient kind='OTHER' %}
     {% if admission.status == 'Admitted' %}
+      {% comment %}
+      Bedside charting — `ward` only. This page opens on `ipd` OR `ward`, because
+      reception admits and discharges and needs to read the record; writing a
+      clinical entry on it is a different job. Ungated, these seven buttons were
+      seven links into a permission error for every receptionist.
+      {% endcomment %}
+      {% if nav.ward %}
       <a class="btn success" href="{% url 'ipd:vitals_add' admission.pk %}" style="display:inline-flex; align-items:center; background:#0ea5e9; color:white;">➕ Record Vitals</a>
       <a class="btn alt" href="{% url 'ipd:fluid_add' admission.pk %}">💧 Fluid I/O</a>
       <a class="btn alt" href="{% url 'ipd:nursing_note_add' admission.pk %}">📝 Nursing Note</a>
@@ -23,6 +30,7 @@
       <a class="btn alt" href="{% url 'ipd:handover_add' admission.pk %}">🔄 Handover</a>
       <a class="btn success" href="{% url 'ipd:doctor_round_add' admission.pk %}" style="display:inline-flex; align-items:center; background:#22c55e; color:white;">Record Round</a>
       <a class="btn" href="{% url 'ipd:medication_log_add' admission.pk %}" style="display:inline-flex; align-items:center; background:var(--primary); color:white;">Record Medication</a>
+      {% endif %}
       <a class="btn alt" href="{% url 'lab:order_create' %}?patient={{ admission.patient.pk }}">🧪 Order Lab Test</a>
       <a class="btn alt" href="{% url 'imaging:study_create' %}?patient={{ admission.patient.pk }}">🩻 Order Scan / X-Ray</a>
       {% if nav.ipd %}<a class="btn danger" href="{% url 'ipd:admission_discharge' admission.pk %}" style="display:inline-flex; align-items:center; background:#ef4444; color:white;">Discharge Patient</a>{% endif %}
@@ -110,7 +118,7 @@
         </table>
       </div>
       {% else %}
-      <p class="muted" style="margin:0;">No vitals recorded yet. <a href="{% url 'ipd:vitals_add' admission.pk %}">Record the first set →</a></p>
+      <p class="muted" style="margin:0;">No vitals recorded yet.{% if nav.ward %} <a href="{% url 'ipd:vitals_add' admission.pk %}">Record the first set →</a>{% endif %}</p>
       {% endif %}
     </div>
 
@@ -136,7 +144,7 @@
         </table>
       </div>
       {% else %}
-      <p class="muted" style="margin:0;">No fluid entries yet. <a href="{% url 'ipd:fluid_add' admission.pk %}">Add one →</a></p>
+      <p class="muted" style="margin:0;">No fluid entries yet.{% if nav.ward %} <a href="{% url 'ipd:fluid_add' admission.pk %}">Add one →</a>{% endif %}</p>
       {% endif %}
     </div>
 

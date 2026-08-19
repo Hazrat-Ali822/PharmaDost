@@ -6,8 +6,10 @@
   <h2>Wards & Beds Interactive Map</h2>
   <div style="display:flex; gap:10px;">
     <a class="btn alt" href="{% url 'ipd:admission_list' %}">Back to Registry</a>
+    {% if nav.ipd %}
     <a class="btn alt success" href="{% url 'ipd:ward_create' %}" style="background:#22c55e; color:white;">Add Ward</a>
     <a class="btn" href="{% url 'ipd:bed_create' %}">Add Bed</a>
+    {% endif %}
   </div>
 </div>
 
@@ -29,7 +31,7 @@
           {% for b in w.beds.all %}
           
           <div class="bed-container" style="position:relative;">
-            {% if b.status == 'Available' %}
+            {% if b.status == 'Available' and nav.ipd %}
               <a href="{% url 'ipd:admission_create' %}?bed_id={{ b.pk }}" style="text-decoration:none;">
                 <div class="bed-card available" title="Available - Click to Admit">
                   <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" style="width:28px; height:28px;">
@@ -75,12 +77,14 @@
               </div>
             {% endif %}
             
-            <!-- Quick Edit Bed Details/Status Link -->
+            <!-- Quick Edit Bed Details/Status Link — `ipd`, not `ward` -->
+            {% if nav.ipd %}
             <a href="{% url 'ipd:bed_edit' b.pk %}" class="bed-edit-btn" title="Edit Bed Details / Toggle Status">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:12px; height:12px;">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
               </svg>
             </a>
+            {% endif %}
           </div>
           
           {% empty %}

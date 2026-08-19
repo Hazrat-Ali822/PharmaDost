@@ -431,10 +431,22 @@ sidebar, each role's own dashboard tiles and every page header button each
 decided independently who saw a link, while the view decided who could open it,
 and the two drifted apart in twenty places across nine roles — a receptionist
 with "Duty Roster" in her sidebar (gated `ward`), an accountant whose landing
-page offered "Bills" (gated `pos`). `tests/test_nav_groups.py` has two guards
-that walk it generically: `EverySidebarLinkOpensTest` signs in as all nine roles,
-follows every sidebar link and every link on the landing page, and fails on any
-403 or 500. A 404 passes — an empty test database has no rows for a detail page.
+page offered "Bills" (gated `pos`). `tests/test_nav_groups.py::EverySidebarLinkOpensTest` walks it
+generically: it signs in as all nine roles and crawls **breadth-first** from the
+sidebar, failing on any 403 or 500. A 404 passes (a row that does not exist).
+
+Two things about that crawl are load-bearing, and both were learned by the test
+passing while the app was broken:
+
+- **It seeds a patient, doctor, ward, bed, admission, medicine and supplier
+  first.** The first version ran against an empty database, so every list was
+  empty, no detail page was ever linked, and it saw only the easy half of the
+  app.
+- **It is breadth-first, not one hop.** Depth is where these hide: the seven
+  bedside-charting buttons sit on the admission page, which is three hops in
+  (sidebar → `/ipd/` → `/ipd/<id>/` → the buttons), and a two-hop version
+  reported success while a receptionist had seven links into a 403. Bounded by
+  `MAX_PAGES_PER_ROLE`.
 
 **403 is a real page** (`templates/403.html`, rendered by
 `accounts.decorators.denied`). `HttpResponseForbidden("some text")` returns that
