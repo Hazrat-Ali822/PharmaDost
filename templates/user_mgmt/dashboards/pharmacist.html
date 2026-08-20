@@ -4,10 +4,13 @@
 {% block content %}
 <div class="page-head">
   <div>
-    <h2>Pharmacy Desk 💊</h2>
+    <h2>Pharmacy Desk</h2>
     <div class="muted">Welcome, {{ request.user.display_name }}</div>
   </div>
-  <a class="btn" href="{% url 'sale_create' %}">+ New Bill (POS)</a>
+  <a class="btn" href="{% url 'sale_create' %}" style="display:inline-flex;align-items:center;gap:6px;">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    New Bill (POS)
+  </a>
 </div>
 
 <form method="get" class="card" style="padding:15px; margin-bottom:20px; display:flex; gap:15px; align-items:center; flex-wrap:wrap; background:rgba(0,0,0,0.02); border: 1px solid var(--border);">
@@ -58,7 +61,8 @@
 
 <div class="card" style="margin-top:20px; margin-bottom:20px;">
   <h3 style="margin-top:0; font-weight:700; color:var(--text); border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:15px; display:flex; align-items:center; gap:8px;">
-    💊 Pending Prescriptions (Doctor Orders)
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;color:var(--primary);"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>
+    Pending Prescriptions (Doctor Orders)
   </h3>
   <table class="tbl" style="margin:0;">
     <thead>
@@ -102,7 +106,7 @@
       </tr>
       {% empty %}
       <tr>
-        <td colspan="6" class="muted text-center" style="padding:20px;">No pending prescriptions from doctors. All caught up! 🎉</td>
+        <td colspan="6" class="muted text-center" style="padding:20px;">No pending prescriptions from doctors. All caught up.</td>
       </tr>
       {% endfor %}
     </tbody>

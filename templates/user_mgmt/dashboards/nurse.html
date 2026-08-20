@@ -3,9 +3,12 @@
 {% block page_title %}Ward / Nursing{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h2>Ward Desk 👩‍⚕️</h2><div class="muted">{{ request.user.display_name }}</div></div>
+  <div><h2>Ward Desk</h2><div class="muted">{{ request.user.display_name }}</div></div>
   <div style="display:flex; gap:8px; flex-wrap:wrap;">
-    <a class="btn alt" href="{% url 'ipd:ward_bed_list' %}">🛏️ Beds / Wards</a>
+    <a class="btn alt" href="{% url 'ipd:ward_bed_list' %}" style="display:inline-flex;align-items:center;gap:6px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M2 4v16M2 8h18a2 2 0 0 1 2 2v10M2 17h20M6 8v9"/></svg>
+      Beds / Wards
+    </a>
     <a class="btn" href="{% url 'ipd:admission_list' %}">All Admissions</a>
   </div>
 </div>
@@ -35,12 +38,18 @@
         <td>{{ a.attending_doctor.full_name }}</td>
         <td>{{ a.admission_date|date:"d/m/Y H:i" }}</td>
         <td style="white-space:nowrap;">
-          <a class="btn sm" href="{% url 'ipd:medication_log_add' a.pk %}">💊 Medication</a>
-          <a class="btn sm alt" href="{% url 'ipd:doctor_round_add' a.pk %}">🩺 Round</a>
+          <a class="btn sm" href="{% url 'ipd:medication_log_add' a.pk %}" style="display:inline-flex;align-items:center;gap:4px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>
+            Medication
+          </a>
+          <a class="btn sm alt" href="{% url 'ipd:doctor_round_add' a.pk %}" style="display:inline-flex;align-items:center;gap:4px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/></svg>
+            Round
+          </a>
         </td>
       </tr>
       {% empty %}
-      <tr><td colspan="6" class="muted text-center">No admitted patients right now. 🎉</td></tr>
+      <tr><td colspan="6" class="muted text-center">No admitted patients right now.</td></tr>
       {% endfor %}
     </tbody>
   </table>

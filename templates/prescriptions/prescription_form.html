@@ -44,7 +44,8 @@
     {% if presets %}
     <div style="margin-bottom:18px; display:flex; gap:12px; align-items:center; background:var(--bg); padding:10px 14px; border-radius:8px; border:1px solid var(--border-strong);">
       <label style="font-weight:700; color:var(--text); font-size:13.5px; display:flex; align-items:center; gap:6px;">
-        ⚡ Quick Rx Template:
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;color:var(--primary);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Quick Rx Template:
       </label>
       <select id="preset-select" style="padding:6px 12px; border-radius:8px; border:1px solid var(--border-strong); background:var(--surface); color:var(--text); font-weight:600; min-width:200px;">
         <option value="">-- Select Template --</option>
@@ -56,8 +57,13 @@
     </div>
     {% endif %}
 
-    <div class="page-head"><h3>💊 Medicines</h3>
-      <button type="button" class="btn sm" id="add-med">+ Add medicine</button></div>
+    <div class="page-head">
+      <h3 style="display:flex;align-items:center;gap:6px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:var(--primary);"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>
+        Medicines
+      </h3>
+      <button type="button" class="btn sm" id="add-med">+ Add medicine</button>
+    </div>
     {{ med_formset.management_form }}
     <table class="tbl" id="med-table">
       <thead><tr><th style="width:25%">Medicine (Catalog)</th><th style="width:25%">Or Custom Name (if not in list)</th><th>Dosage</th><th>Days</th><th>Instructions</th><th></th></tr></thead>
@@ -80,9 +86,12 @@
     {% if not is_edit %}
     <!-- ---------------- Lab tests ---------------- -->
     <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
-    <h3>🧪 Lab Tests <span class="muted" style="font-weight:400;font-size:13px">(optional — tick to order)</span></h3>
+    <h3 style="display:flex;align-items:center;gap:6px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:var(--primary);"><path d="M10 2v7.31L4.15 19.34A2 2 0 0 0 5.86 22h12.28a2 2 0 0 0 1.71-2.66L14 9.31V2"/><path d="M8.5 2h7"/></svg>
+      Lab Tests <span class="muted" style="font-weight:400;font-size:13px">(optional — tick to order)</span>
+    </h3>
     <div style="margin-bottom:10px; max-width: 320px;">
-      <input type="text" id="presc-test-search" placeholder="🔍 Search lab tests..." style="width:100%; padding:6px 12px; border-radius:8px; border:1px solid var(--border-strong); background:var(--surface); color:var(--text); font-size:12.5px; font-weight:600;">
+      <input type="text" id="presc-test-search" placeholder="Search lab tests..." style="width:100%; padding:6px 12px; border-radius:8px; border:1px solid var(--border-strong); background:var(--surface); color:var(--text); font-size:12.5px; font-weight:600;">
     </div>
     <div id="lab-tests-container" style="columns:2;gap:18px;margin-top:8px">
       {% for cb in form.tests %}
@@ -94,9 +103,12 @@
 
     <!-- ---------------- Imaging / Scans ---------------- -->
     <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
-    <h3>🩻 Scans <span class="muted" style="font-weight:400;font-size:13px">(optional — ultrasound, x-ray, CT, MRI…)</span></h3>
+    <h3 style="display:flex;align-items:center;gap:6px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:var(--primary);"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+      Scans <span class="muted" style="font-weight:400;font-size:13px">(optional — ultrasound, x-ray, CT, MRI…)</span>
+    </h3>
     <div style="margin-bottom:10px; max-width: 320px;">
-      <input type="text" id="presc-scan-search" placeholder="🔍 Search scans..." style="width:100%; padding:6px 12px; border-radius:8px; border:1px solid var(--border-strong); background:var(--surface); color:var(--text); font-size:12.5px; font-weight:600;">
+      <input type="text" id="presc-scan-search" placeholder="Search scans..." style="width:100%; padding:6px 12px; border-radius:8px; border:1px solid var(--border-strong); background:var(--surface); color:var(--text); font-size:12.5px; font-weight:600;">
     </div>
     <div id="scans-container" style="columns:2;gap:18px;margin-top:8px">
       {% for cb in form.scans %}

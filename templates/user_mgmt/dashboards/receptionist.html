@@ -3,7 +3,7 @@
 {% block page_title %}Reception{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h2>Front Desk 🧑‍💼</h2><div class="muted">Welcome, {{ request.user.display_name }}</div></div>
+  <div><h2>Front Desk</h2><div class="muted">Welcome, {{ request.user.display_name }}</div></div>
   <a class="btn" href="{% url 'patient_add' %}">+ Register Patient</a>
 </div>
 <div class="stat-grid">
