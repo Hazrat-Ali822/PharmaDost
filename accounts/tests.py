@@ -191,7 +191,11 @@ class CustomPasswordResetTest(TestCase):
         client = Client()
         resp = client.get(reverse('password_reset'))
         self.assertEqual(resp.status_code, 200)
-        self.assertContains(resp, 'Reset Password')
+        # The heading matches the link that leads here ("Forgot password?"), and
+        # the page has to keep saying no email is sent — there is no mail backend,
+        # so anyone told to check their inbox waits for ever.
+        self.assertContains(resp, 'Forgot password')
+        self.assertContains(resp, 'no email is sent')
 
     def test_post_password_reset_notifies_hospital_admin(self):
         client = Client()

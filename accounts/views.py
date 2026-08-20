@@ -172,11 +172,61 @@ def get_notifications_latest(request):
     })
 
 
+def _reset_page_tenant(request, back):
+    """Which hospital's door is this reset page standing next to?
+
+    The page is reached from a tenant login, so it should carry that hospital's
+    name and colour rather than the platform's — otherwise a nurse who taps
+    "Forgot password" lands somewhere that looks like a different product.
+
+    Two routes to the answer, because there are two routes to the login itself:
+    the subdomain (`shaheen.sehatyar.online`) is in the host, and the path form
+    (`sehatyar.online/shaheen/login/`, still the fallback wherever wildcard DNS
+    is not set up yet) is only visible in the `next` we were handed.
+    """
+    from saas.utils import hospital_from_host
+
+    hospital = hospital_from_host(request.get_host())
+    if hospital is not None:
+        return hospital
+    parts = [p for p in (back or '').split('/') if p]
+    if len(parts) == 2 and parts[1] == 'login':
+        from saas.models import Hospital
+        return Hospital.objects.filter(slug=parts[0]).first()
+    return None
+
+
 def custom_password_reset_request(request):
     """Staff password reset request.
     Instead of sending an email, notifies the user's Hospital Admin
     so they can reset the password directly.
     """
+    from django.urls import reverse
+    from django.utils.http import url_has_allowed_host_and_scheme
+
+    # Where "Back to sign in" goes. Validated against this host before it is
+    # followed — an unchecked `next` turns the page into an open redirect, which
+    # is a phishing step: the user is on the real hospital domain, asks for a
+    # reset, and is handed a copy of the login form. Same rule as
+    # `patients.views._safe_next`.
+    back = request.POST.get('next') or request.GET.get('next') or ''
+    if back and not url_has_allowed_host_and_scheme(
+            back, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        back = ''
+    hospital = _reset_page_tenant(request, back)
+    if not back:
+        back = reverse('login')
+
+    branding = None
+    if hospital is not None:
+        from saas.utils import set_current_hospital, clear_current_hospital
+        from user_mgmt.models import SiteSettings
+        set_current_hospital(hospital)
+        try:
+            branding = SiteSettings.load()
+        finally:
+            clear_current_hospital()
+
     success_msg = None
     error_msg = None
     if request.method == 'POST':
@@ -200,8 +250,11 @@ def custom_password_reset_request(request):
             else:
                 success_msg = "If an active account exists for this email, your Hospital Administrator has been notified."
 
-    return render(request, 'registration/password_reset_request.html', {
-        'success_msg': success_msg,
-        'error_msg': error_msg,
-    })
+    ctx = {'success_msg': success_msg, 'error_msg': error_msg,
+           'back_url': back, 'hospital': hospital}
+    # Only override the context processor's `branding` when a tenant was
+    # actually resolved — on the platform door it must stay the platform's.
+    if branding is not None:
+        ctx['branding'] = branding
+    return render(request, 'registration/password_reset_request.html', ctx)
 

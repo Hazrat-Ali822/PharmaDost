@@ -1,102 +1,153 @@
 {% load static %}
+{% static 'img/sehatyar-logo.png' as fallback_logo %}
 <!doctype html>
 <html lang="en">
+{% comment %}
+The hospital's own front door. It shares the platform sign-in page's LOOK — the
+photograph, the floating card, the input icons — but deliberately not its
+CONTENT:
+
+* **No marketing navbar and no public-page links.** A hospital's branded sign-in
+  page is not a place to advertise Sehatyar to that hospital's own staff.
+* **No "Try the live demo" button.** On the platform door that invites a visitor
+  in; here it would take a nurse out of her own hospital and into somebody
+  else's sample data, one tap from where she meant to sign in.
+* **The headline is the hospital's name.** On the platform page the navbar
+  carries the brand, so the headline can be a sales line; here there is no
+  navbar, and the first thing a member of staff should see is that they are at
+  the right hospital.
+
+What it does gain is the tenant's own colour: the wash over the photograph is
+mixed from `--primary`, so each hospital's door looks like that hospital rather
+than like a shared template with a different logo pasted on.
+{% endcomment %}
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sign in to {{ hospital.name }} — Sehatyar</title>
+  <meta name="robots" content="noindex">
+  {% if branding.logo_image %}
+    <link rel="icon" href="{{ branding.logo_image.url }}">
+  {% else %}
+    <link rel="icon" type="image/png" href="{% static 'img/sehatyar-logo.png' %}">
+  {% endif %}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/app.css' %}?v=3.3">
   {% if branding.primary_color %}<style>:root{ --primary: {{ branding.primary_color }}; --accent: {{ branding.accent_color }}; }</style>{% endif %}
   <style>
-    .login-wrap { min-height: 100vh; display: grid; grid-template-columns: 1.1fr 1fr; }
+    .login-wrap {
+      position: relative;
+      min-height: 100vh; display: grid; grid-template-columns: 1.05fr 1fr;
+
+      /* Fallback FIRST, brand-tinted version second. `color-mix` is unsupported
+         on some older Android WebViews, and an invalid gradient would drop the
+         whole declaration — leaving white text on a bright photograph. The
+         cascade keeps this plain dark wash in that case. */
+      background:
+        linear-gradient(100deg, rgba(3, 20, 27, .84) 0%, rgba(3, 20, 27, .56) 42%, rgba(3, 20, 27, .20) 100%),
+        url("{% static 'img/login-bg.jpg' %}") center / cover no-repeat,
+        linear-gradient(150deg, var(--primary), var(--accent));
+
+      /* The hospital's own colour, mixed INTO the dark rather than used neat:
+         a tenant may pick a pale brand colour, and white headline text has to
+         stay readable whatever they choose. Heaviest on the left where the text
+         sits, clearing to the right so the photograph is still visible. */
+      background:
+        linear-gradient(100deg,
+          color-mix(in srgb, var(--primary) 45%, rgba(3, 20, 27, .90)) 0%,
+          color-mix(in srgb, var(--primary) 36%, rgba(3, 20, 27, .62)) 42%,
+          rgba(3, 20, 27, .20) 100%),
+        url("{% static 'img/login-bg.jpg' %}") center / cover no-repeat,
+        linear-gradient(150deg, var(--primary), var(--accent));
+    }
+
+    /* A grid item defaults to min-width:auto and refuses to shrink below its
+       content's min-content width — an <input> carries an intrinsic width from
+       its `size` attribute the same way a long word does, so without this a
+       320px phone scrolls sideways. Same trap as `.grid > *` in app.css. */
+    .login-wrap > * { min-width: 0; }
+
+    /* ---- brand panel (left) — over the photograph ---- */
     .login-hero {
-      background: #4f46e5;
-      background: linear-gradient(135deg, var(--primary), var(--accent));
-      color: #fff; padding: 48px; display: flex; flex-direction: column; justify-content: center;
+      position: relative; overflow: hidden; background: transparent;
+      color: #fff; padding: 56px 52px; display: flex; flex-direction: column; justify-content: center;
     }
-    .login-hero .logo { width: 54px; height: 54px; border-radius: 14px; background: rgba(255,255,255,.18);
-      display: grid; place-items: center; font-weight: 800; font-size: 26px; margin-bottom: 22px; }
-    .login-hero h1 { color: #fff; font-size: 34px; line-height: 1.15; }
-    .login-hero p { color: rgba(255,255,255,.85); font-size: 15px; max-width: 420px; }
-
-    /* ---- animated medical / pharmacy scene ---- */
-    .scene { position: relative; height: 300px; max-width: 460px; margin: 26px 0 0; }
-    .scene .glow { position:absolute; inset:0; background:
-        radial-gradient(circle at 30% 35%, rgba(255,255,255,.18), transparent 45%),
-        radial-gradient(circle at 75% 70%, rgba(255,255,255,.12), transparent 40%);
-      filter: blur(4px); }
-
-    .float { position: absolute; opacity: .92; animation: floaty 6s ease-in-out infinite; will-change: transform; }
-    .med-item {
-      width: 48px; height: 48px; border-radius: 50%;
-      background: rgba(255, 255, 255, 0.16);
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      backdrop-filter: blur(4px);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-      display: grid; place-items: center;
-      font-size: 24px;
-      user-select: none;
+    .login-hero .logo-image-wrap { margin-bottom: 24px; }
+    .login-hero .logo {
+      width: 56px; height: 56px; border-radius: 15px; background: rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.22);
+      display: grid; place-items: center; font-weight: 800; font-size: 26px; margin-bottom: 24px;
     }
-
-    .f1 { top: 8px; left: 6px; animation-delay: 0s; }
-    .f2 { top: 70px; right: 40px; animation-delay: -1.2s; }
-    .f3 { top: 150px; left: 30px; animation-delay: -2.4s; }
-    .f4 { top: 120px; right: 90px; animation-delay: -3.1s; }
-    .f5 { top: 205px; right: 20px; animation-delay: -1.8s; }
-
-    /* ECG / heartbeat line */
-    .ecg { position: absolute; left: 0; right: 0; top: 128px; height: 60px; }
-    .ecg svg { width: 100%; height: 100%; overflow: visible; }
-    .ecg path { fill: none; stroke: #fff; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round;
-      filter: drop-shadow(0 0 6px rgba(255,255,255,.7));
-      stroke-dasharray: 620; stroke-dashoffset: 620; animation: trace 3.4s linear infinite; }
-    .ecg .pulse-dot { fill:#fff; animation: blip 3.4s linear infinite; }
-
-    /* rotating medical cross badge */
-    .cross { position:absolute; top: 4px; right: 8px; width: 58px; height: 58px; border-radius: 18px;
-      background: rgba(255,255,255,.16); backdrop-filter: blur(2px);
-      display:grid; place-items:center; animation: bob 4s ease-in-out infinite; }
-    .cross svg { width: 30px; height: 30px; }
-
-    /* feature chips */
-    .feats { display:flex; flex-wrap:wrap; gap:10px; margin-top: 30px; max-width: 460px; }
-    .chip { display:flex; align-items:center; gap:8px; padding:9px 14px; border-radius: 999px;
-      background: rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.22);
-      color:#fff; font-size:13px; font-weight:600; animation: bob 3.5s ease-in-out infinite; }
-    .chip svg { width:17px; height:17px; }
-    .chip:nth-child(2){ animation-delay:-.7s } .chip:nth-child(3){ animation-delay:-1.4s }
-    .chip:nth-child(4){ animation-delay:-2.1s }
-
-    @keyframes floaty { 0%,100%{ transform: translateY(0) rotate(0) } 50%{ transform: translateY(-16px) rotate(6deg) } }
-    @keyframes bob { 0%,100%{ transform: translateY(0) } 50%{ transform: translateY(-7px) } }
-    @keyframes trace { 0%{ stroke-dashoffset: 620 } 60%,100%{ stroke-dashoffset: 0 } }
-    @keyframes blip {
-      0%{ opacity:0; transform: translateX(0) } 5%{ opacity:1 }
-      60%{ opacity:1; transform: translateX(300px) } 65%,100%{ opacity:0; transform: translateX(300px) } }
-    @media (prefers-reduced-motion: reduce) {
-      .float, .cross, .chip { animation: none !important; }
-      .ecg path { animation: none; stroke-dashoffset: 0; } .ecg .pulse-dot { display:none; }
+    .login-hero h1 {
+      color: #fff; font-size: 42px; line-height: 1.1; letter-spacing: -.025em;
+      margin: 0; font-weight: 800; text-wrap: balance; max-width: 12ch;
     }
-    .login-panel { display: grid; place-items: center; padding: 32px; background: var(--bg); }
-    .login-card { width: 100%; max-width: 380px; }
-    .login-card h2 { font-size: 24px; }
-    .login-card .sub { color: var(--muted); margin-bottom: 22px; }
-    .login-card label { display: block; margin: 0 0 6px; font-size: 13px; color: var(--muted); }
-    .login-card .field { margin-bottom: 16px; }
-    .login-card .btn { width: 100%; justify-content: center; padding: 11px; font-size: 15px; }
+    .login-hero .lede { color: rgba(255,255,255,.86); font-size: 15.5px; line-height: 1.55; max-width: 400px; margin: 14px 0 0; }
+
+    .value-list { margin-top: 36px; display: flex; flex-direction: column; gap: 15px; max-width: 400px; }
+    .value-row { display: flex; align-items: center; gap: 14px; color: rgba(255,255,255,.94);
+      font-size: 15px; font-weight: 500; }
+    .value-ic { flex: 0 0 38px; width: 38px; height: 38px; border-radius: 11px;
+      background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.22);
+      display: grid; place-items: center; }
+    .value-ic svg { width: 19px; height: 19px; stroke: #fff; fill: none; stroke-width: 2; }
+
+    .hero-foot { margin-top: 40px; color: rgba(255,255,255,.62); font-size: 12.5px; }
+
+    /* ---- form panel (right) — the card floats on the photograph ---- */
+    .login-panel { display: grid; place-items: center; padding: 56px 32px; background: transparent; }
+    .login-card {
+      width: 100%; max-width: 400px;
+      background: var(--card-bg);
+      border-radius: 18px; padding: 34px 32px;
+      box-shadow: 0 26px 70px rgba(0, 0, 0, .38);
+      border: 1px solid rgba(255, 255, 255, .14);
+    }
+    .login-card h2 { font-size: 26px; margin: 0 0 4px; letter-spacing: -.02em; }
+    .login-card .sub { color: var(--muted); margin-bottom: 24px; font-size: 14px; }
+    .login-card label { display: block; margin: 0 0 7px; font-size: 12.5px; font-weight: 600;
+      color: var(--muted); letter-spacing: .01em; }
+    .login-card .field { margin-bottom: 18px; }
+
+    /* Icon inside the box: a sibling positioned over the input, with the input
+       given room via padding-left. The two paddings must stay in step or the
+       caret sits under the icon. */
+    .input-wrap { position: relative; display: block; }
+    .input-wrap > svg {
+      position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+      width: 17px; height: 17px; stroke: var(--muted); fill: none; stroke-width: 2;
+      pointer-events: none;
+    }
+    .login-card .input-wrap input {
+      width: 100%; padding: 12px 14px 12px 42px; font-size: 15px;
+      border-radius: 11px; border: 1px solid var(--border);
+      background: var(--card-bg); color: var(--text);
+    }
+    .input-wrap.has-toggle input { padding-right: 44px; }
+    .pw-toggle {
+      position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+      background: none; border: 0; cursor: pointer; padding: 8px; line-height: 0;
+      color: var(--muted); border-radius: 8px;
+    }
+    .pw-toggle:hover { color: var(--text); }
+    .pw-toggle svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+    .login-card .btn { width: 100%; justify-content: center; padding: 12px; font-size: 15px; }
+    .card-foot { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);
+      text-align: center; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
+    .card-foot a { font-weight: 600; }
+    .card-foot .built { display: block; margin-top: 8px; font-size: 11.5px; opacity: .8; }
     .field-error, .error-box { color: var(--danger); font-size: 13px; margin-top: 6px; }
     .error-box { background: var(--danger-bg); border: 1px solid #fecaca; border-radius: 9px; padding: 10px 12px; margin-bottom: 16px; }
-    .error-box ul { margin: 0; padding-left: 18px; }
-    
+
     .mobile-logo-header { display: none; text-align: center; margin-bottom: 24px; }
     .mobile-logo-img { max-height: 54px; border-radius: 10px; margin-bottom: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
     .mobile-logo-fallback {
       margin: 0 auto 8px; width: 48px; height: 48px; border-radius: 12px;
       background: var(--primary); color: #fff; display: grid; place-items: center;
-      font-weight: 800; font-size: 22px; box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 30%, transparent);
+      font-weight: 800; font-size: 22px;
     }
     .mobile-logo-header h3 { margin: 0; font-size: 19px; font-weight: 800; color: var(--text); }
     .mobile-logo-header p { margin: 4px 0 0; font-size: 12.5px; color: var(--muted); }
@@ -105,11 +156,14 @@
       .login-wrap { grid-template-columns: 1fr; }
       .login-hero { display: none; }
       .mobile-logo-header { display: block; }
-      .login-panel {
-        background-image:
-          radial-gradient(600px 300px at 100% 0%, color-mix(in srgb, var(--primary) 7%, transparent), transparent 70%),
-          radial-gradient(500px 300px at 0% 100%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 70%);
-      }
+      .login-panel { padding: 28px 16px; }
+    }
+
+    /* A 320px phone is 288px of usable width once the panel's padding is off,
+       and the card would not go below 318 on its own. */
+    @media (max-width: 380px) {
+      .login-card { padding: 24px 18px; }
+      .login-card input { min-width: 0; }
     }
   </style>
 </head>
@@ -117,88 +171,127 @@
   <div class="login-wrap">
     <div class="login-hero">
       {% if branding.logo_image %}
-        <div class="logo-image-wrap" style="margin-bottom: 22px;">
+        <div class="logo-image-wrap">
           {# onerror: the row can name an upload whose file is no longer on disk (a #}
           {# DB restored without its media). Django's {% if %} only checks the field #}
           {# is set, not that the file exists, so without this the hospital's own    #}
           {# sign-in page leads with a broken-image icon.                            #}
-          {% static 'img/sehatyar-logo.png' as fallback_logo %}
-          <img src="{{ branding.logo_image.url }}" alt="{{ hospital.name }} Logo" style="max-height: 64px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.15);"
-               onerror="this.onerror=null;this.src='{{ fallback_logo }}';this.style.boxShadow='none'">
+          <img src="{{ branding.logo_image.url }}" alt="{{ hospital.name }} logo"
+               style="max-height: 62px; border-radius: 13px;"
+               onerror="this.onerror=null;this.src='{{ fallback_logo }}'">
         </div>
       {% else %}
-        <div class="logo">
-          {% if branding.logo_text %}{{ branding.logo_text }}{% else %}🏨{% endif %}
-        </div>
+        <div class="logo">{{ hospital.name|first|upper }}</div>
       {% endif %}
-      <h1 style="margin-top: 10px;">{{ hospital.name }}</h1>
-      <p style="margin-top: 10px;">Complete Management Portal for {{ hospital.name }} — powered by Sehatyar.</p>
 
-      <div class="scene" aria-hidden="true">
-        <div class="glow"></div>
+      <h1>{{ hospital.name }}</h1>
+      <p class="lede">Your hospital's own portal — patients, OPD, lab, wards,
+        pharmacy and billing, all in one place.</p>
 
-        <!-- floating hospital elements -->
-        <div class="float f1"><div class="med-item">🩺</div></div>
-        <div class="float f2"><div class="med-item">📋</div></div>
-        <div class="float f3"><div class="med-item">💉</div></div>
-        <div class="float f4"><div class="med-item">💊</div></div>
-        <div class="float f5"><div class="med-item">🩹</div></div>
-
-        <!-- rotating/bobbing medical cross -->
-        <div class="cross">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      <div class="value-list">
+        <div class="value-row">
+          <span class="value-ic">
+            <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 20.5 3.5 13.5a5 5 0 0 1 7-7l7 7a5 5 0 0 1-7 7Z"/><path d="M7 10l7 7"/></svg>
+          </span>
+          Pharmacy, POS &amp; live inventory
         </div>
-
-        <!-- ECG heartbeat line -->
-        <div class="ecg">
-          <svg viewBox="0 0 300 60" preserveAspectRatio="none">
-            <path d="M0 30 H70 l8 -20 l10 40 l9 -34 l7 14 H150 l8 -18 l10 34 l8 -16 H300"/>
-            <circle class="pulse-dot" cx="0" cy="30" r="4"/>
-          </svg>
+        <div class="value-row">
+          <span class="value-ic">
+            <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v6a6 6 0 0 0 12 0V3"/><circle cx="12" cy="17" r="3"/></svg>
+          </span>
+          OPD, doctors &amp; appointments
+        </div>
+        <div class="value-row">
+          <span class="value-ic">
+            <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v6l-5 9a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3l-5-9V3M8 3h8"/></svg>
+          </span>
+          Lab, imaging &amp; reports
+        </div>
+        <div class="value-row">
+          <span class="value-ic">
+            <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10Z"/></svg>
+          </span>
+          IPD wards, billing &amp; patient records
         </div>
       </div>
+
+      <p class="hero-foot">Works offline on your clinic wifi — no internet required.</p>
     </div>
 
     <div class="login-panel">
       <div class="card login-card">
         <div class="mobile-logo-header">
           {% if branding.logo_image %}
-            {% static 'img/sehatyar-logo.png' as fallback_logo_m %}
-            <img src="{{ branding.logo_image.url }}" alt="{{ hospital.name }} Logo" class="mobile-logo-img"
-                 onerror="this.onerror=null;this.src='{{ fallback_logo_m }}';this.style.boxShadow='none'">
+            <img src="{{ branding.logo_image.url }}" alt="{{ hospital.name }} logo" class="mobile-logo-img"
+                 onerror="this.onerror=null;this.src='{{ fallback_logo }}';this.style.boxShadow='none'">
           {% else %}
-            <div class="mobile-logo-fallback">
-              {% if branding.logo_text %}{{ branding.logo_text }}{% else %}🏨{% endif %}
-            </div>
+            <div class="mobile-logo-fallback">{{ hospital.name|first|upper }}</div>
           {% endif %}
           <h3>{{ hospital.name }}</h3>
           <p>Complete Hospital Portal</p>
         </div>
+
         <h2>Sign in</h2>
-        <div class="sub">Log in to your hospital portal.</div>
+        <div class="sub">Welcome back. Please enter your details.</div>
 
         {% if error_message %}
-          <div class="error-box">
-            {{ error_message }}
-          </div>
+          <div class="error-box">{{ error_message }}</div>
         {% endif %}
 
         <form method="post">{% csrf_token %}
           <div class="field">
-            <label for="id_username">Email Address</label>
-            <input type="email" name="email" id="id_username" required style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border);" placeholder="you@hospital.com">
+            <label for="id_username">Email address</label>
+            <span class="input-wrap">
+              <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>
+              <input type="email" name="email" id="id_username" required
+                     autocomplete="username" placeholder="you@hospital.com">
+            </span>
           </div>
           <div class="field">
             <label for="id_password">Password</label>
-            <input type="password" name="password" id="id_password" required style="width:100%; padding:10px; border-radius:6px; border:1px solid var(--border);">
+            <span class="input-wrap has-toggle">
+              <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              <input type="password" name="password" id="id_password" required
+                     autocomplete="current-password">
+              <button class="pw-toggle" type="button" id="pwToggle" aria-label="Show password">
+                <svg id="pwEye" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg id="pwEyeOff" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M10.6 6.2A9.9 9.9 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1M6.6 6.6A17.7 17.7 0 0 0 2 12s3.6 7 10 7a9.8 9.8 0 0 0 4.3-1"/><path d="m2 2 20 20"/></svg>
+              </button>
+            </span>
           </div>
-          <button class="btn" type="submit">Sign in</button>
+          <button class="btn" type="submit">Sign in →</button>
         </form>
-        <p class="muted" style="margin-top:18px;font-size:12.5px;text-align:center;">
-          Powered by Sehatyar SaaS
-        </p>
+
+        {# There is no reset email on this deployment — `password_reset` is #}
+        {# shadowed by `accounts.custom_password_reset_request`, which notifies #}
+        {# this hospital's own admin, the only person who can actually reset it. #}
+        <div class="card-foot">
+          {# `?next=` so the reset page can send them back HERE. Without it its #}
+          {# "Back to sign in" resolves to the platform door, which on the path  #}
+          {# form (`/<slug>/login/`) is owner-only and refuses this hospital's   #}
+          {# staff — a dead end one tap from where they started.                 #}
+          <a href="{% url 'password_reset' %}?next={{ request.path|urlencode }}">Forgot password?</a>
+          <span class="built">Powered by Sehatyar</span>
+        </div>
       </div>
     </div>
   </div>
+
+<script>
+  // Show/hide the password. Nothing else on the page needs JS, so this stays inline.
+  (function () {
+    var btn = document.getElementById('pwToggle');
+    var input = document.getElementById('id_password');
+    if (!btn || !input) return;
+    btn.addEventListener('click', function () {
+      var hidden = input.type === 'password';
+      input.type = hidden ? 'text' : 'password';
+      document.getElementById('pwEye').style.display = hidden ? 'none' : '';
+      document.getElementById('pwEyeOff').style.display = hidden ? '' : 'none';
+      btn.setAttribute('aria-label', hidden ? 'Hide password' : 'Show password');
+      input.focus();
+    });
+  })();
+</script>
 </body>
 </html>

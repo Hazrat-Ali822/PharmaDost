@@ -156,3 +156,93 @@ class SubdomainLoginTest(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertNotIn('_auth_user_id', c.session)
         self.assertContains(resp, 'does not belong')
+
+
+class TenantDoorLooksLikeItsOwnHospitalTest(TestCase):
+    """The tenant sign-in page shares the platform page's LOOK, not its content.
+
+    It gained the photograph, the floating card and the brand wash; it must not
+    gain the marketing navbar or the "Try the live demo" button, which would send
+    a hospital's own staff into somebody else's sample data.
+    """
+
+    def setUp(self):
+        self.h = Hospital.objects.create(name='Shaheen Health Care', slug='shaheen',
+                                         expiry_date=_future())
+        set_current_hospital(self.h)
+        from user_mgmt.models import SiteSettings
+        row = SiteSettings.load()
+        row.primary_color = '#0d7c6d'
+        row.accent_color = '#43bda8'
+        row.save()
+        User.objects.create_user(email='a@shaheen.com', password='pw',
+                                 role='ADMIN', hospital=self.h)
+        clear_current_hospital()
+        _skip_setup_wizard()
+
+    def tearDown(self):
+        clear_current_hospital()
+
+    def _page(self):
+        return Client().get('/shaheen/login/')
+
+    def test_it_wears_the_hospitals_own_colour(self):
+        body = self._page().content.decode()
+        self.assertIn('#0d7c6d', body)
+        # ...and that colour is what the wash over the photograph is mixed from,
+        # which is the whole point of it being per-tenant.
+        self.assertIn('color-mix(in srgb, var(--primary)', body)
+
+    def test_it_carries_no_platform_marketing(self):
+        body = self._page().content.decode()
+        self.assertNotIn('site-nav', body)               # the marketing navbar
+        self.assertNotIn('Try the live demo', body)
+        self.assertNotIn('/features/', body)
+
+    def test_the_headline_is_the_hospital(self):
+        self.assertContains(self._page(), 'Shaheen Health Care')
+
+    def test_forgot_password_is_offered_and_comes_back_here(self):
+        body = self._page().content.decode()
+        self.assertIn('Forgot password?', body)
+        # The `next` matters on the path form: without it the reset page's "back"
+        # link resolves to the owner-only platform door, which refuses this
+        # hospital's staff — a dead end one tap from where they started.
+        self.assertIn('password_reset/?next=/shaheen/login/', body)
+
+
+class ForgotPasswordPageTest(TestCase):
+    def setUp(self):
+        self.h = Hospital.objects.create(name='Shaheen Health Care', slug='shaheen',
+                                         expiry_date=_future())
+        _skip_setup_wizard()
+
+    def tearDown(self):
+        clear_current_hospital()
+
+    def test_it_names_the_hospital_it_was_reached_from(self):
+        resp = Client().get(reverse('password_reset'), {'next': '/shaheen/login/'})
+        self.assertContains(resp, 'Shaheen Health Care')
+        self.assertContains(resp, 'href="/shaheen/login/"')
+
+    def test_the_subdomain_route_needs_no_next_at_all(self):
+        resp = Client().get(reverse('password_reset'),
+                            HTTP_HOST='shaheen.sehatyar.online')
+        self.assertContains(resp, 'Shaheen Health Care')
+
+    def test_an_off_site_next_is_refused(self):
+        # An unchecked `next` makes this page an open redirect, which is a
+        # phishing step: the user is on the real hospital domain, asks for a
+        # reset, and is handed a copy of the sign-in form.
+        resp = Client().get(reverse('password_reset'),
+                            {'next': 'https://evil.example/login/'})
+        self.assertNotContains(resp, 'evil.example')
+
+    def test_it_still_says_no_email_is_sent(self):
+        # There is no mail backend. A page that implies a link is on its way
+        # leaves staff waiting for something that never arrives.
+        self.assertContains(Client().get(reverse('password_reset')), 'no email is sent')
+
+    def test_the_platform_door_keeps_its_own_branding(self):
+        resp = Client().get(reverse('password_reset'))
+        self.assertNotContains(resp, 'Shaheen Health Care')
