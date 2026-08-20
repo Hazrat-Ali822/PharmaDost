@@ -2,6 +2,7 @@ import calendar
 from datetime import date, timedelta
 
 from django import forms
+from pharma_mgmt.widgets import DateInput
 from .models import Patient, PatientDocument
 from opd.models import ClinicalRecord
 
@@ -173,8 +174,33 @@ class PatientForm(forms.ModelForm):
             raise forms.ValidationError(
                 'That does not look like a phone number. Enter it as '
                 '03XX-XXXXXXX.')
+
+        # A Pakistani mobile is exactly 11 digits. Accepting any length let
+        # `0312-732241235456436` — a slipped keypress held down — save and sit
+        # in the registry looking like a real number, and every reminder to that
+        # patient then fails silently for ever. Written the country's three ways:
+        # 03xx-xxxxxxx, +92 3xx-xxxxxxx, 0092 3xx-xxxxxxx.
+        for prefix, keep in (('0092', 4), ('92', 2)):
+            if digits.startswith(prefix) and len(digits) > 11:
+                digits = '0' + digits[keep:]
+                break
+        looks_mobile = digits.startswith('03') or digits.startswith('3')
+        if digits.startswith('3') and len(digits) == 10:
+            digits = '0' + digits
+        if looks_mobile and len(digits) != 11:
+            raise forms.ValidationError(
+                'A Pakistani mobile number is 11 digits — '
+                f'this one has {len(digits)}. Enter it as 03123456789.')
         if len(digits) == 11 and digits.startswith('03'):
             return f'{digits[:4]}-{digits[4:]}'
+
+        # Not a mobile: a landline or a genuinely foreign number. Kept as typed,
+        # because this market has too many shapes to enumerate and refusing a
+        # real number is worse than storing an unusual one — but not unbounded.
+        if len(digits) > 15:                    # E.164 allows no more than this
+            raise forms.ValidationError(
+                f'That is {len(digits)} digits — too long for a phone number. '
+                'A mobile here is 03123456789.')
         return raw
 
 
@@ -184,7 +210,7 @@ class ClinicalRecordForm(forms.ModelForm):
         fields = ['record_type', 'date', 'title', 'diagnosis', 'details',
                   'bp', 'pulse', 'temperature', 'weight']
         widgets = {
-            'date': forms.DateInput(attrs={'type': 'date'}),
+            'date': DateInput(),
             'details': forms.Textarea(attrs={'rows': 4}),
         }
 
@@ -203,10 +229,28 @@ class PatientDocumentForm(forms.ModelForm):
         widgets = {
             'image': forms.ClearableFileInput(attrs={
                 'accept': 'image/*', 'capture': 'environment'}),
-            'doc_date': forms.DateInput(attrs={'type': 'date'}),
+            'doc_date': DateInput(),
             'title': forms.TextInput(attrs={'placeholder': 'Optional — "Dr. Sara, BP medicines"'}),
             'note': forms.TextInput(attrs={'placeholder': 'optional'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # `PatientDocument.doc_date` has `default=timezone.localdate`, but a
+        # ModelForm field is required unless the model says `blank=True`, and a
+        # required field posts as '' — so the default never got a chance and the
+        # form was rejected with "This field is required".
+        #
+        # That error then had nowhere to be seen: the date box lives inside the
+        # collapsed "More details" section, so the page came back looking
+        # untouched. Choose a photo, press Save to record, nothing happens, no
+        # message — which reads as the button being dead. Optional here, filled
+        # in below.
+        self.fields['doc_date'].required = False
+
+    def clean_doc_date(self):
+        from django.utils import timezone
+        return self.cleaned_data.get('doc_date') or timezone.localdate()
 
     def clean_image(self):
         from .images import MAX_UPLOAD_BYTES

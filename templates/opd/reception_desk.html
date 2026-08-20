@@ -28,8 +28,9 @@
     <p class="muted" style="margin:0 0 14px 0; font-size:13.5px;">
       Already registered. Find them by MRN, mobile number, CNIC or name.
     </p>
-    <form method="get" style="display:flex; gap:8px;">
-      <input type="text" name="q" value="{{ q }}" autofocus
+    <form method="get" style="display:flex; gap:8px;" id="find-form">
+      <input type="text" name="q" value="{{ q }}" autofocus id="find-box"
+             autocomplete="off"
              placeholder="MRN, mobile number, CNIC or name…"
              style="flex:1; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:var(--card-bg); color:var(--text);">
       <button class="btn" type="submit">Find</button>
@@ -37,6 +38,7 @@
   </div>
 </div>
 
+<div id="find-results">
 {% if results is not None %}
 <div class="card">
   <h3 style="margin-top:0;">
@@ -71,5 +73,62 @@
   {% endif %}
 </div>
 {% endif %}
+</div>
+
+{% comment %}
+Search as you type. The desk asks "have we got this person" dozens of times a
+day, and every one of them cost a keystroke on Enter and a full page load — on a
+clinic connection that is a wait long enough to make the receptionist doubt the
+box took the text at all.
+
+It re-fetches THIS page and lifts the results out of the reply rather than
+calling a JSON endpoint, so there is exactly one search on the server. A second
+implementation is how the desk and the registry came to disagree about what
+counts as a match in the first place (see patients/search.py).
+
+The form still submits normally: no JS, or a dropped connection, and Find works
+as before.
+{% endcomment %}
+<script>
+(function () {
+  var box  = document.getElementById('find-box');
+  var form = document.getElementById('find-form');
+  var out  = document.getElementById('find-results');
+  if (!box || !form || !out || !window.fetch) return;
+
+  var timer = null, inflight = null, shown = box.value.trim();
+
+  function run(q) {
+    if (q === shown) return;
+    if (inflight) inflight.abort();
+    // One or two letters matches most of the register; not worth the round trip.
+    if (q.length && q.length < 2) return;
+    var ctrl = new AbortController();
+    inflight = ctrl;
+    fetch(form.action.split('?')[0] + '?q=' + encodeURIComponent(q),
+          {signal: ctrl.signal, headers: {'X-Requested-With': 'fetch'}})
+      .then(function (r) { return r.ok ? r.text() : null; })
+      .then(function (html) {
+        if (html === null) return;
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var fresh = doc.getElementById('find-results');
+        if (!fresh) return;
+        out.innerHTML = fresh.innerHTML;
+        shown = q;
+        // Keep the address bar honest, so a reload or a Back shows this search.
+        history.replaceState(null, '',
+          q ? form.action.split('?')[0] + '?q=' + encodeURIComponent(q)
+            : location.pathname);
+      })
+      .catch(function () { /* aborted or offline — the Find button still works */ });
+  }
+
+  box.addEventListener('input', function () {
+    clearTimeout(timer);
+    var q = box.value.trim();
+    timer = setTimeout(function () { run(q); }, 250);
+  });
+})();
+</script>
 
 {% endblock %}

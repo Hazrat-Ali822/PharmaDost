@@ -6,23 +6,38 @@ from suppliers.models import Supplier
 from .query import MedicineQuerySet
 from django.conf import settings
 
-from saas.utils import TenantManager, get_current_hospital
+from saas.utils import TenantManager, get_current_hospital, is_tenant_strict
+
+
+def _scope_to_tenant(qs):
+    """The same three cases `saas.utils.TenantManager` resolves, for the two
+    managers below that cannot simply subclass it.
+
+    `Medicine` needs a custom queryset (`MedicineQuerySet`) and an is_active
+    filter, so these were hand-written — and they were written **fail-open**:
+    with no hospital bound they returned every tenant's rows. `TenantManager`
+    grew the "strict" branch precisely because that is a cross-tenant leak, and
+    these two never got it, so a logged-in non-superuser whose `hospital` is
+    None read the whole platform's catalogue. That is not hypothetical: one
+    hospital's medicine list showed the demo tenant's stock.
+
+    Keep this in step with `TenantManager`; do not reduce it to `if hospital:`.
+    """
+    hospital = get_current_hospital()
+    if hospital:
+        return qs.filter(hospital=hospital)
+    if is_tenant_strict():
+        return qs.filter(hospital__isnull=True)
+    return qs
+
 
 class ActiveMedicineManager(models.Manager.from_queryset(MedicineQuerySet)):
     def get_queryset(self):
-        qs = super().get_queryset().filter(is_active=True)
-        hospital = get_current_hospital()
-        if hospital:
-            return qs.filter(hospital=hospital)
-        return qs
+        return _scope_to_tenant(super().get_queryset().filter(is_active=True))
 
 class TenantAllMedicineManager(models.Manager):
     def get_queryset(self):
-        qs = super().get_queryset()
-        hospital = get_current_hospital()
-        if hospital:
-            return qs.filter(hospital=hospital)
-        return qs
+        return _scope_to_tenant(super().get_queryset())
 
 class StockBatch(models.Model):
     medicine = models.ForeignKey('inventory.Medicine', related_name='batches', on_delete=models.CASCADE)

@@ -1,5 +1,6 @@
 from datetime import date
 from django import forms
+from pharma_mgmt.widgets import DateInput
 
 from accounts.models import NO_LOGIN_EMAIL_DOMAIN, NO_LOGIN_ROLE, User
 
@@ -14,7 +15,7 @@ class StaffProfileForm(forms.ModelForm):
             'enable_absence_deduction', 'deduction_per_absent_day',
             'joining_date', 'phone', 'cnic', 'address', 'emergency_contact'
         ]
-        widgets = {'joining_date': forms.DateInput(attrs={'type': 'date'})}
+        widgets = {'joining_date': DateInput()}
 
 
 def _employee_label(u):
@@ -47,8 +48,8 @@ class LeaveRequestForm(forms.ModelForm):
         model = LeaveRequest
         fields = ['user', 'start_date', 'end_date', 'leave_type', 'reason']
         widgets = {
-            'start_date': forms.DateInput(attrs={'type': 'date'}),
-            'end_date': forms.DateInput(attrs={'type': 'date'}),
+            'start_date': DateInput(),
+            'end_date': DateInput(),
         }
 
     def __init__(self, *args, user=None, **kwargs):
@@ -67,7 +68,7 @@ class SalaryPaymentForm(forms.ModelForm):
     class Meta:
         model = SalaryPayment
         fields = ['user', 'period', 'basic', 'allowances', 'deductions', 'paid_on', 'method', 'note']
-        widgets = {'paid_on': forms.DateInput(attrs={'type': 'date'})}
+        widgets = {'paid_on': DateInput()}
 
     # How many months back the picker offers. Payroll is entered for the month
     # just gone, occasionally one before that; a longer list is a longer scroll.
@@ -141,7 +142,7 @@ class EmployeeForm(forms.Form):
         help_text='The number the attendance machine gave them. Leave blank if '
                   'they are not enrolled yet — you can fill it in later.')
     joining_date = forms.DateField(required=False,
-                                   widget=forms.DateInput(attrs={'type': 'date'}))
+                                   widget=DateInput())
 
     wants_login = forms.BooleanField(
         required=False, label='This person also signs in to the system')

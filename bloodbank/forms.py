@@ -1,4 +1,5 @@
 from django import forms
+from pharma_mgmt.widgets import DateInput
 
 from patients.models import Patient
 
@@ -10,7 +11,7 @@ class BloodDonorForm(forms.ModelForm):
         model = BloodDonor
         fields = ['full_name', 'blood_group', 'gender', 'age', 'cnic', 'phone',
                   'last_donation_date', 'address', 'notes']
-        widgets = {'last_donation_date': forms.DateInput(attrs={'type': 'date'})}
+        widgets = {'last_donation_date': DateInput()}
 
 
 class BloodUnitForm(forms.ModelForm):
@@ -19,8 +20,8 @@ class BloodUnitForm(forms.ModelForm):
         fields = ['bag_number', 'blood_group', 'component', 'donor', 'donor_name',
                   'donation_date', 'expiry_date', 'volume_ml', 'screening_done', 'notes']
         widgets = {
-            'donation_date': forms.DateInput(attrs={'type': 'date'}),
-            'expiry_date': forms.DateInput(attrs={'type': 'date'}),
+            'donation_date': DateInput(),
+            'expiry_date': DateInput(),
         }
 
     def __init__(self, *args, user=None, **kwargs):
@@ -36,7 +37,7 @@ class BloodIssueForm(forms.ModelForm):
     class Meta:
         model = BloodIssue
         fields = ['unit', 'patient', 'issued_on', 'cross_match', 'notes']
-        widgets = {'issued_on': forms.DateInput(attrs={'type': 'date'})}
+        widgets = {'issued_on': DateInput()}
 
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)

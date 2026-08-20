@@ -121,7 +121,7 @@ def department_delete(request, pk):
 @feature_required('appointments', 'opd')
 def doctor_availability_board(request):
     """Today's OPD board: who is in, who is off, one click to change it."""
-    doctors = doctors_with_availability(request.user.hospital if not request.user.is_superuser else None)
+    doctors = doctors_with_availability(request.user)
     sitting, away = split_by_availability(doctors)
     return render(request, 'opd/availability_board.html', {
         'sitting': sitting, 'away': away, 'today': timezone.localdate(),
@@ -263,8 +263,7 @@ def _book_visit(request, patient, visit):
 
 
 def _reception_context(request, **extra):
-    hospital = request.user.hospital if not request.user.is_superuser else None
-    doctors = doctors_with_availability(hospital)
+    doctors = doctors_with_availability(request.user)
     sitting, away = split_by_availability(doctors)
     ctx = {
         'departments': Department.objects.filter(is_active=True),

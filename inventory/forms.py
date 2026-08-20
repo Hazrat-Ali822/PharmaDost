@@ -1,4 +1,5 @@
 from django import forms
+from pharma_mgmt.widgets import DateInput
 from .models import Medicine
 
 
@@ -12,7 +13,7 @@ class MedicineForm(forms.ModelForm):
 			'quantity', 'expiry_date', 'supplier',
 		]
 		widgets = {
-			'expiry_date': forms.DateInput(attrs={'type': 'date'}),
+			'expiry_date': DateInput(),
 		}
 		help_texts = {
 			'generic_name': 'Salt / formula (e.g. Paracetamol) — used to find alternatives',

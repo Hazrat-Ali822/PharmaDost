@@ -1,4 +1,5 @@
 from django import forms
+from pharma_mgmt.widgets import DateInput
 from .models import Invoice, Expense, CashClosing
 
 
@@ -28,7 +29,7 @@ class ExpenseForm(forms.ModelForm):
         model = Expense
         fields = ['date', 'category', 'description', 'amount', 'payment_method']
         widgets = {
-            'date': forms.DateInput(attrs={'type': 'date'}),
+            'date': DateInput(),
             'payment_method': forms.Select(choices=[
                 ('CASH', 'Cash'), ('CARD', 'Card'), ('ONLINE', 'Online'), ('CHEQUE', 'Cheque'),
             ]),
@@ -39,4 +40,4 @@ class CashClosingForm(forms.ModelForm):
     class Meta:
         model = CashClosing
         fields = ['date', 'opening', 'counted', 'note']
-        widgets = {'date': forms.DateInput(attrs={'type': 'date'})}
+        widgets = {'date': DateInput()}

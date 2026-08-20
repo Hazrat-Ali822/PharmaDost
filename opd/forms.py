@@ -2,6 +2,7 @@ from django import forms
 
 from .scoping import scoped_doctors
 from django.forms import inlineformset_factory
+from pharma_mgmt.widgets import DateInput, TimeInput
 from .models import (Appointment, Department, Doctor, DoctorPayout, DoctorSchedule)
 from patients.models import Patient
 
@@ -50,9 +51,19 @@ class DoctorScheduleForm(forms.ModelForm):
         model = DoctorSchedule
         fields = ['weekday', 'start_time', 'end_time']
         widgets = {
-            'start_time': forms.TimeInput(attrs={'type': 'time'}),
-            'end_time': forms.TimeInput(attrs={'type': 'time'}),
+            'start_time': TimeInput(),
+            'end_time': TimeInput(),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # A model field with `choices` gets Django's `BLANK_CHOICE_DASH` — nine
+        # hyphens — prepended, and this table renders the widget by hand so the
+        # shared `partials/_form.html` normalisation never reaches it.
+        choices = list(self.fields['weekday'].choices)
+        if choices and choices[0][0] in ('', None):
+            choices[0] = ('', '— choose a day —')
+        self.fields['weekday'].choices = choices
 
     def clean(self):
         cleaned = super().clean()
@@ -73,7 +84,7 @@ class DoctorPayoutForm(forms.ModelForm):
         model = DoctorPayout
         fields = ['date', 'amount', 'payment_method', 'note']
         widgets = {
-            'date': forms.DateInput(attrs={'type': 'date'}),
+            'date': DateInput(),
             'payment_method': forms.Select(choices=[
                 ('CASH', 'Cash'), ('BANK', 'Bank Transfer'), ('CHEQUE', 'Cheque'),
             ]),
@@ -85,8 +96,8 @@ class AppointmentForm(forms.ModelForm):
         model = Appointment
         fields = ['patient', 'doctor', 'appointment_date', 'slot_time', 'token_no', 'visit_type', 'status']
         widgets = {
-            'appointment_date': forms.DateInput(attrs={'type': 'date'}),
-            'slot_time': forms.TimeInput(attrs={'type': 'time'}),
+            'appointment_date': DateInput(),
+            'slot_time': TimeInput(),
         }
 
     def __init__(self, *args, **kwargs):
@@ -110,8 +121,8 @@ class VisitForm(forms.Form):
                                         required=False, empty_label='All departments')
     doctor = forms.ModelChoiceField(queryset=Doctor.objects.none())
     visit_type = forms.ChoiceField(choices=Appointment.VISIT_CHOICES, initial='OPD')
-    appointment_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
-    slot_time = forms.TimeField(required=False, widget=forms.TimeInput(attrs={'type': 'time'}))
+    appointment_date = forms.DateField(widget=DateInput())
+    slot_time = forms.TimeField(required=False, widget=TimeInput())
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)

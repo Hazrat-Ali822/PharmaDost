@@ -2,6 +2,7 @@ from django import forms
 from django.db.models import Q
 
 from opd.models import Doctor
+from opd.scoping import scoped_doctors
 from patients.models import Patient
 
 from .models import EmergencyCase
@@ -30,7 +31,7 @@ class EmergencyIntakeForm(forms.ModelForm):
         docs = Doctor.objects.filter(is_active=True)
         pts = Patient.objects.all()
         if user is not None and not user.is_superuser:
-            docs = docs.filter(Q(user__hospital=user.hospital) | Q(user__isnull=True))
+            docs = scoped_doctors(user, docs)
             pts = pts.filter(hospital=user.hospital)
         self.fields['attending_doctor'].queryset = docs
         self.fields['attending_doctor'].required = False

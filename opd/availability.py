@@ -11,12 +11,20 @@ from django.utils import timezone
 from .models import Doctor, DoctorAvailabilityOverride
 
 
-def doctors_with_availability(hospital=None, department=None, on=None):
+def doctors_with_availability(user=None, department=None, on=None):
     """Active doctors, ready for `.availability()` without further queries.
 
     Only TODAY's overrides are prefetched — the table grows by a row per doctor
     per leave day, and the screen never looks at any other date.
+
+    Takes the **user**, not a hospital. Every one of the three callers used to
+    pass `user.hospital if not user.is_superuser else None` and this function
+    only filtered when that came out non-None — so a logged-in non-superuser
+    whose hospital is None fell straight through to every tenant's roster, and
+    the OPD board listed another hospital's doctors. `scoped_doctors` is the one
+    place that decision is made, and it is fail-closed.
     """
+    from .scoping import scoped_doctors
     today = (on or timezone.localtime()).date()
     qs = (Doctor.objects.filter(is_active=True)
           .select_related('department')
@@ -26,12 +34,7 @@ def doctors_with_availability(hospital=None, department=None, on=None):
                        queryset=DoctorAvailabilityOverride.objects.filter(date=today)),
           )
           .order_by('department__name', 'full_name'))
-    if hospital is not None:
-        # Doctor has no hospital column of its own — it is scoped through the
-        # linked user account. Roster rows with no user belong to nobody in
-        # particular and stay visible (see CLAUDE.md).
-        from django.db.models import Q
-        qs = qs.filter(Q(user__hospital=hospital) | Q(user__isnull=True))
+    qs = scoped_doctors(user, qs)
     if department is not None:
         qs = qs.filter(department=department)
     return qs

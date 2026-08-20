@@ -107,8 +107,7 @@ def opd_board(user):
     """Which doctors are actually sitting — the question reception is asked all day."""
     from opd.availability import doctors_with_availability, split_by_availability
 
-    hospital = user.hospital if not user.is_superuser else None
-    sitting, away = split_by_availability(doctors_with_availability(hospital))
+    sitting, away = split_by_availability(doctors_with_availability(user))
     return {'sitting': sitting, 'away': away}
 
 

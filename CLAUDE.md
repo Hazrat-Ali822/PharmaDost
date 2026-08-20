@@ -268,10 +268,20 @@ The strict flag exists because the manager used to be fail-**open**: a logged-in
 Do not "simplify" `TenantManager` or `TenantMiddleware` back to a bare `if hospital:` —
 `tests/test_security.py::FailClosedTest` guards this.
 
-Models without a `hospital` column (`Doctor`, `Appointment`, `Prescription`, `TestOrder`,
+**A model that cannot subclass `TenantManager` must still reproduce all three steps.**
+`inventory.Medicine` has a custom queryset and an `is_active` filter, so its two managers
+were hand-written — and they were written before the strict branch existed, as a bare
+`if hospital:`. They stayed that way, which is the exact leak the strict branch was added
+to close: a signed-in non-superuser with no hospital read every tenant's catalogue, and a
+customer's medicine list showed the demo hospital's stock. `inventory.models._scope_to_tenant`
+is the shared body now; keep it in step with `TenantManager`.
+
+Models without a `hospital` column (`Appointment`, `Prescription`, `TestOrder`,
 `ImagingStudy`, and line-item models) get no protection from the manager at all. They are
-scoped **only** by the view-level helpers, so those helpers are load-bearing. Scope
-fail-closed — key on superuser, never on "does this user have a hospital":
+scoped **only** by the view-level helpers, so those helpers are load-bearing. `Doctor` has
+a `hospital` column but no `TenantManager`, so it is in the same position — always
+`opd.scoping.scoped_doctors`. Scope fail-closed — key on superuser, never on "does this
+user have a hospital":
 
 ```python
 # correct — a hospital-less non-superuser matches only hospital-less rows
@@ -301,6 +311,30 @@ the filter all along; this screen simply never got it. Hence `opd/scoping.py`:
 `scoped_doctors(user)` is the one named filter, and **`payout_summary(start, end, doctors)`
 takes the queryset as a required argument** rather than defaulting to everything, so the
 next caller cannot omit it the way this one did.
+
+**`Doctor.hospital` exists because scoping through the linked user account leaked.**
+`scoped_doctors` used to read `Q(user__hospital=…) | Q(user__isnull=True)`, and that second
+clause was not an edge case: a `Doctor` is a **roster entry**, the user field on
+`/opd/doctors/add/` is optional, and most doctors have no login at all — so nearly every
+row in the table was visible to every tenant. One customer's OPD board listed the demo
+hospital's doctors, its booking dropdown offered them, and `/opd/payouts/?export=csv`
+exported them with their balances. Eight places carried a copy of that filter (six clinical
+forms, `opd.availability`, `scoped_doctors` itself); all of them now go through
+`scoped_doctors`, which filters the column and nothing else. Two consequences:
+
+- **`Doctor.save()` resolves its own hospital** — thread-local, else the linked user's,
+  else the department's — for the same reason `Patient.save()` does: `saas.signals`
+  only sees a thread-local, and nothing binds one in a command, an import or a test
+  fixture, so a seeded doctor would land `hospital = NULL` and be invisible to the very
+  tenant being seeded. (A `seed_demo` install is hospital-less throughout and stays
+  consistent: NULL users, NULL doctors.)
+- **`doctors_with_availability(user, …)` takes the user, not a hospital.** All three
+  callers previously passed `user.hospital if not user.is_superuser else None` and the
+  function only filtered when that was non-None — the fail-open shape again.
+
+`opd/0007_doctor_hospital` backfills the column from the user, then the department, then
+the hospital of a patient the doctor has actually seen, and leaves the rest NULL rather
+than guess. Guarded by `tests/test_qa_docx.py::OneHospitalNeverSeesAnothersDoctorsTest`.
 
 **Two catalogues were shared across the whole platform, and both are now per-tenant.**
 `lab.LabTest` / `lab.TestCategory` and `imaging.ScanType` had no `hospital` column and a
@@ -715,7 +749,12 @@ The root briefly served the **marketing landing** to anonymous visitors instead,
   submit registers the patient, books the appointment and raises the consultation invoice.
 - **Old** → search by MRN, mobile, CNIC or name. CNIC is stored dashed, so the query
   annotates a `Replace`-stripped copy and matches against that; typing the number straight
-  off the card has to work.
+  off the card has to work. **It searches as you type** (debounced), by re-fetching this
+  same page and lifting `#find-results` out of the reply — deliberately not a second JSON
+  endpoint, because two implementations of this search is how the desk and the registry
+  came to disagree about what counts as a match in the first place. The form still submits
+  normally without JS. Renaming `#find-results` or `#find-box` silently kills the live
+  search while leaving the Find button working, so `tests/test_qa_docx.py` asserts both ids.
 
 Both paths land on `appointment_slip` — the printable A4 token slip. Every printed
 document (slip, patient bill, lab/imaging report, PO, IPD discharge summary) extends
@@ -741,7 +780,7 @@ either takes a registered patient or **quick-registers a new one from a name alo
 consultation invoice via `create_service_invoice`. `emergency_board` lists open cases
 by triage rank; a disposition that leaves the active set stamps `disposed_at`. Doctors
 in the intake dropdown are scoped the app's usual way for the manager-less `Doctor`
-model — `Q(user__hospital=...) | Q(user__isnull=True)`. Guarded by `emergency/tests.py`.
+model — `opd.scoping.scoped_doctors`. Guarded by `emergency/tests.py`.
 Not offline in v1.
 
 ### Ambulance
@@ -895,9 +934,10 @@ The visit screen shows only doctors who are sitting, with the rest behind a chec
 someone who is off.
 
 `availability()` reads `schedules` / `availability_overrides` via `.all()`, so **always
-fetch doctors through `opd.availability.doctors_with_availability()`** — it prefetches both
-(overrides filtered to today). A plain `Doctor.objects.filter(...)` on those screens is two
-extra queries per doctor.
+fetch doctors through `opd.availability.doctors_with_availability(user)`** — it prefetches
+both (overrides filtered to today) and applies `scoped_doctors`. A plain
+`Doctor.objects.filter(...)` on those screens is two extra queries per doctor **and**
+unscoped.
 
 ### Cross-module pipelines
 
@@ -1182,10 +1222,9 @@ queryset, so an unscoped queryset here is a write path, not just a display bug.
 on `is_active=True`, and it is the only screen in the app that can edit a doctor's
 fee, share % and OPD timings — so a deactivated doctor vanished from it while still
 appearing on the departments page and in booking dropdowns, and **nothing in the
-product could reach the row to put them back in service**. It used `Doctor.objects.all()`, and `Doctor` has no
-`hospital` column and no `TenantManager`, so the theatre form listed every
-tenant's doctors *and* would have accepted a POST naming one. Guarded by
-`ot/tests_charges.py`.
+product could reach the row to put them back in service**. It used `Doctor.objects.all()`,
+and `Doctor` has no `TenantManager`, so the theatre form listed every tenant's doctors
+*and* would have accepted a POST naming one. Guarded by `ot/tests_charges.py`.
 
 ### Inventory & dispensing
 
@@ -1196,7 +1235,13 @@ Stock lives in `StockBatch` rows; `Medicine.quantity` is an aggregate that can d
 - `return_sale` quarantines expired returns (on hand but not sellable).
 - `SaleItem.cost_price` freezes the batch COGS at sale time; the profit report depends on it.
 
-`inventory/safety.py::screen_medicines()` produces allergy and duplicate-salt warnings (substring matching — advisory only, not a real drug-interaction database). It is wired into both `prescription_create` and the POS.
+`inventory/safety.py::screen_medicines()` produces allergy and duplicate warnings
+(substring matching — advisory only, not a real drug-interaction database). It is wired
+into both `prescription_create` and the POS. It reports **two** kinds of duplicate and
+needs both: the same medicine listed twice, and two different products sharing a
+`generic_name`. Only the second existed, and it skips any medicine whose generic is blank —
+which is most medicines added by typing a brand name — so writing *Actifed* twice on one
+prescription produced no warning at all, the commonest duplicate of the two.
 
 ### Patient numbering (MRN)
 
@@ -2070,6 +2115,19 @@ screen would show nothing at all. If a template renders `{{ form.x }}` by hand i
 must render `{{ form.x.errors }}` beside it. Guarded by
 `tests/test_qa_defects_b.py`.
 
+That rule kept being broken in the same two ways, and both shipped:
+
+- **A field rendered without its `.errors`.** `templates/opd/visit_form.html` lays its
+  widgets out by hand and rendered errors for the doctor only — so booking with the date
+  box empty came back as an apparently untouched page. The form had been rejected and said
+  so nowhere, which reads as the button being dead.
+- **A field whose error is inside something collapsed.** The add-photo screen keeps date,
+  title and note behind a `<details>` summary, and `doc_date` was a *required* form field
+  (the model's `default=` never applies once a ModelForm posts `''`). So choosing a
+  picture and pressing Save produced a rejection folded away out of sight. The field is
+  optional now and defaults to today — and any `<details>` holding a form field must carry
+  `{% if …errors %}open{% endif %}`, or the error is invisible again.
+
 **Help text under a field is `.field-help`, never a hand-tuned inline margin.**
 Every text input is `width: 100%` **with a border**, so a `<p>` given a negative
 top margin to close the gap slides up *into* that border and the border draws a
@@ -2328,10 +2386,28 @@ almost always means a query moved inside a loop; find that before raising the nu
   `Dr. {{ doctor.full_name }}` themselves, and the OPD token slip and IPD discharge
   summary — both handed to the patient — read "Dr. Dr. Sara Ahmed". Use
   `doctor.display_name` (or `str(doctor)`) anywhere the title is wanted in Python or in a
-  template that does not prefix one.
+  template that does not prefix one. The strip accepts a title that **ends the token
+  itself** (`Dr.Shariq`, no space — how it gets typed on a phone) as well as one followed
+  by a separator; the original test was `startswith(title + ' ')`, which missed the first
+  form entirely. It must still leave `Drakhshan` alone, which is why the separator check
+  cannot simply be dropped.
 - Dates the staff type use **DD/MM/YYYY**, not a native `<input type="date">` — that renders
   in the *browser's* locale, so the same record reads `29/01/2002` at one desk and
   `01/29/2002` at another.
+- **An HTML date or time control uses `pharma_mgmt.widgets.DateInput` / `TimeInput`,
+  never `forms.DateInput(attrs={'type': 'date'})`.** Django renders a widget's value with
+  the *first* entry of `DATE_INPUT_FORMATS`, which the format module below sets day-first
+  — so a plain `type="date"` input was emitted as `value="20/08/2026"`, which the HTML
+  spec says is not a valid value for that control, so browsers silently discarded it and
+  showed an empty `dd/mm/yyyy`. All 37 of them did. On the reception visit screen that
+  meant today's date never appeared; on any **edit** screen it meant a stored date
+  rendered blank and an optional field then saved the blank back over it. Guarded by
+  `tests/test_qa_docx.py::DateBoxesShowTheirValueTest`.
+- **A Pakistani mobile number is exactly 11 digits** (`patients.forms.clean_phone`),
+  written `03XX-XXXXXXX` once stored, and accepted as `03…`, `+92 3…` or `0092 3…`. The
+  rule fires only for numbers that look like a mobile: a landline and a genuinely foreign
+  number are still kept as typed, with a 15-digit ceiling. Before this, a held-down key
+  saved `0312-732241235456436` and every reminder to that patient failed silently for ever.
 - **Dates DISPLAY as DD/MM/YYYY everywhere, set once in
   `pharma_mgmt/formats/en/formats.py`** (`FORMAT_MODULE_PATH` in settings). There
   were five formats for the same kind of data, two of them regularly on one

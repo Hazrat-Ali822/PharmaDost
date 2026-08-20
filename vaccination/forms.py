@@ -1,4 +1,5 @@
 from django import forms
+from pharma_mgmt.widgets import DateInput
 
 from patients.models import Patient
 
@@ -18,8 +19,8 @@ class VaccinationRecordForm(forms.ModelForm):
         fields = ['patient', 'vaccine', 'dose_number', 'date_given', 'batch_no',
                   'next_due_date', 'given_by', 'notes']
         widgets = {
-            'date_given': forms.DateInput(attrs={'type': 'date'}),
-            'next_due_date': forms.DateInput(attrs={'type': 'date'}),
+            'date_given': DateInput(),
+            'next_due_date': DateInput(),
         }
 
     def __init__(self, *args, user=None, **kwargs):

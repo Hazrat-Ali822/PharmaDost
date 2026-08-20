@@ -1,7 +1,9 @@
 from django import forms
 from django.db.models import Q
+from pharma_mgmt.widgets import DateInput
 
 from opd.models import Doctor
+from opd.scoping import scoped_doctors
 from patients.models import Patient
 
 from .models import AntenatalVisit, Delivery, Pregnancy
@@ -10,7 +12,7 @@ from .models import AntenatalVisit, Delivery, Pregnancy
 def _scope_doctor(field, user):
     docs = Doctor.objects.filter(is_active=True)
     if user is not None and not user.is_superuser:
-        docs = docs.filter(Q(user__hospital=user.hospital) | Q(user__isnull=True))
+        docs = scoped_doctors(user, docs)
     field.queryset = docs
     field.required = False
 
@@ -20,7 +22,7 @@ class PregnancyForm(forms.ModelForm):
         model = Pregnancy
         fields = ['mother', 'husband_name', 'lmp', 'gravida', 'para', 'abortions',
                   'blood_group', 'high_risk', 'risk_notes']
-        widgets = {'lmp': forms.DateInput(attrs={'type': 'date'})}
+        widgets = {'lmp': DateInput()}
 
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -36,8 +38,8 @@ class AntenatalVisitForm(forms.ModelForm):
         fields = ['date', 'weight', 'bp', 'fundal_height', 'fhr', 'complaints',
                   'notes', 'next_visit', 'seen_by']
         widgets = {
-            'date': forms.DateInput(attrs={'type': 'date'}),
-            'next_visit': forms.DateInput(attrs={'type': 'date'}),
+            'date': DateInput(),
+            'next_visit': DateInput(),
             'notes': forms.Textarea(attrs={'rows': 2}),
         }
 

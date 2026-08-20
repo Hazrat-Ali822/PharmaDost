@@ -70,14 +70,21 @@
       <div>
         <label style="display:block; font-weight:600; margin-bottom:6px;">Visit type</label>
         {{ visit_form.visit_type }}
+        {{ visit_form.visit_type.errors }}
       </div>
       <div>
         <label style="display:block; font-weight:600; margin-bottom:6px;">Date</label>
         {{ visit_form.appointment_date }}
+        {# This block renders its widgets by hand, and rendered NO field errors  #}
+        {# except the doctor's — so booking with the date box empty came back as #}
+        {# an apparently untouched page: the form had been rejected and said so  #}
+        {# nowhere. Every hand-rendered widget needs its `.errors` beside it.    #}
+        {{ visit_form.appointment_date.errors }}
       </div>
       <div>
         <label style="display:block; font-weight:600; margin-bottom:6px;">Time</label>
         {{ visit_form.slot_time }}
+        {{ visit_form.slot_time.errors }}
       </div>
     </div>
 

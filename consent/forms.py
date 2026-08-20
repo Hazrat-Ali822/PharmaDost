@@ -1,7 +1,9 @@
 from django import forms
 from django.db.models import Q
+from pharma_mgmt.widgets import DateInput
 
 from opd.models import Doctor
+from opd.scoping import scoped_doctors
 from patients.models import Patient
 
 from .models import ConsentForm, ConsentTemplate
@@ -24,7 +26,7 @@ class ConsentRecordForm(forms.ModelForm):
                   'doctor', 'body', 'signed_by', 'relation', 'witness_name', 'signed_on']
         widgets = {
             'body': forms.Textarea(attrs={'rows': 6}),
-            'signed_on': forms.DateInput(attrs={'type': 'date'}),
+            'signed_on': DateInput(),
         }
 
     def __init__(self, *args, user=None, **kwargs):
@@ -34,7 +36,7 @@ class ConsentRecordForm(forms.ModelForm):
         tpls = ConsentTemplate.objects.filter(is_active=True)
         if user is not None and not user.is_superuser:
             pts = pts.filter(hospital=user.hospital)
-            docs = docs.filter(Q(user__hospital=user.hospital) | Q(user__isnull=True))
+            docs = scoped_doctors(user, docs)
             tpls = tpls.filter(hospital=user.hospital)
         self.fields['patient'].queryset = pts.order_by('full_name')
         self.fields['doctor'].queryset = docs

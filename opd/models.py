@@ -39,6 +39,18 @@ class Department(models.Model):
 
 class Doctor(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
+    # Which hospital's roster this doctor is on.
+    #
+    # `Doctor` had no hospital of its own and was scoped through its linked user
+    # account — but **most doctors have no login**: a roster entry is typed in at
+    # `/opd/doctors/add/` with the user field left blank, which is the normal
+    # case, not the exception. `scoped_doctors` therefore had to let user-less
+    # rows through to everybody, and every one of them was visible to every
+    # tenant: one hospital's OPD board listed another's doctors, and the payout
+    # CSV exported their earnings. A column here is the only thing that can tell
+    # those rows apart. Stamped automatically by `saas.signals.auto_assign_hospital`.
+    hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE,
+                                 null=True, blank=True, related_name='doctors')
     full_name = models.CharField(max_length=255)
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True,
                                    related_name='doctors')
@@ -68,12 +80,42 @@ class Doctor(models.Model):
         place a title is added.
         """
         name = (self.full_name or '').strip()
-        lowered = name.lower()
         for title in self._TITLES:
-            if lowered.startswith(title + ' '):
-                name = name[len(title):].strip()
-                break
+            lowered = name.lower()
+            if not lowered.startswith(title):
+                continue
+            rest = name[len(title):]
+            # A title only counts when it ends cleanly: either the title itself
+            # carried the full stop ("Dr." + "Shariq"), or what follows starts
+            # with a separator ("Dr" + " Shariq"). Otherwise "Drakhshan" would
+            # lose its first two letters.
+            #
+            # The old test was `startswith(title + ' ')`, which needed a space —
+            # so "Dr.Shariq", typed with no space exactly as people type it on a
+            # phone, kept its title, and the OPD board, the token slip and the
+            # printed prescription all read "Dr. Dr.Shariq".
+            if not (title.endswith('.') or not rest or rest[0] in ' .\t'):
+                continue
+            name = rest.lstrip(' .\t')
+            break
         self.full_name = name
+
+        # Resolve the hospital here as well as in `saas.signals`, for the same
+        # reason `Patient.save()` and `Invoice.save()` do: the signal reads the
+        # thread-local, and nothing binds one outside a request — so a doctor
+        # created by `seed_demo`, an import or a test fixture would land with
+        # `hospital = NULL` and then be invisible to the very tenant that was
+        # being seeded. The linked account and the department are both already
+        # tenant-scoped, so either one answers the question without guessing.
+        if self.hospital_id is None:
+            from saas.utils import get_current_hospital
+            hospital = get_current_hospital()
+            if hospital is None and self.user_id:
+                hospital = self.user.hospital
+            if hospital is None and self.department_id:
+                hospital = self.department.hospital
+            self.hospital = hospital
+
         super().save(*args, **kwargs)
 
     @property

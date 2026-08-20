@@ -13,7 +13,8 @@
     <p class="muted" style="font-size:13px; margin:0 0 14px 0;">
       When this doctor sits in OPD. Reception is only offered doctors whose timings cover
       the moment they are booking, so a doctor with no rows here never shows as available.
-      Add two rows for a day with a morning and an evening OPD.
+      Add two rows for a day with a morning and an evening OPD, and use
+      <b>Add another day</b> for a doctor who sits all week.
     </p>
 
     {{ formset.management_form }}
@@ -23,7 +24,7 @@
 
     <table class="tbl schedule-tbl">
       <thead><tr><th>Day</th><th>From</th><th>To</th><th style="width:70px;">Remove</th></tr></thead>
-      <tbody>
+      <tbody id="schedule-rows">
         {% for sform in formset %}
         <tr>
           {% for hidden in sform.hidden_fields %}{{ hidden }}{% endfor %}
@@ -43,6 +44,27 @@
       </tbody>
     </table>
 
+    {% comment %}
+    The formset shipped three blank rows and no way to ask for a fourth, so a
+    doctor who sits all seven days could not be entered — you saved three days,
+    reopened the page, saved three more, reopened it again. The row below is
+    Django's `empty_form`, hidden, with `__prefix__` where the row number goes;
+    the button clones it and bumps TOTAL_FORMS. No JS, no button, and the three
+    server-rendered rows still work exactly as before.
+    {% endcomment %}
+    <table class="tbl schedule-tbl" id="schedule-blank" hidden>
+      <tbody><tr>
+        <td>{{ formset.empty_form.weekday }}</td>
+        <td>{{ formset.empty_form.start_time }}</td>
+        <td>{{ formset.empty_form.end_time }}</td>
+        <td style="text-align:center;"><span class="muted">—</span></td>
+      </tr></tbody>
+    </table>
+
+    <button class="btn alt sm" type="button" id="add-timing" style="margin-top:10px;" hidden>
+      + Add another day
+    </button>
+
     <div style="margin-top:20px; display:flex; gap:10px; flex-wrap:wrap;">
       <button class="btn" type="submit">Save</button>
       {% if doctor %}
@@ -61,4 +83,32 @@
   }
   .schedule-tbl input[type=checkbox] { width:auto; }
 </style>
+
+<script>
+(function () {
+  var btn   = document.getElementById('add-timing');
+  var blank = document.getElementById('schedule-blank');
+  var body  = document.getElementById('schedule-rows');
+  var total = document.getElementById('id_' + '{{ formset.prefix }}' + '-TOTAL_FORMS');
+  if (!btn || !blank || !body || !total) return;
+
+  btn.hidden = false;                       // only offered where the script runs
+  btn.addEventListener('click', function () {
+    var row = blank.querySelector('tr').cloneNode(true);
+    var n = parseInt(total.value, 10);
+    // `__prefix__` is the placeholder Django puts in empty_form's names and ids.
+    row.querySelectorAll('input, select').forEach(function (el) {
+      ['name', 'id'].forEach(function (attr) {
+        if (el.getAttribute(attr)) {
+          el.setAttribute(attr, el.getAttribute(attr).replace(/__prefix__/g, n));
+        }
+      });
+    });
+    body.appendChild(row);
+    total.value = n + 1;
+    var first = row.querySelector('select');
+    if (first) first.focus();
+  });
+})();
+</script>
 {% endblock %}

@@ -1,7 +1,9 @@
 from django import forms
 from django.db.models import Q
+from pharma_mgmt.widgets import DateInput, TimeInput
 
 from opd.models import Doctor
+from opd.scoping import scoped_doctors
 from patients.models import Patient
 
 from .models import BirthCertificate, DeathCertificate
@@ -14,9 +16,9 @@ class BirthCertificateForm(forms.ModelForm):
                   'weight_kg', 'mother_name', 'mother_cnic', 'father_name', 'father_cnic',
                   'address', 'phone', 'registered_on']
         widgets = {
-            'date_of_birth': forms.DateInput(attrs={'type': 'date'}),
-            'time_of_birth': forms.TimeInput(attrs={'type': 'time'}),
-            'registered_on': forms.DateInput(attrs={'type': 'date'}),
+            'date_of_birth': DateInput(),
+            'time_of_birth': TimeInput(),
+            'registered_on': DateInput(),
         }
 
 
@@ -28,9 +30,9 @@ class DeathCertificateForm(forms.ModelForm):
                   'secondary_causes', 'manner', 'is_mlc', 'attending_doctor',
                   'next_of_kin', 'next_of_kin_cnic', 'address', 'registered_on']
         widgets = {
-            'date_of_death': forms.DateInput(attrs={'type': 'date'}),
-            'time_of_death': forms.TimeInput(attrs={'type': 'time'}),
-            'registered_on': forms.DateInput(attrs={'type': 'date'}),
+            'date_of_death': DateInput(),
+            'time_of_death': TimeInput(),
+            'registered_on': DateInput(),
             'secondary_causes': forms.Textarea(attrs={'rows': 2}),
         }
 
@@ -40,7 +42,7 @@ class DeathCertificateForm(forms.ModelForm):
         docs = Doctor.objects.filter(is_active=True)
         if user is not None and not user.is_superuser:
             pts = pts.filter(hospital=user.hospital)
-            docs = docs.filter(Q(user__hospital=user.hospital) | Q(user__isnull=True))
+            docs = scoped_doctors(user, docs)
         self.fields['patient'].queryset = pts.order_by('full_name')
         self.fields['patient'].required = False
         self.fields['attending_doctor'].queryset = docs

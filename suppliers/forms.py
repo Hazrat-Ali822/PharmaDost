@@ -1,4 +1,5 @@
 from django import forms
+from pharma_mgmt.widgets import DateInput
 from .models import Supplier, SupplierPayment
 
 
@@ -12,4 +13,4 @@ class SupplierPaymentForm(forms.ModelForm):
     class Meta:
         model = SupplierPayment
         fields = ['amount', 'date', 'method', 'notes']
-        widgets = {'date': forms.DateInput(attrs={'type': 'date'})}
+        widgets = {'date': DateInput()}

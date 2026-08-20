@@ -1,4 +1,5 @@
 from django import forms
+from pharma_mgmt.widgets import DateInput
 
 from opd.scoping import scoped_doctors
 from .models import (Ward, Bed, Admission, DoctorRound, VitalsObservation,
@@ -241,7 +242,7 @@ class ShiftHandoverForm(_ShiftScopedForm):
         model = ShiftHandover
         fields = ['date', 'shift', 'situation', 'background', 'assessment', 'recommendation']
         widgets = {
-            'date': forms.DateInput(attrs={'type': 'date'}),
+            'date': DateInput(),
             'situation': forms.Textarea(attrs={'rows': 2, 'placeholder': 'Current problem / why here'}),
             'background': forms.Textarea(attrs={'rows': 2, 'placeholder': 'Relevant history'}),
             'assessment': forms.Textarea(attrs={'rows': 2, 'placeholder': 'How they are now — obs, concerns'}),
