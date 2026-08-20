@@ -106,18 +106,35 @@
   }
 
   function fetchOfflinePatientIndex() {
-    if (patientIndexData || isFetchingPatients) return;
+    if (patientIndexData && patientIndexData.length > 0) return;
+
+    // Check cached copy in sessionStorage for instant search
+    try {
+      const cached = sessionStorage.getItem('sehatyar_patient_index');
+      if (cached) {
+        patientIndexData = JSON.parse(cached);
+      }
+    } catch (e) {}
+
+    if (isFetchingPatients) return;
     isFetchingPatients = true;
+
     fetch('/patients/index.json')
       .then(res => {
         if (!res.ok) throw new Error('Patient index unreachable');
         return res.json();
       })
       .then(data => {
-        patientIndexData = data && Array.isArray(data.patients) ? data.patients : (Array.isArray(data) ? data : []);
+        const list = data && Array.isArray(data.patients) ? data.patients : (Array.isArray(data) ? data : []);
+        if (list.length > 0) {
+          patientIndexData = list;
+          try {
+            sessionStorage.setItem('sehatyar_patient_index', JSON.stringify(list));
+          } catch (e) {}
+        }
       })
       .catch(() => {
-        patientIndexData = [];
+        if (!patientIndexData) patientIndexData = [];
       })
       .finally(() => {
         isFetchingPatients = false;
@@ -130,7 +147,8 @@
   }
 
   function handleSearch() {
-    const q = paletteInput.value.trim().toLowerCase();
+    const rawQ = paletteInput.value.trim();
+    const q = rawQ.toLowerCase();
     selectedIndex = 0;
 
     if (!q) {
@@ -138,31 +156,53 @@
       return;
     }
 
+    const qWords = q.split(/\s+/).filter(Boolean);
+    const qDigits = q.replace(/\D/g, '');
+
     const matchedNav = navRoutes.filter(item =>
       item.title.toLowerCase().includes(q) ||
       item.category.toLowerCase().includes(q)
-    ).slice(0, 5);
+    ).slice(0, 4);
 
     let matchedPatients = [];
     if (patientIndexData && patientIndexData.length > 0) {
       matchedPatients = patientIndexData.filter(p => {
-        const name = (p.full_name || p.name || '').toLowerCase();
+        const name = (p.name || p.full_name || '').toLowerCase();
         const mrn = (p.mrn || '').toLowerCase();
-        const phone = (p.phone || '').toLowerCase();
-        const cnic = (p.cnic || '').replace(/-/g, '').toLowerCase();
-        const qClean = q.replace(/-/g, '');
-        return name.includes(q) || mrn.includes(q) || phone.includes(qClean) || cnic.includes(qClean);
-      }).slice(0, 5).map(p => ({
-        title: `${p.full_name || p.name} (MRN: ${p.mrn || '—'})`,
-        category: "Patient",
-        subtitle: `Phone: ${p.phone || '—'} | Gender/Age: ${p.gender || '—'} ${p.age || ''}`,
-        url: `/patients/${p.id}/`,
-        icon: "🧑"
-      }));
+        const phone = (p.phone || '').replace(/[\s-]/g, '').toLowerCase();
+        const cnic = (p.cnic || '').replace(/[\s-]/g, '').toLowerCase();
+
+        // Multi-word patient name matching: all search words must match in the patient name
+        const nameMatch = qWords.length > 0 && qWords.every(w => name.includes(w));
+        const mrnMatch = mrn.includes(q);
+        const phoneMatch = qDigits.length >= 3 && phone.includes(qDigits);
+        const cnicMatch = qDigits.length >= 3 && cnic.includes(qDigits);
+
+        return nameMatch || mrnMatch || phoneMatch || cnicMatch;
+      }).slice(0, 8).map(p => {
+        const patientId = p.pk || p.id;
+        const patientName = p.name || p.full_name || 'Patient';
+        return {
+          title: `${patientName} (MRN: ${p.mrn || '—'})`,
+          category: "Patient",
+          subtitle: `Phone: ${p.phone || '—'} · Gender/Age: ${p.gender || '—'} ${p.age || ''}`,
+          url: `/patients/${patientId}/`,
+          icon: "🧑"
+        };
+      });
     }
 
-    currentItems = [...matchedNav, ...matchedPatients];
-    renderList(currentItems, `Search Results for "${q}"`);
+    // Include full registry search option
+    const fullRegistrySearch = {
+      title: `Search Registry for "${rawQ}"`,
+      category: "Search",
+      subtitle: `Open full patient list filtered by "${rawQ}"`,
+      url: `/patients/?q=${encodeURIComponent(rawQ)}`,
+      icon: "🔍"
+    };
+
+    currentItems = [...matchedNav, ...matchedPatients, fullRegistrySearch];
+    renderList(currentItems, `Search Results for "${rawQ}"`);
   }
 
   function renderList(items, sectionTitle) {
@@ -172,7 +212,7 @@
       paletteResults.innerHTML = `
         <div class="cmd-palette-empty">
           <p>No matching pages or patients found.</p>
-          <small>Try searching by patient MRN, phone number, CNIC, or module name.</small>
+          <small>Press Enter to search the entire patient registry.</small>
         </div>
       `;
       return;
@@ -230,8 +270,13 @@
 
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (currentItems[selectedIndex]) {
+      if (currentItems[selectedIndex] && currentItems[selectedIndex].url) {
         window.location.href = currentItems[selectedIndex].url;
+      } else {
+        const query = paletteInput ? paletteInput.value.trim() : '';
+        if (query) {
+          window.location.href = `/patients/?q=${encodeURIComponent(query)}`;
+        }
       }
     }
   }
@@ -255,6 +300,13 @@
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
+  }
+
+  // Pre-fetch on idle so patient search is instantaneous
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(fetchOfflinePatientIndex, 500);
+  } else {
+    document.addEventListener('DOMContentLoaded', () => setTimeout(fetchOfflinePatientIndex, 500));
   }
 
   // Global Key Listener: Ctrl + K or Cmd + K
