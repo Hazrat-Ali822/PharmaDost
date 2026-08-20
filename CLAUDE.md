@@ -2161,6 +2161,22 @@ overflow: hidden`, so a squeezed button silently loses the end of its label
 ("Save & Print Bill" → "Save & Print B"). The POS keeps its own `1 1 auto`
 because those two buttons are meant to share the width.
 
+**A page cannot restyle a text input from its own `<style>` block.** app.css
+styles every input with a nine-`:not()` selector — specificity (0,9,1) — so
+`.login-card .input-wrap input` is (0,2,1) and is discarded whole, shorthand
+`padding` and all, however late the page's stylesheet loads. The three sign-in
+pages draw an icon inside the box and move the text clear of it with one
+`padding-left`, and that padding was being dropped: the envelope printed on top
+of the placeholder, so `you@hospital.com` read as `u@hospital.com`. The platform
+page had been patched with `!important` and therefore looked right, which is why
+it survived on the tenant door and the forgot-password page — the two a
+hospital's own staff use. `.input-wrap` lives in **app.css** now, repeating the
+same chain so it wins on specificity rather than on load order, and
+deliberately sets no `font-size` (at (0,10,1) it would beat the 16px mobile rule
+and bring back iOS zoom-on-focus). Guarded by
+`tests/test_stylesheet.py::IconInsideAnInputTest`, which also fails any template
+that declares that padding itself.
+
 ### Back, and pages that show pre-edit data
 
 A cancelled test left the previous screen still showing the old amount until the

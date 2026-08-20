@@ -34,7 +34,7 @@ than like a shared template with a different logo pasted on.
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=3.3">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=3.4">
   {% if branding.primary_color %}<style>:root{ --primary: {{ branding.primary_color }}; --accent: {{ branding.accent_color }}; }</style>{% endif %}
   <style>
     .login-wrap {
@@ -111,21 +111,13 @@ than like a shared template with a different logo pasted on.
       color: var(--muted); letter-spacing: .01em; }
     .login-card .field { margin-bottom: 18px; }
 
-    /* Icon inside the box: a sibling positioned over the input, with the input
-       given room via padding-left. The two paddings must stay in step or the
-       caret sits under the icon. */
-    .input-wrap { position: relative; display: block; }
-    .input-wrap > svg {
-      position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
-      width: 17px; height: 17px; stroke: var(--muted); fill: none; stroke-width: 2;
-      pointer-events: none;
-    }
+    /* `.input-wrap` (the icon inside the box) is styled in app.css — it has to
+       out-specify the base input rule there, which a selector written here
+       cannot do. */
     .login-card .input-wrap input {
-      width: 100%; padding: 12px 14px 12px 42px; font-size: 15px;
       border-radius: 11px; border: 1px solid var(--border);
       background: var(--card-bg); color: var(--text);
     }
-    .input-wrap.has-toggle input { padding-right: 44px; }
     .pw-toggle {
       position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
       background: none; border: 0; cursor: pointer; padding: 8px; line-height: 0;

@@ -24,6 +24,9 @@ from pathlib import Path
 from django.conf import settings
 from django.test import SimpleTestCase
 
+# A page declaring its own padding for the icon input — see
+# IconInsideAnInputTest below.
+PAGE_RULE = re.compile(r'\.input-wrap[^{]*input[^{]*\{([^}]*)\}')
 LINK = re.compile(r"app\.css['\"]?\s*%\}\?v=([0-9.]+)")
 
 
@@ -111,3 +114,57 @@ class NegativeMarginUnderAFieldTest(SimpleTestCase):
 
     def test_the_class_it_should_use_exists(self):
         self.assertIn('.field-help', _css())
+
+class IconInsideAnInputTest(SimpleTestCase):
+    """The envelope must not be drawn on top of the placeholder.
+
+    The sign-in pages put an `<svg>` over the text box and move the text clear
+    of it with one `padding-left`. That padding kept being written at a
+    specificity that could not win: app.css styles every text input with a
+    nine-`:not()` selector — (0,9,1) — so a page's own
+    `.login-card .input-wrap input` is (0,2,1) and is discarded, shorthand
+    `padding` and all, no matter which stylesheet loads last. The icon then sits
+    over the first characters and "you@hospital.com" reads as "u@hospital.com".
+
+    The platform sign-in page had been patched with `!important`, so it looked
+    fine while the tenant door and the forgot-password page — the two a
+    hospital's own staff actually use — were broken. One rule in app.css now
+    serves all of them.
+    """
+
+    CHAIN = (':not([type=checkbox]):not([type=radio]):not([type=file])'
+             ':not([type=submit]):not([type=button]):not([type=reset])'
+             ':not([type=color]):not([type=range]):not([type=image])')
+
+    def test_the_rule_out_specifies_the_base_input_rule(self):
+        css = _css()
+        self.assertIn('.input-wrap > input' + self.CHAIN, css,
+                      "the icon padding rule must repeat the base rule's "
+                      ':not() chain, or it loses to it and the icon covers '
+                      'the placeholder')
+        self.assertIn('.input-wrap.has-toggle > input' + self.CHAIN, css)
+
+    def test_it_does_not_set_a_font_size(self):
+        """At (0,10,1) a `font-size` here would also beat the 16px mobile rule
+        and bring back iOS zoom-on-focus, which is a worse bug than the one
+        being fixed."""
+        css = _css()
+        start = css.index('.input-wrap > input')
+        rule = css[start:css.index('}', start)]
+        self.assertNotIn('font-size', rule)
+
+    def test_no_template_re_declares_it_where_it_cannot_win(self):
+        """A page writing its own `.input-wrap ... input { padding ... }` is
+        either dead code or an `!important` patch for one page. Both leave the
+        next page to rediscover this."""
+        offenders = []
+        for path in _templates():
+            if 'dist' in path.parts:
+                continue
+            text = path.read_text(encoding='utf-8')
+            for match in re.finditer(PAGE_RULE, text):
+                if 'padding' in match.group(1):
+                    offenders.append(path.name)
+        self.assertEqual(offenders, [],
+                         'these templates set the icon padding themselves, at a '
+                         'specificity that loses to app.css: ' + ', '.join(offenders))

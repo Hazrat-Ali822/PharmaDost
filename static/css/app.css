@@ -688,6 +688,36 @@ input:focus, select:focus, textarea:focus {
   outline: none; border-color: var(--primary);
   box-shadow: var(--ring); background: var(--surface);
 }
+/* ---------- An icon drawn inside a text box ------------------------------ */
+/* Used by the sign-in, tenant sign-in and forgot-password pages: an <svg>
+   positioned over the input, with the text given room by `padding-left`.
+
+   That one padding kept getting lost. The base input rule above is (0,9,1) —
+   nine `:not()`s — so a page's own `.login-card .input-wrap input` is (0,2,1)
+   and loses, shorthand `padding` and all, however late its stylesheet loads.
+   The envelope then draws straight over the placeholder: "you@hospital.com"
+   reads as "u@hospital.com". The platform page had been patched locally with
+   `!important`; the tenant door and the forgot-password page had not, so the
+   defect was live on exactly the two pages a hospital's own staff use.
+
+   Repeating the chain here wins on specificity, in one place, for any page
+   that uses `.input-wrap`. Edit alongside the base rule above.
+
+   Deliberately no `font-size`: at (0,10,1) it would also beat the 16px mobile
+   rule and bring back the iOS zoom-on-focus bug that block exists to stop. */
+.input-wrap { position: relative; display: block; }
+.input-wrap > svg {
+  position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+  width: 17px; height: 17px; stroke: var(--muted); fill: none; stroke-width: 2;
+  pointer-events: none;
+}
+.input-wrap > input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=submit]):not([type=button]):not([type=reset]):not([type=color]):not([type=range]):not([type=image]) {
+  padding: 12px 14px 12px 42px;
+}
+.input-wrap.has-toggle > input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=submit]):not([type=button]):not([type=reset]):not([type=color]):not([type=range]):not([type=image]) {
+  padding-right: 44px;
+}
+
 label { font-weight: 600; }
 form p { margin: 0 0 12px; }
 form p label { display: block; margin-bottom: 5px; color: var(--muted); font-size: 13px; }

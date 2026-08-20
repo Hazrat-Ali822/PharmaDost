@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=3.3">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=3.4">
   {% if branding.primary_color and branding.primary_color != '#4f46e5' %}<style>:root{ --primary: {{ branding.primary_color }}; --accent: {{ branding.accent_color }}; }</style>{% endif %}
   <style>
     /* ---- floating dark navbar ------------------------------------------ */
@@ -130,17 +130,10 @@
     /* Icon inside the box. The widgets come from Django, so the icon is a sibling
        positioned over the input and the input is given room with padding-left —
        the two paddings must stay in step or the caret sits under the icon. */
-    .input-wrap { position: relative; display: block; }
-    .input-wrap > svg {
-      position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
-      width: 17px; height: 17px; stroke: var(--muted); fill: none; stroke-width: 2;
-      pointer-events: none;
-    }
-    .login-card .input-wrap input {
-      width: 100%; padding: 12px 14px 12px 42px !important; font-size: 15px;
-      border-radius: 11px;
-    }
-    .input-wrap.has-toggle input { padding-right: 44px !important; }
+    /* `.input-wrap` (the icon inside the box) is styled in app.css — it has to
+       out-specify the base input rule there, which a selector written here
+       cannot do. */
+    .login-card .input-wrap input { border-radius: 11px; }
     .pw-toggle {
       position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
       background: none; border: 0; cursor: pointer; padding: 8px; line-height: 0;
