@@ -14,27 +14,12 @@
       Timeline
     </button>
     {% if request.user.role == 'ADMIN' or request.user.role == 'DOCTOR' or request.user.is_superuser %}<a class="btn" href="{% url 'patient_record_add' patient.pk %}">+ Add Clinical Record</a>{% endif %}
-    {% if nav.billing %}
-    <a class="btn success" href="{% url 'patient_bill' patient.pk %}" style="display:inline-flex;align-items:center;gap:6px;">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-      Bill / Collect Payment
-    </a>
-    {% endif %}
+    {% if nav.billing %}<a class="btn success" href="{% url 'patient_bill' patient.pk %}">💵 Bill / Collect Payment</a>{% endif %}
     {% if nav.lab %}<a class="btn alt" href="{% url 'lab:order_create' %}?patient={{ patient.pk }}">+ Order Lab Test</a>{% endif %}
     {% if nav.imaging %}<a class="btn alt" href="{% url 'imaging:study_create' %}?patient={{ patient.pk }}">+ Imaging Study</a>{% endif %}
     {% if request.user.role == 'DOCTOR' or request.user.role == 'ADMIN' or request.user.is_superuser %}
-      {% if nav.ipd %}
-      <a class="btn alt" href="{% url 'ipd:admission_advise' patient.pk %}" style="display:inline-flex;align-items:center;gap:6px;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M2 4v16M2 8h18a2 2 0 0 1 2 2v10M2 17h20M6 8v9"/></svg>
-        Advise Admission
-      </a>
-      {% endif %}
-      {% if nav.ot %}
-      <a class="btn alt" href="{% url 'ot:surgery_advise' patient.pk %}" style="display:inline-flex;align-items:center;gap:6px;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M19.07 4.93 4.93 19.07"/></svg>
-        Advise Surgery
-      </a>
-      {% endif %}
+      {% if nav.ipd %}<a class="btn alt" href="{% url 'ipd:admission_advise' patient.pk %}">🛏️ Advise Admission</a>{% endif %}
+      {% if nav.ot %}<a class="btn alt" href="{% url 'ot:surgery_advise' patient.pk %}">🔪 Advise Surgery</a>{% endif %}
     {% endif %}
     <a class="btn alt" href="{% url 'patient_edit' patient.pk %}">Edit</a>
     <a class="btn alt" href="{% url 'patient_list' %}">Back</a>

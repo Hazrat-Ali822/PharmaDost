@@ -1469,16 +1469,3 @@ body.dark-theme .draft-restore-banner {
   line-height: 1.4;
 }
 
-/* Vector Icon & Button Alignment */
-.btn svg, .btn-ic svg {
-  display: inline-block;
-  vertical-align: middle;
-  flex-shrink: 0;
-}
-.dept-grid .card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-sm);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-

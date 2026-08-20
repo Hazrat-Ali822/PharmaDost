@@ -2588,6 +2588,4 @@ almost always means a query moved inside a loop; find that before raising the nu
   Use `{% include 'partials/_form.html' with form=form %}` instead; all 32
   `as_p` screens now do. `empty_label` still has to be set on the field in the
   form's `__init__` (a template cannot reach it).
-- **Use Crisp Vector SVG Icons, Never Raw Platform Emojis.** All action bars, module cards, revenue summaries and dashboard buttons use inline SVG vector icons with standard `14px-20px` dimensions and `currentColor` fills. Raw Unicode emojis render inconsistently across Windows, iOS and Android and look unprofessional in clinical and financial hospital software.
 - Do not commit `.claude/settings.local.json`. `desktop/build.bat` and `desktop/launcher.py` have repeatedly shown as deleted in the working tree without being touched — restore them before committing.
-

@@ -3,11 +3,8 @@
 {% block page_title %}Laboratory{% endblock %}
 {% block content %}
 <div class="page-head">
-  <div><h2>Lab Desk</h2><div class="muted">{{ request.user.display_name }}</div></div>
-  <a class="btn" href="{% url 'lab:order_create' %}" style="display:inline-flex;align-items:center;gap:6px;">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    New Lab Order
-  </a>
+  <div><h2>Lab Desk 🧪</h2><div class="muted">{{ request.user.display_name }}</div></div>
+  <a class="btn" href="{% url 'lab:order_create' %}">+ New Lab Order</a>
 </div>
 <form method="get" class="card" style="padding:15px; margin-bottom:20px; display:flex; gap:15px; align-items:center; flex-wrap:wrap; background:rgba(0,0,0,0.02); border: 1px solid var(--border);">
   <div style="display:flex; align-items:center; gap:8px;">
@@ -70,7 +67,7 @@
         <td><a class="btn sm" href="{% url 'lab:order_results_edit' o.id %}">Enter Results</a></td>
       </tr>
       {% empty %}
-      <tr><td colspan="7" class="muted text-center">No pending orders.</td></tr>
+      <tr><td colspan="7" class="muted text-center">No pending orders. 🎉</td></tr>
       {% endfor %}
     </tbody>
   </table>

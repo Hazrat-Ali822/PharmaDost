@@ -226,8 +226,9 @@ _CRITICAL_URL_NAMES = ['pwa_offline', 'dashboard']
 # 7: sehatyar-logo.png lost its baked-in white background. Static assets are
 #    cached cache-first and the logo carries no ?v=, so without a bump every
 #    device that had already saved it would keep the white-cornered copy.
-# 30: vector SVG icon modernization across all dashboards, POS and clinical forms.
-_SW_REVISION = '30'
+# 8: logo onerror fallback in base.html + app.css v2.7 (grid min-width fix).
+# 29: command palette (Ctrl+K) + clinical timeline drawer + form drafts.
+_SW_REVISION = '29'
 
 
 def _reverse_all(names):
