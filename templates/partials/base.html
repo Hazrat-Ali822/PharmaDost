@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=3.5">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=3.6">
 
   {# Install-as-app (PWA). The manifest and icon are per-tenant, so an install #}
   {# carries this hospital's own name, logo and colour. #}
@@ -750,6 +750,9 @@
       <div class="title">{% block page_title %}{% endblock %}</div>
       <div class="spacer"></div>
       {% if request.user.is_authenticated %}
+        <button class="kbd-btn" id="globalSearchTrigger" type="button" title="Quick Search & Command Palette (Ctrl+K)" onclick="if(window.openCommandPalette) window.openCommandPalette();" style="margin-right: 6px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </button>
         <button class="kbd-btn" id="kbdGuideTrigger" type="button" title="Keyboard Shortcuts (Ctrl+/)" style="margin-right: 6px;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect><line x1="6" y1="8" x2="6" y2="8"></line><line x1="10" y1="8" x2="10" y2="8"></line><line x1="14" y1="8" x2="14" y2="8"></line><line x1="18" y1="8" x2="18" y2="8"></line><line x1="6" y1="12" x2="6" y2="12"></line><line x1="10" y1="12" x2="10" y2="12"></line><line x1="14" y1="12" x2="14" y2="12"></line><line x1="18" y1="12" x2="18" y2="12"></line><line x1="7" y1="16" x2="17" y2="16"></line></svg>
         </button>
@@ -1362,6 +1365,8 @@
    style="display:none; position:fixed; left:14px; bottom:14px; text-decoration:none;
    z-index:9998; background:#b45309; color:#fff; padding:8px 13px; border-radius:20px;
    font-size:12.5px; font-weight:600; box-shadow:0 3px 12px rgba(0,0,0,.25);"></a>
+<script src="{% static 'js/command_palette.js' %}"></script>
+<script src="{% static 'js/form_drafts.js' %}"></script>
 <script src="{% static 'js/offline.js' %}?v=2.1" defer></script>
 
 {% block extra_js %}{% endblock %}

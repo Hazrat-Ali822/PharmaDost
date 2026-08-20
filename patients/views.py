@@ -397,3 +397,81 @@ def _document_patient(request, pk):
     counter) and the tenant filter still applies through `Patient.objects`.
     """
     return _get_scoped_patient(request, pk)
+
+
+@feature_required('patients', 'prescriptions', 'opd', 'ipd')
+def patient_timeline_json(request, pk):
+    """JSON feed for the Clinical Timeline Drawer on Doctor Rx and EMR screens."""
+    from django.http import JsonResponse
+    from prescriptions.models import Prescription
+
+    patient = _get_scoped_patient(request, pk)
+    events = []
+
+    # 1. Prescriptions
+    rxs = (Prescription.objects
+           .filter(appointment__patient=patient)
+           .select_related('appointment', 'appointment__doctor')
+           .prefetch_related('items', 'items__medicine')
+           .order_by('-created_at')[:15])
+    for rx in rxs:
+        med_list = []
+        for it in rx.items.all():
+            m_name = it.medicine.name if it.medicine else it.custom_medicine_name
+            dose = f" ({it.dosage})" if it.dosage else ""
+            med_list.append(f"{m_name}{dose}")
+        events.append({
+            'type': 'rx',
+            'icon': '💊',
+            'date': rx.created_at.strftime('%d/%m/%Y %H:%M'),
+            'timestamp': rx.created_at.timestamp(),
+            'title': f"Prescription by Dr. {rx.appointment.doctor.full_name if rx.appointment and rx.appointment.doctor else '—'}",
+            'subtitle': f"Diagnosis: {rx.diagnosis or '—'}",
+            'desc': ', '.join(med_list) if med_list else 'No medicines entered.',
+            'badge': rx.status,
+        })
+
+    # 2. Lab Orders
+    lab_orders = patient.lab_orders.prefetch_related('results', 'results__lab_test').order_by('-order_date')[:15]
+    for lo in lab_orders:
+        tests = [r.lab_test.name for r in lo.results.all() if r.lab_test]
+        events.append({
+            'type': 'lab',
+            'icon': '🧪',
+            'date': lo.order_date.strftime('%d/%m/%Y') if lo.order_date else '—',
+            'timestamp': lo.order_date.toordinal() if lo.order_date else 0,
+            'title': f"Lab Order #{lo.id}",
+            'subtitle': f"Status: {lo.status}",
+            'desc': ', '.join(tests) if tests else 'Tests pending',
+            'badge': lo.status,
+        })
+
+    # 3. OPD Visits
+    appts = patient.appointments.select_related('doctor').order_by('-appointment_date')[:15]
+    for a in appts:
+        events.append({
+            'type': 'opd',
+            'icon': '🩺',
+            'date': a.appointment_date.strftime('%d/%m/%Y') if a.appointment_date else '—',
+            'timestamp': a.appointment_date.toordinal() if a.appointment_date else 0,
+            'title': f"OPD Consultation — Dr. {a.doctor.full_name if a.doctor else '—'}",
+            'subtitle': f"Token #{a.token_number or '—'}",
+            'desc': f"Department: {a.doctor.department.name if a.doctor and a.doctor.department else 'General'}",
+            'badge': a.status,
+        })
+
+    # Sort events newest first
+    events.sort(key=lambda x: x.get('timestamp', 0), reverse=True)
+
+    return JsonResponse({
+        'patient': {
+            'id': patient.id,
+            'name': patient.full_name,
+            'mrn': patient.mrn or '—',
+            'gender': patient.get_gender_display(),
+            'age': patient.age_display,
+            'allergies': patient.allergies or 'None',
+        },
+        'events': events[:30]
+    })
+

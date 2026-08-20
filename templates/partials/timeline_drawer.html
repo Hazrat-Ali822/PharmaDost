@@ -1,0 +1,108 @@
+{# Slide-over Clinical Timeline Drawer Component #}
+<div id="timelineBackdrop" class="timeline-backdrop" onclick="if(event.target === this) closeClinicalTimeline()">
+  <div class="timeline-drawer" role="dialog" aria-modal="true">
+    <div class="timeline-header">
+      <h3>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:18px;height:18px;color:var(--primary);"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <span id="timelinePatientName">Clinical Timeline</span>
+      </h3>
+      <button type="button" class="kbd-close" onclick="closeClinicalTimeline()">&times;</button>
+    </div>
+    <div class="timeline-body">
+      <div id="timelinePatientMeta" style="margin-bottom:16px; padding:10px 14px; background:var(--bg); border:1px solid var(--border); border-radius:8px; font-size:12.5px;">
+        <span id="timelineMrnBadge" class="cmd-badge" style="margin-right:6px;">MRN: —</span>
+        <span id="timelineAllergyBadge" style="color:#ef4444; font-weight:700;"></span>
+      </div>
+      <div id="timelineContent">
+        <p class="muted" style="text-align:center; padding:30px 0;">Loading clinical timeline...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  function openClinicalTimeline(patientId) {
+    const backdrop = document.getElementById('timelineBackdrop');
+    const content = document.getElementById('timelineContent');
+    const nameEl = document.getElementById('timelinePatientName');
+    const mrnBadge = document.getElementById('timelineMrnBadge');
+    const allergyBadge = document.getElementById('timelineAllergyBadge');
+
+    if (!backdrop || !patientId) return;
+
+    backdrop.classList.add('open');
+    content.innerHTML = '<p class="muted" style="text-align:center; padding:30px 0;">⏳ Loading clinical history...</p>';
+
+    fetch(`/patients/${patientId}/timeline.json`)
+      .then(res => {
+        if (!res.ok) throw new Error('Timeline not reachable');
+        return res.json();
+      })
+      .then(data => {
+        const p = data.patient || {};
+        nameEl.textContent = p.name || 'Patient Timeline';
+        mrnBadge.textContent = `MRN: ${p.mrn || '—'}`;
+        if (p.allergies && p.allergies !== 'None') {
+          allergyBadge.textContent = `⚠️ Allergies: ${p.allergies}`;
+          allergyBadge.style.display = 'inline';
+        } else {
+          allergyBadge.style.display = 'none';
+        }
+
+        const events = data.events || [];
+        if (events.length === 0) {
+          content.innerHTML = '<p class="muted" style="text-align:center; padding:30px 0;">No past clinical records logged for this patient yet.</p>';
+          return;
+        }
+
+        let html = '<div class="timeline-track">';
+        events.forEach(ev => {
+          html += `
+            <div class="timeline-item">
+              <div class="timeline-dot ${ev.type}"></div>
+              <div class="timeline-card">
+                <div class="timeline-meta">
+                  <span>${ev.icon || '📌'} ${ev.date}</span>
+                  <span class="cmd-badge">${ev.badge || ev.type.toUpperCase()}</span>
+                </div>
+                <div class="timeline-title">${escapeHtml(ev.title)}</div>
+                ${ev.subtitle ? `<div class="muted" style="font-size:12px; margin-bottom:4px;">${escapeHtml(ev.subtitle)}</div>` : ''}
+                <div class="timeline-desc">${escapeHtml(ev.desc)}</div>
+              </div>
+            </div>
+          `;
+        });
+        html += '</div>';
+        content.innerHTML = html;
+      })
+      .catch(err => {
+        content.innerHTML = `<p class="msg error">Failed to load timeline: ${escapeHtml(err.message)}</p>`;
+      });
+  }
+
+  function closeClinicalTimeline() {
+    const backdrop = document.getElementById('timelineBackdrop');
+    if (backdrop) backdrop.classList.remove('open');
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  window.openClinicalTimeline = openClinicalTimeline;
+  window.closeClinicalTimeline = closeClinicalTimeline;
+
+  // Close on Escape key
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeClinicalTimeline();
+    }
+  });
+})();
+</script>

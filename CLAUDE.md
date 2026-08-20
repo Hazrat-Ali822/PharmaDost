@@ -2318,6 +2318,26 @@ cache name changes.
 
 Guarded by `tests/test_freshness.py`.
 
+### Global Command Palette, POS Shortcuts & Clinical Timeline
+
+- **Global Command Palette (`Ctrl + K` / `Cmd + K`)** (`static/js/command_palette.js`):
+  A floating, keyboard-first modal accessible from every page. It allows instant jump-to
+  navigation across modules, as well as live search across the tenant's patient registry
+  (by name, MRN, phone, or CNIC) without leaving the current screen.
+- **Keyboard-First POS & Counter Shortcuts** (`templates/sales/sale_create.html`):
+  `F2` focuses the medicine barcode/search box, `F4` or `Ctrl + Enter` triggers immediate
+  checkout, and `Esc` closes autocomplete. Incorporates a Web Audio synthesizer chime on
+  successful medicine addition without external asset dependencies.
+- **Clinical Timeline Drawer** (`templates/partials/timeline_drawer.html`):
+  A slide-over drawer accessible from the doctor's prescription screen and the patient
+  record via `openClinicalTimeline(patientId)`. Fetches chronological clinical events
+  (past consultations, prescriptions, lab results, admissions) via `/patients/<pk>/timeline.json`
+  so doctors can review history in 5 seconds without leaving their workflow.
+- **Form Drafts Auto-Save** (`static/js/form_drafts.js`):
+  Any form with `data-auto-draft="key"` automatically persists inputs to browser `localStorage`.
+  On reload, a non-intrusive restore prompt appears, preventing clinical notes from being
+  lost if a tab is closed unexpectedly. Draft is cleared upon successful submit.
+
 ### Phones
 
 Reception and the ward round both work off a phone, so a layout that only holds up

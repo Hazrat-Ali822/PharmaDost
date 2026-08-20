@@ -9,8 +9,14 @@
       <h2>{{ title }}</h2>
       <div class="muted">{{ appointment.patient.full_name }} · {{ appointment.doctor.display_name }} · {{ appointment.appointment_date|date:"d/m/Y" }}</div>
     </div>
-    {% include 'patients/_attach_photo.html' with patient=appointment.patient kind='RX' label='Attach Written Rx' %}
-    <a class="btn alt" href="{% url 'patient_detail' appointment.patient.pk %}">Back</a>
+    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+      <button type="button" class="btn alt sm" onclick="openClinicalTimeline({{ appointment.patient.pk }})" style="display:inline-flex; align-items:center; gap:6px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        Timeline
+      </button>
+      {% include 'patients/_attach_photo.html' with patient=appointment.patient kind='RX' label='Attach Written Rx' %}
+      <a class="btn alt sm" href="{% url 'patient_detail' appointment.patient.pk %}">Back</a>
+    </div>
   </div>
 
   {% if form.errors or med_formset.non_form_errors or med_formset.errors %}
@@ -20,7 +26,7 @@
   </div>
   {% endif %}
 
-  <form method="post" data-offline-kind="prescription">
+  <form method="post" data-offline-kind="prescription" data-auto-draft="rx_{{ appointment.pk }}">
     {% csrf_token %}
     {# The appointment comes from the URL online; offline it has to ride along, #}
     {# or the queued Rx has nothing to hang off. #}
@@ -223,4 +229,5 @@
   });
 })();
 </script>
+{% include 'partials/timeline_drawer.html' %}
 {% endblock %}

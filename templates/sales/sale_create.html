@@ -556,7 +556,8 @@
 
   function selectItem(item) {
     addOrBump(item);
-    scanHint.textContent = 'Added: ' + item.name + ' (' + item.brand + ')';
+    playScanBeep(true);
+    scanHint.textContent = '✓ Added: ' + item.name + ' (' + item.brand + ')';
     scanEl.value = '';
     resultsEl.classList.remove('open');
   }
@@ -659,6 +660,45 @@
       e.preventDefault();
       updateWsHint();
       alert('Wholesale sale needs a registered customer. Please select a customer, or switch to Retail.');
+    }
+  });
+
+  // Web Audio synth chime on scan
+  function playScanBeep(success = true) {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      if (success) {
+        osc.frequency.setValueAtTime(880, ctx.currentTime); // A5 note
+        gain.gain.setValueAtTime(0.08, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.12);
+      } else {
+        osc.frequency.setValueAtTime(220, ctx.currentTime); // A3 note
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.2);
+      }
+    } catch(e) { /* ignore audio failure */ }
+  }
+
+  // POS Keyboard Shortcuts (F2 to scan, F4 / Ctrl+Enter to checkout)
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'F2') {
+      e.preventDefault();
+      scanEl.focus();
+      scanEl.select();
+    } else if (e.key === 'F4' || (e.ctrlKey && e.key === 'Enter')) {
+      e.preventDefault();
+      const submitBtn = document.querySelector('#bill-form button[type="submit"]');
+      if (submitBtn) submitBtn.click();
     }
   });
 

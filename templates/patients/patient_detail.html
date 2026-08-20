@@ -9,6 +9,10 @@
     <div class="muted">MRN {{ patient.mrn }} · {{ patient.get_gender_display }}{% if patient.age_display %} · {{ patient.age_display }}{% endif %}{% if patient.phone %} · {{ patient.phone }}{% endif %}</div>
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button type="button" class="btn alt" onclick="openClinicalTimeline({{ patient.pk }})" style="display:inline-flex; align-items:center; gap:6px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+      Timeline
+    </button>
     {% if request.user.role == 'ADMIN' or request.user.role == 'DOCTOR' or request.user.is_superuser %}<a class="btn" href="{% url 'patient_record_add' patient.pk %}">+ Add Clinical Record</a>{% endif %}
     {% if nav.billing %}<a class="btn success" href="{% url 'patient_bill' patient.pk %}">💵 Bill / Collect Payment</a>{% endif %}
     {% if nav.lab %}<a class="btn alt" href="{% url 'lab:order_create' %}?patient={{ patient.pk }}">+ Order Lab Test</a>{% endif %}
@@ -335,4 +339,5 @@
     </tbody>
   </table>
 </div>
+{% include 'partials/timeline_drawer.html' %}
 {% endblock %}
