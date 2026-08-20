@@ -74,14 +74,42 @@
     </tbody>
     <tfoot>
       <tr>
-        <th>Total</th>
+        <th>Gross total</th>
         <th>{{ currency }} {{ totals.revenue|floatformat:0 }}</th>
         <th>{{ currency }} {{ totals.cost|floatformat:0 }}</th>
         <th>{{ currency }} {{ totals.profit|floatformat:0 }}</th>
         <th></th>
       </tr>
+      {# Gross profit is not what the hospital kept. Rent, salaries and         #}
+      {# electricity belong to no single module, so they cannot sit in the      #}
+      {# table without inventing an allocation — but leaving them out entirely  #}
+      {# let a healthy gross margin read as money in hand.                      #}
+      <tr>
+        <td>Operating expenses <span class="muted" style="font-weight:400">(rent, salaries, utilities…)</span></td>
+        <td></td>
+        <td>{{ currency }} {{ totals.expenses|floatformat:0 }}</td>
+        <td>&minus; {{ currency }} {{ totals.expenses|floatformat:0 }}</td>
+        <td></td>
+      </tr>
+      <tr>
+        <th>Net profit</th>
+        <th></th>
+        <th></th>
+        <th class="{% if totals.net_profit < 0 %}danger{% endif %}">
+          {{ currency }} {{ totals.net_profit|floatformat:0 }}
+        </th>
+        <th></th>
+      </tr>
     </tfoot>
   </table>
+
+  <p class="muted" style="font-size:13px; margin:12px 0 0;">
+    The cost column is the <b>direct</b> cost of delivering each service — the
+    tablet dispensed, the reagent used, the film, the doctor's share. Rent,
+    salaries and utilities are not part of any one module; they are recorded
+    under <a href="{% url 'expense_list' %}">Expenses</a> and subtracted once, at
+    the bottom, to reach net profit.
+  </p>
 
   {% if totals.partial %}
   <p class="muted" style="font-size:13px; margin-bottom:0;">

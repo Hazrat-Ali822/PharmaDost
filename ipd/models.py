@@ -211,6 +211,12 @@ class MedicationLog(models.Model):
     # Frozen at administration: the catalogue price may change before discharge,
     # and the patient must be billed what it cost on the day it was given.
     unit_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    # What the dose COST, taken from the batches actually consumed — the same
+    # rule as `SaleItem.cost_price`, and for the same reason. Without it a ward
+    # medicine was billed on the IPD invoice with its cost recorded nowhere, so
+    # pharmacy could not see it (the sale was not theirs) and IPD reported it as
+    # pure margin. 0 = the batch cost was unknown, not free.
+    cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     # Did the pharmacy actually hand this over? Recorded, never inferred.
     # The chart used to work it out from `unit_price > 0`, which is a different
     # question: a catalogue medicine with no price set came off the shelf, the
@@ -229,6 +235,11 @@ class MedicationLog(models.Model):
     def charge(self):
         """What this dose adds to the patient's bill."""
         return (self.unit_price or Decimal('0.00')) * self.quantity
+
+    @property
+    def line_cost(self):
+        """What this dose cost the pharmacy. Mirrors `SaleItem.line_cost`."""
+        return (self.cost_price or Decimal('0.00')) * self.quantity
 
     @property
     def issue_note(self):

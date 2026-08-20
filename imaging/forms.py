@@ -2,7 +2,27 @@ from django import forms
 from saas.forms import TenantModelForm
 
 from patients.models import Patient
-from .models import ImagingStudy
+from .models import ImagingStudy, ScanType
+
+
+def _catalogue_cost(study_name):
+    """The consumable cost this tenant recorded for a scan of this name.
+
+    Matched on the name because `ImagingStudy` has no foreign key to
+    `ScanType` — radiology types the study name and its price. An unmatched
+    name (a one-off, a typo, a scan not in the list) gives 0, which every
+    reader treats as "not recorded" rather than free.
+    """
+    from decimal import Decimal
+
+    name = (study_name or "").strip()
+    if not name:
+        return Decimal("0.00")
+    match = (ScanType.objects
+             .filter(name__iexact=name, cost_price__gt=0)
+             .values_list("cost_price", flat=True)
+             .first())
+    return match or Decimal("0.00")
 
 
 class ImagingStudyCreateForm(TenantModelForm):
@@ -21,6 +41,8 @@ class ImagingStudyCreateForm(TenantModelForm):
         study = super().save(commit=False)
         if self.user and getattr(self.user, "is_authenticated", False):
             study.referred_by = self.user
+        if not study.cost_price:
+            study.cost_price = _catalogue_cost(study.study_name)
         if commit:
             study.save()
         return study

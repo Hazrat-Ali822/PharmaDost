@@ -7,6 +7,7 @@ of delivery and gestational age are derived from the LMP (Naegele's rule) and ne
 stored, so a corrected LMP re-derives them.
 """
 from datetime import timedelta
+from decimal import Decimal
 
 from django.conf import settings
 from django.db import models
@@ -101,6 +102,10 @@ class Delivery(models.Model):
     outcome = models.CharField(max_length=6, choices=OUTCOME_CHOICES, default='LIVE')
     conducted_by = models.ForeignKey(Doctor, on_delete=models.SET_NULL, null=True, blank=True)
     notes = models.TextField(blank=True)
+    # Delivery kit, sutures, cord clamp, drugs given in the labour room.
+    # Frozen here, not in a catalogue: a normal delivery and a complicated one
+    # consume very different amounts. 0 = not recorded.
+    cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     invoice = models.ForeignKey('billing.Invoice', on_delete=models.SET_NULL, null=True, blank=True,
                                 related_name='+')
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)

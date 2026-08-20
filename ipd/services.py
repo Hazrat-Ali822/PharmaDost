@@ -70,6 +70,27 @@ def admit_patient(admission, user=None, adm_request=None):
     return AdmissionResult(admission, bed)
 
 
+def _consumed_unit_cost(consumed, quantity):
+    """Average cost per unit across the batches FEFO actually took from.
+
+    Returned per unit rather than per line so it reads the same as
+    `unit_price` beside it and survives a quantity correction. A chunk with no
+    batch behind it (the legacy aggregate path) contributes 0, which means
+    "unknown" — never treat it as free.
+    """
+    if not quantity:
+        return Decimal('0.00')
+    batch_ids = [c['batch_id'] for c in consumed if c.get('batch_id')]
+    if not batch_ids:
+        return Decimal('0.00')
+    from inventory.models import StockBatch
+    costs = dict(StockBatch.objects.filter(pk__in=batch_ids)
+                 .values_list('pk', 'cost_price'))
+    total = sum((costs.get(c['batch_id'], Decimal('0.00')) * c['quantity']
+                 for c in consumed if c.get('batch_id')), Decimal('0.00'))
+    return (total / Decimal(quantity)).quantize(Decimal('0.01'))
+
+
 def log_medication(admission, log, medicine, user):
     """Record one administered dose — see CLAUDE.md for why this never refuses.
 
@@ -97,10 +118,15 @@ def log_medication(admission, log, medicine, user):
         try:
             with transaction.atomic():
                 med = Medicine.objects.select_for_update().get(pk=medicine.pk)
-                med.reduce_stock(log.quantity)
+                consumed = med.reduce_stock(log.quantity)
                 # Freeze the price of the day — the catalogue may change before
                 # this patient is discharged and billed.
                 log.unit_price = med.price or Decimal('0.00')
+                # …and freeze what it COST, off the batches actually consumed.
+                # Same rule as `SaleItem.cost_price`: a ward dose is billed on
+                # the IPD invoice, so without this its cost lands nowhere and
+                # IPD reports the medicine as pure margin.
+                log.cost_price = _consumed_unit_cost(consumed, log.quantity)
                 # Stock moved. Say so on the record rather than leaving the
                 # chart to guess from the price — an unpriced medicine still
                 # came off the shelf.

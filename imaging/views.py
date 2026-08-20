@@ -200,7 +200,9 @@ def scan_catalog(request):
             if name:
                 ScanType.all_objects.create(
                     name=name, modality=request.POST.get("modality", "OTHER"),
-                    price=_dec(request.POST.get("price")), hospital=hospital)
+                    price=_dec(request.POST.get("price")),
+                    cost_price=_dec(request.POST.get("cost_price")),
+                    hospital=hospital)
                 messages.success(request, f"Added scan '{name}'.")
             else:
                 messages.error(request, "Scan name is required.")
@@ -213,11 +215,13 @@ def scan_catalog(request):
                 key = f"price_{s.id}"
                 if key in request.POST:
                     val = _dec(request.POST.get(key))
+                    cost = _dec(request.POST.get(f"cost_{s.id}"))
                     active = f"active_{s.id}" in request.POST
-                    if val != s.price or active != s.is_active:
+                    if val != s.price or cost != s.cost_price or active != s.is_active:
                         s.price = val
+                        s.cost_price = cost
                         s.is_active = active
-                        s.save(update_fields=["price", "is_active"])
+                        s.save(update_fields=["price", "cost_price", "is_active"])
                         changed += 1
             messages.success(request, f"Updated {changed} scan(s).")
         return redirect("imaging:scan_catalog")

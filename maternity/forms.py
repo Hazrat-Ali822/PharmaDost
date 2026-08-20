@@ -56,14 +56,22 @@ class DeliveryForm(TenantModelForm):
 
     class Meta:
         model = Delivery
-        fields = ['mother', 'delivered_at', 'delivery_type', 'outcome', 'conducted_by', 'notes']
+        fields = ['mother', 'delivered_at', 'delivery_type', 'outcome', 'conducted_by',
+                  'notes', 'cost_price']
         widgets = {
             'delivered_at': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
             'notes': forms.Textarea(attrs={'rows': 2}),
         }
+        labels = {'cost_price': 'Consumables cost (optional)'}
+        help_texts = {'cost_price': 'What this cost the hospital — dressings, kit, drugs. Leave blank if you do not track it; the profit report then says so rather than reporting the whole charge as profit.'}
+
+    def clean_cost_price(self):
+        from decimal import Decimal
+        return self.cleaned_data.get('cost_price') or Decimal('0.00')
 
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['cost_price'].required = False
         pts = Patient.objects.all()
         if user is not None and not user.is_superuser:
             pts = pts.filter(hospital=user.hospital)

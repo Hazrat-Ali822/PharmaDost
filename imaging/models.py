@@ -30,6 +30,10 @@ class ScanType(models.Model):
     modality = models.CharField(max_length=20, choices=MODALITY_CHOICES, default="ULTRASOUND")
     name = models.CharField(max_length=150, help_text="e.g. Abdominal Ultrasound, Chest X-Ray (PA)")
     price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    # Film, contrast, gel, probe-cover — the consumable share of one scan.
+    # Mirrors `LabTest.cost_price`; without it imaging reported 100% margin.
+    # 0 means "not recorded", never free.
+    cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
     is_active = models.BooleanField(default=True)
     hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE,
                                  null=True, blank=True)
@@ -100,6 +104,12 @@ class ImagingStudy(models.Model):
     study_date = models.DateTimeField(default=timezone.now)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="Pending")
     price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
+    # Frozen at ordering from the catalogue, the same rule `SurgeryRecord`
+    # follows: repricing the scan list tomorrow must not rewrite the margin on
+    # a study already performed. A study has no FK to `ScanType` — the name and
+    # price are typed — so it is matched by name, and stays 0 when nothing
+    # matches. 0 means "not recorded", never free.
+    cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("0.00"))
 
     # Cash collection at point of service
     payment_status = models.CharField(max_length=20, default='Pending', choices=[('Pending', 'Pending'), ('Paid', 'Paid')])

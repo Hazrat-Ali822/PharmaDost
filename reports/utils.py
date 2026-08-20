@@ -384,6 +384,45 @@ def module_profit_data(start, end):
                             called_at__date__range=(start, end)))
                 .aggregate(s=Sum('cost_price'))['s'] or zero)
 
+    # --- Imaging cost: film / contrast / gel from the scan price list, counted
+    # off the studies themselves for the same reason lab is — the consumable
+    # was used whether or not the bill was later voided.
+    from imaging.models import ImagingStudy
+    img_cost = (ImagingStudy.objects
+                .exclude(status='Cancelled')
+                .filter(Q(invoice__created_at__date__range=(start, end))
+                        | Q(invoice__isnull=True,
+                            study_date__date__range=(start, end)))
+                .aggregate(s=Sum('cost_price'))['s'] or zero)
+
+    # --- IPD cost: the pharmacy stock a ward dose actually consumed, frozen on
+    # the log. Dated by the DISCHARGE invoice where there is one, because that
+    # is where the revenue lands — a drug given on the 30th and billed at
+    # discharge on the 2nd otherwise puts cost and revenue in different months.
+    from ipd.models import MedicationLog
+    ipd_cost = (MedicationLog.objects
+                .filter(Q(admission__discharge_invoice__created_at__date__range=(start, end))
+                        | Q(admission__discharge_invoice__isnull=True,
+                            administered_at__date__range=(start, end)))
+                .aggregate(s=Sum(ExpressionWrapper(F('cost_price') * F('quantity'),
+                                                   output_field=money)))['s'] or zero)
+
+    # --- Emergency / Maternity: consumables frozen on the case and on the
+    # delivery, dated by their invoice like OT and ambulance.
+    from emergency.models import EmergencyCase
+    emg_cost = (EmergencyCase.objects
+                .filter(Q(invoice__created_at__date__range=(start, end))
+                        | Q(invoice__isnull=True,
+                            created_at__date__range=(start, end)))
+                .aggregate(s=Sum('cost_price'))['s'] or zero)
+
+    from maternity.models import Delivery
+    mat_cost = (Delivery.objects
+                .filter(Q(invoice__created_at__date__range=(start, end))
+                        | Q(invoice__isnull=True,
+                            delivered_at__date__range=(start, end)))
+                .aggregate(s=Sum('cost_price'))['s'] or zero)
+
     for key in (rev.OPD, rev.LAB, rev.IMAGING, rev.IPD, rev.OT,
                 rev.EMERGENCY, rev.MATERNITY, rev.AMBULANCE, rev.OTHER):
         amount = billed.get(key, zero)
@@ -408,6 +447,27 @@ def module_profit_data(start, end):
             note = ("Fuel / running cost frozen on each trip." if amb_cost else
                     "No cost entered yet — set 'cost per trip' on the vehicle in "
                     "Fleet & Drivers and this row becomes a real margin.")
+        elif key == rev.IMAGING:
+            cost, tracked = img_cost, True
+            note = ("Film / contrast cost from the scan price list." if img_cost else
+                    "No cost entered yet — set it per scan on the Scan Prices "
+                    "screen and this row becomes a real margin.")
+        elif key == rev.IPD:
+            cost, tracked = ipd_cost, True
+            note = ("Pharmacy stock consumed by ward doses." if ipd_cost else
+                    "No medicine cost recorded yet — give ward doses from "
+                    "pharmacy stock (and set those medicines' purchase price) "
+                    "and this row becomes a real margin.")
+        elif key == rev.EMERGENCY:
+            cost, tracked = emg_cost, True
+            note = ("Consumables recorded on each casualty case." if emg_cost else
+                    "No cost entered yet — fill 'Consumables cost' when "
+                    "registering a case and this row becomes a real margin.")
+        elif key == rev.MATERNITY:
+            cost, tracked = mat_cost, True
+            note = ("Consumables recorded on each delivery." if mat_cost else
+                    "No cost entered yet — fill 'Consumables cost' on the "
+                    "delivery record and this row becomes a real margin.")
         else:
             cost, tracked, note = zero, False, 'Cost is not recorded for this module.'
 
@@ -434,4 +494,19 @@ def module_profit_data(start, end):
     # zero, so the profit above is too high rather than too low.
     totals['cost_gap'] = sum((r.get('cost_gap') or zero for r in rows), zero)
     totals['overstated'] = totals['cost_gap'] > zero
+
+    # --- The bottom line the owner is actually asking for.
+    # Everything above is GROSS profit: revenue minus the direct cost of
+    # delivering it (the tablet, the reagent, the film, the doctor's share).
+    # It is not what the hospital kept — rent, salaries, electricity and the
+    # rest are recorded as Expenses and belong to no single module, so they
+    # cannot be shown in the table without inventing an allocation. Subtracting
+    # them once, at the end, is the honest way to reach net profit; leaving
+    # them out entirely let a hospital read a healthy gross margin as money in
+    # hand.
+    from billing.models import Expense
+    totals['expenses'] = (Expense.objects
+                          .filter(date__range=(start, end))
+                          .aggregate(s=Sum('amount'))['s'] or zero)
+    totals['net_profit'] = totals['profit'] - totals['expenses']
     return rows, totals

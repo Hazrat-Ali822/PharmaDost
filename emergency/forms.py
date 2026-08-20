@@ -25,10 +25,21 @@ class EmergencyIntakeForm(TenantModelForm):
     class Meta:
         model = EmergencyCase
         fields = ['triage', 'chief_complaint', 'mode_of_arrival', 'brought_by',
-                  'is_mlc', 'mlc_no', 'pulse', 'bp', 'temp', 'spo2', 'attending_doctor']
+                  'is_mlc', 'mlc_no', 'pulse', 'bp', 'temp', 'spo2', 'attending_doctor',
+                  'cost_price']
+        labels = {'cost_price': 'Consumables cost (optional)'}
+        help_texts = {'cost_price': 'What this cost the hospital — dressings, kit, drugs. Leave blank if you do not track it; the profit report then says so rather than reporting the whole charge as profit.'}
+
+    def clean_cost_price(self):
+        from decimal import Decimal
+        return self.cleaned_data.get('cost_price') or Decimal('0.00')
 
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
+        # Optional: a model DecimalField with a default is still a required
+        # FORM field, and a blank box posts '' — which would reject a triage
+        # entry over a bookkeeping number. See `clean_cost_price`.
+        self.fields['cost_price'].required = False
         # Unconditional: `scoped_doctors` decides for itself what a superuser
         # or a hospital-less user may see. Guarding it with `if user is not
         # None` was the fail-open shape — a caller that forgot `user=` got

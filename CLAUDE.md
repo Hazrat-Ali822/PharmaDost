@@ -958,6 +958,15 @@ These handoffs are the backbone of the app; each creates a record, notifies a ro
 - **Doctor advises admission / surgery**: `AdmissionRequest` / `SurgeryRequest` (status `Pending`) → reception/OT queue → confirming with `?request_id=` creates the `Admission` / `SurgeryRecord` and closes the request.
 - **Ward medication → stock + discharge bill**: logging a `MedicationLog` against a catalogue `Medicine` with `source='PHARMACY'` reduces stock FEFO (locked row, inside `transaction.atomic()`) and freezes `unit_price` at that moment. Discharge then bills bed charges **plus every such dose**. `MedicationLog.charge` is derived (`unit_price × quantity`), never stored, so a later catalogue price change cannot rewrite an old bill.
 
+  **`MedicationLog` freezes both numbers: `unit_price` (what the patient is
+  charged) and `cost_price` (what it cost).** The cost is averaged over the
+  batches FEFO actually consumed, exactly as `SaleItem.cost_price` is, and for
+  the same reason — a ward dose is billed on the *discharge* invoice, so without
+  it the cost belonged to neither pharmacy (the sale was not theirs) nor IPD, and
+  IPD reported medicines as pure margin. 0 means the batch cost was unknown,
+  never that the drug was free. `module_profit_data` dates it by the discharge
+  invoice so cost and revenue land in the same month.
+
   **`MedicationLog.stock_deducted` records whether the pharmacy actually handed
   it over — it is never inferred.** The chart used to work that out from
   `unit_price > 0`, which answers a different question: a catalogue medicine with
@@ -1165,15 +1174,39 @@ builds it, and two things about it are deliberate:
   in the period. The **dashboard is the opposite** (cash received) — the screen
   says so in as many words, because two figures that disagree with nothing on the
   page to explain why is exactly how this app has misled people before.
-- **An unrecorded cost is never treated as zero.** Cost exists in only three
-  places: `SaleItem.cost_price` (pharmacy — batch COGS frozen at sale),
-  **`LabTest.cost_price`** (lab — reagent/consumable, entered by the admin on
-  `/lab/tests/`, optional and 0 by default) and `Doctor.share_percent` (OPD — the
-  doctor's cut *is* the hospital's cost of the consultation, read live because it
-  is a standing arrangement). Every other module reports revenue with
-  `cost_tracked = False`, renders "not recorded", and sets `totals['partial']` so
-  the page states the total profit is a **floor**. Subtracting zero would report
-  imaging and IPD at 100% margin, which an owner would act on.
+- **An unrecorded cost is never treated as zero.** A module with no cost source
+  at all reports revenue with `cost_tracked = False`, renders "not recorded", and
+  sets `totals['partial']` so the page states the total profit is a **floor**.
+  Subtracting zero would report that module at 100% margin, which an owner would
+  act on. Only `OTHER` is in that position now — it is whatever failed to
+  classify, so there is nothing to attach a cost to.
+- **Every earning module has a cost source**, and the shape follows the module:
+
+  | Module | Cost | Where it is entered |
+  |---|---|---|
+  | Pharmacy | `SaleItem.cost_price` — batch COGS frozen at sale | `Medicine.cost_price` on Add/Edit medicine |
+  | Lab | `LabTest.cost_price` | `/lab/tests/` |
+  | Imaging | `ImagingStudy.cost_price` — **frozen at ordering** from the catalogue | `ScanType.cost_price` on `/imaging/scans/` |
+  | OPD | `Doctor.share_percent` — read live, it is a standing arrangement | the doctor's record |
+  | IPD | `MedicationLog.cost_price` — real pharmacy COGS of each ward dose | nothing to enter; taken from the batch |
+  | OT | `SurgeryRecord.cost_price` — frozen at scheduling | `SurgeryProcedure` catalogue |
+  | Ambulance | `AmbulanceTrip.cost_price` — frozen at dispatch | the vehicle |
+  | Emergency | `EmergencyCase.cost_price` — frozen on the case | "Consumables cost" on intake |
+  | Maternity | `Delivery.cost_price` — frozen on the delivery | "Consumables cost" on the delivery form |
+
+  **Imaging is matched by name, not by a foreign key.** `ImagingStudy` has no FK
+  to `ScanType` — radiology types the study name and its price — so
+  `imaging.forms._catalogue_cost` looks the tenant's catalogue up by
+  `name__iexact` at ordering and freezes what it finds. An unmatched name records
+  0, which reads as "not recorded". Do not "fix" this by reading the catalogue
+  live at report time: repricing the list would then rewrite the margin on every
+  study already performed.
+
+  **The two clinical cost boxes are optional and must stay optional.** A model
+  `DecimalField` with a default is still a *required* form field, and a blank box
+  posts `''` — so without `required = False` plus a `clean_cost_price` that
+  coerces to 0, a triage nurse registering a road accident would be stopped by a
+  bookkeeping field. Same trap as `PatientDocument.doc_date`.
 - **`totals['overstated']` is the opposite failure and is reported separately.**
   `partial` means a module's cost is missing *entirely*, so its revenue is
   counted and its profit is not claimed — the total is a floor. Pharmacy can
@@ -1187,12 +1220,15 @@ builds it, and two things about it are deliberate:
 Modules with no activity are dropped from the table, so a pharmacy-only install
 sees one row rather than a column of zeroes.
 
-Two known gaps, both fine to leave and worth knowing: ward medication given from
-pharmacy stock bills on the **IPD** invoice, so its stock cost is invisible to
-both pharmacy and IPD (`MedicationLog` freezes `unit_price` but no COGS — mirror
-`SaleItem.cost_price` there if IPD profit is ever wanted); and **imaging** has no
-cost field at all. Adding either is the same shape as `LabTest.cost_price` plus a
-row in `module_profit_data`. Guarded by `tests/test_module_profit.py`.
+**Gross is not net, and the page has to say so.** Everything in the table is the
+**direct** cost of delivering a service. Rent, salaries and utilities belong to no
+single module and cannot be put in a row without inventing an allocation, so
+`totals['expenses']` (period `billing.Expense`) is subtracted once at the bottom
+to give `totals['net_profit']`. Without that line a healthy gross margin reads as
+money in hand. Guarded by `tests/test_module_profit.py` and
+`tests/test_module_profit_coverage.py`, the latter of which sweeps
+`module_profit_data` and fails if any earning module falls through to "not
+recorded".
 
 **Cost and revenue must be dated by the same clock.** Revenue can only be dated
 by the invoice, so a module whose cost lives on its own record has to be dated by

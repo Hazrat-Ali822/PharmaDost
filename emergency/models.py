@@ -6,6 +6,8 @@ flag every government/police case needs. It is deliberately lighter than an OPD
 appointment or an IPD admission: the emergency room needs to record who arrived,
 how sick they are, and what happened to them, in seconds.
 """
+from decimal import Decimal
+
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
@@ -68,6 +70,10 @@ class EmergencyCase(models.Model):
 
     invoice = models.ForeignKey('billing.Invoice', on_delete=models.SET_NULL, null=True, blank=True,
                                 related_name='+')
+    # Dressings, cannula, oxygen, splint — frozen on the case rather than read
+    # from a catalogue, because casualty consumables differ case by case. 0 =
+    # not recorded; the profit report says so instead of claiming full margin.
+    cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     notes = models.TextField(blank=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)

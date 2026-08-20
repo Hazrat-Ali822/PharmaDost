@@ -166,8 +166,37 @@ class ModuleProfitTest(TestCase):
     # ------------------------------------------------------- untracked modules
 
     def test_a_module_with_no_recorded_cost_claims_no_profit(self):
-        """Imaging has no cost field anywhere. Reporting it at 100% margin would
-        be a number the owner acts on."""
+        """`OTHER` is now the only module with no cost source, and deliberately
+        so: it holds whatever failed to classify, so there is nothing to attach
+        a cost to. Reporting it at 100% margin would be a number the owner acts
+        on.
+
+        This test used to be about imaging, which had no cost field anywhere.
+        Imaging now has one (`ScanType.cost_price`, frozen onto the study at
+        ordering), so the case had to move to a module that is still genuinely
+        untracked rather than be deleted — the *behaviour* is what matters, not
+        which module happens to lack a cost this month."""
+        from billing.services import create_service_invoice
+
+        set_current_hospital(self.h)
+        try:
+            create_service_invoice(patient=self._patient('Misc Patient'),
+                                   items=[('Ambulance standby fee', Decimal('900'))],
+                                   created_by=self.admin)
+            rows, totals = self._data()
+        finally:
+            clear_current_hospital()
+
+        other = next(r for r in rows if r['key'] == 'OTHER')
+        self.assertEqual(other['revenue'], Decimal('900'))
+        self.assertFalse(other['cost_tracked'])
+        self.assertEqual(other['cost'], Decimal('0.00'))
+        self.assertTrue(totals['partial'],
+                        'the screen must warn that total profit is a floor')
+
+    def test_imaging_revenue_with_no_cost_entered_is_still_a_real_row(self):
+        """A tenant that has not filled in scan costs yet: the row is tracked
+        (there IS a place to record it) and says where to go."""
         from billing.services import create_service_invoice
 
         set_current_hospital(self.h)
@@ -175,16 +204,14 @@ class ModuleProfitTest(TestCase):
             create_service_invoice(patient=self._patient('Scan Patient'),
                                    items=[('X-Ray: Chest', Decimal('900'))],
                                    created_by=self.admin, service='IMAGING')
-            rows, totals = self._data()
+            rows, _ = self._data()
         finally:
             clear_current_hospital()
 
         imaging = next(r for r in rows if r['key'] == 'IMAGING')
         self.assertEqual(imaging['revenue'], Decimal('900'))
-        self.assertFalse(imaging['cost_tracked'])
         self.assertEqual(imaging['cost'], Decimal('0.00'))
-        self.assertTrue(totals['partial'],
-                        'the screen must warn that total profit is a floor')
+        self.assertIn('Scan Prices', imaging['note'])
 
     def test_ipd_ot_and_maternity_are_separate_rows(self):
         """These all collapsed into "Other", which told the owner nothing."""
