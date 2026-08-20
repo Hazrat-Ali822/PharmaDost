@@ -204,6 +204,17 @@
   dept.addEventListener('change', apply);
   if (showAway) showAway.addEventListener('change', apply);
   apply();
+
+  // Ctrl + Enter to register & book immediately
+  document.addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      const form = document.querySelector('form[data-offline-kind="visit"]');
+      if (form) {
+        e.preventDefault();
+        form.submit();
+      }
+    }
+  });
 })();
 </script>
 {% endblock %}

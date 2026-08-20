@@ -1486,3 +1486,27 @@ body.dark-theme .draft-restore-banner {
   line-height: 1.4;
 }
 
+/* Fast Tender Chips (POS) */
+.tender-btn {
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  transition: all 0.15s ease;
+}
+.tender-btn:hover {
+  background: var(--primary) !important;
+  color: #fff !important;
+  border-color: var(--primary) !important;
+}
+
+/* Quick Dosage Frequency Chips (Doctor Rx) */
+.dosage-chip {
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+.dosage-chip:hover {
+  background: var(--primary) !important;
+  color: #fff !important;
+  border-color: var(--primary) !important;
+}
+
+

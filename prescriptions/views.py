@@ -102,6 +102,22 @@ def prescription_create(request, appointment_id):
         })
     presets_json = json.dumps(presets_data)
 
+    # Fetch most recent previous prescription for 1-click repeat/clone
+    prev_rx = _scoped_prescriptions(request).filter(appointment__patient=patient).exclude(appointment=appointment).order_by('-id').first()
+    prev_rx_json = "[]"
+    if prev_rx:
+        prev_items = []
+        for item in prev_rx.items.all():
+            prev_items.append({
+                'medicine_id': item.medicine.id if item.medicine else None,
+                'medicine_name': item.medicine.name if item.medicine else (item.custom_medicine_name or ''),
+                'custom_medicine_name': item.custom_medicine_name or '',
+                'dosage': item.dosage or '',
+                'duration_days': item.duration_days or 5,
+                'instructions': item.instructions or '',
+            })
+        prev_rx_json = json.dumps(prev_items)
+
     return render(request, 'prescriptions/prescription_form.html', {
         'form': form,
         'med_formset': med_formset,
@@ -109,6 +125,8 @@ def prescription_create(request, appointment_id):
         'title': 'Create Prescription',
         'presets': presets,
         'presets_json': presets_json,
+        'prev_rx': prev_rx,
+        'prev_rx_json': prev_rx_json,
     })
 
 

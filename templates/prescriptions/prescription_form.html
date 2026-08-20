@@ -41,8 +41,9 @@
     <!-- ---------------- Medicines (multiple) ---------------- -->
     <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
     
-    {% if presets %}
-    <div style="margin-bottom:18px; display:flex; gap:12px; align-items:center; background:var(--bg); padding:10px 14px; border-radius:8px; border:1px solid var(--border-strong);">
+    {% if presets or prev_rx %}
+    <div style="margin-bottom:18px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; background:var(--bg); padding:10px 14px; border-radius:8px; border:1px solid var(--border-strong);">
+      {% if presets %}
       <label style="font-weight:700; color:var(--text); font-size:13.5px; display:flex; align-items:center; gap:6px;">
         ⚡ Quick Rx Template:
       </label>
@@ -53,11 +54,21 @@
         {% endfor %}
       </select>
       <button type="button" class="btn sm alt" id="apply-preset-btn" style="padding:6px 14px;">Apply Template</button>
+      {% endif %}
+
+      {% if prev_rx %}
+      <button type="button" class="btn sm success" id="load-prev-rx-btn" style="padding:6px 14px; font-weight:700; display:inline-flex; align-items:center; gap:6px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        Repeat Last Rx ({{ prev_rx.created_at|date:"d/m/Y" }})
+      </button>
+      {% endif %}
     </div>
     {% endif %}
 
-    <div class="page-head"><h3>💊 Medicines</h3>
-      <button type="button" class="btn sm" id="add-med">+ Add medicine</button></div>
+    <div class="page-head">
+      <h3>💊 Medicines</h3>
+      <button type="button" class="btn sm" id="add-med">+ Add medicine</button>
+    </div>
     {{ med_formset.management_form }}
     <table class="tbl" id="med-table">
       <thead><tr><th style="width:25%">Medicine (Catalog)</th><th style="width:25%">Or Custom Name (if not in list)</th><th>Dosage</th><th>Days</th><th>Instructions</th><th></th></tr></thead>
@@ -75,7 +86,22 @@
         {% endfor %}
       </tbody>
     </table>
-    <p class="muted" style="font-size:12px">Leave a row blank if not needed — empty rows are ignored. A prescription with no medicine (tests only) is fine.</p>
+
+    <!-- Quick Dosage Frequency Chips -->
+    <div class="dosage-chips-wrap" style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap; align-items:center; background:var(--bg); padding:10px 14px; border-radius:8px; border:1px solid var(--border);">
+      <span style="font-size:12px; font-weight:700; color:var(--muted); margin-right:4px;">Quick Dosage:</span>
+      <button type="button" class="btn sm alt dosage-chip" data-dose="1 tab OD (Once Daily)" style="padding:3px 8px;font-size:11.5px;">1x OD</button>
+      <button type="button" class="btn sm alt dosage-chip" data-dose="1 tab BD (Twice Daily)" style="padding:3px 8px;font-size:11.5px;">2x BD</button>
+      <button type="button" class="btn sm alt dosage-chip" data-dose="1 tab TDS (Thrice Daily)" style="padding:3px 8px;font-size:11.5px;">3x TDS</button>
+      <button type="button" class="btn sm alt dosage-chip" data-dose="1 tab QID (4 Times Daily)" style="padding:3px 8px;font-size:11.5px;">4x QID</button>
+      <button type="button" class="btn sm alt dosage-chip" data-dose="1 tab SOS (As Needed)" style="padding:3px 8px;font-size:11.5px;">SOS</button>
+      <span style="border-left:1px solid var(--border); height:16px; margin:0 4px;"></span>
+      <button type="button" class="btn sm alt dosage-chip" data-inst="After Meals" style="padding:3px 8px;font-size:11.5px;">After Meals</button>
+      <button type="button" class="btn sm alt dosage-chip" data-inst="Before Meals" style="padding:3px 8px;font-size:11.5px;">Before Meals</button>
+      <button type="button" class="btn sm alt dosage-chip" data-inst="At Bedtime" style="padding:3px 8px;font-size:11.5px;">At Bedtime</button>
+    </div>
+
+    <p class="muted" style="font-size:12px; margin-top:8px;">Leave a row blank if not needed — empty rows are ignored. A prescription with no medicine (tests only) is fine.</p>
 
     {% if not is_edit %}
     <!-- ---------------- Lab tests ---------------- -->
@@ -214,16 +240,92 @@
     });
   });
 
-  // Scans filter
-  document.getElementById('presc-scan-search')?.addEventListener('input', function() {
-    const query = this.value.toLowerCase().trim();
-    const labels = document.querySelectorAll('#scans-container label');
-    labels.forEach(label => {
-      const text = label.innerText.toLowerCase();
-      if (text.includes(query)) {
-        label.style.display = 'flex';
-      } else {
-        label.style.display = 'none';
+  // Load Previous Prescription handler
+  {% if prev_rx_json %}
+  const prevRxItems = JSON.parse('{{ prev_rx_json|escapejs }}');
+  document.getElementById('load-prev-rx-btn')?.addEventListener('click', function() {
+    if (!prevRxItems || prevRxItems.length === 0) return;
+    prevRxItems.forEach(item => {
+      let rows = document.querySelectorAll('#med-body tr.med-row');
+      let targetRow = null;
+      for (let r of rows) {
+        const medSelect = r.querySelector('select[id$="-medicine"]');
+        const customInput = r.querySelector('input[id$="-custom_medicine_name"]');
+        if (medSelect && !medSelect.value && (!customInput || !customInput.value) && r.style.display !== 'none') {
+          targetRow = r;
+          break;
+        }
+      }
+
+      if (!targetRow) {
+        addRow('meds', 'med-body', 'med-empty');
+        rows = document.querySelectorAll('#med-body tr.med-row');
+        targetRow = rows[rows.length - 1];
+      }
+
+      if (targetRow) {
+        const medSelect = targetRow.querySelector('select[id$="-medicine"]');
+        const customInput = targetRow.querySelector('input[id$="-custom_medicine_name"]');
+        const dosageInput = targetRow.querySelector('input[id$="-dosage"]');
+        const daysInput = targetRow.querySelector('input[id$="-duration_days"]');
+        const instInput = targetRow.querySelector('input[id$="-instructions"]');
+
+        if (item.medicine_id && medSelect) {
+          medSelect.value = item.medicine_id;
+        } else if (customInput) {
+          customInput.value = item.custom_medicine_name || item.medicine_name;
+        }
+        if (dosageInput) dosageInput.value = item.dosage;
+        if (daysInput) daysInput.value = item.duration_days;
+        if (instInput) instInput.value = item.instructions;
+      }
+    });
+  });
+  {% endif %}
+
+  // Quick Dosage Chips handler
+  let lastActiveDosageField = null;
+  let lastActiveInstField = null;
+
+  document.addEventListener('focusin', function(e) {
+    if (e.target.matches('input[id$="-dosage"]')) {
+      lastActiveDosageField = e.target;
+    } else if (e.target.matches('input[id$="-instructions"]')) {
+      lastActiveInstField = e.target;
+    }
+  });
+
+  document.querySelectorAll('.dosage-chip').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const dose = this.getAttribute('data-dose');
+      const inst = this.getAttribute('data-inst');
+
+      if (dose) {
+        let target = lastActiveDosageField;
+        if (!target || !document.contains(target)) {
+          const visibleRows = Array.from(document.querySelectorAll('#med-body tr.med-row')).filter(r => r.style.display !== 'none');
+          if (visibleRows.length > 0) {
+            target = visibleRows[visibleRows.length - 1].querySelector('input[id$="-dosage"]');
+          }
+        }
+        if (target) {
+          target.value = dose;
+          target.focus();
+        }
+      }
+
+      if (inst) {
+        let target = lastActiveInstField;
+        if (!target || !document.contains(target)) {
+          const visibleRows = Array.from(document.querySelectorAll('#med-body tr.med-row')).filter(r => r.style.display !== 'none');
+          if (visibleRows.length > 0) {
+            target = visibleRows[visibleRows.length - 1].querySelector('input[id$="-instructions"]');
+          }
+        }
+        if (target) {
+          target.value = (target.value ? target.value + ', ' : '') + inst;
+          target.focus();
+        }
       }
     });
   });

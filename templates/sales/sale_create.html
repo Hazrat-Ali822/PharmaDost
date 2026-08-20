@@ -229,6 +229,13 @@
           <label>Paid Amount</label>
           <input type="number" step="0.01" min="0" name="paid" id="paid" value="{{ posted.paid }}" placeholder="Leave blank = full">
         </div>
+        <div class="fast-tender-chips" style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; margin-bottom:12px;">
+          <button type="button" class="btn sm alt tender-btn" onclick="setTenderAmount('exact')" style="padding:3px 8px;font-size:11px;font-weight:700;">Exact</button>
+          <button type="button" class="btn sm alt tender-btn" onclick="setTenderAmount(100)" style="padding:3px 8px;font-size:11px;">100</button>
+          <button type="button" class="btn sm alt tender-btn" onclick="setTenderAmount(500)" style="padding:3px 8px;font-size:11px;">500</button>
+          <button type="button" class="btn sm alt tender-btn" onclick="setTenderAmount(1000)" style="padding:3px 8px;font-size:11px;">1000</button>
+          <button type="button" class="btn sm alt tender-btn" onclick="setTenderAmount(5000)" style="padding:3px 8px;font-size:11px;">5000</button>
+        </div>
         <div class="total-wrap balance-wrap">
           <span>Remaining Balance:</span>
           <strong id="balance">0</strong>
@@ -653,6 +660,17 @@
   paidEl.addEventListener('input', recalcBalance);
   saleTypeEl.addEventListener('change', reprice);
   customerEl.addEventListener('change', reprice);
+
+  window.setTenderAmount = function(val) {
+    if (!paidEl) return;
+    if (val === 'exact') {
+      const grandTotalEl = document.getElementById('grand-total');
+      paidEl.value = grandTotalEl ? (parseFloat(grandTotalEl.textContent) || 0) : '';
+    } else {
+      paidEl.value = val;
+    }
+    recalcBalance();
+  };
 
   // block submit if wholesale is chosen without a registered customer
   document.getElementById('bill-form').addEventListener('submit', function(e){
