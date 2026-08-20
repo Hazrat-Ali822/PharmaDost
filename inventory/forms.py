@@ -1,9 +1,10 @@
 from django import forms
+from saas.forms import TenantModelForm
 from pharma_mgmt.widgets import DateInput
 from .models import Medicine
 
 
-class MedicineForm(forms.ModelForm):
+class MedicineForm(TenantModelForm):
 	class Meta:
 		model = Medicine
 		fields = [

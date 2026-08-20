@@ -1,9 +1,10 @@
 from django import forms
+from saas.forms import TenantModelForm
 
 from .models import Panel, PanelPayment
 
 
-class PanelForm(forms.ModelForm):
+class PanelForm(TenantModelForm):
     # Rendered as checkboxes; stored on the JSONField `covered_services`. Leaving
     # every box unticked = no restriction (the panel covers everything).
     covered_services = forms.MultipleChoiceField(
@@ -24,7 +25,7 @@ class PanelForm(forms.ModelForm):
         }
 
 
-class PanelPaymentForm(forms.ModelForm):
+class PanelPaymentForm(TenantModelForm):
     class Meta:
         model = PanelPayment
         fields = ["amount", "date", "method", "reference", "notes"]

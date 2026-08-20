@@ -1,10 +1,11 @@
 from django import forms
+from saas.forms import TenantModelForm
 
 from patients.models import Patient
 from .models import ImagingStudy
 
 
-class ImagingStudyCreateForm(forms.ModelForm):
+class ImagingStudyCreateForm(TenantModelForm):
     """Order / register a new imaging study."""
 
     class Meta:
@@ -25,7 +26,7 @@ class ImagingStudyCreateForm(forms.ModelForm):
         return study
 
 
-class ImagingReportForm(forms.ModelForm):
+class ImagingReportForm(TenantModelForm):
     """Write the report: findings, impression, film + status."""
 
     class Meta:

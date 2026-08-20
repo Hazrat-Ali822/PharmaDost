@@ -1,4 +1,5 @@
 from django import forms
+from saas.forms import TenantModelForm
 from pharma_mgmt.widgets import DateInput
 
 from patients.models import Patient
@@ -6,7 +7,7 @@ from patients.models import Patient
 from .models import BloodDonor, BloodIssue, BloodUnit
 
 
-class BloodDonorForm(forms.ModelForm):
+class BloodDonorForm(TenantModelForm):
     class Meta:
         model = BloodDonor
         fields = ['full_name', 'blood_group', 'gender', 'age', 'cnic', 'phone',
@@ -14,7 +15,7 @@ class BloodDonorForm(forms.ModelForm):
         widgets = {'last_donation_date': DateInput()}
 
 
-class BloodUnitForm(forms.ModelForm):
+class BloodUnitForm(TenantModelForm):
     class Meta:
         model = BloodUnit
         fields = ['bag_number', 'blood_group', 'component', 'donor', 'donor_name',
@@ -33,7 +34,7 @@ class BloodUnitForm(forms.ModelForm):
         self.fields['donor'].required = False
 
 
-class BloodIssueForm(forms.ModelForm):
+class BloodIssueForm(TenantModelForm):
     class Meta:
         model = BloodIssue
         fields = ['unit', 'patient', 'issued_on', 'cross_match', 'notes']

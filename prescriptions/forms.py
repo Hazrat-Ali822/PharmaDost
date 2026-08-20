@@ -1,12 +1,13 @@
 from django import forms
 from django.forms import inlineformset_factory
+from saas.forms import TenantModelForm
 
 from lab.models import LabTest
 from imaging.models import ScanType
 from .models import Prescription, PrescriptionItem, RxPreset, RxPresetItem
 
 
-class PrescriptionForm(forms.ModelForm):
+class PrescriptionForm(TenantModelForm):
     # Lab tests + scans can be ticked right here so the doctor orders them with the
     # prescription. Both pull from the admin-managed price lists (LabTest / ScanType).
     # Both are `.none()` here and filled in __init__ — see the note in
@@ -40,7 +41,7 @@ class PrescriptionForm(forms.ModelForm):
             ScanType.objects.filter(is_active=True).order_by('modality', 'name'))
 
 
-class PrescriptionItemForm(forms.ModelForm):
+class PrescriptionItemForm(TenantModelForm):
     class Meta:
         model = PrescriptionItem
         fields = ['medicine', 'custom_medicine_name', 'dosage', 'duration_days', 'instructions']
@@ -81,13 +82,13 @@ PrescriptionItemFormSet = inlineformset_factory(
 )
 
 
-class RxPresetForm(forms.ModelForm):
+class RxPresetForm(TenantModelForm):
     class Meta:
         model = RxPreset
         fields = ['name', 'description']
 
 
-class RxPresetItemForm(forms.ModelForm):
+class RxPresetItemForm(TenantModelForm):
     class Meta:
         model = RxPresetItem
         fields = ['medicine', 'dosage', 'duration_days', 'instructions']

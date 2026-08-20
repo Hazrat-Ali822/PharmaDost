@@ -1,5 +1,6 @@
 from django import forms
 from django.db.models import Q
+from saas.forms import TenantModelForm
 from pharma_mgmt.widgets import DateInput
 
 from opd.models import Doctor
@@ -10,14 +11,15 @@ from .models import AntenatalVisit, Delivery, Pregnancy
 
 
 def _scope_doctor(field, user):
-    docs = Doctor.objects.filter(is_active=True)
-    if user is not None and not user.is_superuser:
-        docs = scoped_doctors(user, docs)
+    # Unconditional: `scoped_doctors` decides for itself what a superuser or a
+    # hospital-less user may see. Guarding it with `if user is not None` was the
+    # fail-open shape — a caller that forgot `user=` got every tenant's doctors.
+    docs = scoped_doctors(user, Doctor.objects.filter(is_active=True))
     field.queryset = docs
     field.required = False
 
 
-class PregnancyForm(forms.ModelForm):
+class PregnancyForm(TenantModelForm):
     class Meta:
         model = Pregnancy
         fields = ['mother', 'husband_name', 'lmp', 'gravida', 'para', 'abortions',
@@ -32,7 +34,7 @@ class PregnancyForm(forms.ModelForm):
         self.fields['mother'].queryset = pts.order_by('full_name')
 
 
-class AntenatalVisitForm(forms.ModelForm):
+class AntenatalVisitForm(TenantModelForm):
     class Meta:
         model = AntenatalVisit
         fields = ['date', 'weight', 'bp', 'fundal_height', 'fhr', 'complaints',
@@ -48,7 +50,7 @@ class AntenatalVisitForm(forms.ModelForm):
         _scope_doctor(self.fields['seen_by'], user)
 
 
-class DeliveryForm(forms.ModelForm):
+class DeliveryForm(TenantModelForm):
     consultation_fee = forms.DecimalField(required=False, min_value=0,
                                           label='Delivery charge (optional)')
 

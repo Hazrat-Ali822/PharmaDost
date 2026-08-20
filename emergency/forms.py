@@ -1,5 +1,6 @@
 from django import forms
 from django.db.models import Q
+from saas.forms import TenantModelForm
 
 from opd.models import Doctor
 from opd.scoping import scoped_doctors
@@ -8,7 +9,7 @@ from patients.models import Patient
 from .models import EmergencyCase
 
 
-class EmergencyIntakeForm(forms.ModelForm):
+class EmergencyIntakeForm(TenantModelForm):
     """Triage-first intake. Either pick a registered patient or quick-add a new
     one (name is enough — the emergency room registers first, completes later)."""
     existing_patient = forms.ModelChoiceField(
@@ -28,10 +29,13 @@ class EmergencyIntakeForm(forms.ModelForm):
 
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
-        docs = Doctor.objects.filter(is_active=True)
+        # Unconditional: `scoped_doctors` decides for itself what a superuser
+        # or a hospital-less user may see. Guarding it with `if user is not
+        # None` was the fail-open shape — a caller that forgot `user=` got
+        # every tenant's doctors, and six forms carried that same copy.
+        docs = scoped_doctors(user, Doctor.objects.filter(is_active=True))
         pts = Patient.objects.all()
         if user is not None and not user.is_superuser:
-            docs = scoped_doctors(user, docs)
             pts = pts.filter(hospital=user.hospital)
         self.fields['attending_doctor'].queryset = docs
         self.fields['attending_doctor'].required = False
@@ -44,7 +48,7 @@ class EmergencyIntakeForm(forms.ModelForm):
         return cleaned
 
 
-class DispositionForm(forms.ModelForm):
+class DispositionForm(TenantModelForm):
     class Meta:
         model = EmergencyCase
         fields = ['disposition', 'disposition_notes', 'attending_doctor',

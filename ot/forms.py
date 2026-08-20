@@ -1,18 +1,19 @@
 from decimal import Decimal
 
 from django import forms
+from saas.forms import TenantModelForm
 from .models import SurgeryCategory, SurgeryProcedure, SurgeryRecord
 from patients.models import Patient
 from ipd.models import Admission
 from opd.models import Doctor
 from opd.scoping import scoped_doctors
 
-class SurgeryCategoryForm(forms.ModelForm):
+class SurgeryCategoryForm(TenantModelForm):
     class Meta:
         model = SurgeryCategory
         fields = ['name']
 
-class SurgeryProcedureForm(forms.ModelForm):
+class SurgeryProcedureForm(TenantModelForm):
     class Meta:
         model = SurgeryProcedure
         fields = ['name', 'category', 'standard_charge', 'ot_charge',
@@ -42,7 +43,7 @@ class SurgeryProcedureForm(forms.ModelForm):
                 cleaned[name] = Decimal('0.00')
         return cleaned
 
-class SurgeryRecordForm(forms.ModelForm):
+class SurgeryRecordForm(TenantModelForm):
     class Meta:
         model = SurgeryRecord
         fields = [

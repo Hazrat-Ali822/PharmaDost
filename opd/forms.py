@@ -2,12 +2,13 @@ from django import forms
 
 from .scoping import scoped_doctors
 from django.forms import inlineformset_factory
+from saas.forms import TenantModelForm
 from pharma_mgmt.widgets import DateInput, TimeInput
 from .models import (Appointment, Department, Doctor, DoctorPayout, DoctorSchedule)
 from patients.models import Patient
 
 
-class DepartmentForm(forms.ModelForm):
+class DepartmentForm(TenantModelForm):
     class Meta:
         model = Department
         fields = ['name', 'description', 'is_active']
@@ -17,7 +18,7 @@ class DepartmentForm(forms.ModelForm):
         }
 
 
-class DoctorForm(forms.ModelForm):
+class DoctorForm(TenantModelForm):
     class Meta:
         model = Doctor
         fields = ['user', 'full_name', 'department', 'specialty', 'pmdc_no',
@@ -46,7 +47,7 @@ class DoctorForm(forms.ModelForm):
             "Reception picks a department first, then sees only its doctors.")
 
 
-class DoctorScheduleForm(forms.ModelForm):
+class DoctorScheduleForm(TenantModelForm):
     class Meta:
         model = DoctorSchedule
         fields = ['weekday', 'start_time', 'end_time']
@@ -79,7 +80,7 @@ DoctorScheduleFormSet = inlineformset_factory(
     Doctor, DoctorSchedule, form=DoctorScheduleForm, extra=3, can_delete=True)
 
 
-class DoctorPayoutForm(forms.ModelForm):
+class DoctorPayoutForm(TenantModelForm):
     class Meta:
         model = DoctorPayout
         fields = ['date', 'amount', 'payment_method', 'note']
@@ -91,7 +92,7 @@ class DoctorPayoutForm(forms.ModelForm):
         }
 
 
-class AppointmentForm(forms.ModelForm):
+class AppointmentForm(TenantModelForm):
     class Meta:
         model = Appointment
         fields = ['patient', 'doctor', 'appointment_date', 'slot_time', 'token_no', 'visit_type', 'status']

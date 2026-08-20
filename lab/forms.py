@@ -1,10 +1,11 @@
 from django import forms
 from django.forms import inlineformset_factory
+from saas.forms import TenantModelForm
 from .models import TestOrder, TestResult, LabTest
 from patients.models import Patient
 
 
-class TestOrderCreateForm(forms.ModelForm):
+class TestOrderCreateForm(TenantModelForm):
     # `.none()`, filled in __init__ — NEVER `LabTest.objects.all()` here.
     # A queryset built at class level is evaluated once, at import, when no tenant
     # is bound to the thread: `TenantManager` hands back every row and that object
@@ -44,7 +45,7 @@ class TestOrderCreateForm(forms.ModelForm):
         return order
 
 
-class TestResultForm(forms.ModelForm):
+class TestResultForm(TenantModelForm):
     class Meta:
         model = TestResult
         fields = ["lab_test", "result_value", "normal_range", "unit", "remarks"]

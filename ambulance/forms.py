@@ -1,9 +1,10 @@
 from django import forms
+from saas.forms import TenantModelForm
 
 from .models import Ambulance, AmbulanceDriver, AmbulanceTrip
 
 
-class AmbulanceForm(forms.ModelForm):
+class AmbulanceForm(TenantModelForm):
     class Meta:
         model = Ambulance
         fields = ['registration_no', 'label', 'vehicle_type', 'driver', 'phone',
@@ -26,7 +27,7 @@ class AmbulanceForm(forms.ModelForm):
         self.fields['driver'].required = False
 
 
-class AmbulanceDriverForm(forms.ModelForm):
+class AmbulanceDriverForm(TenantModelForm):
     class Meta:
         model = AmbulanceDriver
         fields = ['full_name', 'phone', 'licence_no', 'cnic', 'address',
@@ -36,7 +37,7 @@ class AmbulanceDriverForm(forms.ModelForm):
         }
 
 
-class AmbulanceTripForm(forms.ModelForm):
+class AmbulanceTripForm(TenantModelForm):
     """Booking a run. Charges are left blank on the form and filled from the
     vehicle's rates at dispatch — typing one overrides it for this trip only."""
 

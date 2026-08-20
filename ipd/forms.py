@@ -1,4 +1,5 @@
 from django import forms
+from saas.forms import TenantModelForm, scope_queryset
 from pharma_mgmt.widgets import DateInput
 
 from opd.scoping import scoped_doctors
@@ -7,7 +8,7 @@ from .models import (Ward, Bed, Admission, DoctorRound, VitalsObservation,
 from patients.models import Patient
 from opd.models import Doctor
 
-class WardForm(forms.ModelForm):
+class WardForm(TenantModelForm):
     class Meta:
         model = Ward
         fields = ['name', 'ward_type', 'daily_rate', 'in_charge']
@@ -15,18 +16,22 @@ class WardForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Ward In-charge is a senior nurse (admins may run a ward too).
+        # `scope_queryset` because `User` has no `TenantManager` — without it
+        # this picker listed every hospital's nurses, and a ward could have been
+        # handed to one of them on submit.
         from accounts.models import User
-        self.fields['in_charge'].queryset = User.objects.filter(
-            is_active=True, role__in=['NURSE', 'ADMIN']).order_by('first_name', 'email')
+        self.fields['in_charge'].queryset = scope_queryset(
+            User.objects.filter(is_active=True, role__in=['NURSE', 'ADMIN'])
+        ).order_by('first_name', 'email')
         self.fields['in_charge'].required = False
         self.fields['in_charge'].label = 'Ward In-charge (senior nurse)'
 
-class BedForm(forms.ModelForm):
+class BedForm(TenantModelForm):
     class Meta:
         model = Bed
         fields = ['bed_number', 'ward', 'status']
 
-class AdmissionForm(forms.ModelForm):
+class AdmissionForm(TenantModelForm):
     class Meta:
         model = Admission
         fields = ['patient', 'bed', 'attending_doctor', 'admission_reason']
@@ -53,7 +58,7 @@ class AdmissionForm(forms.ModelForm):
             avail_beds = avail_beds | Bed.objects.filter(pk=self.instance.bed.pk)
         self.fields['bed'].queryset = avail_beds.distinct()
 
-class DoctorRoundForm(forms.ModelForm):
+class DoctorRoundForm(TenantModelForm):
     class Meta:
         model = DoctorRound
         fields = ['vitals_temp', 'vitals_bp', 'vitals_pulse', 'clinical_notes', 'prescription_updates']
@@ -64,7 +69,7 @@ class DoctorRoundForm(forms.ModelForm):
 
 from .models import Ward, Bed, Admission, DoctorRound, MedicationLog
 
-class DischargeForm(forms.ModelForm):
+class DischargeForm(TenantModelForm):
     class Meta:
         model = Admission
         fields = ['discharge_notes']
@@ -72,7 +77,7 @@ class DischargeForm(forms.ModelForm):
             'discharge_notes': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Enter discharge summary and medications advised...'}),
         }
 
-class MedicationLogForm(forms.ModelForm):
+class MedicationLogForm(TenantModelForm):
     """`medicine` is filled in by the search box (hidden field) when the nurse picks
     a catalogue item; leaving it empty records an off-catalogue drug with no stock
     movement and no charge.
@@ -123,7 +128,7 @@ class MedicationLogForm(forms.ModelForm):
         return qty
 
 
-class VitalsObservationForm(forms.ModelForm):
+class VitalsObservationForm(TenantModelForm):
     """The nursing vitals set. Every measured field is optional so a partial obs
     is still saveable (MEWS marks it incomplete); the point is never to block the
     nurse from recording what they did take."""
@@ -195,7 +200,7 @@ class VitalsObservationForm(forms.ModelForm):
         return cleaned
 
 
-class FluidBalanceEntryForm(forms.ModelForm):
+class FluidBalanceEntryForm(TenantModelForm):
     class Meta:
         model = FluidBalanceEntry
         fields = ['recorded_at', 'direction', 'kind', 'volume_ml', 'notes']
@@ -208,7 +213,7 @@ class FluidBalanceEntryForm(forms.ModelForm):
         }
 
 
-class _ShiftScopedForm(forms.ModelForm):
+class _ShiftScopedForm(TenantModelForm):
     """Fills the `shift` dropdown with **this hospital's** shifts.
 
     The queryset is set here, per request, and never as a class attribute: a
@@ -250,7 +255,7 @@ class ShiftHandoverForm(_ShiftScopedForm):
         }
 
 
-class CareTaskForm(forms.ModelForm):
+class CareTaskForm(TenantModelForm):
     class Meta:
         model = CareTask
         fields = ['task', 'done_at', 'notes']

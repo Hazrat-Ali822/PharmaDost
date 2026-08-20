@@ -2,12 +2,13 @@ import calendar
 from datetime import date, timedelta
 
 from django import forms
+from saas.forms import TenantModelForm
 from pharma_mgmt.widgets import DateInput
 from .models import Patient, PatientDocument
 from opd.models import ClinicalRecord
 
 
-class PatientForm(forms.ModelForm):
+class PatientForm(TenantModelForm):
     # Form-only. A paediatric patient's age is months and days, not a rounded
     # year, so reception needs somewhere to put them — but storing three numbers
     # alongside `dob` would give us two answers to the same question. They fold
@@ -204,7 +205,7 @@ class PatientForm(forms.ModelForm):
         return raw
 
 
-class ClinicalRecordForm(forms.ModelForm):
+class ClinicalRecordForm(TenantModelForm):
     class Meta:
         model = ClinicalRecord
         fields = ['record_type', 'date', 'title', 'diagnosis', 'details',
@@ -215,7 +216,7 @@ class ClinicalRecordForm(forms.ModelForm):
         }
 
 
-class PatientDocumentForm(forms.ModelForm):
+class PatientDocumentForm(TenantModelForm):
     """Upload a photograph of a paper document.
 
     `capture="environment"` opens the phone's rear camera straight from the

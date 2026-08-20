@@ -1,4 +1,5 @@
 from django import forms
+from saas.forms import TenantModelForm
 from pharma_mgmt.widgets import DateInput
 
 from patients.models import Patient
@@ -6,14 +7,14 @@ from patients.models import Patient
 from .models import Vaccine, VaccinationRecord
 
 
-class VaccineForm(forms.ModelForm):
+class VaccineForm(TenantModelForm):
     class Meta:
         model = Vaccine
         fields = ['code', 'name', 'recommended_age', 'doses_in_series', 'sequence',
                   'description', 'is_active']
 
 
-class VaccinationRecordForm(forms.ModelForm):
+class VaccinationRecordForm(TenantModelForm):
     class Meta:
         model = VaccinationRecord
         fields = ['patient', 'vaccine', 'dose_number', 'date_given', 'batch_no',

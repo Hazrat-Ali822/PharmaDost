@@ -1,9 +1,10 @@
 from django import forms
+from saas.forms import TenantModelForm
 from pharma_mgmt.widgets import DateInput
 from .models import Invoice, Expense, CashClosing
 
 
-class InvoiceForm(forms.ModelForm):
+class InvoiceForm(TenantModelForm):
     class Meta:
         model = Invoice
         fields = ['patient', 'appointment', 'payment_method', 'discount', 'paid']
@@ -24,7 +25,7 @@ class InvoiceForm(forms.ModelForm):
                 patient__hospital=user.hospital)
 
 
-class ExpenseForm(forms.ModelForm):
+class ExpenseForm(TenantModelForm):
     class Meta:
         model = Expense
         fields = ['date', 'category', 'description', 'amount', 'payment_method']
@@ -36,7 +37,7 @@ class ExpenseForm(forms.ModelForm):
         }
 
 
-class CashClosingForm(forms.ModelForm):
+class CashClosingForm(TenantModelForm):
     class Meta:
         model = CashClosing
         fields = ['date', 'opening', 'counted', 'note']

@@ -2382,16 +2382,35 @@ almost always means a query moved inside a loop; find that before raising the nu
   twice, once onto the printed **lab report handed to the patient**, so
   `tests/test_reported_bugs.py::TemplateCommentTest` now scans the whole template tree
   for an unclosed `{#`.
-- **A form field's queryset belongs in `__init__`, never at class level.**
-  `queryset=LabTest.objects.all()` written as a class attribute is evaluated once, at
-  import, when no tenant is bound — so `TenantManager` returns every row and that
-  unfiltered queryset is reused for the life of the process. Once the lab and scan
-  catalogues became per-tenant, the lab-order and prescription screens listed every
-  hospital's tests, and `ModelMultipleChoiceField` would have *accepted* an order against
-  one, because it validates ids against its own queryset. Use `.none()` at class level and
-  fill it in `__init__` (`consent/forms.py` and `opd/forms.py` show the pattern); the
-  per-request call has the tenant bound. Guarded by
-  `tests/test_security.py::SharedCatalogueTest`.
+- **Every ModelForm in this project subclasses `saas.forms.TenantModelForm`, not
+  `forms.ModelForm`.** A form field's queryset is evaluated once, at import, when no
+  tenant is bound — so `TenantManager` returns every row and that unfiltered queryset is
+  reused for the life of the worker. Writing `queryset=LabTest.objects.all()` as a class
+  attribute does it by hand, but **Django does it for you for every foreign key** in a
+  plain ModelForm, which is why remembering the rule was never enough: `/medicines/add/`
+  offered the demo tenant's suppliers to a real customer, and `Supplier` had a `hospital`
+  column and a `TenantManager` the whole time. `TenantModelForm.__init__` re-applies the
+  tenant filter to every choice field pointing at a model with a `hospital` column,
+  *narrowing* whatever queryset is there so a deliberate `is_active=True` survives.
+  This is a **write** path, not a display bug — a `ModelChoiceField` validates the posted
+  id against its own queryset, so an unscoped dropdown accepts another hospital's row on
+  submit.
+- **A queryset set in a form's own `__init__` bypasses that base class**, because it runs
+  after `super().__init__()`. That is usually fine (a manager called during a request is
+  already scoped) with two exceptions that have both bitten: `Doctor` and `User` have a
+  `hospital` column but **no `TenantManager`**, so they must be narrowed explicitly —
+  `opd.scoping.scoped_doctors` for doctors, `saas.forms.scope_queryset` for users.
+  Call them **unconditionally**. Six clinical forms wrote
+  `if user is not None and not user.is_superuser: docs = scoped_doctors(user, docs)`,
+  which is fail-open twice over — a caller that omits `user=`, or a signed-in user whose
+  hospital is None, got every tenant's doctors. `scoped_doctors` already decides what a
+  superuser may see.
+- Guarded by **`tests/test_tenant_forms.py`**, which builds *every* ModelForm in the
+  project with one hospital bound and fails if any dropdown can see another hospital's
+  row — and again with no hospital bound, where it must see nothing rather than
+  everything. Adding a form needs no change there; that is the point. Use `.none()` at
+  class level and fill it in `__init__` where a form needs its own filter
+  (`consent/forms.py` and `opd/forms.py` show the pattern).
 - **`Doctor.full_name` holds the bare name; the title comes from `display_name`.**
   `Doctor.save()` strips a typed-in "Dr." / "Prof." because ~34 templates render
   `Dr. {{ doctor.full_name }}` themselves, and the OPD token slip and IPD discharge

@@ -1,5 +1,6 @@
 from datetime import date
 from django import forms
+from saas.forms import TenantModelForm, scope_queryset
 from pharma_mgmt.widgets import DateInput
 
 from accounts.models import NO_LOGIN_EMAIL_DOMAIN, NO_LOGIN_ROLE, User
@@ -7,7 +8,7 @@ from accounts.models import NO_LOGIN_EMAIL_DOMAIN, NO_LOGIN_ROLE, User
 from .models import LeaveRequest, SalaryPayment, StaffProfile
 
 
-class StaffProfileForm(forms.ModelForm):
+class StaffProfileForm(TenantModelForm):
     class Meta:
         model = StaffProfile
         fields = [
@@ -34,8 +35,13 @@ def _employee_label(u):
 
 def _scope_user_field(field, user):
     qs = User.objects.filter(is_active=True).select_related('staff_profile')
-    if user is not None and not user.is_superuser:
-        qs = qs.filter(hospital=user.hospital)
+    # `User` is the auth model and has no `TenantManager`, so this is the only
+    # thing standing between one hospital's payroll and another's. It used to be
+    # `if user is not None and not user.is_superuser` — fail-open twice over: a
+    # caller that forgot `user=`, or a signed-in user whose hospital is None,
+    # got every hospital's staff in the Employee picker. `scope_queryset` is the
+    # same three cases `TenantManager` resolves, and it is fail-closed.
+    qs = scope_queryset(qs)
     # By name, not by address — the address is a placeholder for most of payroll.
     field.queryset = qs.order_by('first_name', 'last_name', 'email')
     field.label_from_instance = _employee_label
@@ -43,7 +49,7 @@ def _scope_user_field(field, user):
     field.empty_label = 'Choose an employee…'
 
 
-class LeaveRequestForm(forms.ModelForm):
+class LeaveRequestForm(TenantModelForm):
     class Meta:
         model = LeaveRequest
         fields = ['user', 'start_date', 'end_date', 'leave_type', 'reason']
@@ -64,7 +70,7 @@ class LeaveRequestForm(forms.ModelForm):
         return cleaned
 
 
-class SalaryPaymentForm(forms.ModelForm):
+class SalaryPaymentForm(TenantModelForm):
     class Meta:
         model = SalaryPayment
         fields = ['user', 'period', 'basic', 'allowances', 'deductions', 'paid_on', 'method', 'note']

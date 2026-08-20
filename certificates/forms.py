@@ -1,5 +1,6 @@
 from django import forms
 from django.db.models import Q
+from saas.forms import TenantModelForm
 from pharma_mgmt.widgets import DateInput, TimeInput
 
 from opd.models import Doctor
@@ -9,7 +10,7 @@ from patients.models import Patient
 from .models import BirthCertificate, DeathCertificate
 
 
-class BirthCertificateForm(forms.ModelForm):
+class BirthCertificateForm(TenantModelForm):
     class Meta:
         model = BirthCertificate
         fields = ['child_name', 'sex', 'date_of_birth', 'time_of_birth', 'place_of_birth',
@@ -22,7 +23,7 @@ class BirthCertificateForm(forms.ModelForm):
         }
 
 
-class DeathCertificateForm(forms.ModelForm):
+class DeathCertificateForm(TenantModelForm):
     class Meta:
         model = DeathCertificate
         fields = ['patient', 'deceased_name', 'sex', 'age_text', 'cnic', 'father_husband_name',
@@ -38,11 +39,14 @@ class DeathCertificateForm(forms.ModelForm):
 
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
+        # Unconditional: `scoped_doctors` decides for itself what a superuser
+        # or a hospital-less user may see. Guarding it with `if user is not
+        # None` was the fail-open shape — a caller that forgot `user=` got
+        # every tenant's doctors, and six forms carried that same copy.
+        docs = scoped_doctors(user, Doctor.objects.filter(is_active=True))
         pts = Patient.objects.all()
-        docs = Doctor.objects.filter(is_active=True)
         if user is not None and not user.is_superuser:
             pts = pts.filter(hospital=user.hospital)
-            docs = scoped_doctors(user, docs)
         self.fields['patient'].queryset = pts.order_by('full_name')
         self.fields['patient'].required = False
         self.fields['attending_doctor'].queryset = docs
