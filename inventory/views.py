@@ -251,9 +251,18 @@ def medicine_list(request):
             Q(name__icontains=q) | Q(generic_name__icontains=q) |
             Q(brand__icontains=q) | Q(barcode__icontains=q)
         )
+    # A medicine with no purchase price is reported at 100% margin, and until
+    # now nothing on any screen said so. One count for the whole page (not per
+    # row) and a filter to work through them.
+    missing_cost = request.GET.get('missing_cost') == '1'
+    missing_cost_count = meds.filter(cost_price__lte=0).count()
+    if missing_cost:
+        meds = meds.filter(cost_price__lte=0)
     page = paginate(request, meds)
     return render(request, 'inventory/medicine_list.html',
-                  {'meds': page, 'page_obj': page, 'q': q})
+                  {'meds': page, 'page_obj': page, 'q': q,
+                   'missing_cost': missing_cost,
+                   'missing_cost_count': missing_cost_count})
 
 
 @feature_required('inventory')
@@ -261,7 +270,20 @@ def medicine_create(request):
     if request.method == 'POST':
         form = MedicineForm(request.POST)
         if form.is_valid():
-            form.save()
+            med = form.save(commit=False)
+            # The opening stock has to become a real StockBatch, not just the
+            # denormalised aggregate. A bare `Medicine.quantity` with no batch
+            # row behind it takes `reduce_stock`'s legacy path, which knows no
+            # cost, so every sale off it froze `SaleItem.cost_price = 0` and the
+            # profit report counted the whole selling price as margin. A batch
+            # also carries the expiry, so this stock is FEFO-dispensed and
+            # expiry-checked like any other.
+            opening = med.quantity or 0
+            med.quantity = 0
+            med.save()
+            if opening:
+                med.add_stock(opening, expiry_date=med.expiry_date,
+                              cost_price=med.cost_price, supplier=med.supplier)
             messages.success(request, 'Medicine added successfully!')
             return redirect('medicine_list')
     else:
@@ -324,7 +346,9 @@ def purchase_create(request):
             qty = int(qtys[i] or 0)
             if qty < 1:
                 continue
-            cost = _D(str(costs[i])) if costs[i] else _D(str(med.price))
+            # NOT `med.price` — falling back to the selling price reports the
+            # purchase at exactly zero profit for ever. Unknown stays unknown.
+            cost = _D(str(costs[i])) if costs[i] else _D(str(med.cost_price or 0))
             expiry = exps[i] or med.expiry_date
             PurchaseItem.objects.create(order=po, medicine=med, batch_number='', quantity=qty, cost_price=cost, expiry_date=expiry)
             med.add_stock(qty, batch_number='', expiry_date=expiry, cost_price=cost, supplier=supplier)

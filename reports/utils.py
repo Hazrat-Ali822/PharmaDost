@@ -301,11 +301,21 @@ def module_profit_data(start, end):
     sales = Sale.objects.filter(created_at__date__range=(start, end),
                                 is_returned=False)
     ph_revenue = sales.aggregate(s=Sum('total'))['s'] or zero
-    ph_cost = (SaleItem.objects
-               .filter(sale__in=sales)
-               .aggregate(s=Sum(ExpressionWrapper(
-                   F('cost_price') * F('quantity'),
-                   output_field=DecimalField(max_digits=14, decimal_places=2))))['s'] or zero)
+    ph_items = SaleItem.objects.filter(sale__in=sales)
+    money = DecimalField(max_digits=14, decimal_places=2)
+    ph_cost = (ph_items
+               .filter(cost_price__gt=0)
+               .aggregate(s=Sum(ExpressionWrapper(F('cost_price') * F('quantity'),
+                                                  output_field=money)))['s'] or zero)
+    # Sales whose purchase price nobody recorded. Their cost is UNKNOWN, not
+    # zero — but the subtraction cannot tell the difference, so they arrive in
+    # the profit column as 100% margin and the owner has no way to see it. The
+    # figure is reported next to the row instead of being quietly absorbed.
+    ph_cost_gap = (ph_items
+                   .filter(cost_price__lte=0)
+                   .aggregate(s=Sum(ExpressionWrapper(
+                       F('unit_price') * F('quantity') - F('discount'),
+                       output_field=money)))['s'] or zero)
 
     # --- Everything else comes off the invoices, classified by description.
     items = (InvoiceItem.objects
@@ -354,7 +364,11 @@ def module_profit_data(start, end):
         'revenue': ph_revenue,
         'cost': ph_cost,
         'cost_tracked': True,
-        'note': 'Batch cost frozen at the time of each sale.',
+        'cost_gap': ph_cost_gap,
+        'note': ('Batch cost frozen at the time of each sale.' if not ph_cost_gap else
+                 f'Includes {ph_cost_gap} of sales with no purchase price recorded, '
+                 f'counted at zero cost — the profit shown is higher than the truth. '
+                 f'Set the purchase price on those medicines.'),
     }]
 
     # --- Ambulance cost: frozen onto each trip at dispatch, same rule as OT.
@@ -414,4 +428,10 @@ def module_profit_data(start, end):
     }
     totals['profit'] = totals['revenue'] - totals['cost']
     totals['partial'] = any(not r['cost_tracked'] and r['revenue'] for r in rows)
+    # `partial` means the total is a FLOOR (a module whose cost is not recorded
+    # at all is reported revenue-only). `overstated` is the opposite failure and
+    # needs saying separately: the cost of these sales IS in the subtraction, as
+    # zero, so the profit above is too high rather than too low.
+    totals['cost_gap'] = sum((r.get('cost_gap') or zero for r in rows), zero)
+    totals['overstated'] = totals['cost_gap'] > zero
     return rows, totals

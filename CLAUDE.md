@@ -1174,6 +1174,15 @@ builds it, and two things about it are deliberate:
   `cost_tracked = False`, renders "not recorded", and sets `totals['partial']` so
   the page states the total profit is a **floor**. Subtracting zero would report
   imaging and IPD at 100% margin, which an owner would act on.
+- **`totals['overstated']` is the opposite failure and is reported separately.**
+  `partial` means a module's cost is missing *entirely*, so its revenue is
+  counted and its profit is not claimed — the total is a floor. Pharmacy can
+  fail the other way: an individual `SaleItem` whose `cost_price` is 0 is inside
+  the subtraction, as zero, so the profit is **too high**. `module_profit_data`
+  therefore sums the cost of priced items only and reports the revenue of the
+  unpriced ones as `cost_gap`, which the page prints as its own warning. Do not
+  collapse the two into one flag: "the profit is at least this" and "the profit
+  is at most this" are opposite instructions to the person reading it.
 
 Modules with no activity are dropped from the table, so a pharmacy-only install
 sees one row rather than a column of zeroes.
@@ -1245,6 +1254,33 @@ Stock lives in `StockBatch` rows; `Medicine.quantity` is an aggregate that can d
 - `reduce_stock` dispenses **FEFO over non-expired batches only**, so an expired batch can never be sold.
 - `return_sale` quarantines expired returns (on hand but not sellable).
 - `SaleItem.cost_price` freezes the batch COGS at sale time; the profit report depends on it.
+
+**`Medicine.cost_price` is the purchase price, and 0 means "not recorded" — never
+free.** The model carried `price` and `wholesale_price`, both *selling* prices, and
+nothing for what the shop paid, so "Add medicine" asked what to sell a tablet for
+and never what it cost. Profit was then decided by two silent defaults, and each
+produced a confident wrong number rather than a visible blank:
+
+- The Add-medicine form wrote `Medicine.quantity` and created **no `StockBatch`**.
+  `reduce_stock` then took its legacy aggregate path, the sale froze
+  `SaleItem.cost_price = 0`, and the item was reported at **100% margin**.
+  `medicine_create` now saves with `quantity = 0` and calls `add_stock()` for the
+  opening stock, so it is a real batch carrying the cost and the expiry — and
+  therefore FEFO-dispensed and expiry-checked like everything else. Do the same in
+  any new stock-in path; writing the aggregate alone loses both facts.
+- `add_stock(cost_price=None)` defaulted to **`self.price`**, and `purchase_create`
+  did the same for a blank cost box. That is not a cautious guess, it is a specific
+  wrong answer: every batch stocked that way reports **exactly zero profit** for
+  ever. Both fall back to `Medicine.cost_price` now, and an unknown cost stays 0.
+
+`has_cost` / `unit_profit` / `margin_percent` are the derived readers (None when the
+cost is unknown, never a number). `/medicines/?missing_cost=1` lists the medicines
+still missing one, and both the medicine list and the profit report link to it —
+without a way to *find* them the warning is just a complaint. Migration
+`inventory/0013` backfills from the newest batch cost **only where it differs from
+the selling price**, since a batch cost equal to the selling price is almost
+certainly the old default rather than a fact, and copying it would make a wrong
+number look deliberate.
 
 `inventory/safety.py::screen_medicines()` produces allergy and duplicate warnings
 (substring matching — advisory only, not a real drug-interaction database). It is wired

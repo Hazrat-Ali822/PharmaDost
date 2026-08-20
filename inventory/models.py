@@ -82,6 +82,13 @@ class Medicine(models.Model):
     units_per_pack = models.PositiveIntegerField(default=1)
     rack_location = models.CharField(max_length=50, blank=True)
 
+    # What the shop PAID. Without it there is no profit — and worse, its
+    # absence used to be indistinguishable from a genuine zero, so an unpriced
+    # medicine reported the whole selling price as margin. 0 means "not
+    # recorded" everywhere it is read; never treat it as free.
+    cost_price = models.DecimalField(max_digits=10, decimal_places=2,
+                                     default=Decimal('0.00'),
+                                     validators=[MinValueValidator(0)])
     price = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0)])
     wholesale_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'), validators=[MinValueValidator(0)])
     reorder_level = models.PositiveIntegerField(default=10)
@@ -109,6 +116,26 @@ class Medicine(models.Model):
     @property
     def is_low_stock(self):
         return self.sellable_quantity < self.reorder_level
+
+    @property
+    def has_cost(self):
+        """Whether the purchase price is known. A 0 here means nobody entered it,
+        not that the medicine was free — every profit figure has to say so
+        rather than quietly count the whole sale as margin."""
+        return self.cost_price > 0
+
+    @property
+    def unit_profit(self):
+        """Retail margin per unit, or None when the cost is not recorded."""
+        if not self.has_cost:
+            return None
+        return self.price - self.cost_price
+
+    @property
+    def margin_percent(self):
+        if not self.has_cost or not self.price:
+            return None
+        return (self.price - self.cost_price) / self.price * 100
 
     def _prefetched_batches(self):
         """Batches already loaded by `prefetch_related('batches')`, else None.
@@ -189,7 +216,11 @@ class Medicine(models.Model):
         if expiry_date is None:
             expiry_date = self.expiry_date
         if cost_price is None:
-            cost_price = self.price
+            # NOT `self.price`. Defaulting the cost to the selling price is not a
+            # safe guess, it is a specific wrong answer: every batch stocked that
+            # way reports exactly zero profit for ever. An unknown cost stays 0,
+            # which every reader treats as "not recorded".
+            cost_price = self.cost_price
         batch = StockBatch.objects.create(
             medicine=self,
             batch_number=batch_number,

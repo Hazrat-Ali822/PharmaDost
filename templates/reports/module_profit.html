@@ -91,5 +91,18 @@
     total profit above is a <b>floor</b>, not a final figure.
   </p>
   {% endif %}
+
+  {% if totals.overstated %}
+  {# The opposite failure, and it has to be stated separately: here the cost IS #}
+  {# in the subtraction, as zero, so the profit above is too HIGH. Silence      #}
+  {# would leave an owner acting on a margin the shop never earned.            #}
+  <p class="warn-note">
+    <b>{{ currency }} {{ totals.cost_gap|floatformat:0 }}</b> of the sales above have
+    no purchase price recorded, so they were counted at zero cost and show as pure
+    profit. The profit figure is <b>higher than the truth</b> by whatever those
+    medicines actually cost.
+    <a href="{% url 'medicine_list' %}?missing_cost=1">Set their purchase price →</a>
+  </p>
+  {% endif %}
 </div>
 {% endblock %}
