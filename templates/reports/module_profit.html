@@ -130,6 +130,29 @@
     profit. The profit figure is <b>higher than the truth</b> by whatever those
     medicines actually cost.
     <a href="{% url 'medicine_list' %}?missing_cost=1">Set their purchase price →</a>
+    {% if totals.cost_gap_estimate %}
+    <br><br>
+    {# The past cannot be recovered — the cost of a tablet sold months ago was #}
+    {# never written down. But an owner still has to judge those months, so    #}
+    {# the estimate is offered here and stored nowhere: writing it into        #}
+    {# SaleItem.cost_price would turn a guess into a record.                   #}
+    At today's purchase prices those sales would have cost about
+    <b>{{ currency }} {{ totals.cost_gap_estimate|floatformat:0 }}</b>, which puts
+    the real gross profit nearer <b>{{ currency }} {{ totals.estimated_profit|floatformat:0 }}</b>.
+    That is an <b>estimate</b>, not a correction — what those medicines actually
+    cost at the time was never recorded, so nothing here has been changed.
+    {% endif %}
+  </p>
+  {% endif %}
+
+  {% if totals.zero_margin %}
+  {# The other half of the old defect, and the half nothing could see. #}
+  <p class="warn-note">
+    <b>{{ currency }} {{ totals.zero_margin|floatformat:0 }}</b> of sales are recorded
+    at <b>exactly zero margin</b> — cost equal to selling price. A few may be
+    genuine, but a run of them is the old defect, where stock added without a
+    purchase price took the selling price as its cost. Those sales are frozen and
+    cannot be corrected; medicines priced from now on are unaffected.
   </p>
   {% endif %}
 </div>

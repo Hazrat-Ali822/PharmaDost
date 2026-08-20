@@ -316,6 +316,28 @@ def module_profit_data(start, end):
                    .aggregate(s=Sum(ExpressionWrapper(
                        F('unit_price') * F('quantity') - F('discount'),
                        output_field=money)))['s'] or zero)
+    # What those unpriced sales WOULD have cost at the medicine's purchase price
+    # as it stands today. Offered as an estimate and never stored: the real cost
+    # of a tablet sold three months ago was not written down and cannot be
+    # recovered, so writing this into `SaleItem.cost_price` would turn a guess
+    # into a record. Shown beside the gap so an owner can judge the old months
+    # without the report pretending to know.
+    ph_cost_gap_estimate = (ph_items
+                            .filter(cost_price__lte=0, medicine__cost_price__gt=0)
+                            .aggregate(s=Sum(ExpressionWrapper(
+                                F('medicine__cost_price') * F('quantity'),
+                                output_field=money)))['s'] or zero)
+    # The other half of the old defect, and the one nothing could see: before
+    # `add_stock` stopped defaulting an unknown cost to the SELLING price, every
+    # batch stocked that way produced sale lines whose cost equals their price.
+    # Those look tracked and report exactly zero profit. A pharmacy does not
+    # sell at cost line after line, so the count is worth surfacing — but it is
+    # reported, never corrected, for the same reason as above.
+    ph_zero_margin = (ph_items
+                      .filter(unit_price__gt=0, cost_price__gte=F('unit_price'))
+                      .aggregate(s=Sum(ExpressionWrapper(
+                          F('unit_price') * F('quantity') - F('discount'),
+                          output_field=money)))['s'] or zero)
 
     # --- Everything else comes off the invoices, classified by description.
     items = (InvoiceItem.objects
@@ -365,6 +387,8 @@ def module_profit_data(start, end):
         'cost': ph_cost,
         'cost_tracked': True,
         'cost_gap': ph_cost_gap,
+        'cost_gap_estimate': ph_cost_gap_estimate,
+        'zero_margin': ph_zero_margin,
         'note': ('Batch cost frozen at the time of each sale.' if not ph_cost_gap else
                  f'Includes {ph_cost_gap} of sales with no purchase price recorded, '
                  f'counted at zero cost — the profit shown is higher than the truth. '
@@ -494,6 +518,12 @@ def module_profit_data(start, end):
     # zero, so the profit above is too high rather than too low.
     totals['cost_gap'] = sum((r.get('cost_gap') or zero for r in rows), zero)
     totals['overstated'] = totals['cost_gap'] > zero
+    totals['cost_gap_estimate'] = sum(
+        (r.get('cost_gap_estimate') or zero for r in rows), zero)
+    # The profit those sales would show if valued at today's purchase prices.
+    # An ESTIMATE, and labelled as one everywhere it appears.
+    totals['estimated_profit'] = totals['profit'] - totals['cost_gap_estimate']
+    totals['zero_margin'] = sum((r.get('zero_margin') or zero for r in rows), zero)
 
     # --- The bottom line the owner is actually asking for.
     # Everything above is GROSS profit: revenue minus the direct cost of

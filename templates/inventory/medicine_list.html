@@ -26,16 +26,25 @@
 </form>
 {% if missing_cost %}
   <p class="warn-note">
-    Showing only medicines with <b>no purchase price</b>. Every sale of these is
-    reported as pure profit until a cost is entered.
+    Type each purchase price in the <b>Cost</b> column and press Save at the
+    bottom — one save for the whole page. Until a cost is entered, every sale of
+    these medicines is reported as pure profit.
     <a href="{% url 'medicine_list' %}{% if q %}?q={{ q|urlencode }}{% endif %}">Show all →</a>
   </p>
 {% elif missing_cost_count %}
   <p class="warn-note">
     <b>{{ missing_cost_count }}</b> medicine{{ missing_cost_count|pluralize }} ha{{ missing_cost_count|pluralize:"s,ve" }}
     no purchase price, so the profit report counts them as 100% margin.
-    <a href="?missing_cost=1{% if q %}&amp;q={{ q|urlencode }}{% endif %}">Show them →</a>
+    <a href="?missing_cost=1{% if q %}&amp;q={{ q|urlencode }}{% endif %}">Fill them in →</a>
   </p>
+{% endif %}
+{% if bulk_cost %}
+{# One POST for the whole page. Filling 200 purchase prices through Edit-and- #}
+{# save, one medicine at a time, is not a fix anybody actually performs — the #}
+{# lab and scan price lists are edited in bulk for the same reason.           #}
+<form method="post" id="bulk-cost">
+{% csrf_token %}
+<input type="hidden" name="bulk_cost" value="1">
 {% endif %}
 <table class="tbl">
   <thead>
@@ -66,7 +75,13 @@
       {# A missing purchase price is the same kind of unfinished: the medicine  #}
       {# sells, but every report counts it as pure profit. Shown beside the     #}
       {# retail price, which is the only place the two can be compared.         #}
+      {% if bulk_cost %}
+      <td><input name="cost_{{ m.id }}" type="number" step="0.01" min="0"
+                 value="{{ m.cost_price|stringformat:'s' }}" style="width:110px"
+                 placeholder="0.00" aria-label="Purchase price for {{ m.name }}"></td>
+      {% else %}
       <td>{% if m.has_cost %}{{ currency }} {{ m.cost_price }}{% else %}<span class="badge amber" title="No purchase price — this medicine is reported as 100% profit">Not set</span>{% endif %}</td>
+      {% endif %}
       <td>{% if m.price %}{{ currency }} {{ m.price }}{% else %}<span class="badge red" title="This medicine cannot be sold until it has a price">No price set</span>{% endif %}</td>
       <td>{% if m.margin_percent is not None %}{{ currency }} {{ m.unit_profit }} <span class="muted" style="font-size:12px">({{ m.margin_percent|floatformat:0 }}%)</span>{% else %}<span class="muted">—</span>{% endif %}</td>
       <td>{% if m.wholesale_price %}{{ currency }} {{ m.wholesale_price }}{% else %}<span class="muted">—</span>{% endif %}</td>
@@ -82,5 +97,12 @@
     {% endfor %}
   </tbody>
 </table>
+{% if bulk_cost %}
+  <div class="form-actions">
+    <button class="btn" type="submit">Save purchase prices</button>
+    <a class="btn alt" href="{% url 'medicine_list' %}">Done</a>
+  </div>
+</form>
+{% endif %}
 {% include 'partials/_pagination.html' %}
 {% endblock %}

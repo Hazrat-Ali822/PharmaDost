@@ -211,7 +211,7 @@ class TheMedicineListShowsWhatIsMissingTest(TestCase):
     def test_it_counts_them(self):
         body = self.client.get(reverse('medicine_list')).content.decode()
         self.assertIn('no purchase price', body)
-        self.assertIn('Show them', body)
+        self.assertIn('Fill them in', body)
 
     def test_the_filter_shows_only_those(self):
         body = self.client.get(reverse('medicine_list'), {'missing_cost': '1'}).content.decode()

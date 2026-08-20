@@ -1,3 +1,5 @@
+from decimal import Decimal, InvalidOperation
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.conf import settings
 
@@ -242,6 +244,29 @@ def _dept_cards(by_kind):
 @feature_required('inventory')
 def medicine_list(request):
     q = request.GET.get('q', '').strip()
+
+    # Bulk purchase-price entry. Filling these one at a time through Edit is not
+    # a fix anybody performs on a 200-line catalogue, and a warning nobody can
+    # act on is just a complaint. Same shape as the lab / scan price editors.
+    if request.method == 'POST' and request.POST.get('bulk_cost'):
+        changed = 0
+        for med in Medicine.objects.filter(pk__in=[
+                k[5:] for k in request.POST if k.startswith('cost_') and k[5:].isdigit()]):
+            raw = (request.POST.get(f'cost_{med.pk}') or '').strip()
+            if not raw:
+                continue                       # left blank = still not recorded
+            try:
+                value = Decimal(raw)
+            except (InvalidOperation, ValueError):
+                continue
+            if value < 0 or value == med.cost_price:
+                continue
+            med.cost_price = value
+            med.save(update_fields=['cost_price'])
+            changed += 1
+        messages.success(request, f'Saved {changed} purchase price(s).')
+        return redirect(f"{request.path}?{request.GET.urlencode()}")
+
     # The template asks every row for is_low_stock -> sellable_quantity, which
     # reads the medicine's batches. Prefetch them so that costs one query for the
     # page instead of two per medicine.
@@ -262,6 +287,7 @@ def medicine_list(request):
     return render(request, 'inventory/medicine_list.html',
                   {'meds': page, 'page_obj': page, 'q': q,
                    'missing_cost': missing_cost,
+                   'bulk_cost': missing_cost,
                    'missing_cost_count': missing_cost_count})
 
 

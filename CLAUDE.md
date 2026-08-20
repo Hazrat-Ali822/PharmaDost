@@ -1311,12 +1311,31 @@ produced a confident wrong number rather than a visible blank:
 
 `has_cost` / `unit_profit` / `margin_percent` are the derived readers (None when the
 cost is unknown, never a number). `/medicines/?missing_cost=1` lists the medicines
-still missing one, and both the medicine list and the profit report link to it —
-without a way to *find* them the warning is just a complaint. Migration
-`inventory/0013` backfills from the newest batch cost **only where it differs from
-the selling price**, since a batch cost equal to the selling price is almost
-certainly the old default rather than a fact, and copying it would make a wrong
-number look deliberate.
+still missing one **and makes that page a bulk editor** — one POST prices the whole
+page, the same shape as the lab and scan price lists. A 200-line catalogue is not
+fixed through Edit-and-save one row at a time, and a warning nobody can act on is
+just a complaint. A box left **blank stays blank**: blank means "not recorded", and
+reading it as 0 would erase the only distinction the whole feature rests on.
+
+**What can be recovered from before the field existed** — three different answers,
+and `tests/test_cost_recovery.py` holds all three:
+
+- **The master data: yes, where evidence exists.** A purchase made through the
+  Purchase screen or a PO carries a cost the buyer actually typed. Migration
+  `inventory/0013` backfills from the newest batch cost **only where it differs
+  from the selling price** — a batch cost equal to the selling price is the old
+  `add_stock` default, not a fact, and copying it forward would make a wrong
+  number look deliberate.
+- **The rest: yes, by hand,** through the bulk editor above.
+- **Past sales: no, and deliberately not.** What a tablet cost on the day it sold
+  was never written down. `module_profit_data` computes `cost_gap_estimate` —
+  what those sales would have cost at *today's* purchase prices — and
+  `estimated_profit` beside it, both shown on the page labelled as an estimate and
+  **written nowhere**. Storing them in `SaleItem.cost_price` would turn a guess
+  into a record, which is the exact failure the whole change exists to undo.
+  `totals['zero_margin']` surfaces the other half of the old defect (sale lines
+  whose cost equals their price — invisible until now, because they look tracked
+  and simply report no profit); also reported, never corrected.
 
 `inventory/safety.py::screen_medicines()` produces allergy and duplicate warnings
 (substring matching — advisory only, not a real drug-interaction database). It is wired
