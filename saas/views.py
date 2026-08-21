@@ -124,7 +124,11 @@ def hospital_create(request):
         admin_user.hospital = hospital
         admin_user.save()
 
-        messages.success(request, f"Hospital '{name}' and Admin account '{admin_email}' created successfully!")
+        # 3. Seed Comprehensive Lab & Radiology Catalogs
+        from saas.catalog_seeder import seed_hospital_catalogs
+        seed_hospital_catalogs(hospital)
+
+        messages.success(request, f"Hospital '{name}' and Admin account '{admin_email}' created successfully with diagnostic catalogs!")
         return redirect('saas:dashboard')
 
     return render(request, 'saas/hospital_form.html', {'modules': MODULES})
