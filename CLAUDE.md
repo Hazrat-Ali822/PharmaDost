@@ -2716,6 +2716,7 @@ almost always means a query moved inside a loop; find that before raising the nu
 - **Public Phone & MRN Search Engine (`/portal/`)**:
   - If a patient loses their printed slip, they enter their mobile phone or MRN (e.g. `SD-000009`) at `/portal/` to immediately recover and view their digital health cards.
   - Multi-Result Resolver: If multiple patients match a common query, clean clickable cards show with hospital name and MRN for instant selection.
+  - Top Error Banner: Validation issues (e.g. short query or missing hospital) render prominently at the top of the card with clean `← Back` navigation.
   - 100% CSRF-Free `GET` query architecture with `@csrf_exempt` ensuring seamless cross-device, anonymous access.
 - **Multi-Tenant MRN Prefix Collision Guard**:
   - Every hospital tenant receives a globally unique MRN prefix derived from hospital brand.
