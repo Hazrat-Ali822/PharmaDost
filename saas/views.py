@@ -144,6 +144,10 @@ def hospital_edit(request, pk):
         hospital.enabled_modules = request.POST.getlist('modules')
         hospital.save()
 
+        # Sync diagnostic catalogs based on current enabled modules
+        from saas.catalog_seeder import seed_hospital_catalogs
+        seed_hospital_catalogs(hospital)
+
         messages.success(request, f"Hospital '{hospital.name}' updated successfully!")
         return redirect('saas:dashboard')
 

@@ -135,11 +135,12 @@ IMAGING_CATALOG = [
 
 @transaction.atomic
 def seed_hospital_catalogs(hospital=None):
-    """Idempotently populates standard Lab Tests and Radiology Scans for a hospital.
-    If hospital is None, seeds the hospital-less desktop/LAN installation catalog.
+    """Module-aware seeder: Populates Lab Tests only if 'lab' is enabled,
+    and Radiology/Scans only if 'imaging' is enabled for this hospital.
+    For hospital-less desktop/LAN installation (hospital=None), seeds both.
     """
-    from lab.models import TestCategory, LabTest
-    from imaging.models import ScanType
+    from lab.models import TestCategory, LabTest, TestOrder
+    from imaging.models import ScanType, ImagingStudy
 
     stats = {
         "categories_created": 0,
@@ -147,43 +148,59 @@ def seed_hospital_catalogs(hospital=None):
         "scans_created": 0,
     }
 
-    # 1. Seed Comprehensive Lab Tests
-    for cat_name, tests in LAB_CATALOG.items():
-        cat, cat_created = TestCategory.all_objects.get_or_create(
-            name=cat_name,
-            hospital=hospital
-        )
-        if cat_created:
-            stats["categories_created"] += 1
+    enabled = getattr(hospital, 'enabled_modules', None)
+    # Check module permissions for this tenant
+    seed_lab = hospital is None or (enabled and 'lab' in enabled)
+    seed_imaging = hospital is None or (enabled and 'imaging' in enabled)
 
-        for test_name, unit, normal_range, default_price in tests:
-            _, test_created = LabTest.all_objects.get_or_create(
-                category=cat,
-                name=test_name,
+    # 1. Seed Comprehensive Lab Tests (ONLY if 'lab' is enabled)
+    if seed_lab:
+        for cat_name, tests in LAB_CATALOG.items():
+            cat, cat_created = TestCategory.all_objects.get_or_create(
+                name=cat_name,
+                hospital=hospital
+            )
+            if cat_created:
+                stats["categories_created"] += 1
+
+            for test_name, unit, normal_range, default_price in tests:
+                _, test_created = LabTest.all_objects.get_or_create(
+                    category=cat,
+                    name=test_name,
+                    hospital=hospital,
+                    defaults={
+                        "unit": unit or "",
+                        "normal_range": normal_range or "",
+                        "price": default_price,
+                        "cost_price": Decimal("0.00"),
+                    }
+                )
+                if test_created:
+                    stats["lab_tests_created"] += 1
+    elif hospital is not None:
+        # If 'lab' is disabled and no orders exist, clean up any unneeded rows to save space
+        if not TestOrder.objects.filter(patient__hospital=hospital).exists():
+            LabTest.all_objects.filter(hospital=hospital).delete()
+            TestCategory.all_objects.filter(hospital=hospital).delete()
+
+    # 2. Seed Comprehensive Imaging & Radiology Scans (ONLY if 'imaging' is enabled)
+    if seed_imaging:
+        for modality, scan_name, default_price in IMAGING_CATALOG:
+            _, scan_created = ScanType.all_objects.get_or_create(
+                modality=modality,
+                name=scan_name,
                 hospital=hospital,
                 defaults={
-                    "unit": unit or "",
-                    "normal_range": normal_range or "",
                     "price": default_price,
                     "cost_price": Decimal("0.00"),
+                    "is_active": True,
                 }
             )
-            if test_created:
-                stats["lab_tests_created"] += 1
-
-    # 2. Seed Comprehensive Imaging & Radiology Scans
-    for modality, scan_name, default_price in IMAGING_CATALOG:
-        _, scan_created = ScanType.all_objects.get_or_create(
-            modality=modality,
-            name=scan_name,
-            hospital=hospital,
-            defaults={
-                "price": default_price,
-                "cost_price": Decimal("0.00"),
-                "is_active": True,
-            }
-        )
-        if scan_created:
-            stats["scans_created"] += 1
+            if scan_created:
+                stats["scans_created"] += 1
+    elif hospital is not None:
+        # If 'imaging' is disabled and no studies exist, clean up unneeded scan types
+        if not ImagingStudy.objects.filter(patient__hospital=hospital).exists():
+            ScanType.all_objects.filter(hospital=hospital).delete()
 
     return stats
