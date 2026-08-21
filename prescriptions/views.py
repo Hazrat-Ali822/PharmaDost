@@ -51,12 +51,15 @@ def _scoped_presets(request):
     if not request.user.is_superuser:
         qs = qs.filter(hospital=request.user.hospital)
         if getattr(request.user, "role", None) == "DOCTOR":
-            from opd.models import Doctor
-            doc = Doctor.objects.filter(user=request.user).first()
-            if doc:
-                qs = qs.filter(Q(doctor=doc) | Q(doctor__isnull=True))
-            else:
-                qs = qs.filter(doctor__isnull=True)
+            try:
+                from opd.models import Doctor
+                doc = Doctor.objects.filter(user=request.user).first()
+                if doc:
+                    qs = qs.filter(Q(doctor=doc) | Q(doctor__isnull=True))
+                else:
+                    qs = qs.filter(doctor__isnull=True)
+            except Exception:
+                pass
     return qs
 
 
@@ -92,25 +95,29 @@ def prescription_create(request, appointment_id):
 
     import json
     presets_data = []
-    for pr in presets.prefetch_related('items__medicine'):
-        items_list = []
-        for item in pr.items.all():
-            items_list.append({
-                'medicine_id': item.medicine.id if item.medicine else None,
-                'medicine_name': item.medicine.name if item.medicine else item.custom_medicine_name,
-                'custom_medicine_name': item.custom_medicine_name or '',
-                'dosage': item.dosage or '',
-                'duration_days': item.duration_days or 3,
-                'instructions': item.instructions or '',
+    try:
+        for pr in presets.prefetch_related('items__medicine'):
+            items_list = []
+            for item in pr.items.all():
+                c_name = getattr(item, 'custom_medicine_name', '') or ''
+                items_list.append({
+                    'medicine_id': item.medicine.id if item.medicine else None,
+                    'medicine_name': item.medicine.name if item.medicine else c_name,
+                    'custom_medicine_name': c_name,
+                    'dosage': item.dosage or '',
+                    'duration_days': item.duration_days or 3,
+                    'instructions': item.instructions or '',
+                })
+            presets_data.append({
+                'id': pr.id,
+                'name': pr.name,
+                'complaint': getattr(pr, 'complaint', '') or '',
+                'diagnosis': getattr(pr, 'diagnosis', '') or '',
+                'notes': getattr(pr, 'notes', '') or '',
+                'items': items_list
             })
-        presets_data.append({
-            'id': pr.id,
-            'name': pr.name,
-            'complaint': pr.complaint or '',
-            'diagnosis': pr.diagnosis or '',
-            'notes': pr.notes or '',
-            'items': items_list
-        })
+    except Exception:
+        presets_data = []
     presets_json = json.dumps(presets_data)
 
     # Fetch most recent previous prescription for 1-click repeat/clone
