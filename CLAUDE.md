@@ -2640,7 +2640,9 @@ almost always means a query moved inside a loop; find that before raising the nu
   - 🧾 **Invoices & Receipts**: Total billed, paid amounts, and payment status.
 - **Official WhatsApp Vector Integration**:
   - OPD slip features a green WhatsApp button with official SVG vector icon pre-filling live tracking & patient portal URL.
-- **Zero DB Load**: Single indexed lookup on `patient_id` returning <15 KB compressed payload rendered in <40ms.
+- **Public Phone & MRN Recovery Portal (`/portal/`)**:
+  - If a patient loses their printed slip, they enter their mobile phone or MRN at `/portal/` to immediately recover and view their digital health cards.
+- **Zero DB Load & Defensive Fault-Tolerance**: Single indexed lookup on `patient_id` returning <15 KB compressed payload rendered in <40ms with isolated try-except blocks across clinical modules.
 
 
 
