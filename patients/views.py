@@ -481,41 +481,57 @@ def patient_portal_hub(request, token):
     No login required; authenticated by the unguessable cryptographically secure UUID token.
     Displays patient's prescriptions, verified diagnostic lab results, ultrasound/x-ray scans, and invoices.
     """
-    patient = get_object_or_404(
-        Patient.objects.select_related('hospital', 'panel'),
-        portal_token=token,
-        is_active=True
-    )
-    hospital = patient.hospital
+    try:
+        patient = Patient.objects.select_related('hospital', 'panel').filter(portal_token=token, is_active=True).first()
+    except Exception:
+        patient = None
+
+    if not patient:
+        from django.http import Http404
+        raise Http404("Patient health record not found.")
+
+    hospital = getattr(patient, 'hospital', None)
 
     # 1. Prescriptions with medicines
-    from prescriptions.models import Prescription
-    prescriptions = (Prescription.objects
-                     .filter(appointment__patient=patient)
-                     .select_related('appointment__doctor')
-                     .prefetch_related('items__medicine')
-                     .order_by('-created_at'))
+    try:
+        from prescriptions.models import Prescription
+        prescriptions = (Prescription.objects
+                         .filter(appointment__patient=patient)
+                         .select_related('appointment__doctor')
+                         .prefetch_related('items__medicine')
+                         .order_by('-created_at'))
+    except Exception:
+        prescriptions = []
 
     # 2. Lab Orders with verified test results
-    from lab.models import TestOrder
-    lab_orders = (TestOrder.objects
-                  .filter(patient=patient)
-                  .select_related('ordered_by')
-                  .prefetch_related('results__lab_test__category')
-                  .order_by('-order_date'))
+    try:
+        from lab.models import TestOrder
+        lab_orders = (TestOrder.objects
+                      .filter(patient=patient)
+                      .select_related('ordered_by')
+                      .prefetch_related('results__lab_test__category')
+                      .order_by('-order_date'))
+    except Exception:
+        lab_orders = []
 
     # 3. Radiology Scans
-    from imaging.models import ImagingStudy
-    imaging_studies = (ImagingStudy.objects
-                       .filter(patient=patient)
-                       .select_related('referred_by', 'performed_by')
-                       .order_by('-study_date'))
+    try:
+        from imaging.models import ImagingStudy
+        imaging_studies = (ImagingStudy.objects
+                           .filter(patient=patient)
+                           .select_related('referred_by', 'performed_by')
+                           .order_by('-study_date'))
+    except Exception:
+        imaging_studies = []
 
     # 4. Invoices
-    from billing.models import Invoice
-    invoices = (Invoice.objects
-                .filter(patient=patient)
-                .order_by('-created_at'))
+    try:
+        from billing.models import Invoice
+        invoices = (Invoice.objects
+                    .filter(patient=patient)
+                    .order_by('-created_at'))
+    except Exception:
+        invoices = []
 
     return render(request, 'patients/portal_hub.html', {
         'patient': patient,
