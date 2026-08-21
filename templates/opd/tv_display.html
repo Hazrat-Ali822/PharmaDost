@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live OPD Waiting Hall — {{ branding.brand_name|default:"Hospital Queue" }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Fira+Code:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --card-bg: #131b2e;
+      --card-border: #1e293b;
+      --primary: {{ branding.primary_color|default:"#0284c7" }};
+      --accent: {{ branding.accent_color|default:"#38bdf8" }};
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      user-select: none;
+    }
+
+    /* Top Bar Header */
+    .tv-header {
+      background: rgba(19, 27, 46, 0.95);
+      border-bottom: 2px solid var(--card-border);
+      padding: 16px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .hospital-brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .hospital-logo {
+      height: 48px;
+      width: auto;
+      max-width: 160px;
+      object-fit: contain;
+    }
+
+    .hospital-title {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    }
+
+    .hospital-subtitle {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .live-clock {
+      text-align: right;
+    }
+
+    .clock-time {
+      font-family: 'Fira Code', monospace;
+      font-size: 28px;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: 0.05em;
+    }
+
+    .clock-date {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .tv-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .tv-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: var(--text-main);
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tv-btn:hover {
+      background: var(--primary);
+      border-color: var(--primary);
+    }
+
+    /* Main Board Grid */
+    .tv-main {
+      flex: 1;
+      padding: 24px 32px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .doctor-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 24px;
+      width: 100%;
+      flex: 1;
+    }
+
+    /* Doctor Card */
+    .doc-tv-card {
+      background: var(--card-bg);
+      border: 2px solid var(--card-border);
+      border-radius: 20px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .doc-tv-card.active-calling {
+      border-color: var(--accent);
+      box-shadow: 0 0 25px rgba(56, 189, 248, 0.25);
+    }
+
+    .doc-head {
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 14px;
+      margin-bottom: 18px;
+    }
+
+    .doc-name {
+      font-size: 22px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .doc-dept {
+      display: inline-block;
+      background: #1e293b;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 3px 10px;
+      border-radius: 6px;
+    }
+
+    /* Serving Token Area */
+    .serving-section {
+      background: #0b1120;
+      border: 2px solid #1e293b;
+      border-radius: 16px;
+      padding: 18px;
+      text-align: center;
+      margin-bottom: 18px;
+      position: relative;
+    }
+
+    .serving-label {
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--success);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--success);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--success);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.3); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    .token-huge {
+      font-family: 'Fira Code', monospace;
+      font-size: 48px;
+      font-weight: 900;
+      color: #ffffff;
+      line-height: 1.1;
+      text-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+    }
+
+    .patient-serving-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Waiting Next List */
+    .waiting-section {
+      flex: 1;
+    }
+
+    .waiting-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .waiting-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .wait-pill {
+      background: #1e293b;
+      border: 1px solid #334155;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #e2e8f0;
+      font-family: 'Fira Code', monospace;
+    }
+
+    .empty-queue {
+      color: var(--text-muted);
+      font-size: 13.5px;
+      font-weight: 500;
+      font-style: italic;
+      padding: 12px 0;
+      text-align: center;
+    }
+
+    /* Footer Ticker */
+    .tv-footer {
+      background: #0b1120;
+      border-top: 1px solid var(--card-border);
+      padding: 12px 32px;
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .ticker-tag {
+      background: var(--primary);
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-right: 16px;
+      flex-shrink: 0;
+      letter-spacing: 0.05em;
+    }
+
+    .ticker-text {
+      white-space: nowrap;
+      overflow: hidden;
+      font-size: 14.5px;
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+
+    .conn-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <header class="tv-header">
+    <div class="hospital-brand">
+      {% if branding.logo %}
+        <img src="{{ branding.logo.url }}" alt="Logo" class="hospital-logo">
+      {% endif %}
+      <div>
+        <h1 class="hospital-title">{{ branding.brand_name|default:"Hospital OPD Waiting Area" }}</h1>
+        <div class="hospital-subtitle">Live Doctor Consultation &amp; Token Board</div>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div class="live-clock">
+        <div class="clock-time" id="clockTime">--:--:--</div>
+        <div class="clock-date" id="clockDate">{{ today|date:"l, d F Y" }}</div>
+      </div>
+
+      <div class="tv-controls">
+        <button type="button" class="tv-btn" id="soundBtn" title="Toggle Sound Chime">
+          <span id="soundIcon">🔔</span> <span id="soundLabel">Sound ON</span>
+        </button>
+        <button type="button" class="tv-btn" id="fullBtn" title="Toggle Fullscreen">
+          ⛶ Fullscreen
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Display Grid -->
+  <main class="tv-main">
+    <div class="doctor-grid" id="doctorGrid">
+      {% for d in queue %}
+      <div class="doc-tv-card" id="doc-card-{{ d.doctor_id }}">
+        <div class="doc-head">
+          <div class="doc-name">Dr. {{ d.doctor_name }}</div>
+          <span class="doc-dept">{{ d.department }} {% if d.specialty %}· {{ d.specialty }}{% endif %}</span>
+        </div>
+
+        <div class="serving-section">
+          <div class="serving-label">
+            <span class="pulse-dot"></span> Now Consulting
+          </div>
+          {% if d.serving %}
+            <div class="token-huge">TOKEN #{{ d.serving.token_no }}</div>
+            <div class="patient-serving-name">{{ d.serving.patient_name }}</div>
+          {% else %}
+            <div class="token-huge" style="color:var(--text-muted); font-size:32px; padding:8px 0;">READY</div>
+            <div class="patient-serving-name">Waiting for next patient</div>
+          {% endif %}
+        </div>
+
+        <div class="waiting-section">
+          <div class="waiting-title">
+            <span>Next in Line</span>
+            <span>Total: {{ d.waiting_count }} waiting</span>
+          </div>
+          <div class="waiting-pills">
+            {% if d.waiting %}
+              {% for w in d.waiting %}
+                <span class="wait-pill">#{{ w.token_no }}</span>
+              {% endfor %}
+            {% else %}
+              <div class="empty-queue">Queue is currently clear</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; color: var(--text-muted);">
+        <h2 style="color: #fff; margin-bottom: 8px;">No Doctors Sitting in OPD Right Now</h2>
+        <p>Please check the doctor schedule board or contact the reception desk.</p>
+      </div>
+      {% endfor %}
+    </div>
+  </main>
+
+  <!-- Footer Ticker -->
+  <footer class="tv-footer">
+    <div class="ticker-tag">Notice</div>
+    <div class="ticker-text">
+      Please keep your token slip ready. When your token is called, please proceed directly to the designated doctor room.
+    </div>
+    <div class="conn-status" id="connStatus">
+      <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981;"></span>
+      <span>Live Sync</span>
+    </div>
+  </footer>
+
+  <!-- Script for Clock, Polling, and Sound Chime -->
+  <script>
+    (function () {
+      let soundEnabled = true;
+      let lastServingTokens = {};
+
+      // Initial token state
+      {% for d in queue %}
+        lastServingTokens['{{ d.doctor_id }}'] = {{ d.serving.token_no|default:"null" }};
+      {% endfor %}
+
+      // 1. Digital Clock
+      function updateClock() {
+        const now = new Date();
+        const timeEl = document.getElementById('clockTime');
+        if (timeEl) {
+          timeEl.textContent = now.toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
+      }
+      setInterval(updateClock, 1000);
+      updateClock();
+
+      // 2. Synthesized Hospital Chime Sound (Web Audio API)
+      function playChime() {
+        if (!soundEnabled) return;
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const now = ctx.currentTime;
+
+          // Note 1 (Ding)
+          const osc1 = ctx.createOscillator();
+          const gain1 = ctx.createGain();
+          osc1.type = 'sine';
+          osc1.frequency.setValueAtTime(587.33, now); // D5
+          gain1.gain.setValueAtTime(0.3, now);
+          gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+          osc1.connect(gain1);
+          gain1.connect(ctx.destination);
+          osc1.start(now);
+          osc1.stop(now + 0.8);
+
+          // Note 2 (Dong)
+          const osc2 = ctx.createOscillator();
+          const gain2 = ctx.createGain();
+          osc2.type = 'sine';
+          osc2.frequency.setValueAtTime(880.00, now + 0.25); // A5
+          gain2.gain.setValueAtTime(0.3, now + 0.25);
+          gain2.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+          osc2.connect(gain2);
+          gain2.connect(ctx.destination);
+          osc2.start(now + 0.25);
+          osc2.stop(now + 1.2);
+        } catch (e) {
+          console.warn('Audio chime error:', e);
+        }
+      }
+
+      // Sound toggle button
+      const soundBtn = document.getElementById('soundBtn');
+      soundBtn.addEventListener('click', function () {
+        soundEnabled = !soundEnabled;
+        document.getElementById('soundIcon').textContent = soundEnabled ? '🔔' : '🔕';
+        document.getElementById('soundLabel').textContent = soundEnabled ? 'Sound ON' : 'Muted';
+        if (soundEnabled) playChime();
+      });
+
+      // Fullscreen button
+      document.getElementById('fullBtn').addEventListener('click', function () {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(err => console.log(err));
+        } else {
+          document.exitFullscreen().catch(err => console.log(err));
+        }
+      });
+
+      // 3. Background Polling API (Every 8 seconds)
+      async function pollQueue() {
+        try {
+          const resp = await fetch('{% url "opd_tv_api" %}');
+          if (!resp.ok) throw new Error('Network response failed');
+          const data = await resp.json();
+          if (data.success && data.queue) {
+            renderQueue(data.queue);
+            document.getElementById('connStatus').innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981;"></span> <span>Live Sync</span>';
+          }
+        } catch (err) {
+          document.getElementById('connStatus').innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;"></span> <span>Reconnecting...</span>';
+        }
+      }
+
+      function renderQueue(queue) {
+        const grid = document.getElementById('doctorGrid');
+        if (!queue || queue.length === 0) {
+          grid.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; color: var(--text-muted);">
+              <h2 style="color: #fff; margin-bottom: 8px;">No Doctors Sitting in OPD Right Now</h2>
+              <p>Please check the doctor schedule board or contact the reception desk.</p>
+            </div>`;
+          return;
+        }
+
+        let shouldChime = false;
+
+        let html = '';
+        queue.forEach(d => {
+          const prevToken = lastServingTokens[d.doctor_id];
+          const currToken = d.serving ? d.serving.token_no : null;
+
+          if (currToken && currToken !== prevToken) {
+            shouldChime = true;
+          }
+          lastServingTokens[d.doctor_id] = currToken;
+
+          const waitingPills = d.waiting && d.waiting.length > 0 
+            ? d.waiting.map(w => `<span class="wait-pill">#${w.token_no}</span>`).join('')
+            : '<div class="empty-queue">Queue is currently clear</div>';
+
+          const servingHtml = d.serving
+            ? `<div class="token-huge">TOKEN #${d.serving.token_no}</div>
+               <div class="patient-serving-name">${escapeHtml(d.serving.patient_name || '')}</div>`
+            : `<div class="token-huge" style="color:var(--text-muted); font-size:32px; padding:8px 0;">READY</div>
+               <div class="patient-serving-name">Waiting for next patient</div>`;
+
+          html += `
+            <div class="doc-tv-card ${d.serving ? 'active-calling' : ''}" id="doc-card-${d.doctor_id}">
+              <div class="doc-head">
+                <div class="doc-name">Dr. ${escapeHtml(d.doctor_name)}</div>
+                <span class="doc-dept">${escapeHtml(d.department)} ${d.specialty ? '· ' + escapeHtml(d.specialty) : ''}</span>
+              </div>
+              <div class="serving-section">
+                <div class="serving-label">
+                  <span class="pulse-dot"></span> Now Consulting
+                </div>
+                ${servingHtml}
+              </div>
+              <div class="waiting-section">
+                <div class="waiting-title">
+                  <span>Next in Line</span>
+                  <span>Total: ${d.waiting_count} waiting</span>
+                </div>
+                <div class="waiting-pills">
+                  ${waitingPills}
+                </div>
+              </div>
+            </div>`;
+        });
+
+        grid.innerHTML = html;
+        if (shouldChime) {
+          playChime();
+        }
+      }
+
+      function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>'"]/g, tag => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          "'": '&#39;',
+          '"': '&quot;'
+        }[tag] || tag));
+      }
+
+      setInterval(pollQueue, 8000);
+    })();
+  </script>
+</body>
+</html>

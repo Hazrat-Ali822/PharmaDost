@@ -18,5 +18,6 @@ urlpatterns = [
     path('appointments/<int:pk>/slip/', views.appointment_slip, name='appointment_slip'),
     path('payouts/', views.payout_list, name='payout_list'),
     path('payouts/<int:pk>/', views.payout_doctor, name='payout_doctor'),
-    path('appointments/<int:pk>/status/', views.appointment_update_status, name='appointment_update_status'),
+    path('tv/', views.opd_tv_display, name='opd_tv_display'),
+    path('tv/api/', views.opd_tv_api, name='opd_tv_api'),
 ]

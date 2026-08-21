@@ -434,3 +434,71 @@ def appointment_update_status(request, pk):
         appointment.save()
         return JsonResponse({'success': True, 'status': appointment.status})
     return JsonResponse({'success': False, 'error': 'Invalid status'}, status=400)
+
+
+def _get_tv_queue_data(user):
+    today = timezone.localdate()
+    doctors = doctors_with_availability(user)
+    sitting, _ = split_by_availability(doctors)
+
+    queue = []
+    for doc in sitting:
+        appts = Appointment.objects.filter(
+            doctor=doc,
+            appointment_date=today
+        ).select_related('patient').order_by('token_no')
+
+        # Serving: in consult, or first arrived
+        in_consult = appts.filter(status='IN_CONSULT').first()
+        if not in_consult:
+            in_consult = appts.filter(status='ARRIVED').first()
+
+        waiting_qs = appts.filter(status__in=['BOOKED', 'ARRIVED'])
+        if in_consult:
+            waiting_qs = waiting_qs.exclude(pk=in_consult.pk)
+
+        waiting = list(waiting_qs[:6])
+        done_count = appts.filter(status='DONE').count()
+        total_count = appts.exclude(status='CANCELLED').count()
+
+        queue.append({
+            'doctor_id': doc.pk,
+            'doctor_name': doc.full_name,
+            'department': doc.department.name if doc.department else 'General OPD',
+            'specialty': doc.specialty or '',
+            'serving': {
+                'token_no': in_consult.token_no,
+                'patient_name': in_consult.patient.full_name,
+                'status': in_consult.get_status_display(),
+            } if in_consult else None,
+            'waiting': [{
+                'token_no': w.token_no,
+                'patient_name': w.patient.full_name,
+            } for w in waiting],
+            'done_count': done_count,
+            'total_count': total_count,
+            'waiting_count': waiting_qs.count(),
+        })
+    return queue
+
+
+@feature_required('tv_display', 'opd')
+def opd_tv_display(request):
+    """Full-screen Live OPD Waiting Hall TV Display for public TV / monitors."""
+    queue = _get_tv_queue_data(request.user)
+    return render(request, 'opd/tv_display.html', {
+        'queue': queue,
+        'today': timezone.localdate(),
+    })
+
+
+@feature_required('tv_display', 'opd')
+def opd_tv_api(request):
+    """JSON API endpoint for background auto-refreshing the TV display."""
+    queue = _get_tv_queue_data(request.user)
+    return JsonResponse({
+        'success': True,
+        'timestamp': timezone.now().isoformat(),
+        'queue': queue,
+    })
+
