@@ -43,13 +43,20 @@ def _scoped_appointments(request):
 
 
 def _scoped_presets(request):
-    """RxPreset has a hospital FK but no TenantManager, so it is not auto-scoped.
-    Fail CLOSED here — key on is_superuser, never `if request.user.hospital` — or a
-    hospital-less non-superuser reads (list) and even edits/deletes (by pk) another
-    tenant's preset templates."""
+    """RxPreset has a hospital FK and doctor FK.
+    Scope by hospital. If user is a DOCTOR (or role DOCTOR), show only THEIR presets
+    (or presets where doctor is None / hospital-wide).
+    """
     qs = RxPreset.objects.all()
     if not request.user.is_superuser:
         qs = qs.filter(hospital=request.user.hospital)
+        if getattr(request.user, "role", None) == "DOCTOR":
+            from opd.models import Doctor
+            doc = Doctor.objects.filter(user=request.user).first()
+            if doc:
+                qs = qs.filter(Q(doctor=doc) | Q(doctor__isnull=True))
+            else:
+                qs = qs.filter(doctor__isnull=True)
     return qs
 
 
@@ -80,7 +87,7 @@ def prescription_create(request, appointment_id):
         form = PrescriptionForm()
         med_formset = PrescriptionItemFormSet(prefix='meds')
 
-    # Get presets
+    # Get presets (scoped to this specific doctor & hospital)
     presets = _scoped_presets(request)
 
     import json
@@ -89,15 +96,19 @@ def prescription_create(request, appointment_id):
         items_list = []
         for item in pr.items.all():
             items_list.append({
-                'medicine_id': item.medicine.id,
-                'medicine_name': item.medicine.name,
-                'dosage': item.dosage,
-                'duration_days': item.duration_days,
-                'instructions': item.instructions,
+                'medicine_id': item.medicine.id if item.medicine else None,
+                'medicine_name': item.medicine.name if item.medicine else item.custom_medicine_name,
+                'custom_medicine_name': item.custom_medicine_name or '',
+                'dosage': item.dosage or '',
+                'duration_days': item.duration_days or 3,
+                'instructions': item.instructions or '',
             })
         presets_data.append({
             'id': pr.id,
             'name': pr.name,
+            'complaint': pr.complaint or '',
+            'diagnosis': pr.diagnosis or '',
+            'notes': pr.notes or '',
             'items': items_list
         })
     presets_json = json.dumps(presets_data)
@@ -384,10 +395,13 @@ def preset_create(request):
                 else:
                     from saas.models import Hospital
                     preset.hospital = Hospital.objects.first()
+                if getattr(request.user, 'role', None) == 'DOCTOR':
+                    from opd.models import Doctor
+                    preset.doctor = Doctor.objects.filter(user=request.user).first()
                 preset.save()
                 formset.instance = preset
                 formset.save()
-            messages.success(request, "Rx Preset created successfully.")
+            messages.success(request, f"Rx Preset '{preset.name}' created successfully.")
             return redirect('prescription_presets')
     else:
         form = RxPresetForm()

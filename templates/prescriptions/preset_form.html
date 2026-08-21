@@ -2,26 +2,53 @@
 {% block title %}{{ title }} — Sehatyar{% endblock %}
 {% block page_title %}{{ title }}{% endblock %}
 {% block content %}
-<div class="form-card" style="max-width:880px;">
-  <h2>{{ title }}</h2>
+<div class="form-card" style="max-width:920px;">
+  <div class="page-head" style="margin-bottom:16px;">
+    <div>
+      <h2>{{ title }}</h2>
+      <p class="muted">Save your personalized clinical Rx preset with complaints, diagnosis, notes &amp; medicines for 1-click auto-fill.</p>
+    </div>
+    <a class="btn alt sm" href="{% url 'prescription_presets' %}">Back to My Presets</a>
+  </div>
+
   <form method="post" data-offline-kind="rx_preset">
     {% csrf_token %}
     
-    <p>
-      <label>Preset/Template Name</label>
-      {{ form.name }}
-      {{ form.name.errors }}
-      <small class="muted" style="display:block; margin-top:2px;">e.g. Typhoid Treatment Pack, Fever Relief Combo</small>
-    </p>
-    
-    <p>
-      <label>Description (optional)</label>
-      {{ form.description }}
-      {{ form.description.errors }}
-    </p>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+      <div>
+        <label><b>Preset / Disease Name *</b></label>
+        {{ form.name }}
+        {{ form.name.errors }}
+        <small class="muted" style="display:block; margin-top:2px;">e.g. ANC 1st Trimester, Hypertension Protocol, PCOD Routine</small>
+      </div>
+      <div>
+        <label><b>Category / Description (optional)</b></label>
+        {{ form.description }}
+        {{ form.description.errors }}
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-top:14px;">
+      <div>
+        <label><b>Pre-filled Complaint (optional)</b></label>
+        {{ form.complaint }}
+        {{ form.complaint.errors }}
+      </div>
+      <div>
+        <label><b>Pre-filled Diagnosis (optional)</b></label>
+        {{ form.diagnosis }}
+        {{ form.diagnosis.errors }}
+      </div>
+    </div>
+
+    <div style="margin-top:14px;">
+      <label><b>Pre-filled Advice &amp; Clinical Notes (optional)</b></label>
+      {{ form.notes }}
+      {{ form.notes.errors }}
+    </div>
 
     <!-- Preset Items Inline Formset -->
-    <hr style="border:none; border-top:1px solid var(--border); margin:20px 0;">
+    <hr style="border:none; border-top:1px solid var(--border); margin:24px 0 16px;">
     <div class="page-head" style="margin-bottom:12px;">
       <h3>💊 Preset Medicines</h3>
       <button type="button" class="btn sm" id="add-preset-item">+ Add Medicine Row</button>
@@ -31,7 +58,8 @@
     <table class="tbl" id="preset-table">
       <thead>
         <tr>
-          <th style="width:36%">Medicine</th>
+          <th style="width:28%">Medicine (Catalog)</th>
+          <th style="width:28%">Or Custom Name</th>
           <th>Dosage</th>
           <th>Days</th>
           <th>Instructions</th>
@@ -43,6 +71,7 @@
         <tr class="item-row">
           {{ f.id }}
           <td>{{ f.medicine }}{{ f.medicine.errors }}</td>
+          <td>{{ f.custom_medicine_name }}{{ f.custom_medicine_name.errors }}</td>
           <td>{{ f.dosage }}{{ f.dosage.errors }}</td>
           <td>{{ f.duration_days }}{{ f.duration_days.errors }}</td>
           <td>{{ f.instructions }}{{ f.instructions.errors }}</td>
@@ -58,8 +87,8 @@
       </tbody>
     </table>
 
-    <div style="margin-top:24px; display:flex; gap:8px;">
-      <button class="btn" type="submit">Save Template</button>
+    <div style="margin-top:24px; display:flex; gap:10px;">
+      <button class="btn primary" type="submit">💾 Save My Preset</button>
       <a class="btn alt" href="{% url 'prescription_presets' %}">Cancel</a>
     </div>
   </form>
@@ -69,6 +98,7 @@
 <template id="preset-item-empty">
   <tr class="item-row">
     <td>{{ formset.empty_form.medicine }}</td>
+    <td>{{ formset.empty_form.custom_medicine_name }}</td>
     <td>{{ formset.empty_form.dosage }}</td>
     <td>{{ formset.empty_form.duration_days }}</td>
     <td>{{ formset.empty_form.instructions }}</td>

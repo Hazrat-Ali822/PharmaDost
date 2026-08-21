@@ -85,16 +85,18 @@ PrescriptionItemFormSet = inlineformset_factory(
 class RxPresetForm(TenantModelForm):
     class Meta:
         model = RxPreset
-        fields = ['name', 'description']
+        fields = ['name', 'complaint', 'diagnosis', 'notes', 'description']
 
 
 class RxPresetItemForm(TenantModelForm):
     class Meta:
         model = RxPresetItem
-        fields = ['medicine', 'dosage', 'duration_days', 'instructions']
+        fields = ['medicine', 'custom_medicine_name', 'dosage', 'duration_days', 'instructions']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['medicine'].required = False
+        self.fields['custom_medicine_name'].required = False
         self.fields['dosage'].required = False
         self.fields['duration_days'].required = False
         self.fields['instructions'].required = False
