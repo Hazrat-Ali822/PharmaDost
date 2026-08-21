@@ -481,14 +481,17 @@
           <div class="record-card">
             <div class="record-header">
               <div>
-                <div class="record-title">Invoice #{{ inv.invoice_number|default:inv.id }}</div>
-                <div class="record-subtitle">Date: {{ inv.created_at|date:"d M Y" }}</div>
+                <div class="record-title">Invoice #{{ inv.number|default:inv.id }}</div>
+                <div class="record-subtitle">Date: {{ inv.created_at|date:"d M Y, h:i A" }}</div>
               </div>
               <span class="badge-status {{ inv.status }}">{{ inv.get_status_display }}</span>
             </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:14px;">
-              <div>Total Amount: <b>Rs. {{ inv.total_amount }}</b></div>
-              <div>Paid: <b style="color:var(--accent);">Rs. {{ inv.paid_amount }}</b></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:14px; margin-top:8px; padding-top:8px; border-top:1px dashed var(--border);">
+              <div>Total Amount: <b>Rs. {{ inv.total }}</b></div>
+              <div>Paid: <b style="color:var(--accent);">Rs. {{ inv.paid }}</b></div>
+              {% if inv.balance > 0 %}
+                <div>Balance: <b style="color:#e11d48;">Rs. {{ inv.balance }}</b></div>
+              {% endif %}
             </div>
           </div>
         {% endfor %}
@@ -513,6 +516,16 @@
       const targetPane = document.getElementById('pane-' + tabId);
       if (targetPane) targetPane.classList.add('active');
     }
+
+    // Auto-refresh every 25 seconds if lab orders or scans are pending
+    {% if lab_orders %}
+      const hasPending = {% for order in lab_orders %}{% if order.status != 'Completed' and order.status != 'Cancelled' %}true ||{% endif %}{% endfor %} false;
+      if (hasPending) {
+        setTimeout(function() {
+          window.location.reload();
+        }, 25000);
+      }
+    {% endif %}
   </script>
 </body>
 </html>
