@@ -315,6 +315,14 @@
   <!-- Header -->
   <div class="header-bar">
     <div class="container">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <a href="{% url 'patient_portal_lookup' %}" style="display:inline-flex; align-items:center; gap:6px; color:#ffffff; background:rgba(255,255,255,0.2); padding:6px 14px; border-radius:20px; font-size:12.5px; font-weight:700; text-decoration:none; backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,0.3); transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.35)';" onmouseout="this.style.background='rgba(255,255,255,0.2)';">
+          ← Search Patient / Back
+        </a>
+        <a href="{% url 'login' %}" style="color:#ffffff; font-size:12px; font-weight:700; text-decoration:none; opacity:0.9; background:rgba(0,0,0,0.15); padding:5px 12px; border-radius:16px;">
+          Staff Login ➔
+        </a>
+      </div>
       <div class="hospital-info">
         <div>
           <div class="hospital-name">{{ hospital.name|default:"Sehatyar Health" }}</div>
