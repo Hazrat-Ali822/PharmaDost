@@ -370,7 +370,7 @@ install still sees its own catalogue.
 Single source of truth is `accounts/permissions.py`. Three layers stack:
 
 - **`FEATURES`** — `feature_key -> set of roles` that get it by default. This is the per-user layer.
-- **`MODULES`** — business-level on/off bundles (`pharmacy`, `opd`, `ipd`, `ot`, `lab`, `imaging`, `finance`, `reports`), each mapping to feature keys. Chosen in the setup wizard or Settings, stored on `Hospital.enabled_modules` / `SiteSettings.enabled_modules` (null = all on). `CORE_FEATURES` are always on.
+- **`MODULES`** — business-level on/off bundles (`pharmacy`, `opd`, `tv_display`, `ipd`, `ot`, `emergency`, `maternity`, `bloodbank`, `vaccination`, `ambulance`, `lab`, `imaging`, `finance`, `reports`, `hr`), each mapping to feature keys. Chosen in the setup wizard, SaaS Admin, or Settings, stored on `Hospital.enabled_modules` / `SiteSettings.enabled_modules` (null = all on). `CORE_FEATURES` are always on.
 - **`User.custom_features`** (JSONField) — per-user override. `None` = inherit role defaults; a list = exactly that set (even `[]`).
 
 Access is granted only when the feature is **both** installed for the tenant **and** held by the user:
@@ -2589,3 +2589,32 @@ almost always means a query moved inside a loop; find that before raising the nu
   `as_p` screens now do. `empty_label` still has to be set on the field in the
   form's `__init__` (a template cannot reach it).
 - Do not commit `.claude/settings.local.json`. `desktop/build.bat` and `desktop/launcher.py` have repeatedly shown as deleted in the working tree without being touched — restore them before committing.
+
+## Live OPD Waiting Hall TV Display (`/opd/tv/`)
+
+- **Full-Screen Public Display**: Standalone template (`templates/opd/tv_display.html`) designed for 1080p/4K TVs in waiting areas with zero distractions.
+- **Zero-Flicker Polling**: Live JSON API (`/opd/tv/api/`) background polls every 6 seconds.
+- **Audio Chime System**: Synthesizes soft hospital dual-tone bell using Web Audio API (`AudioContext`) when a doctor calls the next token number.
+- **Auto-Paging Carousel for Large Hospitals (20-30 Doctors)**:
+  - If more than 6 doctors are on the roster/sitting, the TV automatically and smoothly transitions pages every 10 seconds (`Page 1 of N`).
+  - Department filter pills allow floor/ward specific public screens to filter by specialty (e.g. `Cardiology`, `Medicine`).
+- **Permissions**: Gated by `@feature_required('tv_display', 'opd')` and mapped to independent SaaS module `'tv_display'`.
+
+## Diagnostic Catalog Auto-Seeder (`saas/catalog_seeder.py`)
+
+- **Standard Clinical Catalogs**: Seeds 50+ standard lab tests (CBC, LFTs, RFTs, Lipid Profile, Thyroid, Electrolytes, HbA1c, etc. with clinical units and normal reference ranges) and 30+ ultrasound/X-ray scans (Abdomen, Pelvis, KUB, Chest X-ray, MRI, CT).
+- **Module-Aware Gating**:
+  - Only seeds `LabTest` if `lab` is in `hospital.enabled_modules`.
+  - Only seeds `ScanType` if `imaging` is in `hospital.enabled_modules`.
+  - Pure pharmacy tenants are never populated with unused diagnostic catalogs.
+- **Hooked Automatically**: Runs inside `saas/views.py::hospital_create` and `hospital_edit`.
+- **Management Command**: `python manage.py seed_all_catalogs` allows bulk seeding/updating across existing tenant databases.
+
+## Rush-Hour Fast Operations
+
+- **Pharmacy POS**: Fast Cash Tender buttons (`Exact`, `100`, `500`, `1000`, `5000`) calculate change automatically without manual keyboard typing.
+- **Doctor Rx**:
+  - **Repeat Last Rx**: 1-click button clones the patient's most recent active prescription (medicines, dosages, durations, frequencies).
+  - **Quick Dosage Chips**: Instant-fill chips (`1x OD`, `2x BD`, `3x TDS`, `4x QID`, `SOS`, `After Meals`, `Before Meals`, `At Bedtime`).
+- **OPD Front Desk**: `Ctrl + Enter` single-keystroke submits patient registration + consultation booking and generates token slip.
+
