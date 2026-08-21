@@ -545,7 +545,7 @@ def patient_portal_hub(request, token):
 
 def patient_portal_lookup(request):
     """Public Portal Lookup Page for patients who lost their printed slip/receipt.
-    Allows searching by Mobile Phone Number or MRN.
+    Allows searching by Mobile Phone Number, MRN, CNIC, or Patient Name.
     """
     error = None
     if request.method == 'POST':
@@ -555,20 +555,37 @@ def patient_portal_lookup(request):
         if not hospital and request.user.is_authenticated:
             hospital = getattr(request.user, 'hospital', None)
 
-        digits = ''.join(c for c in query if c.isdigit())
         patients_qs = Patient.objects.filter(is_active=True)
         if hospital:
             patients_qs = patients_qs.filter(hospital=hospital)
 
-        # Match by MRN (exact) or Phone (contains normalized digits)
         matched = None
         if query:
-            matched = patients_qs.filter(Q(mrn__iexact=query) | Q(phone__endswith=digits[-10:] if len(digits) >= 7 else digits)).first()
+            # 1. Exact MRN match first (e.g. SD-000009 or SGH-000003)
+            matched = patients_qs.filter(mrn__iexact=query).first()
+
+            # 2. Number-only MRN (e.g. user typed '9' for SD-000009)
+            if not matched and query.isdigit():
+                num_val = int(query)
+                matched = (patients_qs.filter(mrn__endswith=f"-{num_val:06d}").first() or 
+                           patients_qs.filter(mrn__icontains=f"{num_val:06d}").first() or
+                           patients_qs.filter(id=num_val).first())
+
+            # 3. Normalized full phone number match (e.g. 03499001990)
+            digits = ''.join(c for c in query if c.isdigit())
+            if not matched and len(digits) >= 7:
+                from .search import annotate_for_search
+                matched = annotate_for_search(patients_qs).filter(phone_digits__contains=digits).first()
+
+            # 4. Standard robust multi-term search (name, MRN substring, CNIC)
+            if not matched:
+                from .search import apply_search
+                matched = apply_search(patients_qs, query).first()
 
         if matched and matched.portal_token:
             return redirect('patient_portal_hub', token=matched.portal_token)
         else:
-            error = "No medical record found for this Phone Number or MRN. Please check and try again."
+            error = f"No medical record found matching '{query}'. Please check the MRN, Phone Number, or Full Name."
 
     return render(request, 'patients/portal_lookup.html', {'error': error})
 
