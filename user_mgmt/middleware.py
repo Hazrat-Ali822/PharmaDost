@@ -49,6 +49,8 @@ ALLOWED_NAMES = {
 'biometric_cdata', 'biometric_getrequest', 'biometric_devicecmd',
 # Public Patient Live Token Status Tracker (scanned via QR code on slip)
 'patient_token_track',
+# Public Patient Digital Health Portal (read-only prescriptions, lab reports, imaging)
+'patient_portal_hub', 'patient_portal_hub_direct', 'patients:patient_portal_hub',
 }
 
 
@@ -61,7 +63,9 @@ class LoginRequiredMiddleware:
 	def __call__(self, request):
 		path = request.path
 		if (path.startswith('/static/') or path.startswith('/media/')
-				or path.startswith('/admin/') or path.startswith('/setup')):
+				or path.startswith('/admin/') or path.startswith('/setup')
+				or path.startswith('/portal/') or path.startswith('/patients/portal/')
+				or path.startswith('/opd/track/')):
 			return self.get_response(request)
 		try:
 			match = resolve(path)

@@ -475,3 +475,55 @@ def patient_timeline_json(request, pk):
         'events': events[:30]
     })
 
+
+def patient_portal_hub(request, token):
+    """Public read-only Digital Patient Health Portal.
+    No login required; authenticated by the unguessable cryptographically secure UUID token.
+    Displays patient's prescriptions, verified diagnostic lab results, ultrasound/x-ray scans, and invoices.
+    """
+    patient = get_object_or_404(
+        Patient.objects.select_related('hospital', 'panel'),
+        portal_token=token,
+        is_active=True
+    )
+    hospital = patient.hospital
+
+    # 1. Prescriptions with medicines
+    from prescriptions.models import Prescription
+    prescriptions = (Prescription.objects
+                     .filter(appointment__patient=patient)
+                     .select_related('appointment__doctor')
+                     .prefetch_related('items__medicine')
+                     .order_by('-created_at'))
+
+    # 2. Lab Orders with verified test results
+    from lab.models import TestOrder
+    lab_orders = (TestOrder.objects
+                  .filter(patient=patient)
+                  .select_related('ordered_by')
+                  .prefetch_related('results__test__category')
+                  .order_by('-order_date'))
+
+    # 3. Radiology Scans
+    from imaging.models import ImagingStudy
+    imaging_studies = (ImagingStudy.objects
+                       .filter(patient=patient)
+                       .select_related('referred_by', 'performed_by')
+                       .order_by('-study_date'))
+
+    # 4. Invoices
+    from billing.models import Invoice
+    invoices = (Invoice.objects
+                .filter(patient=patient)
+                .order_by('-created_at'))
+
+    return render(request, 'patients/portal_hub.html', {
+        'patient': patient,
+        'hospital': hospital,
+        'prescriptions': prescriptions,
+        'lab_orders': lab_orders,
+        'imaging_studies': imaging_studies,
+        'invoices': invoices,
+    })
+
+

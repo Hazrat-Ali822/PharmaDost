@@ -41,6 +41,7 @@ class Patient(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
     hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE, null=True, blank=True)
     is_active = models.BooleanField(default=True)
+    portal_token = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True, null=True, blank=True)
 
     objects = TenantManager()
 
@@ -163,6 +164,9 @@ class Patient(models.Model):
         # date on a medical record. The form offers one the user can see and edit.
         if self.dob:
             self.age_years = self.age_on(self.dob)
+
+        if not self.portal_token:
+            self.portal_token = uuid.uuid4()
 
         super().save(*args, **kwargs)
 

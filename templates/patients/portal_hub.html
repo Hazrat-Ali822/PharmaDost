@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>{{ patient.full_name }} · Digital Health Portal · {{ hospital.name|default:"Hospital" }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0284c7;
+      --primary-dark: #0369a1;
+      --primary-light: #e0f2fe;
+      --accent: #059669;
+      --accent-light: #d1fae5;
+      --warning: #d97706;
+      --warning-light: #fef3c7;
+      --danger: #dc2626;
+      --danger-light: #fee2e2;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --border-strong: #cbd5e1;
+      --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.07);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; }
+    h1, h2, h3, h4, .brand, .tab-btn { font-family: 'Outfit', sans-serif; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding-bottom: 50px;
+    }
+
+    .header-bar {
+      background: linear-gradient(135deg, #0369a1 0%, #0284c7 50%, #06b6d4 100%);
+      color: #ffffff;
+      padding: 24px 20px 28px;
+      border-radius: 0 0 24px 24px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .container {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+
+    .hospital-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .hospital-name {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .hospital-meta {
+      font-size: 12.5px;
+      opacity: 0.9;
+    }
+
+    .badge-verified {
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(8px);
+      color: #ffffff;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11.5px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    /* Patient Identity Card */
+    .patient-card {
+      background: var(--card-bg);
+      border-radius: 18px;
+      padding: 20px;
+      margin-top: -20px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg);
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .patient-name {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .patient-mrn {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 8px;
+    }
+
+    .patient-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tag {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: #f1f5f9;
+      color: var(--text-muted);
+    }
+
+    .tag-danger {
+      background: var(--danger-light);
+      color: var(--danger);
+    }
+
+    .tag-accent {
+      background: var(--accent-light);
+      color: var(--accent);
+    }
+
+    /* Tabs */
+    .tabs-nav {
+      display: flex;
+      gap: 8px;
+      margin: 22px 0 16px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: none;
+    }
+    .tabs-nav::-webkit-scrollbar { display: none; }
+
+    .tab-btn {
+      flex: 1;
+      min-width: 120px;
+      text-align: center;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: #e2e8f0;
+      color: var(--text-muted);
+      border: none;
+      font-size: 13.5px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+    }
+
+    .tab-pane {
+      display: none;
+    }
+    .tab-pane.active {
+      display: block;
+      animation: fadeIn 0.25s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Cards */
+    .record-card {
+      background: var(--card-bg);
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      padding: 16px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .record-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+      gap: 8px;
+    }
+
+    .record-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .record-subtitle {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .badge-status {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+    }
+    .badge-status.COMPLETED, .badge-status.DISPENSED, .badge-status.PAID { background: var(--accent-light); color: var(--accent); }
+    .badge-status.PENDING, .badge-status.BOOKED { background: var(--warning-light); color: var(--warning); }
+    .badge-status.CANCELLED { background: var(--danger-light); color: var(--danger); }
+
+    /* Meds Table */
+    .med-item {
+      background: #f8fafc;
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+      border: 1px solid #edf2f7;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .med-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .med-dosage {
+      font-size: 12.5px;
+      color: var(--primary-dark);
+      font-weight: 600;
+    }
+
+    .med-inst {
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+
+    /* Lab Table */
+    .lab-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+    .lab-table th {
+      text-align: left;
+      padding: 6px 8px;
+      background: #f1f5f9;
+      color: var(--text-muted);
+      font-weight: 700;
+      font-size: 11.5px;
+      text-transform: uppercase;
+    }
+    .lab-table td {
+      padding: 8px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .val-badge {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 11px;
+    }
+    .val-badge.high { background: var(--danger-light); color: var(--danger); }
+    .val-badge.low { background: var(--warning-light); color: var(--warning); }
+
+    .empty-state {
+      text-align: center;
+      padding: 36px 20px;
+      background: var(--card-bg);
+      border-radius: 14px;
+      border: 1px dashed var(--border-strong);
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 30px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header-bar">
+    <div class="container">
+      <div class="hospital-info">
+        <div>
+          <div class="hospital-name">{{ hospital.name|default:"Sehatyar Health" }}</div>
+          <div class="hospital-meta">
+            {% if hospital.address %}{{ hospital.address }}{% endif %}
+            {% if hospital.phone %} · 📞 {{ hospital.phone }}{% endif %}
+          </div>
+        </div>
+        <div class="badge-verified">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+          Official Patient Portal
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Patient Identity Card -->
+    <div class="patient-card">
+      <div>
+        <div class="patient-name">{{ patient.full_name }}</div>
+        <div class="patient-mrn">MRN: {{ patient.mrn|default:"—" }}</div>
+        <div class="patient-tags">
+          <span class="tag">🎂 {{ patient.age_display }} ({{ patient.get_gender_display }})</span>
+          {% if patient.blood_group %}<span class="tag tag-accent">🩸 {{ patient.blood_group }}</span>{% endif %}
+          {% if patient.panel %}<span class="tag tag-accent">🏥 {{ patient.panel.name }}</span>{% endif %}
+          {% if patient.allergies %}<span class="tag tag-danger">⚠️ Allergies: {{ patient.allergies }}</span>{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <div class="tabs-nav">
+      <button class="tab-btn active" onclick="switchTab('prescriptions')">🩺 Prescriptions ({{ prescriptions|length }})</button>
+      <button class="tab-btn" onclick="switchTab('lab')">🔬 Lab Reports ({{ lab_orders|length }})</button>
+      <button class="tab-btn" onclick="switchTab('imaging')">🩻 Scans ({{ imaging_studies|length }})</button>
+      <button class="tab-btn" onclick="switchTab('invoices')">🧾 Invoices ({{ invoices|length }})</button>
+    </div>
+
+    <!-- 1. Prescriptions Pane -->
+    <div id="pane-prescriptions" class="tab-pane active">
+      {% if prescriptions %}
+        {% for rx in prescriptions %}
+          <div class="record-card">
+            <div class="record-header">
+              <div>
+                <div class="record-title">Prescription · Dr. {{ rx.appointment.doctor.full_name|default:"Consultant" }}</div>
+                <div class="record-subtitle">Date: {{ rx.created_at|date:"d M Y, h:i A" }}</div>
+              </div>
+              <span class="badge-status {{ rx.status }}">{{ rx.get_status_display }}</span>
+            </div>
+
+            {% if rx.diagnosis %}
+              <div style="font-size:13px; margin-bottom:10px; color:#334155;">
+                <b>Diagnosis:</b> {{ rx.diagnosis }}
+              </div>
+            {% endif %}
+
+            <div style="font-weight:700; font-size:13px; margin-bottom:6px; color:var(--text);">💊 Prescribed Medicines:</div>
+            {% for item in rx.items.all %}
+              <div class="med-item">
+                <div>
+                  <div class="med-name">{{ item.medicine.name|default:item.custom_medicine_name }}</div>
+                  <div class="med-inst">{{ item.instructions|default:"As directed" }}</div>
+                </div>
+                <div style="text-align:right;">
+                  <div class="med-dosage">{{ item.dosage }}</div>
+                  <div style="font-size:11.5px; color:var(--text-muted);">{{ item.duration_days }} days</div>
+                </div>
+              </div>
+            {% endfor %}
+
+            {% if rx.notes %}
+              <div style="font-size:12.5px; background:#f1f5f9; padding:8px 12px; border-radius:8px; margin-top:8px; color:#475569;">
+                <b>Doctor's Advice:</b> {{ rx.notes }}
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">No prescription history found.</div>
+      {% endif %}
+    </div>
+
+    <!-- 2. Lab Reports Pane -->
+    <div id="pane-lab" class="tab-pane">
+      {% if lab_orders %}
+        {% for order in lab_orders %}
+          <div class="record-card">
+            <div class="record-header">
+              <div>
+                <div class="record-title">Diagnostic Lab Order #{{ order.id }}</div>
+                <div class="record-subtitle">Date: {{ order.order_date|date:"d M Y, h:i A" }}</div>
+              </div>
+              <span class="badge-status {{ order.status }}">{{ order.get_status_display }}</span>
+            </div>
+
+            <table class="lab-table">
+              <thead>
+                <tr>
+                  <th>Test Parameter</th>
+                  <th>Result</th>
+                  <th>Normal Range</th>
+                  <th>Unit</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for res in order.results.all %}
+                  <tr>
+                    <td><b>{{ res.test.name }}</b></td>
+                    <td>
+                      {{ res.result_value|default:"Pending" }}
+                      {% if res.is_high %}<span class="val-badge high">HIGH</span>{% endif %}
+                      {% if res.is_low %}<span class="val-badge low">LOW</span>{% endif %}
+                    </td>
+                    <td style="color:var(--text-muted);">{{ res.normal_range|default:res.test.normal_range|default:"—" }}</td>
+                    <td style="color:var(--text-muted);">{{ res.unit|default:res.test.unit|default:"—" }}</td>
+                  </tr>
+                {% empty %}
+                  <tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Tests are currently being processed in the lab.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">No laboratory test orders found.</div>
+      {% endif %}
+    </div>
+
+    <!-- 3. Imaging Studies Pane -->
+    <div id="pane-imaging" class="tab-pane">
+      {% if imaging_studies %}
+        {% for scan in imaging_studies %}
+          <div class="record-card">
+            <div class="record-header">
+              <div>
+                <div class="record-title">{{ scan.study_name }} ({{ scan.get_modality_display }})</div>
+                <div class="record-subtitle">Date: {{ scan.study_date|date:"d M Y, h:i A" }}</div>
+              </div>
+              <span class="badge-status {{ scan.status }}">{{ scan.get_status_display }}</span>
+            </div>
+            {% if scan.impression %}
+              <div style="font-size:13px; color:#334155; margin-bottom:6px;">
+                <b>Impression / Findings:</b> {{ scan.impression }}
+              </div>
+            {% endif %}
+            {% if scan.findings %}
+              <div style="font-size:12.5px; background:#f1f5f9; padding:8px 12px; border-radius:8px; color:#475569;">
+                {{ scan.findings }}
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">No imaging / radiology scans found.</div>
+      {% endif %}
+    </div>
+
+    <!-- 4. Invoices Pane -->
+    <div id="pane-invoices" class="tab-pane">
+      {% if invoices %}
+        {% for inv in invoices %}
+          <div class="record-card">
+            <div class="record-header">
+              <div>
+                <div class="record-title">Invoice #{{ inv.invoice_number|default:inv.id }}</div>
+                <div class="record-subtitle">Date: {{ inv.created_at|date:"d M Y" }}</div>
+              </div>
+              <span class="badge-status {{ inv.status }}">{{ inv.get_status_display }}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:14px;">
+              <div>Total Amount: <b>Rs. {{ inv.total_amount }}</b></div>
+              <div>Paid: <b style="color:var(--accent);">Rs. {{ inv.paid_amount }}</b></div>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">No billing records found.</div>
+      {% endif %}
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div>🔒 <b>Secure Health Card</b> · Data directly synchronized with {{ hospital.name|default:"Hospital System" }}.</div>
+      <div style="margin-top:4px;">Powered by Sehatyar HMS</div>
+    </div>
+  </div>
+
+  <script>
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+
+      event.currentTarget.classList.add('active');
+      const targetPane = document.getElementById('pane-' + tabId);
+      if (targetPane) targetPane.classList.add('active');
+    }
+  </script>
+</body>
+</html>
