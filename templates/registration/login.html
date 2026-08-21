@@ -230,7 +230,7 @@
       </a>
       <div class="site-nav-links">
         <a href="/portal/" style="color:#0284c7; font-weight:700;">📱 Patient Portal</a>
-        {% for path, label in public_pages %}<a href="{{ path }}">{{ label }}</a>{% endfor %}
+        {% for path, label in public_pages %}{% if path != '/patient-portal/' %}<a href="{{ path }}">{{ label }}</a>{% endif %}{% endfor %}
       </div>
       <a class="site-nav-cta" href="{% url 'demo_login' %}">Live Demo</a>
     </div>
@@ -351,6 +351,8 @@
           <a href="{% url 'password_reset' %}">Forgot password?</a>
           &nbsp;·&nbsp;
           <a href="{% url 'seo_landing' %}">What is {{ branding.brand_name|default:"Sehatyar" }}?</a>
+          &nbsp;·&nbsp;
+          <a href="/patient-portal/">Patient Portal</a>
           <span class="built">Built by
             <a href="https://ftdynamics.pk" target="_blank" rel="noopener" style="color:var(--muted)">Future Tech Dynamics</a>
           </span>
