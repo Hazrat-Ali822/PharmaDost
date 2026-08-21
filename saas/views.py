@@ -60,23 +60,41 @@ def saas_dashboard(request):
     expenses = PlatformExpense.objects.all().order_by('-expense_date')[:10]
 
     # Platform-wide metrics
-    active_count = sum(1 for h in hospitals if h.is_active)
-    attention_count = sum(1 for h in hospitals if h.status in ('expired', 'expiring', 'blocked'))
+    active_count = sum(1 for h in hospitals if h.status == 'active')
+    expiring_count = sum(1 for h in hospitals if h.status == 'expiring')
+    expired_count = sum(1 for h in hospitals if h.status == 'expired')
+    blocked_count = sum(1 for h in hospitals if h.status == 'blocked')
+    attention_count = expiring_count + expired_count + blocked_count
+
     projected_income = sum((h.monthly_price for h in hospitals if h.is_active), 0)
     total_received = HospitalPayment.objects.aggregate(total=models.Sum('amount'))['total'] or 0
     total_expense = PlatformExpense.objects.aggregate(total=models.Sum('amount'))['total'] or 0
     net_profit = total_received - total_expense
+
+    from prescriptions.models import Prescription
+    from ipd.models import Admission
+    from lab.models import TestOrder
+
+    total_prescriptions = Prescription.objects.count()
+    total_admissions = Admission.objects.count()
+    total_lab_orders = TestOrder.objects.count()
 
     context = {
         'hospitals': hospitals,
         'payments': payments,
         'expenses': expenses,
         'active_count': active_count,
+        'expiring_count': expiring_count,
+        'expired_count': expired_count,
+        'blocked_count': blocked_count,
         'hospital_count': len(hospitals),
         'attention_count': attention_count,
         'total_patients': sum(patients_by.values()),
         'total_sales': sum(sales_by.values()),
         'total_users': sum(users_by.values()),
+        'total_prescriptions': total_prescriptions,
+        'total_admissions': total_admissions,
+        'total_lab_orders': total_lab_orders,
         'projected_income': projected_income,
         'total_received': total_received,
         'total_expense': total_expense,

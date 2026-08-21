@@ -1,193 +1,417 @@
 {% extends 'partials/base.html' %}
-{% block title %}SaaS Owner Portal — Sehatyar{% endblock %}
+{% block title %}SaaS Owner Portal &amp; Fleet Dashboard — Sehatyar{% endblock %}
 
 {% block content %}
-<div class="page-head">
-  <h2>SaaS Owner Portal</h2>
-  <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-    <a class="btn" href="{% url 'saas:hospital_create' %}">＋ Create Hospital</a>
-    <a class="btn success" href="{% url 'saas:payment_create' %}">＋ Record Payment</a>
-    <a class="btn danger" href="{% url 'saas:expense_create' %}">＋ Record Expense</a>
-    <a class="btn alt" href="{% url 'saas:desktop_license' %}">🔑 Desktop Licence</a>
-    <a class="btn alt" href="{% url 'saas:backup_list' %}">☁ Desktop Backups</a>
+<!-- Executive Header -->
+<div class="page-head" style="margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+  <div>
+    <h2 style="margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; display: flex; align-items: center; gap: 10px;">
+      🏢 SaaS Fleet Executive Portal
+    </h2>
+    <div class="muted" style="font-size: 13.5px; margin-top: 4px; display: flex; align-items: center; gap: 8px;">
+      <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#10b981; box-shadow:0 0 8px #10b981;"></span>
+      <span>Multi-Tenant Cluster: <strong>{{ hospital_count }} Registered Hospital{{ hospital_count|pluralize }}</strong></span>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+    <a class="btn" href="{% url 'saas:hospital_create' %}" style="font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M12 5v14M5 12h14"/></svg>
+      New Hospital
+    </a>
+    <a class="btn success" href="{% url 'saas:payment_create' %}" style="display: inline-flex; align-items: center; gap: 6px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      Record Payment
+    </a>
+    <a class="btn danger" href="{% url 'saas:expense_create' %}" style="display: inline-flex; align-items: center; gap: 6px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;"><path d="M23 18l-9.5-9.5-5 5L1 6"/></svg>
+      Record Expense
+    </a>
+    <a class="btn alt" href="{% url 'saas:backup_list' %}" title="Cloud &amp; Desktop Database Backups">
+      ☁ Backups
+    </a>
+    <a class="btn alt" href="{% url 'saas:desktop_license' %}" title="Offline Desktop Licenses">
+      🔑 Licenses
+    </a>
   </div>
 </div>
 
-{# ---- KPI strip ---- #}
-<div class="stats saas-kpis" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); margin-bottom:20px;">
-  <div class="stat">
+<!-- Primary Financial & Fleet KPI Grid -->
+<div class="stats saas-kpis" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+  
+  <!-- MRR / Revenue Projection -->
+  <div class="stat" style="border-top: 3px solid var(--primary); background: var(--card-bg);">
     <div class="meta">
-      <span class="value">{{ active_count }}<span class="muted" style="font-size:15px; font-weight:500;">/{{ hospital_count }}</span></span>
-      <span class="label">Active Hospitals</span>
+      <span class="value" style="font-size: 26px; font-weight: 800; color: var(--primary);">Rs {{ projected_income|floatformat:0 }}</span>
+      <span class="label" style="font-weight: 600;">Monthly Projected MRR</span>
+      <span class="muted" style="font-size: 11.5px; margin-top: 2px;">{{ active_count }} Active Subscriptions</span>
     </div>
   </div>
-  <div class="stat">
+
+  <!-- Net Platform Cash Flow -->
+  <div class="stat" style="border-top: 3px solid {% if net_profit >= 0 %}#10b981{% else %}#ef4444{% endif %}; background: var(--card-bg);">
     <div class="meta">
-      <span class="value" style="{% if attention_count %}color:#d97706;{% endif %}">{{ attention_count }}</span>
-      <span class="label">Need Attention</span>
+      <span class="value" style="font-size: 26px; font-weight: 800; color: {% if net_profit >= 0 %}#10b981{% else %}#ef4444{% endif %};">
+        Rs {{ net_profit|floatformat:0 }}
+      </span>
+      <span class="label" style="font-weight: 600;">Net Platform Profit</span>
+      <span class="muted" style="font-size: 11.5px; margin-top: 2px;">In: Rs {{ total_received|floatformat:0 }} | Out: Rs {{ total_expense|floatformat:0 }}</span>
     </div>
   </div>
-  <div class="stat">
+
+  <!-- Subscription Health -->
+  <div class="stat" style="border-top: 3px solid {% if attention_count > 0 %}#f59e0b{% else %}#10b981{% endif %}; background: var(--card-bg);">
     <div class="meta">
-      <span class="value">{{ total_patients }}</span>
-      <span class="label">Total Patients</span>
+      <span class="value" style="font-size: 26px; font-weight: 800; color: {% if attention_count > 0 %}#f59e0b{% else %}#10b981{% endif %};">
+        {{ active_count }} <span class="muted" style="font-size: 15px; font-weight: 500;">/ {{ hospital_count }}</span>
+      </span>
+      <span class="label" style="font-weight: 600;">Active Tenants</span>
+      <span class="muted" style="font-size: 11.5px; margin-top: 2px;">
+        {% if attention_count > 0 %}
+          <span style="color:#d97706; font-weight:700;">{{ attention_count }} need attention</span>
+        {% else %}
+          <span style="color:#10b981; font-weight:600;">All subscriptions healthy</span>
+        {% endif %}
+      </span>
     </div>
   </div>
-  <div class="stat">
+
+  <!-- Total Platform Patients -->
+  <div class="stat" style="border-top: 3px solid #6366f1; background: var(--card-bg);">
     <div class="meta">
-      <span class="value">{{ total_sales }}</span>
-      <span class="label">Total Sales</span>
+      <span class="value" style="font-size: 26px; font-weight: 800; color: #6366f1;">{{ total_patients }}</span>
+      <span class="label" style="font-weight: 600;">Patients On File</span>
+      <span class="muted" style="font-size: 11.5px; margin-top: 2px;">{{ total_prescriptions }} Prescriptions Written</span>
     </div>
   </div>
-  <div class="stat">
+
+  <!-- Total Commerce Volume -->
+  <div class="stat" style="border-top: 3px solid #06b6d4; background: var(--card-bg);">
     <div class="meta">
-      <span class="value">Rs {{ projected_income|floatformat:0 }}</span>
-      <span class="label">Monthly Projection</span>
+      <span class="value" style="font-size: 26px; font-weight: 800; color: #06b6d4;">{{ total_sales }}</span>
+      <span class="label" style="font-weight: 600;">Pharmacy Invoices</span>
+      <span class="muted" style="font-size: 11.5px; margin-top: 2px;">{{ total_users }} Total Staff Accounts</span>
     </div>
   </div>
-  <div class="stat">
-    <div class="meta">
-      <span class="value" style="{% if net_profit < 0 %}color:#ef4444;{% else %}color:#16a34a;{% endif %}">Rs {{ net_profit|floatformat:0 }}</span>
-      <span class="label">Net Profit</span>
-    </div>
-  </div>
+
 </div>
 
-{# ---- Hospitals table ---- #}
-<div class="card" style="margin-bottom:20px;">
-  <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
-    <h3 style="margin:0;">Hospitals</h3>
-    <input id="hospital-search" type="search" placeholder="🔍 Search hospitals…" autocomplete="off"
-           style="padding:8px 12px; border:1px solid var(--border); border-radius:8px; background:var(--card-bg); color:var(--text); min-width:220px;">
+<!-- Hospital Fleet Management Table -->
+<div class="card" style="margin-bottom: 24px; padding: 22px; border-radius: 14px; box-shadow: 0 4px 18px rgba(0,0,0,0.06);">
+  
+  <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 18px;">
+    
+    <!-- Filter Tabs -->
+    <div class="saas-filter-tabs" style="display: flex; gap: 6px; flex-wrap: wrap;">
+      <button type="button" class="tab-btn active" data-filter="all">All Tenants <span class="tab-badge">{{ hospital_count }}</span></button>
+      <button type="button" class="tab-btn" data-filter="active">Active <span class="tab-badge green">{{ active_count }}</span></button>
+      {% if expiring_count > 0 %}
+      <button type="button" class="tab-btn" data-filter="expiring">Expiring Soon <span class="tab-badge amber">{{ expiring_count }}</span></button>
+      {% endif %}
+      {% if expired_count > 0 %}
+      <button type="button" class="tab-btn" data-filter="expired">Expired <span class="tab-badge red">{{ expired_count }}</span></button>
+      {% endif %}
+      {% if blocked_count > 0 %}
+      <button type="button" class="tab-btn" data-filter="blocked">Suspended <span class="tab-badge gray">{{ blocked_count }}</span></button>
+      {% endif %}
+    </div>
+
+    <!-- Live Search Filter -->
+    <div style="position: relative; min-width: 240px;">
+      <input id="hospital-search" type="search" placeholder="Search tenant name or slug…" autocomplete="off"
+             style="width: 100%; padding: 8px 14px; padding-left: 32px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: 13.5px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute; left:10px; top:10px; width:15px; height:15px; color:var(--muted);"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+    </div>
+
   </div>
 
-  <div style="overflow-x:auto;">
-    <table class="tbl saas-hospitals" style="width:100%;">
+  <div style="overflow-x: auto;">
+    <table class="tbl saas-hospitals" style="width: 100%;">
       <thead>
         <tr>
-          <th>Hospital</th>
-          <th>Status</th>
-          <th style="text-align:right;">Users</th>
+          <th>Hospital Name &amp; Link</th>
+          <th>Status &amp; Days</th>
+          <th>Modules</th>
+          <th style="text-align:right;">Staff</th>
           <th style="text-align:right;">Patients</th>
           <th style="text-align:right;">Sales</th>
-          <th style="text-align:right;">This month</th>
-          <th>Last active</th>
-          <th>Plan</th>
+          <th style="text-align:right;">Month Rev</th>
+          <th>Plan Price</th>
           <th style="text-align:right;">Actions</th>
         </tr>
       </thead>
       <tbody>
         {% for h in hospitals %}
-        <tr data-name="{{ h.name|lower }} {{ h.slug }}">
+        <tr data-name="{{ h.name|lower }} {{ h.slug }}" data-status="{{ h.status }}">
           <td>
-            <a href="{% url 'saas:hospital_detail' h.pk %}" style="font-weight:700; text-decoration:none; color:var(--text);">{{ h.name }}</a>
-            <a href="/{{ h.slug }}/" target="_blank" class="muted" style="display:block; font-size:12.5px; text-decoration:none;">/{{ h.slug }}/ ↗</a>
+            <a href="{% url 'saas:hospital_detail' h.pk %}" style="font-weight: 700; font-size: 14.5px; text-decoration: none; color: var(--text);">{{ h.name }}</a>
+            <div style="margin-top: 2px;">
+              <a href="/{{ h.slug }}/" target="_blank" class="muted" style="font-size: 12px; font-family: 'Fira Code', monospace; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                <span>/{{ h.slug }}/</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px; height:11px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              </a>
+            </div>
           </td>
+
           <td>
             {% if h.status == 'active' %}
-              <span class="dot" style="background:#16a34a;"></span> Active
-              <div class="muted" style="font-size:11.5px;">{{ h.days_left }}d left</div>
+              <span class="status-pill status-active">
+                <span class="dot-live"></span> Active ({{ h.days_left }}d left)
+              </span>
+              <div class="muted" style="font-size: 11px; margin-top: 2px;">Valid till {{ h.expiry_date|date:"d M Y" }}</div>
             {% elif h.status == 'expiring' %}
-              <span class="dot" style="background:#d97706;"></span> <span style="color:#b45309; font-weight:600;">Expiring</span>
-              <div style="font-size:11.5px; color:#b45309;">{% if h.days_left == 0 %}today{% else %}{{ h.days_left }}d left{% endif %}</div>
+              <span class="status-pill status-expiring">
+                <span class="dot-live amber"></span> Expiring ({% if h.days_left == 0 %}Today{% else %}{{ h.days_left }}d left{% endif %})
+              </span>
+              <div style="font-size: 11px; color:#d97706; margin-top: 2px;">Expires {{ h.expiry_date|date:"d M Y" }}</div>
             {% elif h.status == 'expired' %}
-              <span class="dot" style="background:#ef4444;"></span> <span style="color:#dc2626; font-weight:600;">Expired</span>
-              <div style="font-size:11.5px; color:#dc2626;">{{ h.expiry_date|date:"d M Y" }}</div>
+              <span class="status-pill status-expired">
+                <span class="dot-live red"></span> Expired
+              </span>
+              <div style="font-size: 11px; color:#ef4444; margin-top: 2px;">Expired {{ h.expiry_date|date:"d M Y" }}</div>
             {% else %}
-              <span class="dot" style="background:#9ca3af;"></span> <span class="muted" style="font-weight:600;">Blocked</span>
+              <span class="status-pill status-blocked">
+                <span class="dot-live gray"></span> Blocked
+              </span>
             {% endif %}
           </td>
-          <td style="text-align:right;">{{ h.n_users }}</td>
-          <td style="text-align:right;">{{ h.n_patients }}</td>
-          <td style="text-align:right;">{{ h.n_sales }}</td>
-          <td style="text-align:right;">Rs {{ h.rev_month|floatformat:0 }}</td>
-          <td class="muted" style="font-size:12.5px;">{% if h.last_sale %}{{ h.last_sale|timesince }} ago{% else %}—{% endif %}</td>
-          <td style="font-size:13px;">Rs {{ h.monthly_price|floatformat:0 }}/mo</td>
-          <td style="text-align:right; white-space:nowrap;">
-            <a href="{% url 'saas:hospital_detail' h.pk %}"
-               class="btn sm {% if h.status == 'expired' or h.status == 'expiring' or h.status == 'blocked' %}success{% else %}alt{% endif %}">Renew</a>
-            <a href="{% url 'saas:hospital_edit' h.pk %}" class="btn alt sm">Edit</a>
+
+          <td>
+            <div style="display:flex; gap:4px; flex-wrap:wrap; max-width:220px;">
+              {% for mod in h.enabled_modules %}
+                <span class="module-chip">{{ mod|upper }}</span>
+              {% empty %}
+                <span class="muted" style="font-size:11px;">Default</span>
+              {% endfor %}
+            </div>
+          </td>
+
+          <td style="text-align: right; font-weight: 600;">{{ h.n_users }}</td>
+          <td style="text-align: right; font-weight: 600;">{{ h.n_patients }}</td>
+          <td style="text-align: right; font-weight: 600;">{{ h.n_sales }}</td>
+          <td style="text-align: right; font-weight: 700; color: var(--text);">Rs {{ h.rev_month|floatformat:0 }}</td>
+
+          <td style="font-weight: 700; font-size: 13.5px; color: var(--primary);">
+            Rs {{ h.monthly_price|floatformat:0 }}<span class="muted" style="font-size:11px; font-weight:400;">/mo</span>
+          </td>
+
+          <td style="text-align: right; white-space: nowrap;">
+            <div style="display:inline-flex; gap:6px;">
+              <a href="{% url 'saas:hospital_detail' h.pk %}"
+                 class="btn sm {% if h.status != 'active' %}success{% else %}alt{% endif %}" style="padding: 4px 10px; font-size: 12px; font-weight: 700;">
+                {% if h.status != 'active' %}Renew{% else %}Manage{% endif %}
+              </a>
+              <a href="{% url 'saas:hospital_edit' h.pk %}" class="btn alt sm" style="padding: 4px 8px; font-size: 12px;" title="Edit Hospital &amp; Modules">
+                ⚙️
+              </a>
+            </div>
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="9" class="muted" style="text-align:center; padding:32px;">
-          No hospitals yet. Click <strong>Create Hospital</strong> to add your first tenant.
-        </td></tr>
+        <tr>
+          <td colspan="9" class="muted" style="text-align: center; padding: 48px 20px;">
+            <h4 style="color:var(--text); margin-bottom:6px;">No hospital tenants registered yet</h4>
+            <p>Click <strong>New Hospital</strong> above to create your first client tenant.</p>
+          </td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
-  <p id="no-hospital-match" class="muted" style="display:none; text-align:center; padding:18px 0; margin:0;">No hospital matches that search.</p>
+  
+  <p id="no-hospital-match" class="muted" style="display: none; text-align: center; padding: 24px 0; margin: 0; font-size: 14px;">
+    🔍 No hospital tenant matches that search or filter.
+  </p>
 </div>
 
-{# ---- Money: recent payments + expenses ---- #}
-<div class="grid" style="grid-template-columns:1fr 1fr; gap:20px; align-items:start;">
-  <div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:baseline;">
-      <h3 style="margin:0;">Recent Payments</h3>
-      <span class="muted" style="font-size:12.5px;">Received: <strong style="color:#16a34a;">Rs {{ total_received|floatformat:0 }}</strong></span>
+<!-- Bottom Section: Recent Financial Ledger -->
+<div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px; align-items: start;">
+  
+  <!-- Recent Subscription Payments -->
+  <div class="card" style="padding: 20px; border-radius: 14px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <div>
+        <h3 style="margin: 0; font-size: 16px; font-weight: 700;">💵 Recent Subscription Inflow</h3>
+        <span class="muted" style="font-size: 12px;">Total Collected: <strong style="color: #10b981;">Rs {{ total_received|floatformat:0 }}</strong></span>
+      </div>
+      <a class="btn sm success" href="{% url 'saas:payment_create' %}">+ Log Payment</a>
     </div>
-    <table class="tbl" style="margin-top:8px; font-size:13px;">
-      <thead><tr><th>Hospital</th><th style="text-align:right;">Amount</th><th>Date</th></tr></thead>
+
+    <table class="tbl" style="margin-top: 8px; font-size: 13px;">
+      <thead>
+        <tr><th>Hospital</th><th style="text-align:right;">Amount</th><th>Date</th></tr>
+      </thead>
       <tbody>
         {% for p in payments %}
         <tr>
-          <td>{{ p.hospital.name }}</td>
-          <td style="text-align:right;"><strong>Rs {{ p.amount|floatformat:0 }}</strong></td>
-          <td>{{ p.payment_date|date:"d M Y" }}</td>
+          <td>
+            <strong>{{ p.hospital.name }}</strong>
+            {% if p.payment_method %}<div class="muted" style="font-size:11px;">via {{ p.payment_method }}</div>{% endif %}
+          </td>
+          <td style="text-align: right; font-weight: 700; color: #10b981;">Rs {{ p.amount|floatformat:0 }}</td>
+          <td class="muted" style="font-size: 12px;">{{ p.payment_date|date:"d M Y" }}</td>
         </tr>
         {% empty %}
-        <tr><td colspan="3" class="muted">No payments logged yet.</td></tr>
+        <tr><td colspan="3" class="muted" style="text-align:center; padding: 20px;">No subscription payments recorded yet.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 
-  <div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:baseline;">
-      <h3 style="margin:0;">Recent Expenses</h3>
-      <span class="muted" style="font-size:12.5px;">Spent: <strong style="color:#ef4444;">Rs {{ total_expense|floatformat:0 }}</strong></span>
+  <!-- Recent Server & Platform Expenses -->
+  <div class="card" style="padding: 20px; border-radius: 14px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <div>
+        <h3 style="margin: 0; font-size: 16px; font-weight: 700;">📉 Server &amp; Operating Expenses</h3>
+        <span class="muted" style="font-size: 12px;">Total Outflow: <strong style="color: #ef4444;">Rs {{ total_expense|floatformat:0 }}</strong></span>
+      </div>
+      <a class="btn sm danger" href="{% url 'saas:expense_create' %}">+ Log Expense</a>
     </div>
-    <table class="tbl" style="margin-top:8px; font-size:13px;">
-      <thead><tr><th>Title</th><th style="text-align:right;">Amount</th><th>Date</th></tr></thead>
+
+    <table class="tbl" style="margin-top: 8px; font-size: 13px;">
+      <thead>
+        <tr><th>Expense Item</th><th style="text-align:right;">Amount</th><th>Date</th></tr>
+      </thead>
       <tbody>
         {% for e in expenses %}
         <tr>
-          <td>{{ e.title }}</td>
-          <td style="text-align:right;"><strong style="color:#ef4444;">Rs {{ e.amount|floatformat:0 }}</strong></td>
-          <td>{{ e.expense_date|date:"d M Y" }}</td>
+          <td>
+            <strong>{{ e.title }}</strong>
+            {% if e.category %}<div class="muted" style="font-size:11px;">{{ e.category }}</div>{% endif %}
+          </td>
+          <td style="text-align: right; font-weight: 700; color: #ef4444;">Rs {{ e.amount|floatformat:0 }}</td>
+          <td class="muted" style="font-size: 12px;">{{ e.expense_date|date:"d M Y" }}</td>
         </tr>
         {% empty %}
-        <tr><td colspan="3" class="muted">No expenses logged yet.</td></tr>
+        <tr><td colspan="3" class="muted" style="text-align:center; padding: 20px;">No platform expenses recorded yet.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
+
 </div>
 
+<!-- Styles for SaaS Executive Dashboard -->
 <style>
-  .saas-hospitals th { white-space:nowrap; }
-  .saas-hospitals td { vertical-align:middle; }
-  .dot { display:inline-block; width:9px; height:9px; border-radius:50%; vertical-align:middle; margin-right:3px; }
-  .btn.sm { padding:5px 10px; font-size:12.5px; }
+  .saas-filter-tabs {
+    background: var(--bg);
+    padding: 3px;
+    border-radius: 9px;
+    border: 1px solid var(--border);
+  }
+  .tab-btn {
+    background: transparent;
+    border: none;
+    padding: 6px 12px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--muted);
+    border-radius: 7px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tab-btn.active {
+    background: var(--card-bg);
+    color: var(--text);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+  }
+  .tab-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: var(--border);
+    color: var(--text);
+  }
+  .tab-badge.green { background: #dcfce7; color: #15803d; }
+  .tab-badge.amber { background: #fef3c7; color: #b45309; }
+  .tab-badge.red { background: #fee2e2; color: #b91c1c; }
+  .tab-badge.gray { background: #f3f4f6; color: #4b5563; }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .status-active { background: #dcfce7; color: #166534; }
+  .status-expiring { background: #fef3c7; color: #92400e; }
+  .status-expired { background: #fee2e2; color: #991b1b; }
+  .status-blocked { background: #f1f5f9; color: #475569; }
+
+  .dot-live {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #16a34a;
+  }
+  .dot-live.amber { background: #d97706; }
+  .dot-live.red { background: #ef4444; }
+  .dot-live.gray { background: #94a3b8; }
+
+  .module-chip {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--muted);
+    border: 1px solid var(--border);
+    letter-spacing: 0.03em;
+  }
 </style>
 
+<!-- Client-Side Instant Filtering Script -->
 <script>
-// Instant client-side filter — no server round-trip, so it stays fast with many tenants.
 (function () {
-  var box = document.getElementById('hospital-search');
-  if (!box) return;
-  var rows = Array.prototype.slice.call(document.querySelectorAll('.saas-hospitals tbody tr[data-name]'));
-  var empty = document.getElementById('no-hospital-match');
-  box.addEventListener('input', function () {
-    var q = box.value.trim().toLowerCase();
-    var shown = 0;
-    rows.forEach(function (r) {
-      var match = !q || r.getAttribute('data-name').indexOf(q) !== -1;
-      r.style.display = match ? '' : 'none';
-      if (match) shown++;
+  const searchBox = document.getElementById('hospital-search');
+  const tabBtns = document.querySelectorAll('.saas-filter-tabs .tab-btn');
+  const rows = Array.from(document.querySelectorAll('.saas-hospitals tbody tr[data-name]'));
+  const emptyMessage = document.getElementById('no-hospital-match');
+  
+  let currentFilter = 'all';
+
+  function applyFilters() {
+    const query = (searchBox ? searchBox.value.trim().toLowerCase() : '');
+    let visibleCount = 0;
+
+    rows.forEach(r => {
+      const name = r.getAttribute('data-name') || '';
+      const status = r.getAttribute('data-status') || '';
+
+      const matchesSearch = !query || name.includes(query);
+      const matchesTab = (currentFilter === 'all') || (status === currentFilter);
+
+      if (matchesSearch && matchesTab) {
+        r.style.display = '';
+        visibleCount++;
+      } else {
+        r.style.display = 'none';
+      }
     });
-    if (empty) empty.style.display = (rows.length && !shown) ? 'block' : 'none';
+
+    if (emptyMessage) {
+      emptyMessage.style.display = (rows.length > 0 && visibleCount === 0) ? 'block' : 'none';
+    }
+  }
+
+  if (searchBox) {
+    searchBox.addEventListener('input', applyFilters);
+  }
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', function () {
+      tabBtns.forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      currentFilter = this.getAttribute('data-filter') || 'all';
+      applyFilters();
+    });
   });
 })();
 </script>
