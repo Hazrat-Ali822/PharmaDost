@@ -202,6 +202,7 @@
         <b>{{ branding.brand_name|default:"Sehatyar" }}</b>
       </a>
       <div class="site-nav-links">
+        <a href="/portal/" style="color:#0284c7; font-weight:700;">📱 Patient Portal</a>
         {% for path, label in public_pages %}<a href="{{ path }}">{{ label }}</a>{% endfor %}
       </div>
       <a class="site-nav-cta" href="{% url 'demo_login' %}">Live Demo</a>
@@ -311,6 +312,9 @@
         </div>
         <a href="{% url 'demo_login' %}" class="btn alt" style="width:100%;justify-content:center;padding:12px;font-size:15px;text-decoration:none">
           ▶ Try the live demo — no signup
+        </a>
+        <a href="{% url 'patient_portal_lookup' %}" class="btn" style="width:100%;justify-content:center;padding:11px;font-size:14px;text-decoration:none;margin-top:8px;background:#f0f9ff;color:#0369a1;border:1px solid #bae6fd;">
+          📱 Patient Health Portal &amp; Records
         </a>
 
         {# One block, not four stacked paragraphs: the old card ended in a wall of #}

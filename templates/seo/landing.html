@@ -110,6 +110,7 @@
       <nav class="links">
         <a href="#features">Features</a>
         <a href="#who">Who it's for</a>
+        <a href="/portal/" style="font-weight:700; color:#0284c7;">📱 Patient Portal</a>
         <a href="#faq">FAQ</a>
         <a class="cta" href="/login/">Sign in →</a>
       </nav>
@@ -123,9 +124,11 @@
       <p class="lede">{{ summary }}</p>
       <div class="cta-row">
         <a class="btn primary" href="/demo/">▶ Try the live demo — no signup</a>
+        <a class="btn ghost" href="/portal/">📱 Patient Portal</a>
         <a class="btn ghost" href="/login/">Sign in</a>
       </div>
       <div class="badges">
+        <span class="badge" style="background:#0284c7; color:#fff; border-color:#0284c7;">📱 Digital Patient Portal</span>
         <span class="badge">💊 Pharmacy POS</span>
         <span class="badge">🩺 OPD &amp; IPD</span>
         <span class="badge">🧪 Lab &amp; Imaging</span>
@@ -206,7 +209,7 @@
         <a href="https://ftdynamics.pk" rel="noopener">Future Tech Dynamics</a>.</div>
       {# Built from CONTENT_PAGES (seo_views.public_pages) so a new page is linked #}
       {# the moment it is added — internal links are how these get found at all. #}
-      <div>{% for path, label in public_pages %}<a href="{{ path }}">{{ label }}</a> · {% endfor %}<a href="/demo/">Demo</a> · <a href="/login/">Sign in</a></div>
+      <div>{% for path, label in public_pages %}<a href="{{ path }}">{{ label }}</a> · {% endfor %}<a href="/portal/">Patient Portal</a> · <a href="/demo/">Demo</a> · <a href="/login/">Sign in</a></div>
     </div>
   </footer>
 </body>
