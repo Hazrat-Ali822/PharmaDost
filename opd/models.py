@@ -283,6 +283,11 @@ class Appointment(models.Model):
 
     class Meta:
         ordering = ('appointment_date', 'token_no')
+        indexes = [
+            models.Index(fields=['doctor', 'appointment_date', 'status'], name='idx_appt_doc_dt_st'),
+            models.Index(fields=['appointment_date', 'status'], name='idx_appt_dt_st'),
+            models.Index(fields=['patient', 'created_at'], name='idx_appt_pat_cr'),
+        ]
 
     def save(self, *args, **kwargs):
         if self._state.adding:

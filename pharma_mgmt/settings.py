@@ -139,6 +139,7 @@ LOGIN_REDIRECT_URL = 'user_mgmt:post_login_redirect' # role router (view below)
 LOGOUT_REDIRECT_URL = '/login/'
 
 MIDDLEWARE = [
+    "django.middleware.gzip.GZipMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -188,15 +189,18 @@ WSGI_APPLICATION = "pharma_mgmt.wsgi.application"
 
 import dj_database_url
 
+DB_CONN_MAX_AGE = int(os.getenv("DJANGO_DB_CONN_MAX_AGE", "600"))
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": DATA_DIR / "db.sqlite3",
+        "CONN_MAX_AGE": DB_CONN_MAX_AGE,
     }
 }
 
 # If DATABASE_URL is set in environment/env, use PostgreSQL (Supabase)
-db_env = dj_database_url.config(conn_max_age=0)
+db_env = dj_database_url.config(conn_max_age=DB_CONN_MAX_AGE, conn_health_checks=True)
 if db_env:
     DATABASES["default"] = db_env
 
