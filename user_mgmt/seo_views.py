@@ -40,6 +40,8 @@ SUMMARY = (
     "working with no internet, on the clinic's own wifi."
 )
 FEATURES = [
+    ("Digital Patient Health Portal", "Instant QR-code and mobile-lookup access for patients "
+     "to view live OPD token queues, verified lab reports, prescriptions, ultrasound scans and bills — with zero login."),
     ("Pharmacy POS & inventory", "Fast point-of-sale, batch/expiry tracking, FEFO "
      "dispensing, low-stock and near-expiry alerts, purchase orders and suppliers."),
     ("OPD & appointments", "Reception desk, token slips, doctor schedules and "
@@ -260,6 +262,45 @@ CONTENT_PAGES = {
             ("Is there a free trial?",
              "Yes — a live demo with sample data across every module is available with "
              "no signup."),
+        ],
+    },
+    "patient-portal": {
+        "nav": "Patient Portal",
+        "h1": "Digital Patient Health Portal & Live OPD Token Tracking",
+        "meta": ("Sehatyar's Digital Patient Health Portal gives patients instant access to "
+                 "verified lab results, doctor prescriptions, imaging scans, paid invoices, "
+                 "and live OPD waiting queue status via QR code or mobile lookup."),
+        "keywords": ("patient portal Pakistan, online lab reports, digital patient health record, "
+                     "live OPD token tracker, hospital QR code records, medical portal Pakistan"),
+        "lede": ("Sehatyar's Patient Health Portal gives patients instant, password-free "
+                 "access to their complete health records — diagnostic lab results, doctor "
+                 "prescriptions, ultrasound scans, bills, and real-time OPD token status — "
+                 "by scanning the QR code on their hospital receipt or entering their phone number."),
+        "sections": [
+            ("Live clinical records in the patient's hands", [
+                "Every prescription written by the doctor, every verified lab test with "
+                "clinical reference ranges, ultrasound/X-ray reports, and billing receipts "
+                "sync instantly to the patient's personal health hub.",
+                "Patients access their lifetime history without downloading an app or remembering "
+                "passwords: a secure, unique QR code printed on every slip opens their record immediately."]),
+            ("Live OPD token queue & calling notifications", [
+                "When waiting at the clinic, the patient sees their exact token number, who is currently "
+                "inside with the doctor, and how many patients are ahead in line.",
+                "The portal auto-refreshes in real time and highlights instantly when the doctor calls "
+                "their token into the consultation room."]),
+            ("Lost receipt recovery by mobile number", [
+                "If a patient misplaces their printed slip, they can visit the public portal lookup "
+                "and search by their registered mobile phone number or MRN to instantly recover all records."]),
+        ],
+        "faqs": [
+            ("How do patients open their digital health portal?",
+             "Patients scan the QR code printed on their OPD token slip, lab report or invoice with any "
+             "smartphone camera, or enter their mobile phone number at the hospital portal."),
+            ("Can patients track their OPD queue position live?",
+             "Yes — the portal displays their token number, current token in consult, and live count of patients "
+             "ahead with automatic real-time updates."),
+            ("Is any mobile app or login password required?",
+             "No — each patient has a secure, unguessable cryptographic token that works instantly in any mobile browser."),
         ],
     },
 }
@@ -492,6 +533,7 @@ LAN server (every phone on the wifi runs the whole system with no internet).
 
 ## Links
 - Home / features: {base}/features/
+- Digital Patient Portal: {base}/portal/
 - Live demo (no signup): {base}/demo/
 - Sign in: {base}/login/
 """

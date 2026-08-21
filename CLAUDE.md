@@ -2652,6 +2652,13 @@ almost always means a query moved inside a loop; find that before raising the nu
   - Displays: Token Number, Doctor name, Specialty, Currently consulting token, and number of patients ahead.
   - Live Calling Alert: When doctor updates status to `IN_CONSULT`, banner updates with pulsing "🔔 NOW CALLING YOUR NUMBER: Please Enter Doctor Room".
   - Auto-refreshes every 15s in background while patient is in waiting queue.
+- **SEO & AI Search Discoverability (`/patient-portal/` & `llms.txt`)**:
+  - Keyword marketing landing page (`/patient-portal/`) targeting *"digital patient portal Pakistan"*, *"online lab reports"*, and *"live OPD token tracking"*.
+  - Full Schema.org JSON-LD structured data and XML sitemap (`/sitemap.xml`) indexing.
+  - Documented in `llms.txt` for accurate AI answer engine citations (ChatGPT, Perplexity, Gemini, Claude).
+- **High-Contrast Eye-Catching UI Design**:
+  - High-contrast health ocean gradient (`linear-gradient(135deg, #0284c7, #0369a1)`) with glowing cyan drop-shadow and razor-sharp white text on hover.
+  - Interactive hover state (`transform: translateY(-1.5px)`) for a premium digital health card experience.
 - **Zero DB Load & Defensive Fault-Tolerance**: Single indexed lookup on `patient_id` returning <15 KB compressed payload rendered in <40ms with isolated try-except blocks across clinical modules.
 
 

@@ -44,10 +44,13 @@
     a { color:var(--primary); text-decoration:none; }
     .wrap { max-width:1080px; margin:0 auto; padding:0 20px; }
     .btn { display:inline-flex; align-items:center; gap:8px; padding:12px 22px;
-      border-radius:11px; font-weight:600; font-size:15.5px; cursor:pointer; border:1px solid transparent; }
+      border-radius:11px; font-weight:600; font-size:15.5px; cursor:pointer; border:1px solid transparent; transition:all 0.2s ease-in-out; }
     .btn.primary { background:#fff; color:var(--primary); }
+    .btn.primary:hover { background:#f8fafc; color:var(--primary); transform:translateY(-1px); }
     .btn.ghost { background:rgba(255,255,255,.12); color:#fff; border-color:rgba(255,255,255,.4); }
+    .btn.ghost:hover { background:rgba(255,255,255,.24); color:#fff; border-color:#fff; transform:translateY(-1px); }
     .btn.solid { background:linear-gradient(135deg,var(--primary),var(--accent)); color:#fff; }
+    .btn.solid:hover { opacity:0.95; transform:translateY(-1px); }
 
     /* ---- header ---- */
     header { position:sticky; top:0; z-index:10; background:rgba(255,255,255,.9);
