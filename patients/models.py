@@ -253,3 +253,22 @@ class PatientDocument(models.Model):
     @property
     def label(self):
         return self.title or self.get_kind_display()
+
+
+class PortalLookupAttempt(models.Model):
+    """One anonymous search on `/portal/`, kept just long enough to count.
+
+    Deliberately NOT tenant-scoped and deliberately not an `AuditLog` row: the
+    lookup happens before any hospital is known, and the audit log is the
+    admin's security feed, which routine patient searches would drown. See
+    `patients/portal_throttle.py` for why this is a table rather than a cache
+    counter.
+    """
+    ip = models.CharField(max_length=45, db_index=True)
+    at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['ip', 'at'])]
+
+    def __str__(self):
+        return f'{self.ip} @ {self.at:%Y-%m-%d %H:%M:%S}'

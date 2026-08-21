@@ -616,22 +616,24 @@ def patient_portal_lookup(request):
         })
 
     if query:
-        # Rate limit to prevent automated scraping of sequential MRNs
-        from django.core.cache import cache
-        ip = (request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip()
-              or request.META.get('REMOTE_ADDR', '127.0.0.1'))
-        cache_key = f"portal_lookup_rate:{ip}"
-        try:
-            attempts = cache.get(cache_key, 0)
-            if attempts >= 20:
-                return render(request, 'patients/portal_lookup.html', {
-                    'error': 'Too many search attempts. Please wait 1 minute before trying again.',
-                    'query': query, 'results': None,
-                    'hospitals': hospitals, 'hospital': hospital,
-                })
-            cache.set(cache_key, attempts + 1, timeout=60)
-        except Exception:
-            pass
+        # MRNs are issued in sequence, so inside one hospital they can still be
+        # counted through even with everything below in place. Counted in the
+        # database, NOT the cache: no CACHES is configured, so `cache.set` lands
+        # in per-process LocMemCache and Passenger runs several workers — the
+        # limit would really be 20 x workers, resetting on every recycle. Same
+        # decision, same reason, as `accounts/lockout.py`.
+        from .portal_throttle import client_ip, record, too_many
+
+        ip = client_ip(request)
+        if too_many(ip):
+            return render(request, 'patients/portal_lookup.html', {
+                'error': ('Too many searches from this device. Please wait a '
+                          'minute and try again.'),
+                'query': query, 'results': None,
+                'hospitals': hospitals, 'hospital': hospital,
+            })
+        record(ip)
+
         digits = ''.join(c for c in query if c.isdigit())
 
         # A name is not a secret, and what this page hands back is a medical
