@@ -41,6 +41,17 @@ class SiteSettingsForm(forms.ModelForm):
             if name in self.fields:
                 self.fields[name].required = False
 
+    def clean_mrn_prefix(self):
+        val = (self.cleaned_data.get('mrn_prefix') or '').strip().upper()
+        if val:
+            # Check if another hospital is already using this exact mrn_prefix
+            qs = SiteSettings.objects.filter(mrn_prefix__iexact=val)
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise forms.ValidationError(f"The MRN prefix '{val}' is already in use by another hospital. Please choose a unique prefix.")
+        return val
+
     def clean(self):
         cleaned = super().clean()
         for name, default in self.OPTIONAL_DEFAULTS.items():

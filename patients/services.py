@@ -18,18 +18,33 @@ MRN_DIGITS = 6
 MAX_PREFIX_LEN = 6
 
 
-def derive_prefix(name):
+def derive_prefix(name, hospital=None):
     """A short code from the hospital's name: initials for a multi-word name
     ("Shaheen General Hospital" -> SGH), otherwise the leading letters
-    ("PharmaDost" -> PHA). Falls back to MRN for a name with no letters."""
+    ("PharmaDost" -> PHA). Falls back to MRN for a name with no letters.
+    Guarantees uniqueness across hospitals so no two tenants ever collide.
+    """
     words = [w for w in re.split(r'[^A-Za-z0-9]+', name or '') if w]
     if not words:
-        return 'MRN'
-    if len(words) > 1:
-        code = ''.join(w[0] for w in words)
+        base = 'MRN'
+    elif len(words) > 1:
+        base = ''.join(w[0] for w in words)
     else:
-        code = words[0][:3]
-    return code.upper()[:MAX_PREFIX_LEN] or 'MRN'
+        base = words[0][:3]
+    base = (base.upper()[:MAX_PREFIX_LEN]) or 'MRN'
+
+    from user_mgmt.models import SiteSettings
+    prefix = base
+    suffix_idx = 1
+    while True:
+        qs = SiteSettings.objects.filter(mrn_prefix__iexact=prefix)
+        if hospital is not None:
+            qs = qs.exclude(hospital=hospital)
+        if not qs.exists():
+            break
+        suffix_idx += 1
+        prefix = f"{base[:MAX_PREFIX_LEN-len(str(suffix_idx))]}{suffix_idx}"
+    return prefix
 
 
 def _settings_row(hospital, lock=False):
