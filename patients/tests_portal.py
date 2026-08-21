@@ -34,6 +34,12 @@ class PatientPortalTests(TestCase):
         )
         PrescriptionItem.objects.create(prescription=self.rx, medicine=self.med, dosage='1x TDS', duration_days=5)
 
+        from lab.models import TestCategory, LabTest, TestOrder, TestResult
+        self.cat = TestCategory.objects.create(name='Hematology', hospital=self.hospital)
+        self.test = LabTest.objects.create(category=self.cat, name='Hemoglobin', price=Decimal('300.00'), hospital=self.hospital)
+        self.lab_order = TestOrder.objects.create(patient=self.patient, status='Completed')
+        self.result = TestResult.objects.create(test_order=self.lab_order, lab_test=self.test, result_value='14.2', normal_range='12-16', unit='g/dL')
+
     def test_anonymous_access_with_portal_token(self):
         c = Client()
         url = reverse('patient_portal_hub', args=[self.patient.portal_token])

@@ -424,14 +424,14 @@
               <tbody>
                 {% for res in order.results.all %}
                   <tr>
-                    <td><b>{{ res.test.name }}</b></td>
+                    <td><b>{{ res.lab_test.name }}</b></td>
                     <td>
                       {{ res.result_value|default:"Pending" }}
                       {% if res.is_high %}<span class="val-badge high">HIGH</span>{% endif %}
                       {% if res.is_low %}<span class="val-badge low">LOW</span>{% endif %}
                     </td>
-                    <td style="color:var(--text-muted);">{{ res.normal_range|default:res.test.normal_range|default:"—" }}</td>
-                    <td style="color:var(--text-muted);">{{ res.unit|default:res.test.unit|default:"—" }}</td>
+                    <td style="color:var(--text-muted);">{{ res.normal_range|default:res.lab_test.normal_range|default:"—" }}</td>
+                    <td style="color:var(--text-muted);">{{ res.unit|default:res.lab_test.unit|default:"—" }}</td>
                   </tr>
                 {% empty %}
                   <tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Tests are currently being processed in the lab.</td></tr>

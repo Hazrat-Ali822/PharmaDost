@@ -501,7 +501,7 @@ def patient_portal_hub(request, token):
     lab_orders = (TestOrder.objects
                   .filter(patient=patient)
                   .select_related('ordered_by')
-                  .prefetch_related('results__test__category')
+                  .prefetch_related('results__lab_test__category')
                   .order_by('-order_date'))
 
     # 3. Radiology Scans
