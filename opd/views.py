@@ -439,10 +439,16 @@ def appointment_update_status(request, pk):
 def _get_tv_queue_data(user):
     today = timezone.localdate()
     doctors = doctors_with_availability(user)
-    sitting, _ = split_by_availability(doctors)
+    sitting, away = split_by_availability(doctors)
+
+    # If some doctors are sitting now, show them; otherwise show all active doctors
+    display_list = sitting if sitting else away
 
     queue = []
-    for doc in sitting:
+    for item in display_list:
+        doc = item[0] if isinstance(item, (tuple, list)) else item
+        state = item[1] if isinstance(item, (tuple, list)) else {}
+
         appts = Appointment.objects.filter(
             doctor=doc,
             appointment_date=today
@@ -466,6 +472,8 @@ def _get_tv_queue_data(user):
             'doctor_name': doc.full_name,
             'department': doc.department.name if doc.department else 'General OPD',
             'specialty': doc.specialty or '',
+            'is_sitting': state.get('available', False) if isinstance(state, dict) else False,
+            'state_label': state.get('label', '') if isinstance(state, dict) else '',
             'serving': {
                 'token_no': in_consult.token_no,
                 'patient_name': in_consult.patient.full_name,

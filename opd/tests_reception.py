@@ -343,3 +343,19 @@ class DepartmentTest(ReceptionBase):
         empty = Department.objects.create(name='ENT', hospital=self.h)
         self.client.post(reverse('department_delete', args=[empty.pk]))
         self.assertFalse(Department.objects.filter(pk=empty.pk).exists())
+
+
+class TvDisplayTest(ReceptionBase):
+    def test_tv_display_page_renders_successfully(self):
+        resp = self.client.get(reverse('opd_tv_display'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Ahmed Ali')
+
+    def test_tv_api_returns_json_queue(self):
+        resp = self.client.get(reverse('opd_tv_api'))
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data['success'])
+        self.assertTrue(len(data['queue']) > 0)
+        self.assertEqual(data['queue'][0]['doctor_name'], 'Ahmed Ali')
+

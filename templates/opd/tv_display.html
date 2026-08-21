@@ -421,7 +421,7 @@
 
       // Initial token state
       {% for d in queue %}
-        lastServingTokens['{{ d.doctor_id }}'] = {{ d.serving.token_no|default:"null" }};
+        lastServingTokens['{{ d.doctor_id }}'] = {% if d.serving and d.serving.token_no %}{{ d.serving.token_no }}{% else %}null{% endif %};
       {% endfor %}
 
       // 1. Digital Clock
