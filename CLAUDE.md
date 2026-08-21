@@ -2610,11 +2610,25 @@ almost always means a query moved inside a loop; find that before raising the nu
 - **Hooked Automatically**: Runs inside `saas/views.py::hospital_create` and `hospital_edit`.
 - **Management Command**: `python manage.py seed_all_catalogs` allows bulk seeding/updating across existing tenant databases.
 
-## Rush-Hour Fast Operations
+## Rush-Hour Fast Operations & Automation
 
-- **Pharmacy POS**: Fast Cash Tender buttons (`Exact`, `100`, `500`, `1000`, `5000`) calculate change automatically without manual keyboard typing.
-- **Doctor Rx**:
-  - **Repeat Last Rx**: 1-click button clones the patient's most recent active prescription (medicines, dosages, durations, frequencies).
-  - **Quick Dosage Chips**: Instant-fill chips (`1x OD`, `2x BD`, `3x TDS`, `4x QID`, `SOS`, `After Meals`, `Before Meals`, `At Bedtime`).
-- **OPD Front Desk**: `Ctrl + Enter` single-keystroke submits patient registration + consultation booking and generates token slip.
+- **Doctor Desk 1-Click Clinical Presets**: Disease buttons (`Flu`, `Gastroenteritis`, `Typhoid`, `Hypertension`, `Diabetes`, `Body Aches`) on `prescription_form.html` auto-fill complaints, diagnoses, clinical notes, standard medicines, dosages, and frequencies in 0.5s.
+- **Pharmacy POS Continuous Barcode Scanning & Audio Feedback**:
+  - Scanning the same barcode repeatedly automatically increments quantity (`qty + 1`) while keeping input focus.
+  - Web Audio API synthesizes a 0.1s confirmation beep (`playScanBeep()`) on each scan.
+  - Function key hotkeys: `F2` (focus scan search), `F8` (jump to Cash Tender), `F9` (finalize & save bill).
+- **Diagnostic Lab Rapid Results & Auto-Flagging**:
+  - **"⚡ Fill Standard Normal"**: 1-click fills standard clinical baseline values for CBC, LFT, RFT, Urine R/E, Blood Sugar.
+  - **Real-Time Range Validator**: Compares input against min/max reference range and immediately badges with `[LOW] ⚠️` (amber) or `[HIGH] 🚨` (red).
+- **Front Desk Instant Auto-Print**:
+  - Booking a visit/appointment redirects with `?autoprint=1` which automatically triggers `window.print()` for immediate thermal slip printing.
+
+## Public Patient Mobile Queue Tracker (`/opd/track/<pk>/`)
+
+- **Anonymous Access**: Registered in `LoginRequiredMiddleware.ALLOWED_NAMES` so patients can track live queue status from their mobile phone without logging in.
+- **Slip Integration**:
+  - Printed token slip embeds a live QR Code linking to `https://<domain>/opd/track/<pk>/`.
+  - Includes a 1-click **"📲 WhatsApp Slip"** button to dispatch appointment details and live tracking link to the patient's phone.
+- **Mobile UI**: High-contrast, mobile-optimized card showing token number, current doctor consultation status, patients ahead countdown, and Web Audio chime when the patient's turn arrives.
+
 

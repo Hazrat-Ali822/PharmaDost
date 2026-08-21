@@ -6,29 +6,234 @@
     <h2>Enter Results — Order #{{ order.id }}</h2>
     <div class="muted">Patient: <b>{{ order.patient.full_name }}</b> (MRN {{ order.patient.mrn }}) · Ordered: <b>{{ order.order_date|date:"d M Y · g:i A" }}</b> (⏱️ {{ order.order_date|timesince }} ago)</div>
   </div>
-  <a class="btn alt" href="{% url 'lab:order_detail' order.id %}">Back</a>
+  <div style="display:flex; gap:8px; align-items:center;">
+    <button type="button" class="btn alt sm" id="fill-normal-btn" style="font-weight:700; display:inline-flex; align-items:center; gap:6px;">
+      ⚡ Fill Standard Normal
+    </button>
+    <a class="btn alt sm" href="{% url 'lab:order_detail' order.id %}">Back</a>
+  </div>
 </div>
 
 <form method="post" class="card" data-offline-kind="lab_result">{% csrf_token %}
 <input type="hidden" name="order_id" value="{{ order.pk }}">
   {{ formset.management_form }}
-  <table class="tbl">
-    <thead><tr><th>Test</th><th>Result Value</th><th>Normal Range</th><th>Unit</th><th>Remarks</th></tr></thead>
+  <table class="tbl" id="lab-results-table">
+    <thead>
+      <tr>
+        <th style="width:25%;">Test Name</th>
+        <th style="width:25%;">Result Value</th>
+        <th style="width:20%;">Normal Reference Range</th>
+        <th style="width:10%;">Unit</th>
+        <th style="width:20%;">Remarks</th>
+      </tr>
+    </thead>
     <tbody>
       {% for form in formset %}
-      <tr>
-        <td>{{ form.instance.lab_test.name }}{{ form.lab_test.as_hidden }}{{ form.id }}</td>
-        <td>{{ form.result_value }}</td>
-        <td>{{ form.normal_range }}</td>
+      <tr class="result-row">
+        <td>
+          <strong>{{ form.instance.lab_test.name }}</strong>
+          {{ form.lab_test.as_hidden }}{{ form.id }}
+        </td>
+        <td>
+          <div style="display:flex; align-items:center; gap:8px;">
+            {{ form.result_value }}
+            <span class="flag-badge" style="display:none; white-space:nowrap;"></span>
+          </div>
+          {{ form.result_value.errors }}
+        </td>
+        <td class="range-cell">{{ form.normal_range }}</td>
         <td>{{ form.unit }}</td>
         <td>{{ form.remarks }}</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
-  <div style="display:flex;gap:8px;margin-top:12px">
-    <button class="btn primary" type="submit" name="save" value="1">Save</button>
-    <button class="btn success" type="submit" name="save_print" value="1">Save &amp; Print Report 🖨️</button>
+  
+  <div style="display:flex; gap:10px; margin-top:16px; align-items:center;">
+    <button class="btn primary" type="submit" name="save" value="1">💾 Save Results</button>
+    <button class="btn success" type="submit" name="save_print" value="1">🖨️ Save &amp; Print Verified Report</button>
   </div>
 </form>
+
+<script>
+(function() {
+  // Standard clinical normal values dictionary
+  const STANDARD_NORMALS = {
+    'hemoglobin': '14.5',
+    'hb': '14.5',
+    'total leukocyte count': '7500',
+    'tlc': '7500',
+    'wbc': '7500',
+    'platelet': '250000',
+    'platelets': '250000',
+    'rbc': '4.8',
+    'esr': '10',
+    'bilirubin': '0.8',
+    'total bilirubin': '0.8',
+    'alt': '28',
+    'sgpt': '28',
+    'ast': '25',
+    'sgot': '25',
+    'alkaline phosphatase': '180',
+    'alp': '180',
+    'creatinine': '0.9',
+    'serum creatinine': '0.9',
+    'blood urea': '25',
+    'urea': '25',
+    'uric acid': '5.2',
+    'blood sugar fasting': '90',
+    'bsf': '90',
+    'blood sugar random': '125',
+    'bsr': '125',
+    'cholesterol': '165',
+    'serum cholesterol': '165',
+    'triglycerides': '130',
+    'hdl': '48',
+    'ldl': '95',
+    'sodium': '140',
+    'potassium': '4.2',
+    'chloride': '102',
+    'calcium': '9.5',
+    'tsh': '2.1',
+    'hba1c': '5.4',
+  };
+
+  // Range parser helper
+  function evaluateRange(valueStr, rangeStr) {
+    if (!valueStr || !rangeStr) return null;
+    const val = parseFloat(valueStr.replace(/,/g, '').trim());
+    if (isNaN(val)) return null;
+
+    // Pattern 1: "13.5 - 17.5" or "4000-11000"
+    const dashMatch = rangeStr.replace(/,/g, '').match(/([\d.]+)\s*[-–—to]+\s*([\d.]+)/i);
+    if (dashMatch) {
+      const min = parseFloat(dashMatch[1]);
+      const max = parseFloat(dashMatch[2]);
+      if (!isNaN(min) && !isNaN(max)) {
+        if (val < min) return 'LOW';
+        if (val > max) return 'HIGH';
+        return 'NORMAL';
+      }
+    }
+
+    // Pattern 2: "< 200" or "<= 100"
+    const lessMatch = rangeStr.replace(/,/g, '').match(/<\s*=?\s*([\d.]+)/);
+    if (lessMatch) {
+      const max = parseFloat(lessMatch[1]);
+      if (!isNaN(max)) {
+        if (val > max) return 'HIGH';
+        return 'NORMAL';
+      }
+    }
+
+    // Pattern 3: "> 40"
+    const greaterMatch = rangeStr.replace(/,/g, '').match(/>\s*=?\s*([\d.]+)/);
+    if (greaterMatch) {
+      const min = parseFloat(greaterMatch[1]);
+      if (!isNaN(min)) {
+        if (val < min) return 'LOW';
+        return 'NORMAL';
+      }
+    }
+
+    return null;
+  }
+
+  function updateFlags() {
+    document.querySelectorAll('.result-row').forEach(row => {
+      const valInput = row.querySelector('input[id$="-result_value"]');
+      const rangeInput = row.querySelector('input[id$="-normal_range"]');
+      const badge = row.querySelector('.flag-badge');
+      if (!valInput || !badge) return;
+
+      const val = valInput.value.trim();
+      const range = rangeInput ? rangeInput.value.trim() : '';
+
+      const status = evaluateRange(val, range);
+      if (status === 'LOW') {
+        badge.style.display = 'inline-block';
+        badge.style.background = '#fef3c7';
+        badge.style.color = '#b45309';
+        badge.style.padding = '2px 6px';
+        badge.style.borderRadius = '4px';
+        badge.style.fontSize = '11px';
+        badge.style.fontWeight = '800';
+        badge.innerHTML = '[LOW] ⚠️';
+        valInput.style.borderColor = '#d97706';
+      } else if (status === 'HIGH') {
+        badge.style.display = 'inline-block';
+        badge.style.background = '#fee2e2';
+        badge.style.color = '#b91c1c';
+        badge.style.padding = '2px 6px';
+        badge.style.borderRadius = '4px';
+        badge.style.fontSize = '11px';
+        badge.style.fontWeight = '800';
+        badge.innerHTML = '[HIGH] 🚨';
+        valInput.style.borderColor = '#ef4444';
+      } else if (status === 'NORMAL') {
+        badge.style.display = 'inline-block';
+        badge.style.background = '#dcfce7';
+        badge.style.color = '#15803d';
+        badge.style.padding = '2px 6px';
+        badge.style.borderRadius = '4px';
+        badge.style.fontSize = '11px';
+        badge.style.fontWeight = '700';
+        badge.innerHTML = '[OK] ✓';
+        valInput.style.borderColor = '';
+      } else {
+        badge.style.display = 'none';
+        valInput.style.borderColor = '';
+      }
+    });
+  }
+
+  document.querySelectorAll('.result-row input[id$="-result_value"], .result-row input[id$="-normal_range"]').forEach(inp => {
+    inp.addEventListener('input', updateFlags);
+  });
+  updateFlags();
+
+  // 1-Click Fill Standard Normal Button
+  const fillBtn = document.getElementById('fill-normal-btn');
+  if (fillBtn) {
+    fillBtn.addEventListener('click', function() {
+      document.querySelectorAll('.result-row').forEach(row => {
+        const testNameEl = row.querySelector('strong');
+        const valInput = row.querySelector('input[id$="-result_value"]');
+        const rangeInput = row.querySelector('input[id$="-normal_range"]');
+
+        if (testNameEl && valInput && !valInput.value.trim()) {
+          const name = testNameEl.textContent.trim().toLowerCase();
+          
+          // Check standard normal dictionary
+          let matchedVal = null;
+          for (let key in STANDARD_NORMALS) {
+            if (name.includes(key)) {
+              matchedVal = STANDARD_NORMALS[key];
+              break;
+            }
+          }
+
+          // If no dictionary match, pick midpoint of range
+          if (!matchedVal && rangeInput && rangeInput.value) {
+            const rangeStr = rangeInput.value;
+            const match = rangeStr.replace(/,/g, '').match(/([\d.]+)\s*[-–—to]+\s*([\d.]+)/i);
+            if (match) {
+              const min = parseFloat(match[1]);
+              const max = parseFloat(match[2]);
+              if (!isNaN(min) && !isNaN(max)) {
+                matchedVal = String(Math.round(((min + max) / 2) * 10) / 10);
+              }
+            }
+          }
+
+          if (matchedVal) {
+            valInput.value = matchedVal;
+          }
+        }
+      });
+      updateFlags();
+    });
+  }
+})();
+</script>
 {% endblock %}

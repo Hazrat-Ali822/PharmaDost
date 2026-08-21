@@ -318,7 +318,8 @@ def visit_create(request):
                 request,
                 f"{patient.full_name} ({patient.mrn}) booked with "
                 f"Dr. {appointment.doctor.full_name} — token {appointment.token_no}.")
-            return redirect('appointment_slip', pk=appointment.pk)
+            from django.urls import reverse
+            return redirect(reverse('appointment_slip', args=[appointment.pk]) + '?autoprint=1')
     else:
         visit_form = VisitForm(user=request.user)
         patient_form = PatientForm() if is_new else None
@@ -357,7 +358,8 @@ def appointment_create(request):
             with transaction.atomic():
                 appt = bill_and_notify(form.save(), request.user)
             messages.success(request, 'Appointment booked successfully.')
-            return redirect('appointment_list')
+            from django.urls import reverse
+            return redirect(reverse('appointment_slip', args=[appt.pk]) + '?autoprint=1')
     else:
         from django.utils import timezone
         now = timezone.localtime(timezone.now())
@@ -531,4 +533,52 @@ def opd_tv_api(request):
         'timestamp': timezone.now().isoformat(),
         'queue': queue,
     })
+
+
+def patient_token_track(request, pk):
+    """Public Mobile Live Token Tracking view for patients (scanned via QR code on slip)."""
+    appointment = get_object_or_404(
+        Appointment.objects.select_related('patient', 'doctor', 'doctor__department', 'patient__hospital'),
+        pk=pk
+    )
+    today = appointment.appointment_date
+
+    # Find doctor queue for today
+    appts = Appointment.objects.filter(
+        doctor=appointment.doctor,
+        appointment_date=today
+    ).order_by('token_no')
+
+    # Currently consulting
+    in_consult = appts.filter(status='IN_CONSULT').first()
+    if not in_consult:
+        in_consult = appts.filter(status='ARRIVED').first()
+
+    # Calculate patients ahead of this token
+    patients_ahead = appts.filter(
+        status__in=['BOOKED', 'ARRIVED'],
+        token_no__lt=appointment.token_no
+    ).count()
+
+    # JSON API response if polled via AJAX
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.GET.get('format') == 'json':
+        return JsonResponse({
+            'token_no': appointment.token_no,
+            'status': appointment.get_status_display(),
+            'current_token': in_consult.token_no if in_consult else None,
+            'patients_ahead': patients_ahead,
+            'is_in_consult': appointment.status == 'IN_CONSULT',
+            'is_done': appointment.status == 'DONE',
+        })
+
+    from user_mgmt.models import SiteSettings
+    branding = appointment.patient.hospital or SiteSettings.load()
+
+    return render(request, 'opd/patient_token_track.html', {
+        'appointment': appointment,
+        'in_consult': in_consult,
+        'patients_ahead': patients_ahead,
+        'branding': branding,
+    })
+
 

@@ -184,9 +184,9 @@ class VisitBookingTest(ReceptionBase):
         self.assertEqual(patient.mrn, 'SGH-000001')
         appointment = Appointment.objects.get(patient=patient)
         self.assertEqual(appointment.doctor, self.sitting)
-        self.assertEqual(appointment.token_no, 1)
-        # the slip is where the desk lands
-        self.assertEqual(resp['Location'], reverse('appointment_slip', args=[appointment.pk]))
+        # the slip is where the desk lands (with auto-print enabled)
+        self.assertTrue(resp['Location'].startswith(reverse('appointment_slip', args=[appointment.pk])))
+        self.assertIn('autoprint=1', resp['Location'])
 
     def test_booking_raises_the_consultation_invoice(self):
         self.client.post(reverse('visit_create'), {
@@ -358,4 +358,31 @@ class TvDisplayTest(ReceptionBase):
         self.assertTrue(data['success'])
         self.assertTrue(len(data['queue']) > 0)
         self.assertEqual(data['queue'][0]['doctor_name'], 'Ahmed Ali')
+
+
+class TokenTrackTest(ReceptionBase):
+    def setUp(self):
+        super().setUp()
+        self.patient = Patient.objects.create(full_name='Kamran Akmal', mrn='KA-1', hospital=self.h)
+        self.appt = Appointment.objects.create(
+            patient=self.patient, doctor=self.sitting,
+            appointment_date=timezone.localdate(), status='BOOKED'
+        )
+
+    def test_patient_can_track_token_publicly(self):
+        # Public tracking does not require client login
+        unauth_client = Client()
+        resp = unauth_client.get(reverse('patient_token_track', args=[self.appt.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'Kamran Akmal')
+        self.assertContains(resp, f'#{self.appt.token_no}')
+
+    def test_patient_token_track_api(self):
+        unauth_client = Client()
+        resp = unauth_client.get(reverse('patient_token_track', args=[self.appt.pk]), HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data['token_no'], self.appt.token_no)
+        self.assertEqual(data['status'], 'Booked')
+
 

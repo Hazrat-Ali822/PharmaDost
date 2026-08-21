@@ -40,12 +40,27 @@
 
     <!-- ---------------- Medicines (multiple) ---------------- -->
     <hr style="border:none;border-top:1px solid var(--border);margin:18px 0">
+
+    <!-- 1-Click Clinical Disease Presets Bar -->
+    <div style="margin-bottom:16px; background:var(--bg); padding:12px 14px; border-radius:10px; border:1px solid var(--border-strong);">
+      <div style="font-weight:700; color:var(--text); font-size:13px; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+        <span>⚡ 1-Click Clinical Disease Presets (Auto-fills Diagnosis, Advice &amp; Medicines):</span>
+      </div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <button type="button" class="btn sm alt disease-preset-btn" data-preset="flu" style="font-weight:700;">🤧 Viral Flu / URI</button>
+        <button type="button" class="btn sm alt disease-preset-btn" data-preset="gastro" style="font-weight:700;">🤢 Gastroenteritis</button>
+        <button type="button" class="btn sm alt disease-preset-btn" data-preset="typhoid" style="font-weight:700;">🌡️ Typhoid / Enteric</button>
+        <button type="button" class="btn sm alt disease-preset-btn" data-preset="htn" style="font-weight:700;">❤️ Hypertension</button>
+        <button type="button" class="btn sm alt disease-preset-btn" data-preset="diabetes" style="font-weight:700;">🩸 Diabetes Mellitus</button>
+        <button type="button" class="btn sm alt disease-preset-btn" data-preset="pain" style="font-weight:700;">💥 Body Aches / Pain</button>
+      </div>
+    </div>
     
     {% if presets or prev_rx %}
     <div style="margin-bottom:18px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; background:var(--bg); padding:10px 14px; border-radius:8px; border:1px solid var(--border-strong);">
       {% if presets %}
       <label style="font-weight:700; color:var(--text); font-size:13.5px; display:flex; align-items:center; gap:6px;">
-        ⚡ Quick Rx Template:
+        📋 Hospital Rx Template:
       </label>
       <select id="preset-select" style="padding:6px 12px; border-radius:8px; border:1px solid var(--border-strong); background:var(--surface); color:var(--text); font-weight:600; min-width:200px;">
         <option value="">-- Select Template --</option>
@@ -323,10 +338,112 @@
           }
         }
         if (target) {
-          target.value = (target.value ? target.value + ', ' : '') + inst;
-          target.focus();
+  // 1-Click Clinical Disease Presets Dictionary & Handler
+  const CLINICAL_DISEASE_PRESETS = {
+    flu: {
+      complaint: "Fever, runny nose, sore throat, generalized malaise x 3 days",
+      diagnosis: "Acute Upper Respiratory Tract Infection (Viral Flu)",
+      notes: "Steam inhalation BD, warm fluids, adequate rest. Follow up if fever > 101°F persists beyond 3 days.",
+      items: [
+        { name: "Tab Paracetamol 500mg", dosage: "1 tab TDS (Thrice Daily)", duration_days: 5, instructions: "After meals" },
+        { name: "Tab Cetirizine 10mg", dosage: "1 tab OD (At Bedtime)", duration_days: 5, instructions: "Night time" },
+        { name: "Syp / Tab Cough Expectorant", dosage: "2 tsp TDS", duration_days: 5, instructions: "After meals" },
+      ]
+    },
+    gastro: {
+      complaint: "Watery loose stools, nausea, vomiting, mild abdominal cramping x 2 days",
+      diagnosis: "Acute Gastroenteritis / Infectious Diarrhea",
+      notes: "High fluid intake with ORS, avoid spicy / dairy / oily food. Soft diet (Khichdi, yogurt, banana).",
+      items: [
+        { name: "ORS Sachet (Oral Rehydration Salts)", dosage: "1 sachet in 1L water SOS", duration_days: 3, instructions: "Drink after every loose stool" },
+        { name: "Tab Ciprofloxacin 500mg / Metronidazole 400mg", dosage: "1 tab BD", duration_days: 5, instructions: "After meals" },
+        { name: "Tab Dimenhydrinate / Ondansetron 4mg", dosage: "1 tab BD SOS", duration_days: 3, instructions: "30 mins before meals" },
+        { name: "Cap Probiotic / Enterogermina", dosage: "1 cap BD", duration_days: 5, instructions: "After meals" },
+      ]
+    },
+    typhoid: {
+      complaint: "Step-ladder high fever, headache, anorexia, constipation / diarrhea x 5 days",
+      diagnosis: "Enteric Fever / Typhoid Suspected",
+      notes: "Drink boiled water, soft bland diet. Advised CBC and Typhidot / Blood Culture test.",
+      items: [
+        { name: "Tab Cefixime 400mg", dosage: "1 tab BD", duration_days: 7, instructions: "After meals" },
+        { name: "Tab Paracetamol 500mg", dosage: "1-2 tab TDS SOS", duration_days: 5, instructions: "For fever > 100°F" },
+        { name: "Cap Omeprazole 20mg", dosage: "1 cap OD", duration_days: 7, instructions: "Empty stomach morning" },
+      ]
+    },
+    htn: {
+      complaint: "Follow-up blood pressure monitoring, mild morning headache",
+      diagnosis: "Essential Hypertension (Follow-up)",
+      notes: "Strict low salt diet, 30 mins daily brisk walk, maintain daily morning & evening BP log.",
+      items: [
+        { name: "Tab Amlodipine 5mg / Losartan 50mg", dosage: "1 tab OD (Morning)", duration_days: 30, instructions: "Before breakfast" },
+      ]
+    },
+    diabetes: {
+      complaint: "Follow-up Diabetes Mellitus Type-2 checkup, mild fatigue",
+      diagnosis: "Type 2 Diabetes Mellitus (Follow-up)",
+      notes: "Diabetic diet (avoid sugar/sweet beverages), daily exercise, check Fasting & Post-prandial Sugar weekly.",
+      items: [
+        { name: "Tab Metformin 500mg / 850mg", dosage: "1 tab BD", duration_days: 30, instructions: "With / after meals" },
+      ]
+    },
+    pain: {
+      complaint: "Generalized body aches, lower back stiffness, muscle fatigue x 3 days",
+      diagnosis: "Acute Musculoskeletal Strain / Myalgia",
+      notes: "Warm compress, avoid strenuous bending/lifting, maintain good posture.",
+      items: [
+        { name: "Tab Diclofenac Sodium / Ibuprofen 400mg", dosage: "1 tab BD", duration_days: 5, instructions: "After full meal" },
+        { name: "Tab Muscle Relaxant (Tizanidine 2mg)", dosage: "1 tab OD (At Bedtime)", duration_days: 5, instructions: "Night time" },
+        { name: "Cap Omeprazole 20mg", dosage: "1 cap OD", duration_days: 5, instructions: "Before breakfast" },
+      ]
+    }
+  };
+
+  document.querySelectorAll('.disease-preset-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const key = this.getAttribute('data-preset');
+      const preset = CLINICAL_DISEASE_PRESETS[key];
+      if (!preset) return;
+
+      const complaintEl = document.querySelector('[name="complaint"]');
+      const diagEl = document.querySelector('[name="diagnosis"]');
+      const notesEl = document.querySelector('[name="notes"]');
+
+      if (complaintEl && (!complaintEl.value || confirm('Replace complaint with preset?'))) complaintEl.value = preset.complaint;
+      if (diagEl) diagEl.value = preset.diagnosis;
+      if (notesEl) notesEl.value = preset.notes;
+
+      preset.items.forEach(item => {
+        let rows = document.querySelectorAll('#med-body tr.med-row');
+        let targetRow = null;
+
+        for (let r of rows) {
+          const medSel = r.querySelector('select[id$="-medicine"]');
+          const customInp = r.querySelector('input[id$="-custom_medicine_name"]');
+          if ((!medSel || !medSel.value) && (!customInp || !customInp.value)) {
+            targetRow = r;
+            break;
+          }
         }
-      }
+
+        if (!targetRow) {
+          addRow('meds', 'med-body', 'med-empty');
+          rows = document.querySelectorAll('#med-body tr.med-row');
+          targetRow = rows[rows.length - 1];
+        }
+
+        if (targetRow) {
+          const customInput = targetRow.querySelector('input[id$="-custom_medicine_name"]');
+          const dosageInput = targetRow.querySelector('input[id$="-dosage"]');
+          const daysInput = targetRow.querySelector('input[id$="-duration_days"]');
+          const instInput = targetRow.querySelector('input[id$="-instructions"]');
+
+          if (customInput) customInput.value = item.name;
+          if (dosageInput) dosageInput.value = item.dosage;
+          if (daysInput) daysInput.value = item.duration_days;
+          if (instInput) instInput.value = item.instructions;
+        }
+      });
     });
   });
 })();

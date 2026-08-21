@@ -509,18 +509,18 @@
   function addOrBump(m){
     // if an existing row already has this medicine (in unit-compatible mode), bump its qty
     const rows = [...tbody.querySelectorAll('tr')];
-    const existing = rows.find(tr => tr.querySelector('.med-select').value == m.id);
+    const existing = rows.find(tr => tr.querySelector('.med-select') && tr.querySelector('.med-select').value == m.id);
     if (existing){
       const q = existing.querySelector('.dispqty');
       q.value = (parseInt(q.value || '0', 10) + 1);
       q.dispatchEvent(new Event('input'));
-      q.focus();
-      q.select();
     } else {
-      const newTr = renderRow(m.id);
-      const q = newTr.querySelector('.dispqty');
-      q.focus();
-      q.select();
+      renderRow(m.id);
+    }
+    // Keep focus in barcode input so subsequent scans happen continuously without delay
+    if (scanEl) {
+      scanEl.focus();
+      scanEl.select();
     }
   }
 
@@ -707,13 +707,21 @@
     } catch(e) { /* ignore audio failure */ }
   }
 
-  // POS Keyboard Shortcuts (F2 to scan, F4 / Ctrl+Enter to checkout)
+  // POS Keyboard Shortcuts (F2: scan, F8: Fast Cash, F9 / Ctrl+Enter: finalize bill)
   document.addEventListener('keydown', function(e) {
-    if (e.key === 'F2') {
+    if (e.key === 'F2' || (e.altKey && e.key === 's')) {
       e.preventDefault();
-      scanEl.focus();
-      scanEl.select();
-    } else if (e.key === 'F4' || (e.ctrlKey && e.key === 'Enter')) {
+      if (scanEl) {
+        scanEl.focus();
+        scanEl.select();
+      }
+    } else if (e.key === 'F8') {
+      e.preventDefault();
+      if (paidEl) {
+        paidEl.focus();
+        paidEl.select();
+      }
+    } else if (e.key === 'F9' || (e.ctrlKey && e.key === 'Enter')) {
       e.preventDefault();
       const submitBtn = document.querySelector('#bill-form button[type="submit"]');
       if (submitBtn) submitBtn.click();

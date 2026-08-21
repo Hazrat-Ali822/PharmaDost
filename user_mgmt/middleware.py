@@ -47,6 +47,8 @@ ALLOWED_NAMES = {
 # page is a 302 it does not follow, so the punches simply never arrive and
 # nothing anywhere says so.
 'biometric_cdata', 'biometric_getrequest', 'biometric_devicecmd',
+# Public Patient Live Token Status Tracker (scanned via QR code on slip)
+'patient_token_track',
 }
 
 

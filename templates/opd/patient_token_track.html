@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Token #{{ appointment.token_no }} — Live Queue Status</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Fira+Code:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b1120;
+      --card-bg: #131d33;
+      --card-border: #1e293b;
+      --primary: #0284c7;
+      --accent: #38bdf8;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin: auto 0;
+    }
+
+    .header-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 18px;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .hospital-title {
+      font-size: 19px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .hospital-sub {
+      font-size: 12px;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 2px;
+    }
+
+    .main-token-card {
+      background: linear-gradient(180deg, #162444 0%, var(--card-bg) 100%);
+      border: 2px solid var(--primary);
+      border-radius: 24px;
+      padding: 24px 20px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(2, 132, 199, 0.2);
+      position: relative;
+    }
+
+    .your-token-tag {
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+    }
+
+    .token-number {
+      font-family: 'Fira Code', monospace;
+      font-size: 64px;
+      font-weight: 900;
+      color: #ffffff;
+      line-height: 1.1;
+      margin: 8px 0;
+      text-shadow: 0 0 25px rgba(56, 189, 248, 0.5);
+    }
+
+    .patient-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .queue-status-banner {
+      margin-top: 18px;
+      padding: 14px;
+      border-radius: 14px;
+      background: #090e1b;
+      border: 1px solid var(--card-border);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .status-text {
+      font-size: 16px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .pulse-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 10px var(--success);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.3); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    .ahead-count {
+      font-size: 13.5px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .details-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      font-size: 13.5px;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      padding-bottom: 8px;
+    }
+    .info-row:last-child { border-bottom: none; padding-bottom: 0; }
+
+    .info-label { color: var(--muted); }
+    .info-val { font-weight: 700; color: #ffffff; }
+
+    .live-footer {
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    
+    <!-- Hospital Header -->
+    <div class="header-card">
+      <h1 class="hospital-title">{{ branding.brand_name|default:appointment.patient.hospital.name|default:"Hospital OPD" }}</h1>
+      <div class="hospital-sub">Live Patient Queue Tracker</div>
+    </div>
+
+    <!-- Token Card -->
+    <div class="main-token-card">
+      <div class="your-token-tag">Your Token Number</div>
+      <div class="token-number">#{{ appointment.token_no }}</div>
+      <div class="patient-name">{{ appointment.patient.full_name }}</div>
+
+      <div class="queue-status-banner" id="statusBanner">
+        {% if appointment.status == 'IN_CONSULT' %}
+          <div class="status-text" style="color:var(--success);">
+            <span class="pulse-dot"></span> It's Your Turn! Please proceed to doctor room.
+          </div>
+        {% elif appointment.status == 'DONE' %}
+          <div class="status-text" style="color:var(--muted);">
+            ✓ Consultation Completed
+          </div>
+        {% else %}
+          <div class="status-text" style="color:var(--accent);">
+            <span class="pulse-dot"></span> Waiting for Doctor
+          </div>
+          <div class="ahead-count" id="aheadText">
+            {% if patients_ahead == 0 %}
+              You are next in line! Keep ready.
+            {% else %}
+              <strong>{{ patients_ahead }}</strong> patient{{ patients_ahead|pluralize }} ahead of you
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Doctor Details -->
+    <div class="details-card">
+      <div class="info-row">
+        <span class="info-label">Doctor</span>
+        <span class="info-val">Dr. {{ appointment.doctor.full_name }}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Department</span>
+        <span class="info-val">{{ appointment.doctor.department.name|default:"General OPD" }}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Date</span>
+        <span class="info-val">{{ appointment.appointment_date|date:"d M Y" }}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Currently Consulting</span>
+        <span class="info-val" style="color:var(--accent);" id="servingToken">
+          {% if in_consult %}Token #{{ in_consult.token_no }}{% else %}Ready{% endif %}
+        </span>
+      </div>
+    </div>
+
+    <div class="live-footer">
+      <span style="display:inline-block; width:7px; height:7px; border-radius:50%; background:#10b981;"></span>
+      <span>Auto-updating live queue (No reload needed)</span>
+    </div>
+
+  </div>
+
+  <script>
+    (function () {
+      let isConsultingPrev = {% if appointment.status == 'IN_CONSULT' %}true{% else %}false{% endif %};
+
+      function playTurnChime() {
+        try {
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          const now = ctx.currentTime;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(587.33, now);
+          osc.frequency.setValueAtTime(880.00, now + 0.2);
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 1.0);
+        } catch(e) {}
+      }
+
+      async function pollStatus() {
+        try {
+          const resp = await fetch(window.location.href, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+          });
+          if (!resp.ok) return;
+          const data = await resp.json();
+
+          const servingEl = document.getElementById('servingToken');
+          if (servingEl) {
+            servingEl.textContent = data.current_token ? 'Token #' + data.current_token : 'Ready';
+          }
+
+          const banner = document.getElementById('statusBanner');
+          if (banner) {
+            if (data.is_in_consult) {
+              if (!isConsultingPrev) {
+                playTurnChime();
+                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+              }
+              isConsultingPrev = true;
+              banner.innerHTML = `
+                <div class="status-text" style="color:var(--success);">
+                  <span class="pulse-dot"></span> It's Your Turn! Please enter the doctor's room.
+                </div>`;
+            } else if (data.is_done) {
+              banner.innerHTML = `
+                <div class="status-text" style="color:var(--muted);">
+                  ✓ Consultation Completed
+                </div>`;
+            } else {
+              const aheadMsg = data.patients_ahead === 0
+                ? 'You are next in line! Please wait near the room.'
+                : `<strong>${data.patients_ahead}</strong> patient${data.patients_ahead === 1 ? '' : 's'} ahead of you`;
+              banner.innerHTML = `
+                <div class="status-text" style="color:var(--accent);">
+                  <span class="pulse-dot"></span> Waiting for Doctor
+                </div>
+                <div class="ahead-count">${aheadMsg}</div>`;
+            }
+          }
+        } catch(e) {}
+      }
+
+      setInterval(pollStatus, 6000);
+    })();
+  </script>
+</body>
+</html>

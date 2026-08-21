@@ -20,4 +20,5 @@ urlpatterns = [
     path('payouts/<int:pk>/', views.payout_doctor, name='payout_doctor'),
     path('tv/', views.opd_tv_display, name='opd_tv_display'),
     path('tv/api/', views.opd_tv_api, name='opd_tv_api'),
+    path('track/<int:pk>/', views.patient_token_track, name='patient_token_track'),
 ]
