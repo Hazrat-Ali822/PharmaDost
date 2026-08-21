@@ -436,12 +436,18 @@ def appointment_update_status(request, pk):
     return JsonResponse({'success': False, 'error': 'Invalid status'}, status=400)
 
 
-def _get_tv_queue_data(user):
+def _get_tv_queue_data(user, department_id=None):
     today = timezone.localdate()
     doctors = doctors_with_availability(user)
+    if department_id:
+        try:
+            doctors = doctors.filter(department_id=department_id)
+        except Exception:
+            pass
+
     sitting, away = split_by_availability(doctors)
 
-    # If some doctors are sitting now, show them; otherwise show all active doctors
+    # If some doctors are sitting now, prioritize them; otherwise show all active doctors
     display_list = sitting if sitting else away
 
     queue = []
@@ -454,23 +460,31 @@ def _get_tv_queue_data(user):
             appointment_date=today
         ).select_related('patient').order_by('token_no')
 
-        # Serving: in consult, or first arrived
+        # 1. Serving priority: IN_CONSULT -> ARRIVED -> first BOOKED
         in_consult = appts.filter(status='IN_CONSULT').first()
+        is_active_consult = True
         if not in_consult:
             in_consult = appts.filter(status='ARRIVED').first()
+            is_active_consult = False
+        if not in_consult:
+            in_consult = appts.filter(status='BOOKED').first()
+            is_active_consult = False
 
         waiting_qs = appts.filter(status__in=['BOOKED', 'ARRIVED'])
         if in_consult:
             waiting_qs = waiting_qs.exclude(pk=in_consult.pk)
 
-        waiting = list(waiting_qs[:6])
+        waiting = list(waiting_qs[:10])
         done_count = appts.filter(status='DONE').count()
         total_count = appts.exclude(status='CANCELLED').count()
+
+        serving_label = 'Now Consulting' if is_active_consult else 'Calling / Up Next'
 
         queue.append({
             'doctor_id': doc.pk,
             'doctor_name': doc.full_name,
             'department': doc.department.name if doc.department else 'General OPD',
+            'department_id': doc.department_id if doc.department else None,
             'specialty': doc.specialty or '',
             'is_sitting': state.get('available', False) if isinstance(state, dict) else False,
             'state_label': state.get('label', '') if isinstance(state, dict) else '',
@@ -478,10 +492,13 @@ def _get_tv_queue_data(user):
                 'token_no': in_consult.token_no,
                 'patient_name': in_consult.patient.full_name,
                 'status': in_consult.get_status_display(),
+                'label': serving_label,
+                'is_active_consult': is_active_consult,
             } if in_consult else None,
             'waiting': [{
                 'token_no': w.token_no,
                 'patient_name': w.patient.full_name,
+                'status': w.get_status_display(),
             } for w in waiting],
             'done_count': done_count,
             'total_count': total_count,
@@ -493,17 +510,22 @@ def _get_tv_queue_data(user):
 @feature_required('tv_display', 'opd')
 def opd_tv_display(request):
     """Full-screen Live OPD Waiting Hall TV Display for public TV / monitors."""
-    queue = _get_tv_queue_data(request.user)
+    dept_id = request.GET.get('dept')
+    queue = _get_tv_queue_data(request.user, department_id=dept_id)
+    departments = Department.objects.filter(is_active=True).order_by('name')
     return render(request, 'opd/tv_display.html', {
         'queue': queue,
         'today': timezone.localdate(),
+        'departments': departments,
+        'selected_dept': dept_id,
     })
 
 
 @feature_required('tv_display', 'opd')
 def opd_tv_api(request):
     """JSON API endpoint for background auto-refreshing the TV display."""
-    queue = _get_tv_queue_data(request.user)
+    dept_id = request.GET.get('dept')
+    queue = _get_tv_queue_data(request.user, department_id=dept_id)
     return JsonResponse({
         'success': True,
         'timestamp': timezone.now().isoformat(),

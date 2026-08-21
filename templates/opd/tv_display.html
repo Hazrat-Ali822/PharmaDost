@@ -6,16 +6,16 @@
   <title>Live OPD Waiting Hall — {{ branding.brand_name|default:"Hospital Queue" }}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Fira+Code:wght@600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Fira+Code:wght@600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-dark: #090d16;
-      --card-bg: #131b2e;
-      --card-border: #1e293b;
+      --bg-dark: #070b14;
+      --card-bg: #111827;
+      --card-border: #1f2937;
       --primary: {{ branding.primary_color|default:"#0284c7" }};
       --accent: {{ branding.accent_color|default:"#38bdf8" }};
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
+      --text-main: #f9fafb;
+      --text-muted: #9ca3af;
       --success: #10b981;
       --warning: #f59e0b;
       --danger: #ef4444;
@@ -36,14 +36,15 @@
 
     /* Top Bar Header */
     .tv-header {
-      background: rgba(19, 27, 46, 0.95);
+      background: rgba(17, 24, 39, 0.95);
       border-bottom: 2px solid var(--card-border);
-      padding: 16px 32px;
+      padding: 14px 28px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       backdrop-filter: blur(12px);
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      z-index: 10;
     }
 
     .hospital-brand {
@@ -53,23 +54,22 @@
     }
 
     .hospital-logo {
-      height: 48px;
+      height: 46px;
       width: auto;
-      max-width: 160px;
+      max-width: 150px;
       object-fit: contain;
     }
 
     .hospital-title {
-      font-size: 26px;
+      font-size: 24px;
       font-weight: 800;
       letter-spacing: -0.02em;
       color: #ffffff;
-      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
     }
 
     .hospital-subtitle {
-      font-size: 13px;
-      font-weight: 600;
+      font-size: 12px;
+      font-weight: 700;
       color: var(--accent);
       text-transform: uppercase;
       letter-spacing: 0.1em;
@@ -78,7 +78,32 @@
     .header-right {
       display: flex;
       align-items: center;
-      gap: 24px;
+      gap: 20px;
+    }
+
+    .dept-filter-bar {
+      display: flex;
+      gap: 6px;
+      background: #1f2937;
+      padding: 4px;
+      border-radius: 10px;
+    }
+
+    .dept-pill {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 5px 12px;
+      border-radius: 7px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+    .dept-pill.active, .dept-pill:hover {
+      background: var(--primary);
+      color: #ffffff;
     }
 
     .live-clock {
@@ -87,14 +112,14 @@
 
     .clock-time {
       font-family: 'Fira Code', monospace;
-      font-size: 28px;
-      font-weight: 700;
+      font-size: 26px;
+      font-weight: 800;
       color: #ffffff;
       letter-spacing: 0.05em;
     }
 
     .clock-date {
-      font-size: 13.5px;
+      font-size: 12px;
       font-weight: 600;
       color: var(--text-muted);
     }
@@ -105,14 +130,14 @@
     }
 
     .tv-btn {
-      background: #1e293b;
-      border: 1px solid #334155;
+      background: #1f2937;
+      border: 1px solid #374151;
       color: var(--text-main);
-      padding: 8px 12px;
+      padding: 7px 12px;
       border-radius: 8px;
       cursor: pointer;
-      font-size: 13px;
-      font-weight: 600;
+      font-size: 12.5px;
+      font-weight: 700;
       transition: all 0.15s ease;
       display: flex;
       align-items: center;
@@ -123,18 +148,50 @@
       border-color: var(--primary);
     }
 
+    /* Paging Bar for 20-30 Doctors */
+    .paging-strip {
+      background: #0d1322;
+      border-bottom: 1px solid var(--card-border);
+      padding: 8px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .page-indicators {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .page-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #374151;
+      transition: all 0.2s ease;
+    }
+    .page-dot.active {
+      background: var(--accent);
+      width: 22px;
+      border-radius: 6px;
+    }
+
     /* Main Board Grid */
     .tv-main {
       flex: 1;
-      padding: 24px 32px;
+      padding: 20px 28px;
       display: flex;
       flex-direction: column;
     }
 
     .doctor-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-      gap: 24px;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 20px;
       width: 100%;
       flex: 1;
     }
@@ -143,11 +200,11 @@
     .doc-tv-card {
       background: var(--card-bg);
       border: 2px solid var(--card-border);
-      border-radius: 20px;
-      padding: 24px;
+      border-radius: 18px;
+      padding: 22px;
       display: flex;
       flex-direction: column;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
       position: relative;
       overflow: hidden;
       transition: transform 0.2s ease, border-color 0.2s ease;
@@ -160,38 +217,56 @@
 
     .doc-head {
       border-bottom: 1px solid var(--card-border);
-      padding-bottom: 14px;
-      margin-bottom: 18px;
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
     }
 
     .doc-name {
-      font-size: 22px;
+      font-size: 21px;
       font-weight: 800;
       color: #ffffff;
-      margin-bottom: 4px;
+      margin-bottom: 3px;
     }
 
     .doc-dept {
       display: inline-block;
-      background: #1e293b;
+      background: #1f2937;
       color: var(--accent);
-      font-size: 12px;
-      font-weight: 700;
+      font-size: 11.5px;
+      font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      padding: 3px 10px;
+      padding: 3px 9px;
       border-radius: 6px;
+    }
+
+    .sitting-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.3);
     }
 
     /* Serving Token Area */
     .serving-section {
-      background: #0b1120;
-      border: 2px solid #1e293b;
-      border-radius: 16px;
-      padding: 18px;
+      background: #080e1a;
+      border: 2px solid #1f2937;
+      border-radius: 14px;
+      padding: 16px;
       text-align: center;
-      margin-bottom: 18px;
+      margin-bottom: 16px;
       position: relative;
+    }
+
+    .serving-section.calling-active {
+      border-color: rgba(56, 189, 248, 0.5);
+      background: linear-gradient(180deg, #091427 0%, #080e1a 100%);
     }
 
     .serving-label {
@@ -207,6 +282,10 @@
       gap: 6px;
     }
 
+    .serving-label.amber {
+      color: var(--warning);
+    }
+
     .pulse-dot {
       width: 8px;
       height: 8px;
@@ -214,6 +293,10 @@
       border-radius: 50%;
       box-shadow: 0 0 10px var(--success);
       animation: pulse 1.5s infinite;
+    }
+    .pulse-dot.amber {
+      background: var(--warning);
+      box-shadow: 0 0 10px var(--warning);
     }
 
     @keyframes pulse {
@@ -224,7 +307,7 @@
 
     .token-huge {
       font-family: 'Fira Code', monospace;
-      font-size: 48px;
+      font-size: 44px;
       font-weight: 900;
       color: #ffffff;
       line-height: 1.1;
@@ -232,10 +315,11 @@
     }
 
     .patient-serving-name {
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--text-muted);
-      margin-top: 4px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #38bdf8;
+      margin-top: 6px;
+      letter-spacing: 0.01em;
     }
 
     /* Waiting Next List */
@@ -244,8 +328,8 @@
     }
 
     .waiting-title {
-      font-size: 12px;
-      font-weight: 700;
+      font-size: 11.5px;
+      font-weight: 800;
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.05em;
@@ -254,26 +338,50 @@
       justify-content: space-between;
     }
 
-    .waiting-pills {
+    .waiting-list {
       display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
+      flex-direction: column;
+      gap: 6px;
     }
 
-    .wait-pill {
-      background: #1e293b;
-      border: 1px solid #334155;
+    .wait-row {
+      background: #1a2234;
+      border: 1px solid #283548;
       padding: 6px 12px;
       border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       font-size: 13.5px;
-      font-weight: 700;
-      color: #e2e8f0;
+    }
+
+    .wait-token-tag {
       font-family: 'Fira Code', monospace;
+      font-weight: 800;
+      color: var(--accent);
+      background: #0f172a;
+      padding: 2px 8px;
+      border-radius: 5px;
+      font-size: 13px;
+    }
+
+    .wait-patient-name {
+      font-weight: 600;
+      color: #e2e8f0;
+      margin-left: 10px;
+      flex: 1;
+    }
+
+    .wait-status-tag {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 700;
     }
 
     .empty-queue {
       color: var(--text-muted);
-      font-size: 13.5px;
+      font-size: 13px;
       font-weight: 500;
       font-style: italic;
       padding: 12px 0;
@@ -284,7 +392,7 @@
     .tv-footer {
       background: #0b1120;
       border-top: 1px solid var(--card-border);
-      padding: 12px 32px;
+      padding: 12px 28px;
       display: flex;
       align-items: center;
       overflow: hidden;
@@ -306,7 +414,7 @@
     .ticker-text {
       white-space: nowrap;
       overflow: hidden;
-      font-size: 14.5px;
+      font-size: 14px;
       font-weight: 600;
       color: #e2e8f0;
     }
@@ -336,6 +444,16 @@
       </div>
     </div>
 
+    <!-- Department Quick Filter -->
+    {% if departments %}
+    <div class="dept-filter-bar" id="deptFilterBar">
+      <button type="button" class="dept-pill active" data-dept="all">All Departments</button>
+      {% for dept in departments %}
+      <button type="button" class="dept-pill" data-dept="{{ dept.id }}">{{ dept.name }}</button>
+      {% endfor %}
+    </div>
+    {% endif %}
+
     <div class="header-right">
       <div class="live-clock">
         <div class="clock-time" id="clockTime">--:--:--</div>
@@ -353,41 +471,61 @@
     </div>
   </header>
 
+  <!-- Paging Indicator Strip (For 20-30 Doctors) -->
+  <div class="paging-strip" id="pagingStrip" style="display:none;">
+    <div id="pagingLabel">Displaying Doctors 1–6</div>
+    <div class="page-indicators" id="pageDots"></div>
+    <div id="pagingTimer">Rotating in 10s</div>
+  </div>
+
   <!-- Main Display Grid -->
   <main class="tv-main">
     <div class="doctor-grid" id="doctorGrid">
       {% for d in queue %}
-      <div class="doc-tv-card" id="doc-card-{{ d.doctor_id }}">
+      <div class="doc-tv-card {% if d.serving and d.serving.is_active_consult %}active-calling{% endif %}" id="doc-card-{{ d.doctor_id }}" data-dept="{{ d.department_id|default:'' }}">
         <div class="doc-head">
-          <div class="doc-name">Dr. {{ d.doctor_name }}</div>
-          <span class="doc-dept">{{ d.department }} {% if d.specialty %}· {{ d.specialty }}{% endif %}</span>
+          <div>
+            <div class="doc-name">Dr. {{ d.doctor_name }}</div>
+            <span class="doc-dept">{{ d.department }} {% if d.specialty %}· {{ d.specialty }}{% endif %}</span>
+          </div>
+          {% if d.is_sitting %}
+            <span class="sitting-badge">● In OPD</span>
+          {% else %}
+            <span class="sitting-badge" style="background:#374151; color:#9ca3af; border-color:#4b5563;">{{ d.state_label|default:"On Roster" }}</span>
+          {% endif %}
         </div>
 
-        <div class="serving-section">
-          <div class="serving-label">
-            <span class="pulse-dot"></span> Now Consulting
+        <div class="serving-section {% if d.serving %}calling-active{% endif %}">
+          <div class="serving-label {% if d.serving and not d.serving.is_active_consult %}amber{% endif %}">
+            <span class="pulse-dot {% if d.serving and not d.serving.is_active_consult %}amber{% endif %}"></span>
+            {{ d.serving.label|default:"Now Consulting" }}
           </div>
+
           {% if d.serving %}
             <div class="token-huge">TOKEN #{{ d.serving.token_no }}</div>
             <div class="patient-serving-name">{{ d.serving.patient_name }}</div>
           {% else %}
-            <div class="token-huge" style="color:var(--text-muted); font-size:32px; padding:8px 0;">READY</div>
-            <div class="patient-serving-name">Waiting for next patient</div>
+            <div class="token-huge" style="color:var(--text-muted); font-size:30px; padding:6px 0;">READY</div>
+            <div class="patient-serving-name" style="color:var(--text-muted); font-size:14px;">Waiting for next patient</div>
           {% endif %}
         </div>
 
         <div class="waiting-section">
           <div class="waiting-title">
             <span>Next in Line</span>
-            <span>Total: {{ d.waiting_count }} waiting</span>
+            <span>{{ d.waiting_count }} waiting</span>
           </div>
-          <div class="waiting-pills">
+          <div class="waiting-list">
             {% if d.waiting %}
               {% for w in d.waiting %}
-                <span class="wait-pill">#{{ w.token_no }}</span>
+                <div class="wait-row">
+                  <span class="wait-token-tag">#{{ w.token_no }}</span>
+                  <span class="wait-patient-name">{{ w.patient_name }}</span>
+                  <span class="wait-status-tag">{{ w.status }}</span>
+                </div>
               {% endfor %}
             {% else %}
-              <div class="empty-queue">Queue is currently clear</div>
+              <div class="empty-queue">No further patients in waiting line</div>
             {% endif %}
           </div>
         </div>
@@ -405,7 +543,7 @@
   <footer class="tv-footer">
     <div class="ticker-tag">Notice</div>
     <div class="ticker-text">
-      Please keep your token slip ready. When your token is called, please proceed directly to the designated doctor room.
+      Please keep your token slip ready. When your token number &amp; name is called, proceed directly to the designated doctor room.
     </div>
     <div class="conn-status" id="connStatus">
       <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981;"></span>
@@ -413,16 +551,18 @@
     </div>
   </footer>
 
-  <!-- Script for Clock, Polling, and Sound Chime -->
+  <!-- Script for Clock, Polling, Carousel Paging, and Sound Chime -->
   <script>
     (function () {
       let soundEnabled = true;
       let lastServingTokens = {};
+      let allQueueData = [];
+      let currentDept = 'all';
 
-      // Initial token state
-      {% for d in queue %}
-        lastServingTokens['{{ d.doctor_id }}'] = {% if d.serving and d.serving.token_no %}{{ d.serving.token_no }}{% else %}null{% endif %};
-      {% endfor %}
+      // Carousel / Multi-Page Settings for 20-30 doctors
+      const DOCTORS_PER_PAGE = 6;
+      let currentPage = 0;
+      let rotationSecondsRemaining = 10;
 
       // 1. Digital Clock
       function updateClock() {
@@ -442,7 +582,6 @@
           const ctx = new (window.AudioContext || window.webkitAudioContext)();
           const now = ctx.currentTime;
 
-          // Note 1 (Ding)
           const osc1 = ctx.createOscillator();
           const gain1 = ctx.createGain();
           osc1.type = 'sine';
@@ -454,7 +593,6 @@
           osc1.start(now);
           osc1.stop(now + 0.8);
 
-          // Note 2 (Dong)
           const osc2 = ctx.createOscillator();
           const gain2 = ctx.createGain();
           osc2.type = 'sine';
@@ -488,14 +626,27 @@
         }
       });
 
-      // 3. Background Polling API (Every 8 seconds)
+      // Department Filter Pills
+      document.querySelectorAll('.dept-pill').forEach(btn => {
+        btn.addEventListener('click', function () {
+          document.querySelectorAll('.dept-pill').forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+          currentDept = this.getAttribute('data-dept');
+          currentPage = 0;
+          renderCurrentPage();
+        });
+      });
+
+      // 3. Background Polling API (Every 6 seconds)
       async function pollQueue() {
         try {
           const resp = await fetch('{% url "opd_tv_api" %}');
           if (!resp.ok) throw new Error('Network response failed');
           const data = await resp.json();
           if (data.success && data.queue) {
-            renderQueue(data.queue);
+            allQueueData = data.queue;
+            checkNewTokens(data.queue);
+            renderCurrentPage();
             document.getElementById('connStatus').innerHTML = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981;"></span> <span>Live Sync</span>';
           }
         } catch (err) {
@@ -503,67 +654,122 @@
         }
       }
 
-      function renderQueue(queue) {
+      function checkNewTokens(queue) {
+        let shouldChime = false;
+        queue.forEach(d => {
+          const prev = lastServingTokens[d.doctor_id];
+          const curr = d.serving ? d.serving.token_no : null;
+          if (curr && curr !== prev) {
+            shouldChime = true;
+          }
+          lastServingTokens[d.doctor_id] = curr;
+        });
+        if (shouldChime) {
+          playChime();
+        }
+      }
+
+      // Render Current Page (Carousel for 20-30 Doctors)
+      function renderCurrentPage() {
         const grid = document.getElementById('doctorGrid');
-        if (!queue || queue.length === 0) {
+        const pagingStrip = document.getElementById('pagingStrip');
+
+        // Filter by selected department if any
+        let filtered = allQueueData;
+        if (currentDept && currentDept !== 'all') {
+          filtered = allQueueData.filter(d => String(d.department_id) === String(currentDept));
+        }
+
+        if (!filtered || filtered.length === 0) {
           grid.innerHTML = `
             <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; color: var(--text-muted);">
-              <h2 style="color: #fff; margin-bottom: 8px;">No Doctors Sitting in OPD Right Now</h2>
+              <h2 style="color: #fff; margin-bottom: 8px;">No Doctors Sitting in this OPD Department</h2>
               <p>Please check the doctor schedule board or contact the reception desk.</p>
             </div>`;
+          if (pagingStrip) pagingStrip.style.display = 'none';
           return;
         }
 
-        let shouldChime = false;
+        const totalPages = Math.ceil(filtered.length / DOCTORS_PER_PAGE);
+        if (currentPage >= totalPages) currentPage = 0;
+
+        if (totalPages > 1) {
+          if (pagingStrip) {
+            pagingStrip.style.display = 'flex';
+            const startIdx = currentPage * DOCTORS_PER_PAGE + 1;
+            const endIdx = Math.min((currentPage + 1) * DOCTORS_PER_PAGE, filtered.length);
+            document.getElementById('pagingLabel').textContent = `Displaying Doctors ${startIdx}–${endIdx} of ${filtered.length} (Page ${currentPage + 1} of ${totalPages})`;
+            
+            let dotsHtml = '';
+            for (let i = 0; i < totalPages; i++) {
+              dotsHtml += `<span class="page-dot ${i === currentPage ? 'active' : ''}"></span>`;
+            }
+            document.getElementById('pageDots').innerHTML = dotsHtml;
+          }
+        } else {
+          if (pagingStrip) pagingStrip.style.display = 'none';
+        }
+
+        const visibleDocs = filtered.slice(currentPage * DOCTORS_PER_PAGE, (currentPage + 1) * DOCTORS_PER_PAGE);
 
         let html = '';
-        queue.forEach(d => {
-          const prevToken = lastServingTokens[d.doctor_id];
-          const currToken = d.serving ? d.serving.token_no : null;
-
-          if (currToken && currToken !== prevToken) {
-            shouldChime = true;
-          }
-          lastServingTokens[d.doctor_id] = currToken;
-
-          const waitingPills = d.waiting && d.waiting.length > 0 
-            ? d.waiting.map(w => `<span class="wait-pill">#${w.token_no}</span>`).join('')
-            : '<div class="empty-queue">Queue is currently clear</div>';
+        visibleDocs.forEach(d => {
+          const sittingBadge = d.is_sitting
+            ? '<span class="sitting-badge">● In OPD</span>'
+            : `<span class="sitting-badge" style="background:#374151; color:#9ca3af; border-color:#4b5563;">${escapeHtml(d.state_label || 'On Roster')}</span>`;
 
           const servingHtml = d.serving
             ? `<div class="token-huge">TOKEN #${d.serving.token_no}</div>
                <div class="patient-serving-name">${escapeHtml(d.serving.patient_name || '')}</div>`
-            : `<div class="token-huge" style="color:var(--text-muted); font-size:32px; padding:8px 0;">READY</div>
-               <div class="patient-serving-name">Waiting for next patient</div>`;
+            : `<div class="token-huge" style="color:var(--text-muted); font-size:30px; padding:6px 0;">READY</div>
+               <div class="patient-serving-name" style="color:var(--text-muted); font-size:14px;">Waiting for next patient</div>`;
+
+          let waitingListHtml = '';
+          if (d.waiting && d.waiting.length > 0) {
+            d.waiting.forEach(w => {
+              waitingListHtml += `
+                <div class="wait-row">
+                  <span class="wait-token-tag">#${w.token_no}</span>
+                  <span class="wait-patient-name">${escapeHtml(w.patient_name || '')}</span>
+                  <span class="wait-status-tag">${escapeHtml(w.status || '')}</span>
+                </div>`;
+            });
+          } else {
+            waitingListHtml = '<div class="empty-queue">No further patients in waiting line</div>';
+          }
+
+          const isAmber = d.serving && !d.serving.is_active_consult;
+          const servingLabel = d.serving ? d.serving.label : 'Now Consulting';
 
           html += `
-            <div class="doc-tv-card ${d.serving ? 'active-calling' : ''}" id="doc-card-${d.doctor_id}">
+            <div class="doc-tv-card ${d.serving && d.serving.is_active_consult ? 'active-calling' : ''}" id="doc-card-${d.doctor_id}">
               <div class="doc-head">
-                <div class="doc-name">Dr. ${escapeHtml(d.doctor_name)}</div>
-                <span class="doc-dept">${escapeHtml(d.department)} ${d.specialty ? '· ' + escapeHtml(d.specialty) : ''}</span>
+                <div>
+                  <div class="doc-name">Dr. ${escapeHtml(d.doctor_name)}</div>
+                  <span class="doc-dept">${escapeHtml(d.department)} ${d.specialty ? '· ' + escapeHtml(d.specialty) : ''}</span>
+                </div>
+                ${sittingBadge}
               </div>
-              <div class="serving-section">
-                <div class="serving-label">
-                  <span class="pulse-dot"></span> Now Consulting
+              <div class="serving-section ${d.serving ? 'calling-active' : ''}">
+                <div class="serving-label ${isAmber ? 'amber' : ''}">
+                  <span class="pulse-dot ${isAmber ? 'amber' : ''}"></span>
+                  ${escapeHtml(servingLabel)}
                 </div>
                 ${servingHtml}
               </div>
               <div class="waiting-section">
                 <div class="waiting-title">
                   <span>Next in Line</span>
-                  <span>Total: ${d.waiting_count} waiting</span>
+                  <span>${d.waiting_count} waiting</span>
                 </div>
-                <div class="waiting-pills">
-                  ${waitingPills}
+                <div class="waiting-list">
+                  ${waitingListHtml}
                 </div>
               </div>
             </div>`;
         });
 
         grid.innerHTML = html;
-        if (shouldChime) {
-          playChime();
-        }
       }
 
       function escapeHtml(str) {
@@ -577,7 +783,29 @@
         }[tag] || tag));
       }
 
-      setInterval(pollQueue, 8000);
+      // Auto-Page Carousel Timer (Every 10 seconds rotate page if multiple pages)
+      setInterval(function () {
+        let filtered = allQueueData;
+        if (currentDept && currentDept !== 'all') {
+          filtered = allQueueData.filter(d => String(d.department_id) === String(currentDept));
+        }
+        const totalPages = Math.ceil((filtered.length || 0) / DOCTORS_PER_PAGE);
+        if (totalPages > 1) {
+          rotationSecondsRemaining--;
+          const timerEl = document.getElementById('pagingTimer');
+          if (timerEl) timerEl.textContent = `Next slide in ${rotationSecondsRemaining}s`;
+
+          if (rotationSecondsRemaining <= 0) {
+            rotationSecondsRemaining = 10;
+            currentPage = (currentPage + 1) % totalPages;
+            renderCurrentPage();
+          }
+        }
+      }, 1000);
+
+      // Initial Fetch & Regular Polling
+      pollQueue();
+      setInterval(pollQueue, 6000);
     })();
   </script>
 </body>
