@@ -60,6 +60,7 @@ FEATURES = {
     'daybook':       {'ADMIN', 'ACCOUNTANT'},
     # Staff HR — attendance, leave, payroll. Management + accounts.
     'hr':            {'ADMIN', 'ACCOUNTANT'},
+    'biometric':     {'ADMIN'},
     # System
     'settings':      {'ADMIN'},
     'audit':         {'ADMIN'},
@@ -112,6 +113,7 @@ FEATURE_GROUPS = [
     ]),
     ('Staff', [
         ('hr', 'Staff HR (attendance, leave, payroll)'),
+        ('biometric', 'Biometric Attendance Machine (ZKTeco Device Sync)'),
     ]),
     ('System', [
         ('settings', 'Settings / Branding'),
@@ -160,8 +162,10 @@ MODULES = [
      ['billing', 'panel', 'expenses', 'cashclosing', 'payouts']),
     ('reports', 'Reports & Analytics', 'Sales, profit, inventory & day-book reports',
      ['reports', 'profit', 'daybook']),
-    ('hr', 'Staff / HR', 'Staff profiles, attendance, leave & payroll',
+    ('hr', 'Staff / HR', 'Staff profiles, daily manual attendance, leave & payroll',
      ['hr']),
+    ('biometric', 'Biometric Machine Sync', 'Biometric terminal registration, fingerprint punch sync & automatic attendance builder',
+     ['biometric']),
 ]
 MODULE_KEYS = [m[0] for m in MODULES]
 

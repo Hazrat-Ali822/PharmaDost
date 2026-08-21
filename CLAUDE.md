@@ -2730,9 +2730,10 @@ almost always means a query moved inside a loop; find that before raising the nu
   - Keyword marketing landing page (`/patient-portal/`) targeting *"digital patient portal Pakistan"*, *"online lab reports"*, and *"live OPD token tracking"*.
   - Full Schema.org JSON-LD structured data and XML sitemap (`/sitemap.xml`) indexing.
   - Documented in `llms.txt` for accurate AI answer engine citations (ChatGPT, Perplexity, Gemini, Claude).
-- **Live OPD Waiting Hall TV Display (`/opd/tv/` & `/opd/tv/api/`)**:
-  - Wall-mounted public Smart TV waiting hall display supporting unauthenticated hospital subdomain access (e.g. `shaheen-health-care.sehatyar.online/opd/tv/`).
-  - Scopes doctors and appointments to the resolved hospital tenant with live rotating carousel pagination for large clinics.
+- **Modular SaaS Architecture & Decoupled Biometric Integration**:
+  - `hr`: Staff profiles, duty rosters, manual 1-click daily attendance (`/hr/attendance/`), leave requests, and payroll.
+  - `biometric`: Dedicated SaaS-controlled module for ZKTeco/ADMS hardware sync, device registration (`/hr/devices/`), fingerprint punch mappings, and automated shift attendance compilation.
+  - SaaS Admin can toggle Biometric Machine Sync ON/OFF per hospital without affecting standard staff management or manual attendance.
 - **Zero DB Load & Defensive Fault-Tolerance**: Single indexed lookup on `patient_id` returning <15 KB compressed payload rendered in <40ms with isolated try-except blocks across clinical modules.
 
 

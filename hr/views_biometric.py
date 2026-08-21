@@ -69,7 +69,7 @@ def _server_address(request):
     return {'host': name, 'port': port, 'secure': request.is_secure()}
 
 
-@feature_required('hr')
+@feature_required('biometric')
 @role_required(['ADMIN'])
 def device_list(request):
     hospital = _hospital(request)
@@ -129,7 +129,7 @@ def _device_save(request, hospital):
     return redirect('hr_biometric_devices')
 
 
-@feature_required('hr')
+@feature_required('biometric')
 @role_required(['ADMIN'])
 def enrolment_map(request):
     """Which enrolment number on the machine is which member of staff.
@@ -186,7 +186,7 @@ def _relink(hospital):
     return linked
 
 
-@feature_required('hr')
+@feature_required('biometric')
 @role_required(['ADMIN'])
 def build_attendance(request):
     """Preview, then write. Never the other way round.
@@ -224,7 +224,7 @@ def build_attendance(request):
     })
 
 
-@feature_required('hr')
+@feature_required('biometric')
 @role_required(['ADMIN'])
 def scan_list(request):
     """The raw events, newest first — for the day somebody disputes a deduction."""
