@@ -66,3 +66,10 @@ class PrescriptionTenantIsolationTest(TestCase):
         # B must not get A's patient pre-selected; a 404 or a clean POS with no
         # pre-selected patient are both acceptable — leaking A's data is not.
         self.assertNotContains(r, 'Alice A', status_code=r.status_code)
+
+    def test_create_renders_successfully_for_admin(self):
+        c = Client(); c.force_login(self.adminA)
+        r = c.get(reverse('prescription_create', args=[self.apptA.id]))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'Alice A')
+

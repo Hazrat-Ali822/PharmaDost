@@ -11,6 +11,7 @@ urlpatterns = [
     path('<int:pk>/items/<int:item_id>/cancel/', views.item_cancel, name='rx_item_cancel'),
     path('presets/', views.preset_list, name='prescription_presets'),
     path('presets/add/', views.preset_create, name='preset_create'),
+    path('presets/create/', views.preset_create, name='prescription_preset_create'),
     path('presets/<int:pk>/edit/', views.preset_edit, name='preset_edit'),
     path('presets/<int:pk>/delete/', views.preset_delete, name='preset_delete'),
 ]
