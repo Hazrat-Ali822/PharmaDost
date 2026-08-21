@@ -23,7 +23,7 @@
   {% if appointment.patient.phone %}
   <a href="https://api.whatsapp.com/send?phone=92{{ appointment.patient.phone|cut:'-'|slice:'-10:' }}&text=Assalam-o-Alaikum%20{{ appointment.patient.full_name|urlencode }},%20your%20appointment%20with%20Dr.%20{{ appointment.doctor.full_name|urlencode }}%20is%20booked.%20Token%20%23{{ appointment.token_no }}.%20Track%20your%20live%20queue%20status%20here:%20{{ request.scheme }}://{{ request.get_host }}{% url 'patient_token_track' appointment.pk %}" 
      target="_blank" 
-     style="background:#25D366; color:#fff; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
+     class="btn-whatsapp">
     📲 WhatsApp Slip
   </a>
   {% endif %}
