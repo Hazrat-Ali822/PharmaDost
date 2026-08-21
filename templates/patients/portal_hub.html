@@ -338,7 +338,10 @@
         <div class="patient-name">{{ patient.full_name }}</div>
         <div class="patient-mrn">MRN: {{ patient.mrn|default:"—" }}</div>
         <div class="patient-tags">
-          <span class="tag">🎂 {{ patient.age_display }} ({{ patient.get_gender_display }})</span>
+          {% if patient.age_display or patient.gender %}
+            <span class="tag">🎂 {% if patient.age_display %}{{ patient.age_display }}{% endif %}{% if patient.gender %} ({{ patient.get_gender_display }}){% endif %}</span>
+          {% endif %}
+          {% if patient.phone %}<span class="tag">📞 {{ patient.phone }}</span>{% endif %}
           {% if patient.blood_group %}<span class="tag tag-accent">🩸 {{ patient.blood_group }}</span>{% endif %}
           {% if patient.panel %}<span class="tag tag-accent">🏥 {{ patient.panel.name }}</span>{% endif %}
           {% if patient.allergies %}<span class="tag tag-danger">⚠️ Allergies: {{ patient.allergies }}</span>{% endif %}
