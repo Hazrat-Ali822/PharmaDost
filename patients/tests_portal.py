@@ -63,7 +63,7 @@ class PatientPortalTests(TestCase):
         r = c.get(url)
         self.assertEqual(r.status_code, 200)
 
-        # POST with phone number
-        r2 = c.post(url, {'query': '03001234567'})
+        # GET with phone number
+        r2 = c.get(url, {'query': '03001234567'})
         self.assertRedirects(r2, reverse('patient_portal_hub', args=[self.patient.portal_token]))
 

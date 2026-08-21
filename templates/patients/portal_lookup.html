@@ -152,11 +152,10 @@
       <div class="error-msg">⚠️ {{ error }}</div>
     {% endif %}
 
-    <form method="post">
-      {% csrf_token %}
+    <form method="get">
       <div class="form-group">
-        <label>Mobile Number or MRN:</label>
-        <input type="text" name="query" placeholder="e.g. 03001234567 or SGH-000001" required autofocus>
+        <label>Mobile Number, MRN, or Name:</label>
+        <input type="text" name="query" value="{{ query|default:'' }}" placeholder="e.g. 03001234567, SD-000009, or Name" required autofocus>
       </div>
       <button type="submit" class="btn-submit">Find My Health Records ➔</button>
     </form>

@@ -543,13 +543,17 @@ def patient_portal_hub(request, token):
     })
 
 
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
 def patient_portal_lookup(request):
     """Public Portal Lookup Page for patients who lost their printed slip/receipt.
     Allows searching by Mobile Phone Number, MRN, CNIC, or Patient Name.
+    Works seamlessly via GET or POST with zero CSRF block.
     """
     error = None
-    if request.method == 'POST':
-        query = (request.POST.get('query') or '').strip()
+    query = (request.GET.get('query') or request.POST.get('query') or '').strip()
+    if query:
         from saas.utils import get_current_hospital
         hospital = get_current_hospital()
         if not hospital and request.user.is_authenticated:
@@ -560,34 +564,33 @@ def patient_portal_lookup(request):
             patients_qs = patients_qs.filter(hospital=hospital)
 
         matched = None
-        if query:
-            # 1. Exact MRN match first (e.g. SD-000009 or SGH-000003)
-            matched = patients_qs.filter(mrn__iexact=query).first()
+        # 1. Exact MRN match first (e.g. SD-000009 or SGH-000003)
+        matched = patients_qs.filter(mrn__iexact=query).first()
 
-            # 2. Number-only MRN (e.g. user typed '9' for SD-000009)
-            if not matched and query.isdigit():
-                num_val = int(query)
-                matched = (patients_qs.filter(mrn__endswith=f"-{num_val:06d}").first() or 
-                           patients_qs.filter(mrn__icontains=f"{num_val:06d}").first() or
-                           patients_qs.filter(id=num_val).first())
+        # 2. Number-only MRN (e.g. user typed '9' for SD-000009)
+        if not matched and query.isdigit():
+            num_val = int(query)
+            matched = (patients_qs.filter(mrn__endswith=f"-{num_val:06d}").first() or 
+                       patients_qs.filter(mrn__icontains=f"{num_val:06d}").first() or
+                       patients_qs.filter(id=num_val).first())
 
-            # 3. Normalized full phone number match (e.g. 03499001990)
-            digits = ''.join(c for c in query if c.isdigit())
-            if not matched and len(digits) >= 7:
-                from .search import annotate_for_search
-                matched = annotate_for_search(patients_qs).filter(phone_digits__contains=digits).first()
+        # 3. Normalized full phone number match (e.g. 03499001990)
+        digits = ''.join(c for c in query if c.isdigit())
+        if not matched and len(digits) >= 7:
+            from .search import annotate_for_search
+            matched = annotate_for_search(patients_qs).filter(phone_digits__contains=digits).first()
 
-            # 4. Standard robust multi-term search (name, MRN substring, CNIC)
-            if not matched:
-                from .search import apply_search
-                matched = apply_search(patients_qs, query).first()
+        # 4. Standard robust multi-term search (name, MRN substring, CNIC)
+        if not matched:
+            from .search import apply_search
+            matched = apply_search(patients_qs, query).first()
 
         if matched and matched.portal_token:
             return redirect('patient_portal_hub', token=matched.portal_token)
         else:
             error = f"No medical record found matching '{query}'. Please check the MRN, Phone Number, or Full Name."
 
-    return render(request, 'patients/portal_lookup.html', {'error': error})
+    return render(request, 'patients/portal_lookup.html', {'error': error, 'query': query})
 
 
 
