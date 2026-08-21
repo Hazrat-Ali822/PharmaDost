@@ -32,7 +32,10 @@ class HospitalSubscriptionMiddleware:
         if path == hospital_login_path or path == f"{hospital_login_path}login/":
             return self.get_response(request)
 
-        # 4. Check if subscription is expired or suspended
+        # 4. Check if subscription is expired or suspended (Demo hospital never expires)
+        if hospital.slug in ('demo', 'sehatyar-demo-hospital'):
+            return self.get_response(request)
+
         today = timezone.now().date()
         if not hospital.is_active or hospital.expiry_date < today:
             return render(request, 'saas/suspended.html', {'hospital': hospital})

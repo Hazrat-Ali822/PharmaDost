@@ -101,6 +101,9 @@ class Command(BaseCommand):
 
         already_seeded = bool(demo and Patient.objects.filter(hospital=demo).exists())
         if already_seeded:
+            demo.expiry_date = timezone.localdate() + timedelta(days=3650)
+            demo.is_active = True
+            demo.save(update_fields=['expiry_date', 'is_active'])
             self._users(demo)  # refresh passwords/roles
             # Top up modules added after the demo was first seeded (panels,
             # emergency, HR, maternity, diagnosis, referral, certificates, blood
