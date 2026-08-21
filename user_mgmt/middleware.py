@@ -50,7 +50,7 @@ ALLOWED_NAMES = {
 # Public Patient Live Token Status Tracker (scanned via QR code on slip)
 'patient_token_track',
 # Public Patient Digital Health Portal (read-only prescriptions, lab reports, imaging)
-'patient_portal_hub', 'patient_portal_hub_direct', 'patients:patient_portal_hub',
+'patient_portal_hub', 'patient_portal_hub_direct', 'patients:patient_portal_hub', 'patient_portal_lookup',
 }
 
 

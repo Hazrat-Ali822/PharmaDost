@@ -13,5 +13,6 @@ urlpatterns = [
     path('<int:pk>/photo/add/', views.document_add, name='patient_document_add'),
     path('photo/<int:pk>/file/', views.document_file, name='patient_document_file'),
     path('photo/<int:pk>/delete/', views.document_delete, name='patient_document_delete'),
+    path('portal/', views.patient_portal_lookup, name='patient_portal_lookup'),
     path('portal/<uuid:token>/', views.patient_portal_hub, name='patient_portal_hub'),
 ]

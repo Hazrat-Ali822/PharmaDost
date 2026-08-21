@@ -11,7 +11,7 @@ from pharma_mgmt.media import serve_media
 from saas.views import hospital_login
 from accounts.views import (custom_password_reset_request, demo_login,
                             demo_login_as, smart_login)
-from patients.views import patient_portal_hub as views_patient_portal
+from patients.views import patient_portal_hub as views_patient_portal, patient_portal_lookup as views_patient_portal_lookup
 
 
 urlpatterns = [
@@ -60,6 +60,7 @@ urlpatterns = [
     # indexes is real content, not a login wall). See user_mgmt.seo_views.home.
     path('', seo_views.home, name='dashboard'),
     path('dashboard/', dashboard, name='dashboard_page'),
+    path('portal/', views_patient_portal_lookup, name='patient_portal_lookup_direct'),
     path('portal/<uuid:token>/', views_patient_portal, name='patient_portal_hub_direct'),
     path('medicines/', include('inventory.urls')),
     path('suppliers/', include('suppliers.urls')),
