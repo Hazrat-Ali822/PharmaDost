@@ -2640,8 +2640,13 @@ almost always means a query moved inside a loop; find that before raising the nu
   - 🧾 **Invoices & Receipts**: Total billed, paid amounts, and payment status.
 - **Official WhatsApp Vector Integration**:
   - OPD slip features a green WhatsApp button with official SVG vector icon pre-filling live tracking & patient portal URL.
-- **Public Phone & MRN Recovery Portal (`/portal/`)**:
-  - If a patient loses their printed slip, they enter their mobile phone or MRN at `/portal/` to immediately recover and view their digital health cards.
+- **Public Phone, MRN & Name Search Engine (`/portal/`)**:
+  - If a patient loses their printed slip, they enter their mobile phone, MRN (e.g. `SD-000009` or `9`), or full name at `/portal/` to immediately recover and view their digital health cards.
+  - Multi-Result Resolver: If multiple patients match a common name/query, clean clickable cards show with hospital name and MRN for instant selection.
+  - 100% CSRF-Free `GET` query architecture with `@csrf_exempt` ensuring seamless cross-device, anonymous access.
+- **Multi-Tenant MRN Prefix Collision Guard**:
+  - Every hospital tenant receives a globally unique MRN prefix derived from hospital brand.
+  - `SiteSettingsForm.clean_mrn_prefix` and `patients.services.derive_prefix` enforce strict multi-tenant global prefix uniqueness.
 - **Zero DB Load & Defensive Fault-Tolerance**: Single indexed lookup on `patient_id` returning <15 KB compressed payload rendered in <40ms with isolated try-except blocks across clinical modules.
 
 

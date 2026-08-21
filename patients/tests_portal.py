@@ -67,3 +67,18 @@ class PatientPortalTests(TestCase):
         r2 = c.get(url, {'query': '03001234567'})
         self.assertRedirects(r2, reverse('patient_portal_hub', args=[self.patient.portal_token]))
 
+    def test_portal_lookup_by_name(self):
+        c = Client()
+        url = reverse('patient_portal_lookup')
+        r = c.get(url, {'query': 'Zahid'})
+        self.assertRedirects(r, reverse('patient_portal_hub', args=[self.patient.portal_token]))
+
+    def test_portal_lookup_by_mrn(self):
+        self.patient.mrn = 'CCH-000001'
+        self.patient.save()
+        c = Client()
+        url = reverse('patient_portal_lookup')
+        r = c.get(url, {'query': 'CCH-000001'})
+        self.assertRedirects(r, reverse('patient_portal_hub', args=[self.patient.portal_token]))
+
+

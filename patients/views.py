@@ -549,48 +549,62 @@ from django.views.decorators.csrf import csrf_exempt
 def patient_portal_lookup(request):
     """Public Portal Lookup Page for patients who lost their printed slip/receipt.
     Allows searching by Mobile Phone Number, MRN, CNIC, or Patient Name.
-    Works seamlessly via GET or POST with zero CSRF block.
+    Works seamlessly across all hospital tenants.
     """
     error = None
+    results = None
     query = (request.GET.get('query') or request.POST.get('query') or '').strip()
+
     if query:
-        from saas.utils import get_current_hospital
-        hospital = get_current_hospital()
+        from saas.utils import get_current_hospital, hospital_from_host
+        hospital = get_current_hospital() or hospital_from_host(request.get_host())
         if not hospital and request.user.is_authenticated:
             hospital = getattr(request.user, 'hospital', None)
 
-        patients_qs = Patient.objects.filter(is_active=True)
+        # Base active patients queryset
+        patients_qs = Patient.objects.filter(is_active=True).select_related('hospital')
         if hospital:
             patients_qs = patients_qs.filter(hospital=hospital)
 
-        matched = None
-        # 1. Exact MRN match first (e.g. SD-000009 or SGH-000003)
-        matched = patients_qs.filter(mrn__iexact=query).first()
-
-        # 2. Number-only MRN (e.g. user typed '9' for SD-000009)
-        if not matched and query.isdigit():
-            num_val = int(query)
-            matched = (patients_qs.filter(mrn__endswith=f"-{num_val:06d}").first() or 
-                       patients_qs.filter(mrn__icontains=f"{num_val:06d}").first() or
-                       patients_qs.filter(id=num_val).first())
-
-        # 3. Normalized full phone number match (e.g. 03499001990)
         digits = ''.join(c for c in query if c.isdigit())
-        if not matched and len(digits) >= 7:
-            from .search import annotate_for_search
-            matched = annotate_for_search(patients_qs).filter(phone_digits__contains=digits).first()
+        q_filter = Q(mrn__iexact=query) | Q(phone__icontains=query) | Q(cnic__icontains=query)
 
-        # 4. Standard robust multi-term search (name, MRN substring, CNIC)
-        if not matched:
-            from .search import apply_search
-            matched = apply_search(patients_qs, query).first()
+        # If digits only or short number (e.g. '9' or '3')
+        if query.isdigit() and len(query) <= 6:
+            num = int(query)
+            q_filter |= Q(mrn__endswith=f"-{num:06d}") | Q(mrn__endswith=f"-{num}") | Q(id=num)
 
-        if matched and matched.portal_token:
-            return redirect('patient_portal_hub', token=matched.portal_token)
+        # Phone digits matching
+        if len(digits) >= 6:
+            q_filter |= Q(phone__icontains=digits) | Q(phone__icontains=digits[-7:])
+            if len(digits) >= 10:
+                q_filter |= Q(phone__icontains=digits[-10:])
+
+        # Multi-word name matching
+        words = [w for w in query.split() if w]
+        if words and not query.isdigit():
+            name_q = Q()
+            for w in words:
+                name_q &= Q(full_name__icontains=w)
+            q_filter |= name_q
+
+        matched_qs = patients_qs.filter(q_filter).distinct()
+        count = matched_qs.count()
+
+        if count == 1:
+            patient = matched_qs.first()
+            if patient and patient.portal_token:
+                return redirect('patient_portal_hub', token=patient.portal_token)
+        elif count > 1:
+            results = matched_qs[:10]
         else:
-            error = f"No medical record found matching '{query}'. Please check the MRN, Phone Number, or Full Name."
+            error = f"No patient records found matching '{query}'. Please check your Mobile Number, MRN, or Name."
 
-    return render(request, 'patients/portal_lookup.html', {'error': error, 'query': query})
+    return render(request, 'patients/portal_lookup.html', {
+        'error': error,
+        'query': query,
+        'results': results,
+    })
 
 
 
