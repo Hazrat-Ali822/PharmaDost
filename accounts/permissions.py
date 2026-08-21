@@ -133,9 +133,11 @@ CORE_FEATURES = {'settings', 'audit', 'overview', 'catalog'}
 MODULES = [
     ('pharmacy', 'Pharmacy', 'POS billing, inventory, purchases, customers & suppliers',
      ['pos', 'inventory', 'customers', 'suppliers']),
-    ('opd', 'OPD / Hospital', 'Patients, doctors, appointments, prescriptions, diagnoses, referrals, certificates, consent & live TV display',
+    ('opd', 'OPD / Hospital', 'Patients, doctors, appointments, prescriptions, diagnoses, referrals, certificates & consent',
      ['patients', 'opd', 'appointments', 'doctors', 'prescriptions', 'diagnosis',
-      'referral', 'certificates', 'consent', 'tv_display']),
+      'referral', 'certificates', 'consent']),
+    ('tv_display', 'Live Waiting Hall TV Display', 'Full-screen LCD / TV waiting queue board for hospital waiting area',
+     ['tv_display']),
     ('ipd', 'Inpatient (IPD)', 'Ward, bed, patient admission and daily rounds management',
      ['ipd', 'ward', 'ward_manage']),
     ('ot', 'Operation Theatre (OT)', 'Surgery booking, team scheduling and logs management',

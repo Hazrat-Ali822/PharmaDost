@@ -6,7 +6,7 @@
 <div class="page-head">
   <h2>Reception Desk</h2>
   <div style="display:flex; gap:8px;">
-    <a class="btn alt" href="{% url 'opd_tv_display' %}" target="_blank" title="Open Live Waiting Hall TV Display">📺 TV Display</a>
+    {% if nav.tv_display %}<a class="btn alt" href="{% url 'opd_tv_display' %}" target="_blank" title="Open Live Waiting Hall TV Display">📺 TV Display</a>{% endif %}
     <a class="btn alt" href="{% url 'doctor_availability_board' %}">Today's OPD Board</a>
   </div>
 </div>

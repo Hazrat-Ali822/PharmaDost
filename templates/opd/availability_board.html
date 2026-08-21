@@ -9,7 +9,7 @@
     <div class="muted" style="font-size:13px;">{{ today|date:"l, d M Y" }}</div>
   </div>
   <div style="display:flex; gap:8px;">
-    <a class="btn alt" href="{% url 'opd_tv_display' %}" target="_blank" title="Open Live Waiting Hall TV Display">📺 TV Display</a>
+    {% if nav.tv_display %}<a class="btn alt" href="{% url 'opd_tv_display' %}" target="_blank" title="Open Live Waiting Hall TV Display">📺 TV Display</a>{% endif %}
     {% if nav.appointments %}<a class="btn alt" href="{% url 'reception_desk' %}">Reception Desk</a>{% endif %}
   </div>
 </div>
