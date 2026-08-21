@@ -16,9 +16,15 @@ urlpatterns = [
     path('appointments/', views.appointment_list, name='appointment_list'),
     path('appointments/add/', views.appointment_create, name='appointment_add'),
     path('appointments/<int:pk>/slip/', views.appointment_slip, name='appointment_slip'),
+    # The status dropdown on /opd/appointments/ posts here. The view existed and
+    # the JS called it, but the route was never registered — so changing an
+    # appointment's status from the list has always answered 404 and shown
+    # "Failed to update status. Please try again."
+    path('appointments/<int:pk>/status/', views.appointment_update_status,
+         name='appointment_update_status'),
     path('payouts/', views.payout_list, name='payout_list'),
     path('payouts/<int:pk>/', views.payout_doctor, name='payout_doctor'),
     path('tv/', views.opd_tv_display, name='opd_tv_display'),
     path('tv/api/', views.opd_tv_api, name='opd_tv_api'),
-    path('track/<int:pk>/', views.patient_token_track, name='patient_token_track'),
+    path('track/<uuid:track_token>/', views.patient_token_track, name='patient_token_track'),
 ]

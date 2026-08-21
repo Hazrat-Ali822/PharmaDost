@@ -65,22 +65,70 @@ class PatientPortalTests(TestCase):
         r = c.get(url)
         self.assertEqual(r.status_code, 200)
 
-        # GET with phone number
-        r2 = c.get(url, {'query': '03001234567'})
+        r2 = c.get(url, {'query': '03001234567', 'hospital': self.hospital.slug})
         self.assertRedirects(r2, reverse('patient_portal_hub', args=[self.patient.portal_token]))
-
-    def test_portal_lookup_by_name(self):
-        c = Client()
-        url = reverse('patient_portal_lookup')
-        r = c.get(url, {'query': 'Zahid'})
-        self.assertRedirects(r, reverse('patient_portal_hub', args=[self.patient.portal_token]))
 
     def test_portal_lookup_by_mrn(self):
         self.patient.mrn = 'CCH-000001'
         self.patient.save()
         c = Client()
         url = reverse('patient_portal_lookup')
-        r = c.get(url, {'query': 'CCH-000001'})
+        r = c.get(url, {'query': 'CCH-000001', 'hospital': self.hospital.slug})
         self.assertRedirects(r, reverse('patient_portal_hub', args=[self.patient.portal_token]))
+
+    # --- what this page must NOT do ------------------------------------------
+
+    def test_a_name_alone_will_not_open_a_health_record(self):
+        """A name is not a secret, and this page hands back a medical record.
+        Typing a common first name used to return real patients and open the
+        first match's prescriptions, lab results and bills."""
+        c = Client()
+        r = c.get(reverse('patient_portal_lookup'),
+                  {'query': 'Zahid', 'hospital': self.hospital.slug})
+        self.assertEqual(r.status_code, 200)
+        self.assertNotIn(str(self.patient.portal_token), r.content.decode())
+        self.assertIn('not enough to open a health record', r.content.decode())
+
+    def test_a_name_plus_the_phone_number_still_works(self):
+        c = Client()
+        r = c.get(reverse('patient_portal_lookup'),
+                  {'query': 'Zahid 03001234567', 'hospital': self.hospital.slug})
+        self.assertRedirects(r, reverse('patient_portal_hub', args=[self.patient.portal_token]))
+
+    def test_it_will_not_search_another_hospitals_patients(self):
+        """The whole register of every customer used to be searchable from the
+        bare platform domain, by anyone, with no login."""
+        from saas.models import Hospital
+        other = Hospital.objects.create(name='Other Clinic', slug='other-clinic',
+                                        expiry_date=self.hospital.expiry_date)
+        c = Client()
+        r = c.get(reverse('patient_portal_lookup'),
+                  {'query': '03001234567', 'hospital': other.slug})
+        self.assertEqual(r.status_code, 200)
+        self.assertNotIn(str(self.patient.portal_token), r.content.decode())
+
+    def test_with_no_hospital_chosen_it_searches_nothing(self):
+        c = Client()
+        r = c.get(reverse('patient_portal_lookup'), {'query': '03001234567'})
+        self.assertEqual(r.status_code, 200)
+        body = r.content.decode()
+        self.assertNotIn(str(self.patient.portal_token), body)
+        self.assertIn('choose your hospital', body.lower())
+
+    def test_the_internal_row_id_is_not_a_way_in(self):
+        """`Q(id=num)` was matched alongside the MRN, so the primary key — a
+        number the patient never sees and cannot be told — opened the record.
+
+        The MRN is given a suffix that is deliberately nothing like the pk, so
+        this asserts the id lookup specifically rather than accidentally
+        re-testing the (legitimate) MRN one."""
+        self.patient.mrn = 'CCH-004242'
+        self.patient.save(update_fields=['mrn'])
+        c = Client()
+        r = c.get(reverse('patient_portal_lookup'),
+                  {'query': str(self.patient.pk).zfill(7),
+                   'hospital': self.hospital.slug})
+        self.assertEqual(r.status_code, 200)
+        self.assertNotIn(str(self.patient.portal_token), r.content.decode())
 
 

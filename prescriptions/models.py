@@ -3,6 +3,7 @@ from django.db import models
 from django.utils import timezone
 from opd.models import Appointment
 from inventory.models import Medicine
+from saas.utils import TenantManager
 
 
 class Prescription(models.Model):
@@ -69,7 +70,17 @@ class PrescriptionItem(models.Model):
 
 
 class RxPreset(models.Model):
-    hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE)
+    # Nullable and tenant-managed, like every other model with this column.
+    # It was NOT NULL and manager-less, so both creation paths carried
+    # `preset.hospital = request.user.hospital or Hospital.objects.first()` —
+    # and that fallback filed a hospital-less user's preset into whichever
+    # tenant happened to have the lowest id, i.e. a real customer's data. On
+    # the desktop/LAN build there are no Hospital rows at all, so `.first()`
+    # was None and saving raised IntegrityError: the feature simply crashed.
+    # `saas.signals.auto_assign_hospital` stamps this from the thread-local now,
+    # exactly as it does everywhere else.
+    hospital = models.ForeignKey('saas.Hospital', on_delete=models.CASCADE,
+                                 null=True, blank=True)
     doctor = models.ForeignKey('opd.Doctor', on_delete=models.CASCADE, null=True, blank=True, related_name='rx_presets')
     name = models.CharField(max_length=100)
     complaint = models.TextField(blank=True)
@@ -77,6 +88,11 @@ class RxPreset(models.Model):
     notes = models.TextField(blank=True)
     description = models.TextField(blank=True)
     created_at = models.DateTimeField(default=timezone.now)
+
+    # Scoped like every other tenant model. `_scoped_presets` still adds the
+    # per-doctor narrowing on top; this is the net underneath it.
+    objects = TenantManager()
+    all_objects = models.Manager()
 
     def __str__(self):
         return self.name

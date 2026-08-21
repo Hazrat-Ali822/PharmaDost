@@ -15,7 +15,7 @@ which made them visible to *every* hospital: a customer's OPD board listed the
 demo tenant's doctors, and its payout CSV exported them with their balances.
 `Doctor.hospital` exists so those rows can be told apart; do not go back.
 """
-from .models import Doctor
+from .models import Appointment, Doctor
 
 
 def scoped_doctors(user, qs=None):
@@ -31,3 +31,18 @@ def scoped_doctors(user, qs=None):
     if user is not None and user.is_superuser:
         return qs
     return qs.filter(hospital=getattr(user, 'hospital', None))
+
+
+def scoped_appointments(user, qs=None):
+    """The appointments `user` may see — fail-closed, scoped through the patient.
+
+    `Appointment` has no `hospital` column of its own and no manager, so it is
+    protected only by whatever the view remembers to do. `appointment_list` did
+    it inline and correctly; the pk-taking views did not, which is how
+    `appointment_update_status` came to move any tenant's appointment along the
+    queue. One named filter so the next caller cannot forget it.
+    """
+    qs = Appointment.objects.all() if qs is None else qs
+    if user is not None and user.is_superuser:
+        return qs
+    return qs.filter(patient__hospital=getattr(user, 'hospital', None))

@@ -1,3 +1,4 @@
+import uuid
 from decimal import Decimal
 
 from django.conf import settings
@@ -276,6 +277,14 @@ class Appointment(models.Model):
     doctor = models.ForeignKey(Doctor, on_delete=models.PROTECT, related_name='appointments')
     appointment_date = models.DateField(default=timezone.localdate)
     slot_time = models.TimeField(null=True, blank=True)
+    # The public live-queue page is reached with THIS, not the primary key.
+    # `/opd/track/<pk>/` is anonymous by design (a QR on the slip), and a
+    # sequential id made it walkable: 1, 2, 3… returned every appointment on the
+    # platform with the patient's name, their doctor and the hospital — across
+    # every tenant, because `Appointment` has no hospital column and no manager
+    # to scope it. An unguessable handle is the same fix `Patient.portal_token`
+    # already uses for the same reason.
+    track_token = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True)
     token_no = models.PositiveIntegerField(default=1)
     visit_type = models.CharField(max_length=12, choices=VISIT_CHOICES, default='OPD')
     status = models.CharField(max_length=12, choices=STATUS_CHOICES, default='BOOKED')

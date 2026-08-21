@@ -40,7 +40,11 @@ def invoice_list(request):
 def invoice_create(request, appointment_id=None):
     appointment = None
     if appointment_id:
-        appointment = get_object_or_404(Appointment, pk=appointment_id)
+        # Scoped: `Appointment` has no hospital column and no manager, so a bare
+        # pk here prefilled the form with another tenant's patient name.
+        from opd.scoping import scoped_appointments
+        appointment = get_object_or_404(scoped_appointments(request.user),
+                                        pk=appointment_id)
 
     if request.method == 'POST':
         form = InvoiceForm(request.POST, user=request.user)
@@ -73,9 +77,14 @@ def patient_billing_list(request):
     currently owes money."""
     q = request.GET.get('q', '').strip()
     if q:
-        matches = (Patient.objects
-                   .filter(Q(full_name__icontains=q) | Q(mrn__icontains=q) | Q(phone__icontains=q))
-                   .order_by('full_name')[:50])
+        # `patients.search.apply_search`, not a third hand-rolled copy. The two
+        # bugs it exists to fix were both live here, on the screen where finding
+        # the patient matters most: a phone number typed without dashes matched
+        # nothing (numbers are stored however they were entered), and a first
+        # name plus a surname matched nothing, because `full_name__icontains` is
+        # one substring and most registered names carry a middle name.
+        from patients.search import apply_search
+        matches = apply_search(Patient.objects.all(), q).order_by('full_name')[:50]
         rows = [dict(patient=p, **patient_totals(p)) for p in matches]
     else:
         rows = outstanding_by_patient()

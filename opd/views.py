@@ -13,7 +13,7 @@ from .availability import doctors_with_availability, split_by_availability
 from .forms import (AppointmentForm, DepartmentForm, DoctorForm, DoctorPayoutForm,
                     DoctorScheduleFormSet, VisitForm)
 from .models import (Appointment, Department, Doctor, DoctorAvailabilityOverride)
-from .scoping import scoped_doctors
+from .scoping import scoped_appointments, scoped_doctors
 from reports.export import csv_response, wants_csv
 from .services import doctor_earnings, payouts_total, payout_summary
 
@@ -64,7 +64,11 @@ def doctor_create(request):
 def doctor_edit(request, pk):
     """Edit a doctor — fees that auto-bill on each visit, and the OPD timings that
     decide whether reception is offered them."""
-    doctor = get_object_or_404(Doctor, pk=pk)
+    # Scoped, never a bare pk. `Doctor` has a hospital column but NO
+    # `TenantManager`, so `get_object_or_404(Doctor, pk=pk)` reaches every
+    # tenant's roster — the same hole `payout_doctor` was fixed for, left open
+    # on the three screens that actually change a doctor.
+    doctor = get_object_or_404(scoped_doctors(request.user, Doctor.objects.all()), pk=pk)
     if request.method == 'POST':
         form = DoctorForm(request.POST, instance=doctor)
         formset = DoctorScheduleFormSet(request.POST, instance=doctor)
@@ -136,7 +140,11 @@ def doctor_availability_toggle(request, pk):
     Written as a dated override rather than a flag on the doctor so today's leave
     cannot leak into tomorrow — the commonest way a manual switch goes wrong.
     """
-    doctor = get_object_or_404(Doctor, pk=pk)
+    # Scoped, never a bare pk. `Doctor` has a hospital column but NO
+    # `TenantManager`, so `get_object_or_404(Doctor, pk=pk)` reaches every
+    # tenant's roster — the same hole `payout_doctor` was fixed for, left open
+    # on the three screens that actually change a doctor.
+    doctor = get_object_or_404(scoped_doctors(request.user, Doctor.objects.all()), pk=pk)
     today = timezone.localdate()
     wanted = request.POST.get('available') == '1'
     note = (request.POST.get('note') or '').strip()[:120]
@@ -163,7 +171,11 @@ def doctor_availability_toggle(request, pk):
 @feature_required('doctors')
 @role_required(['ADMIN'])
 def doctor_delete(request, pk):
-    doctor = get_object_or_404(Doctor, pk=pk)
+    # Scoped, never a bare pk. `Doctor` has a hospital column but NO
+    # `TenantManager`, so `get_object_or_404(Doctor, pk=pk)` reaches every
+    # tenant's roster — the same hole `payout_doctor` was fixed for, left open
+    # on the three screens that actually change a doctor.
+    doctor = get_object_or_404(scoped_doctors(request.user, Doctor.objects.all()), pk=pk)
     
     # Check if doctor has any history
     has_history = False
@@ -428,9 +440,18 @@ def payout_doctor(request, pk):
 from django.http import JsonResponse
 
 @feature_required('opd')
+@require_POST
 def appointment_update_status(request, pk):
-    appointment = get_object_or_404(Appointment, pk=pk)
-    status = request.GET.get('status')
+    """Move an appointment along the queue.
+
+    Two things were wrong here. It read the pk straight off the URL, and
+    `Appointment` has no hospital column and no manager, so any signed-in user
+    holding `opd` could move ANY tenant's appointment. And it was a GET that
+    wrote: `<img src=".../status/?status=DONE">` on any page would fire it from
+    a signed-in staff member's browser with no CSRF token in sight.
+    """
+    appointment = get_object_or_404(scoped_appointments(request.user), pk=pk)
+    status = request.POST.get('status')
     if status in dict(Appointment.STATUS_CHOICES):
         appointment.status = status
         appointment.save()
@@ -535,11 +556,19 @@ def opd_tv_api(request):
     })
 
 
-def patient_token_track(request, pk):
-    """Public Mobile Live Token Tracking view for patients (scanned via QR code on slip)."""
+def patient_token_track(request, track_token):
+    """Public Mobile Live Token Tracking view for patients (scanned via QR on the slip).
+
+    Keyed on `Appointment.track_token`, never on the primary key. This page is
+    anonymous by design and prints the patient's name, their doctor and the
+    hospital — with a sequential id in the URL that made the whole platform
+    walkable, one appointment at a time, across every tenant (`Appointment` has
+    no hospital column and no manager to scope it). The token is the same
+    answer `Patient.portal_token` already gives for the same problem.
+    """
     appointment = get_object_or_404(
         Appointment.objects.select_related('patient', 'doctor', 'doctor__department', 'patient__hospital'),
-        pk=pk
+        track_token=track_token
     )
     today = appointment.appointment_date
 

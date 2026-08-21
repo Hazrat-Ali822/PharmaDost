@@ -406,3 +406,15 @@ if USE_SSL:
     # carries attendance events and no credentials — the device's own
     # authentication is its serial number, which is all the protocol has.
     SECURE_REDIRECT_EXEMPT = [r"^iclock/"]
+    # HSTS: tell the browser to refuse plain http to this domain for a year, so
+    # the very first request of the day cannot be intercepted before the
+    # redirect above has a chance to fire. Only reached when USE_SSL is on, so
+    # the clinic LAN build (plain http on a wifi with no internet) never sees
+    # it. Env-overridable and defaulting to a year; set
+    # DJANGO_HSTS_SECONDS=0 to switch it off if a domain has to serve plain
+    # http for something. Subdomains are included because every tenant lives on
+    # one, and preload is left OFF deliberately — it is effectively permanent
+    # and is the browser vendors' list to undo, not ours.
+    SECURE_HSTS_SECONDS = int(os.getenv("DJANGO_HSTS_SECONDS", 60 * 60 * 24 * 365))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = bool(SECURE_HSTS_SECONDS)
+    SECURE_HSTS_PRELOAD = False

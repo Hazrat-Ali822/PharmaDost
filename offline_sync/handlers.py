@@ -256,11 +256,7 @@ def handle_rx_preset(request, data):
 
     with transaction.atomic():
         preset = form.save(commit=False)
-        if request.user.hospital:
-            preset.hospital = request.user.hospital
-        else:
-            from saas.models import Hospital
-            preset.hospital = Hospital.objects.first()
+        # See prescriptions.views.preset_create — never Hospital.objects.first().
         preset.save()
         formset.instance = preset
         formset.save()

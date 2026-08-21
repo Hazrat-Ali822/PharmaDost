@@ -1,4 +1,5 @@
 {% extends 'print/base_print.html' %}
+{% load qr %}
 {% block title %}OPD Slip #{{ appointment.token_no }} — {{ appointment.patient.full_name }}{% endblock %}
 {% block doctitle %}OPD Prescription Slip{% endblock %}
 
@@ -9,7 +10,8 @@
     {{ appointment.appointment_date|date:"d M Y" }}{% if appointment.slot_time %} · {{ appointment.slot_time|time:"g:i A" }}{% endif %}
   </div>
   <div style="text-align:right;">
-    <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data={{ request.scheme }}://{{ request.get_host }}{% url 'patient_token_track' appointment.pk %}" 
+    {% url 'patient_token_track' appointment.track_token as track_path %}
+    <img src="{% qr_url_data_uri track_path %}" 
          alt="Live Queue QR" 
          style="width:62px; height:62px; border:1px solid #ddd; border-radius:4px; padding:2px; display:block; margin:0 auto;" 
          title="Scan with phone to track live queue status">
@@ -21,7 +23,7 @@
 {% block actions %}
   <a href="{% url 'reception_desk' %}">Next Patient</a>
   {% if appointment.patient.phone %}
-  <a href="https://api.whatsapp.com/send?phone=92{{ appointment.patient.phone|cut:'-'|slice:'-10:' }}&text=Assalam-o-Alaikum%20{{ appointment.patient.full_name|urlencode }},%20your%20appointment%20with%20Dr.%20{{ appointment.doctor.full_name|urlencode }}%20is%20booked.%20Token%20%23{{ appointment.token_no }}.%0A%0ATrack%20Live%20Queue:%20{{ request.scheme }}://{{ request.get_host }}{% url 'patient_token_track' appointment.pk %}%0A%0AView%20Your%20Digital%20Health%20Records:%20{{ request.scheme }}://{{ request.get_host }}{% url 'patient_portal_hub' appointment.patient.portal_token %}" 
+  <a href="https://api.whatsapp.com/send?phone=92{{ appointment.patient.phone|cut:'-'|slice:'-10:' }}&text=Assalam-o-Alaikum%20{{ appointment.patient.full_name|urlencode }},%20your%20appointment%20with%20Dr.%20{{ appointment.doctor.full_name|urlencode }}%20is%20booked.%20Token%20%23{{ appointment.token_no }}.%0A%0ATrack%20Live%20Queue:%20{{ request.scheme }}://{{ request.get_host }}{% url 'patient_token_track' appointment.track_token %}%0A%0AView%20Your%20Digital%20Health%20Records:%20{{ request.scheme }}://{{ request.get_host }}{% url 'patient_portal_hub' appointment.patient.portal_token %}" 
      target="_blank" 
      class="btn-whatsapp"
      style="display:inline-flex; align-items:center; gap:6px; background:#25D366; color:#ffffff; font-weight:700; border-radius:6px; text-decoration:none; padding:0 14px; height:36px;">

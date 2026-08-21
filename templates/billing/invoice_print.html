@@ -1,4 +1,5 @@
 {% extends 'print/base_print.html' %}
+{% load qr %}
 {% block title %}Invoice {{ invoice.display_no }}{% endblock %}
 {% block doctitle %}Invoice {{ invoice.display_no }}{% endblock %}
 
@@ -12,7 +13,8 @@
     </div>
     {% if invoice.patient.portal_token %}
     <div>
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data={{ request.scheme }}://{{ request.get_host }}{% url 'patient_portal_hub' invoice.patient.portal_token %}" 
+      {% url 'patient_portal_hub' invoice.patient.portal_token as portal_path %}
+      <img src="{% qr_url_data_uri portal_path %}" 
            alt="Digital Health Portal QR" 
            style="width:52px; height:52px; border:1px solid #cbd5e1; border-radius:4px; padding:1px; display:block;" 
            title="Scan with phone to view your lifetime digital records & invoices">

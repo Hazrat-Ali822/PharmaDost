@@ -293,7 +293,7 @@ if request.user.hospital:
     qs = qs.filter(patient__hospital=request.user.hospital)
 ```
 
-Apps follow this with module-local helpers: `_scoped_prescriptions` / `_scoped_appointments` / `_scoped_presets` (prescriptions), `_scoped_orders` (lab), `_scoped_studies` (imaging), `_scoped_admissions` (ipd), `_get_scoped_patient` (patients), **`opd.scoping.scoped_doctors`** (any view touching `Doctor`). Reuse them rather than re-rolling the filter — in **list** views too, not just detail views: `lab.order_list`, `imaging.study_list` and `opd.appointment_list` once filtered on the fail-**open** `if request.user.hospital:` form and leaked every tenant's clinical records to a hospital-less non-superuser (the sibling detail views were already fail-closed). `RxPreset` has a `hospital` FK but **no `TenantManager`**, so its edit/delete-by-pk paths must go through `_scoped_presets` or they are cross-tenant writes. `tests/test_security.py::FailClosedTest` now covers all three lists — keep it that way. The sidebar badge counts in `accounts/context_processors.py` use the same `scope_by_hospital = not user.is_superuser` flag.
+Apps follow this with module-local helpers: `_scoped_prescriptions` / `_scoped_appointments` / `_scoped_presets` (prescriptions), `_scoped_orders` (lab), `_scoped_studies` (imaging), `_scoped_admissions` (ipd), `_get_scoped_patient` (patients), **`opd.scoping.scoped_doctors`** (any view touching `Doctor`). Reuse them rather than re-rolling the filter — in **list** views too, not just detail views: `lab.order_list`, `imaging.study_list` and `opd.appointment_list` once filtered on the fail-**open** `if request.user.hospital:` form and leaked every tenant's clinical records to a hospital-less non-superuser (the sibling detail views were already fail-closed). `RxPreset` now has a `hospital` FK **and** a `TenantManager` (`all_objects` for the unscoped case); its edit/delete-by-pk paths still go through `_scoped_presets`, which adds the per-doctor narrowing on top. The column is **nullable**, like every other tenant model: it was NOT NULL, so both creation paths carried `request.user.hospital or Hospital.objects.first()` — which filed a hospital-less user's preset into whichever tenant had the lowest id, and on the desktop build (no Hospital rows at all) was None against a NOT NULL column, so the feature crashed. `tests/test_security.py::FailClosedTest` now covers all three lists — keep it that way. The sidebar badge counts in `accounts/context_processors.py` use the same `scope_by_hospital = not user.is_superuser` flag.
 
 On top of tenant scoping, a **doctor is narrowed to their own patients**: lab orders they
 placed, imaging they referred, and admissions where they are the `attending_doctor` **or**
@@ -1384,7 +1384,7 @@ plus a surname** found nothing, because `full_name__icontains` is one substring
 and almost every registered name here carries a middle or father's name. The
 rule is now: **digits match digits, and every word must appear somewhere in the
 name**, ANDed — "ali khan" must not return every Ali and every Khan. Use
-`apply_search(qs, q)`; do not re-roll it in a third place.
+`apply_search(qs, q)`; do not re-roll it in a third place. It was re-rolled in a third place: the **billing desk** (`billing.patient_billing_list`) had its own `full_name__icontains | mrn__icontains | phone__icontains`, so the one screen where finding the patient matters most carried both original bugs. The public portal lookup keeps its own matching on purpose — it is anonymous and deliberately stricter (see "The anonymous surface").
 
 **CNIC** is stored in exactly one shape — `XXXXX-XXXXXXX-X`. `PatientForm.clean_cnic`
 strips everything non-numeric, requires 13 digits and re-inserts the dashes, so an import
@@ -1820,6 +1820,72 @@ must be filtered on `patient__hospital`, or the hospital-less pass at the end of
 the loop picks up every hospital's rows a second time. And `Patient` has a
 `phone` but **no email**, which is correct for the market: patients are reached by
 SMS, staff by email.
+
+### The anonymous surface
+
+Four things are reachable with no session — the marketing pages, the PWA
+plumbing, the biometric terminal, and the two **patient-facing** screens. The
+last pair are the ones to be careful with, because what they hand back is a
+medical record:
+
+- **`/portal/<uuid>/`** (`patient_portal_hub`) is authenticated by
+  `Patient.portal_token`, an unguessable UUID. Correct as designed.
+- **`/opd/track/<uuid>/`** (`patient_token_track`) is the live queue page from
+  the QR on the slip. It is keyed on **`Appointment.track_token`**, never the
+  pk. It used to take `<int:pk>`, and since it prints the patient's name, their
+  doctor and the hospital — and `Appointment` has no `hospital` column and no
+  manager — counting 1, 2, 3 walked every appointment on the platform, across
+  every tenant, with no login.
+- **`/portal/`** (`patient_portal_lookup`) is the "I lost my slip" search, and it
+  is the sharpest edge in the product. Three rules hold it:
+  1. **It never searches more than one hospital.** `Patient.objects` is a
+     `TenantManager`, but this page is anonymous: nothing binds a tenant and the
+     thread is not strict, so the manager returns **everything**. Scope
+     explicitly — host, else a `?hospital=<slug>` the patient picks from a
+     dropdown, else `hospital IS NULL` (the desktop/LAN install). Do not fall
+     back to "no filter". The hospital selector exists because wildcard DNS is
+     not guaranteed, so the host often cannot answer.
+  2. **A name alone is not a credential.** The query must carry ≥7 digits (a
+     phone/CNIC) or an MRN in its printed form (`SD-000009`). Matching on a name
+     meant anyone could type a common one and open a stranger's prescriptions.
+  3. **Never match the primary key.** `Q(id=num)` was ORed in with the MRN, so
+     counting upwards from 1 opened real records. The patient never sees that
+     number and cannot be told it.
+
+  Residual risk, known and accepted for now: MRNs are sequential, so within one
+  hospital they can still be walked. The proportionate fix is a per-IP rate
+  limit on this view; it is not built yet.
+
+**Printed QR codes are drawn locally** (`{% qr_url_data_uri %}` in
+`billing/templatetags/qr.py`), never fetched from a QR service. The OPD slip,
+patient bill, lab report and imaging report all embedded
+`api.qrserver.com/...?data=<url>` — and those URLs carry `portal_token`, so
+every print handed the one secret protecting that patient's record to a third
+party's access log, permanently. It also needed the internet, so the LAN build
+printed a broken image. Guarded by
+`tests/test_object_scoping.py::PrintedQrCodesStayInTheBuildingTest`.
+
+### Fetching a row by a pk from the URL
+
+`get_object_or_404(Model, pk=pk)` is safe **only** when `Model.objects` is a
+`TenantManager` — `Patient`, `Invoice`, `Sale`, `Admission` and most others are.
+It is a cross-tenant hole on the models that carry `hospital` without a manager
+(`Doctor`, `User`) and on those with no `hospital` column at all (`Appointment`,
+`Prescription`, `TestOrder`, `ImagingStudy`).
+
+`opd/scoping.py` has the two named filters: **`scoped_doctors(user, qs=None)`**
+and **`scoped_appointments(user, qs=None)`**. Use them; do not re-roll the `Q`.
+`payout_doctor` was fixed for this long ago and the three screens that actually
+*change* a doctor were not — `doctor_edit`, `doctor_delete` and
+`doctor_availability_toggle` each took a bare pk, so one hospital's admin could
+rename another hospital's doctor, change their fee and share %, mark them off
+duty, or archive them. Guarded by `tests/test_object_scoping.py`.
+
+**A view that writes must be a POST.** `appointment_update_status` read its
+value from `request.GET`, so `<img src=".../status/?status=DONE">` on any page
+would fire it from a signed-in staff member's browser with CSRF bypassed
+entirely. (Its route was also never registered, so the status dropdown on
+`/opd/appointments/` had always answered 404 — the two defects hid each other.)
 
 ### Brute force, audit IP, and report exports
 

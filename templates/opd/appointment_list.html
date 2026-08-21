@@ -58,12 +58,21 @@
   function updateAppointmentStatus(selectEl) {
     const id = selectEl.getAttribute('data-id');
     const status = selectEl.value;
-    const url = `/opd/appointments/${id}/status/?status=${status}`;
-    
+    const url = `/opd/appointments/${id}/status/`;
+
     selectEl.style.opacity = '0.5';
     selectEl.disabled = true;
-    
-    fetch(url)
+
+    // POST, not GET. This writes, and as a GET it could be fired from any page
+    // by an <img src> in a signed-in staff member's browser, CSRF token and all
+    // bypassed. The token is read from the cookie for the same reason
+    // static/js/offline.js does: a service-worker-cached page carries a stale
+    // <meta> one.
+    const csrf = (document.cookie.match(/(^|;\s*)csrftoken=([^;]*)/) || [])[2]
+              || (document.querySelector('meta[name=csrf-token]') || {}).content || '';
+    const body = new URLSearchParams({ status });
+
+    fetch(url, { method: 'POST', headers: { 'X-CSRFToken': decodeURIComponent(csrf) }, body })
     .then(res => {
       if (res.ok) return res.json();
       throw new Error('Error updating status');

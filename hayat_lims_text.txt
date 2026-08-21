@@ -1,0 +1,432 @@
+HAYAT LABORATORY
+LIMS Workflow & Functional Requirements
+The LIMS should follow the workflow below. The objective is to maintain a simple laboratory workflow while ensuring proper traceability, role-based access, result verification/authorization, financial control and inventory management.
+1. USER ROLES
+The system should support the following roles:
+Admin
+Reception / Order Entry
+Sample Collector / Phlebotomist
+Result Entry Technician
+Pathologist / Authorized Verifier
+Report/Reception User
+One person may be assigned more than one role where required. Permissions should be role-based rather than dependent simply on the user's designation.
+Every user should have an individual username/password. Shared logins should be avoided.
+2. MAIN SERVER / ADMIN DASHBOARD
+The main dashboard should display live numbers for:
+Pending orders
+Awaiting sample collection
+Samples collected / tests in process
+Awaiting result entry
+Awaiting verification
+Recollection required
+Ready for report collection
+Urgent pending
+Today's orders
+Today's completed orders
+Today's cash/revenue
+Each number should preferably be clickable and open the corresponding patient/order list.
+A single vague "Pending" category should not be relied upon. The exact stage at which an order is pending should be visible.
+3. PATIENT REGISTRATION & ORDER INTAKE
+Existing Patient
+Operator should be able to search by:
+Patient ID/code
+Name
+Phone number
+The existing patient record should be reused to avoid duplicate patient registrations.
+New Patient
+For every new patient, the system should automatically generate a unique permanent Patient ID.
+Operator enters:
+Name
+Age and/or Date of Birth
+Gender
+Phone number
+Address, where required
+Referring doctor/consultant, where applicable
+For every new laboratory visit/order, the system should generate a separate Order/Visit Number.
+Therefore:
+Patient ID = permanent identity of patient
+Order/Visit Number = unique number for that particular laboratory encounter
+4. TEST SELECTION
+Tests should be searchable by:
+Test name
+Test code
+The operator should be able to select:
+Individual tests
+Profiles
+Packages, where configured
+The system should automatically calculate the approved price.
+Routine operators should not be able to manually alter individual test prices.
+5. PAYMENT
+Payment window should support the payment modes required by the laboratory, including:
+Cash
+Credit / Institutional Account
+Sehat Card, if applicable
+Payment modes should be configurable.
+For institutional/credit cases, the approved institution/client should be selectable.
+The transaction should record:
+Gross amount
+Discount
+Net payable
+Amount received
+Balance, where applicable
+Payment mode
+User receiving payment
+Date/time
+6. DISCOUNTS
+Discounts should preferably be applied through predefined approved categories rather than arbitrary alteration of test prices.
+For example:
+Category/Package A – predefined %
+Category/Package B – predefined %
+Category/Package C – predefined %
+Category/Package D – predefined %
+The percentage applicable to each category should be configurable by an authorized administrative user.
+Any exceptional/manual discount outside the predefined categories should require:
+Authorized permission
+Reason for discount
+Audit trail
+7. URGENT ORDERS
+There should be a Mark as Urgent option during order entry.
+Urgent orders should:
+Be visibly highlighted throughout the workflow
+Appear prominently on relevant dashboards/worklists
+Remain identifiable until completion
+The receipt should indicate URGENT where applicable.
+8. RECEIPT & SAMPLE LABELS
+After order generation, a receipt should be generated containing at minimum:
+Patient name
+Patient ID
+Order/Visit number
+Date/time
+Tests ordered
+Payment details/status
+Expected report collection time, where configured
+The system should also support specimen labels containing:
+Patient name/ID
+Order number
+Specimen identification/type
+Barcode, if barcode functionality is implemented
+9. ORDER MODIFICATION
+Before specimen collection, an authorized operator may add or remove a test where necessary.
+After specimen collection, addition/cancellation of a test should require appropriate authorization and a reason.
+All such changes should be retained in the audit trail.
+A deleted/cancelled test should not disappear completely from the system history.
+10. SAMPLE COLLECTION
+The Sample Collector should have a worklist showing patients awaiting collection.
+After collecting the specimen, the collector selects:
+Sample Collected
+The system should automatically record:
+Collector/user
+Collection date
+Collection time
+Multiple Specimens
+Collection should preferably be tracked per specimen, not merely per patient/order.
+For example, one order may require:
+EDTA blood
+Serum
+Urine
+Each specimen should therefore be capable of having its own collection status.
+11. SAMPLE REJECTION / RECOLLECTION
+A specimen rejection function should be available.
+Reason should be selected from predefined options such as:
+Hemolyzed
+Clotted
+Insufficient quantity
+Wrong container
+Unlabelled/improperly labelled
+Leaking specimen
+Delayed/improper transport
+Other — mandatory free-text reason
+If recollection is required, status should become:
+Recollection Required
+followed by:
+Awaiting Sample Collection
+The rejected specimen and reason must remain visible in the audit history.
+12. RESULT ENTRY – TECHNICIAN
+The Result Entry Technician enters laboratory results.
+The result-entry screen should support, according to the particular test:
+Numeric results
+Text results
+Positive/Negative
+Reactive/Non-reactive
+Predefined selectable options
+Units
+Reference intervals
+Abnormal flags
+Critical flags
+Technical remarks/observations
+Where relevant, reference intervals should support configuration according to:
+Age
+Sex
+Method/test
+After completing result entry, the technician selects:
+Submit for Verification
+The status becomes:
+AWAITING VERIFICATION
+The technician should not authorize/release the final laboratory report.
+13. PATHOLOGIST – RESULT VERIFICATION & AUTHORIZATION
+The Pathologist/Authorized Verifier should have a dedicated worklist showing:
+Awaiting Verification
+The Pathologist should be able to review:
+Patient details
+Current results
+Reference intervals
+Abnormal/critical flags
+Relevant technical remarks
+Previous results, where available
+The Pathologist should have two principal options:
+A. RETURN FOR CORRECTION
+If a result requires correction or clarification:
+Return for Correction
+A reason/comment should be entered.
+The result returns to the technician's worklist.
+After correction, the technician again submits it for verification.
+B. VERIFY & AUTHORIZE
+If acceptable:
+Verify & Authorize
+The system records:
+Pathologist/authorized verifier
+Date
+Time
+The result becomes:
+FINAL / READY FOR RELEASE
+14. PATHOLOGIST COMMENT
+The Pathologist should have a separate field:
+Pathologist Comment
+This should be separate from routine technical remarks entered during result processing.
+It may be used where interpretation, clarification, correlation or recommendation is appropriate.
+It should not be mandatory on every routine report.
+Where entered, it should appear appropriately on the final report.
+15. CRITICAL RESULTS
+Critical limits should be configurable for applicable tests.
+A critical result should be clearly highlighted during:
+Result entry
+Verification
+Authorization
+The system should provide a mechanism to document critical-result communication, including:
+Person informed
+Date
+Time
+User documenting communication
+Optional remarks
+Critical-result documentation should remain permanently traceable.
+16. REPORT RELEASE & PRINTING
+Only verified and authorized results should be treated as final.
+The Report/Reception section should show:
+Ready for Release / Collection
+Report staff may:
+View report status
+Print an authorized report
+Reprint an authorized report
+They should not be able to modify laboratory results.
+17. PARTIALLY COMPLETED ORDERS
+This is important where several tests have been ordered for one patient.
+The system should clearly show:
+Completed/authorized tests
+Tests still pending
+It should be possible, where required, to print the completed authorized tests without falsely showing the entire order as completed.
+Pending tests must remain visible as pending.
+18. CORRECTED / AMENDED REPORT
+Once a report has been verified, authorized and released, the result must not simply be overwritten.
+If a correction is subsequently required:
+Authorized user opens the report for amendment.
+Reason for amendment is mandatory.
+Corrected result is entered.
+Pathologist verifies/authorizes the corrected result.
+New report is identified as:
+AMENDED / CORRECTED REPORT
+The system must preserve:
+Original result
+Corrected result
+Reason for change
+User making the change
+Authorizing Pathologist
+Date/time
+This history should not be deletable by ordinary users.
+19. REPORT FORMAT
+The approved report format should support:
+Laboratory header
+Footer
+Patient demographics
+Patient ID
+Order number
+Collection/reporting dates
+Test/parameter
+Result
+Unit
+Reference interval
+Abnormal/critical flags
+Technical remarks, where applicable
+Pathologist Comment, where applicable
+Verification/authorization details
+The authorized report template should be controlled so ordinary operators cannot independently change the report format.
+20. TEST MASTER / TECHNICAL CONFIGURATION
+The system should allow appropriately authorized laboratory personnel to configure:
+Test name
+Test code
+Department/section
+Test parameters
+Units
+Reference intervals
+Age/sex-specific reference intervals
+Critical limits
+Result type
+Selectable result options
+Method, where required
+Specimen type
+Expected TAT
+Report display sequence
+Active/inactive status
+New tests or major technical changes should not automatically become active merely because an administrative user has entered them.
+Technical configuration should remain controlled by the authorized laboratory role.
+21. INVENTORY MANAGEMENT
+Inventory should include:
+Item/reagent name
+Category
+Supplier, where applicable
+Lot/batch number
+Expiry date
+Quantity received
+Stock-in
+Stock-out
+Current balance
+Unit of measurement
+Minimum/reorder level
+The system should flag:
+Minimum/reorder level reached
+Near-expiry stock
+Expired stock
+Stock movement should record:
+Quantity
+Date/time
+User
+Reason/reference where applicable
+Expired stock should remain visible historically but should be clearly identified as expired.
+22. AUDIT TRAIL
+A non-editable audit trail is required.
+It should cover important actions including:
+Patient registration/editing
+Order creation
+Test addition/removal/cancellation
+Discounts
+Payment modification
+Sample collection
+Sample rejection
+Result entry
+Result changes
+Return for correction
+Verification/authorization
+Report release/reprinting
+Report amendment
+Inventory adjustments
+Changes to test/reference-range configuration
+For important actions, the system should answer:
+WHO did WHAT, WHEN, and where relevant WHY?
+Audit history should not be deletable by ordinary users.
+23. ROLE-BASED ACCESS CONTROL
+Permissions should be clearly separated.
+For example:
+Reception / Order Entry
+Can:
+Register patients
+Create orders
+Receive payments within permitted limits
+Cannot:
+Enter/alter laboratory results
+Verify results
+Authorize reports
+Sample Collector
+Can:
+View collection worklist
+Mark specimens collected
+Record rejection/recollection where permitted
+Cannot:
+Modify results
+Authorize reports
+Result Entry Technician
+Can:
+Enter results
+Enter permitted technical observations
+Submit results for verification
+Correct results returned by Pathologist
+Cannot:
+Authorize/release results
+Change prices
+Pathologist / Authorized Verifier
+Can:
+Review results
+Return results for correction
+Add Pathologist Comment
+Verify & authorize results
+Authorize corrected/amended results
+Control/approve technical test configuration as applicable
+Report/Reception User
+Can:
+View report status
+Print/reprint authorized reports
+Cannot:
+Alter authorized laboratory results
+Admin
+Can manage appropriate administrative functions such as:
+Users
+Permissions
+Financial configuration
+Approved discounts
+Institutional accounts
+System/report configuration
+Administrative access should not automatically confer authority to verify or alter laboratory results.
+24. BACKUP & DATA SECURITY
+The LIMS should provide:
+Automated regular database backup
+Defined backup location
+Protection against accidental deletion
+Controlled access to patient information
+Data recovery mechanism following server/computer failure
+The backup system should be tested by restoration, not merely assumed to be working because backup files exist.
+25. COMPLETE LIMS WORKFLOW
+The principal workflow should be:
+Patient Registration
+↓
+Order Creation & Payment
+↓
+Sample Collection
+↓
+Result Entry by Technician
+↓
+Submit for Verification
+↓
+Pathologist Review
+↓
+Verify & Authorize
+↓
+Final / Ready for Release
+↓
+Report Printing / Collection
+Exception Pathways
+Sample unsuitable → Reject Sample → Recollection Required
+Pathologist identifies problem → Return for Correction → Technician Corrects → Resubmit → Pathologist Verifies & Authorizes
+Error discovered after final release → Amendment → Pathologist Re-verification/Authorization → Amended Report
+26. IMPORTANT SYSTEM REQUIREMENTS
+The following should be considered core requirements rather than optional additions:
+Separate permanent Patient ID and individual Order/Visit Number.
+Individual user accounts and role-based permissions.
+Specimen collection tracking with date/time/user.
+Specimen rejection and recollection pathway.
+Technician result entry followed by Pathologist verification/authorization.
+Separate Pathologist Comment field.
+Critical-result flagging and communication documentation.
+Non-editable audit trail.
+No silent alteration of an authorized report.
+Formal corrected/amended-report workflow.
+Clear tracking of pending tests within partially completed orders.
+Inventory lot/batch, expiry and minimum-stock tracking.
+Automated backup with tested restoration capability.
+Technical laboratory configuration separated from purely administrative authority.
+Final Development Principle
+The software should not merely provide screens for entering laboratory data. It should enforce the laboratory workflow.
+At any point, it should be possible to determine:
+Where is this patient's test currently pending?
+Who performed the last action?
+Who entered the result?
+Who verified and authorized it?
+Was anything subsequently changed, by whom, when and why?
+The complete workflow should first be demonstrated on a test/demo database using dummy patients, including normal cases and exception pathways, before live patient reporting is started.

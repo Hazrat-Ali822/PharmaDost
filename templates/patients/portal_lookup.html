@@ -153,6 +153,21 @@
     {% endif %}
 
     <form method="get">
+      {# Which hospital's register. Only asked when the address cannot say —      #}
+      {# a tenant subdomain answers it, and a single-site install has no choice   #}
+      {# to make. Searching every hospital at once is what this replaced.         #}
+      {% if hospitals %}
+      <div class="form-group">
+        <label for="hospital-select">Your hospital</label>
+        <select name="hospital" id="hospital-select" required
+                style="width:100%; padding:13px 15px; font-size:15px; border-radius:10px; border:1.5px solid var(--border);">
+          <option value="">— choose your hospital —</option>
+          {% for h in hospitals %}
+            <option value="{{ h.slug }}" {% if request.GET.hospital == h.slug %}selected{% endif %}>{{ h.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
       <div class="form-group">
         <label>Mobile Number, MRN, or Name:</label>
         <input type="text" name="query" value="{{ query|default:'' }}" placeholder="e.g. 03001234567, SD-000009, or Name" required autofocus>

@@ -588,27 +588,86 @@ def patient_portal_lookup(request):
     results = None
     query = (request.GET.get('query') or request.POST.get('query') or '').strip()
 
-    if query:
-        from saas.utils import get_current_hospital, hospital_from_host
-        hospital = get_current_hospital() or hospital_from_host(request.get_host())
-        if not hospital and request.user.is_authenticated:
-            hospital = getattr(request.user, 'hospital', None)
+    # Which hospital's register is being searched. The host answers this when
+    # the tenant has a subdomain, but wildcard DNS is not guaranteed to be set
+    # up (see CLAUDE.md — the `/<slug>/login/` path form exists for exactly that
+    # reason), so the patient can also pick. Never "search them all": that made
+    # this a search box over every customer's patient register.
+    from saas.models import Hospital
+    from saas.utils import get_current_hospital, hospital_from_host
 
-        # Base active patients queryset
+    hospital = get_current_hospital() or hospital_from_host(request.get_host())
+    if not hospital:
+        chosen = (request.GET.get('hospital') or request.POST.get('hospital') or '').strip()
+        if chosen:
+            hospital = Hospital.objects.filter(slug=chosen, is_active=True).first()
+    if not hospital and request.user.is_authenticated:
+        hospital = getattr(request.user, 'hospital', None)
+
+    # A single-site install (the desktop / LAN build) has no Hospital rows at
+    # all and files its patients under `hospital IS NULL`; there is nothing to
+    # choose and nothing to leak.
+    hospitals = list(Hospital.objects.filter(is_active=True).order_by('name'))         if not hospital else []
+
+    if query and not hospital and hospitals:
+        return render(request, 'patients/portal_lookup.html', {
+            'error': 'Please choose your hospital first.',
+            'query': query, 'results': None, 'hospitals': hospitals,
+        })
+
+    if query:
+        digits = ''.join(c for c in query if c.isdigit())
+
+        # A name is not a secret, and what this page hands back is a medical
+        # record. Matching on a name alone meant anyone could type "Muhammad",
+        # get a list of real patients, and open their prescriptions, lab results
+        # and bills. The query has to carry something the patient actually holds
+        # and that is printed on their slip: the mobile number, the full MRN, or
+        # the CNIC. A name still narrows a common number; it just cannot be the
+        # whole of it.
+        #
+        # "at least 7 digits, or an MRN in its printed form" rather than "any
+        # digits": a bare "9" is not a credential, it is the first step of
+        # counting upwards, and a single match opens the record.
+        looks_like_mrn = '-' in query and len(digits) >= 3
+        if len(digits) < 7 and not looks_like_mrn:
+            return render(request, 'patients/portal_lookup.html', {
+                'error': ("Please enter your mobile number, or the MRN exactly "
+                          "as printed on your slip (for example SD-000009). "
+                          "A name on its own is not enough to open a health "
+                          "record."),
+                'query': query, 'results': None,
+                'hospitals': hospitals, 'hospital': hospital,
+            })
+
+        # Fail-closed, exactly as `TenantManager` does. `Patient.objects` IS a
+        # TenantManager, but this page is ANONYMOUS: nothing binds a tenant and
+        # the thread is not strict, so the manager hands back every hospital's
+        # patients. On the bare platform domain that made this a search box over
+        # every customer's patient register — name, hospital and MRN in the
+        # result list, and a single match redirected straight into the full
+        # record. A hospital-less install (desktop/LAN) matches its own
+        # `hospital IS NULL` rows and keeps working.
         patients_qs = Patient.objects.filter(is_active=True).select_related('hospital')
         if hospital:
             patients_qs = patients_qs.filter(hospital=hospital)
+        else:
+            patients_qs = patients_qs.filter(hospital__isnull=True)
 
-        digits = ''.join(c for c in query if c.isdigit())
-        q_filter = Q(mrn__iexact=query) | Q(phone__icontains=query) | Q(cnic__icontains=query)
+        q_filter = Q(mrn__iexact=query) | Q(cnic__icontains=query)
 
-        # If digits only or short number (e.g. '9' or '3')
-        if query.isdigit() and len(query) <= 6:
-            num = int(query)
-            q_filter |= Q(mrn__endswith=f"-{num:06d}") | Q(mrn__endswith=f"-{num}") | Q(id=num)
+        # The MRN as printed, and the bare number inside it. Deliberately NOT
+        # `Q(id=num)`: the patient never sees the internal row id, so it can
+        # only ever be guessed at, and guessing is what this is protecting
+        # against.
+        if looks_like_mrn or query.isdigit():
+            tail = digits.lstrip('0') or '0'
+            if tail.isdigit() and len(tail) <= 9:
+                q_filter |= (Q(mrn__endswith=f"-{int(tail):06d}")
+                             | Q(mrn__endswith=f"-{tail}"))
 
         # Phone digits matching
-        if len(digits) >= 6:
+        if len(digits) >= 7:
             q_filter |= Q(phone__icontains=digits) | Q(phone__icontains=digits[-7:])
             if len(digits) >= 10:
                 q_filter |= Q(phone__icontains=digits[-10:])
@@ -631,12 +690,17 @@ def patient_portal_lookup(request):
         elif count > 1:
             results = matched_qs[:10]
         else:
-            error = f"No patient records found matching '{query}'. Please check your Mobile Number, MRN, or Name."
+            error = (f"No patient records found matching '{query}' at this "
+                     f"hospital. Please check your Mobile Number or MRN — and "
+                     f"make sure you are using your own hospital's portal link "
+                     f"(the QR code on your slip opens the right one).")
 
     return render(request, 'patients/portal_lookup.html', {
         'error': error,
         'query': query,
         'results': results,
+        'hospitals': hospitals,
+        'hospital': hospital,
     })
 
 

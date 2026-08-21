@@ -372,14 +372,25 @@ class TokenTrackTest(ReceptionBase):
     def test_patient_can_track_token_publicly(self):
         # Public tracking does not require client login
         unauth_client = Client()
-        resp = unauth_client.get(reverse('patient_token_track', args=[self.appt.pk]))
+        resp = unauth_client.get(reverse('patient_token_track', args=[self.appt.track_token]))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'Kamran Akmal')
         self.assertContains(resp, f'#{self.appt.token_no}')
 
+    def test_the_sequential_id_is_no_longer_a_public_url(self):
+        """`/opd/track/<pk>/` was anonymous and printed the patient's name, the
+        doctor and the hospital. `Appointment` has no hospital column and no
+        manager, so counting 1, 2, 3… walked every appointment on the platform
+        across every tenant. It is keyed on an unguessable token now, the same
+        answer `Patient.portal_token` gives."""
+        from django.urls import NoReverseMatch
+        with self.assertRaises(NoReverseMatch):
+            reverse('patient_token_track', args=[self.appt.pk])
+        self.assertEqual(Client().get(f'/opd/track/{self.appt.pk}/').status_code, 404)
+
     def test_patient_token_track_api(self):
         unauth_client = Client()
-        resp = unauth_client.get(reverse('patient_token_track', args=[self.appt.pk]), HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        resp = unauth_client.get(reverse('patient_token_track', args=[self.appt.track_token]), HTTP_X_REQUESTED_WITH='XMLHttpRequest')
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertEqual(data['token_no'], self.appt.token_no)

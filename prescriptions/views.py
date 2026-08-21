@@ -397,11 +397,13 @@ def preset_create(request):
         if form.is_valid() and formset.is_valid():
             with transaction.atomic():
                 preset = form.save(commit=False)
-                if request.user.hospital:
-                    preset.hospital = request.user.hospital
-                else:
-                    from saas.models import Hospital
-                    preset.hospital = Hospital.objects.first()
+                # No `or Hospital.objects.first()`. That filed a hospital-less
+                # user's preset into whichever tenant had the lowest id — a real
+                # customer's data — and on the desktop build, where there are no
+                # hospitals at all, it was None against a NOT NULL column and the
+                # save simply crashed. `saas.signals.auto_assign_hospital` stamps
+                # it from the thread-local, and a hospital-less install correctly
+                # gets NULL.
                 if getattr(request.user, 'role', None) == 'DOCTOR':
                     from opd.models import Doctor
                     preset.doctor = Doctor.objects.filter(user=request.user).first()
