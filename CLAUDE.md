@@ -1852,9 +1852,16 @@ medical record:
      counting upwards from 1 opened real records. The patient never sees that
      number and cannot be told it.
 
-  Residual risk, known and accepted for now: MRNs are sequential, so within one
-  hospital they can still be walked. The proportionate fix is a per-IP rate
-  limit on this view; it is not built yet.
+  4. **It is rate limited per IP**, because MRNs are issued in sequence and the
+     three rules above still leave them walkable inside one hospital.
+     `patients/portal_throttle.py` counts in a small table
+     (`PortalLookupAttempt`), **not** in the cache — no `CACHES` is configured,
+     so `cache.set` lands in per-process `LocMemCache` and Passenger runs
+     several workers, which would make the real limit *20 x workers*, resetting
+     whenever one recycles. Same decision, and the same reasoning, as
+     `accounts/lockout.py`. It fails **open**: a broken counter must not become
+     an outage on the one page a patient uses when they have lost their slip.
+     Tunable via `PORTAL_LOOKUP_MAX` / `PORTAL_LOOKUP_WINDOW_SECONDS`.
 
 **Printed QR codes are drawn locally** (`{% qr_url_data_uri %}` in
 `billing/templatetags/qr.py`), never fetched from a QR service. The OPD slip,
