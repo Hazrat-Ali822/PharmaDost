@@ -62,3 +62,8 @@ license.json
 # shipped versions live in static/img/. Kept on the machine, out of the repo.
 /Medical_tech_background_with_ECG*
 /minimal-flat-app-icon-logo*
+
+# Owner working documents — kept locally, never committed (same as Sehatyar.docx)
+Sehatyar.docx
+Hayat LIMS.docx
+hayat_lims_text.txt
