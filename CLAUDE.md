@@ -2722,9 +2722,9 @@ almost always means a query moved inside a loop; find that before raising the nu
   - Keyword marketing landing page (`/patient-portal/`) targeting *"digital patient portal Pakistan"*, *"online lab reports"*, and *"live OPD token tracking"*.
   - Full Schema.org JSON-LD structured data and XML sitemap (`/sitemap.xml`) indexing.
   - Documented in `llms.txt` for accurate AI answer engine citations (ChatGPT, Perplexity, Gemini, Claude).
-- **High-Contrast Eye-Catching UI Design**:
-  - High-contrast health ocean gradient (`linear-gradient(135deg, #0284c7, #0369a1)`) with glowing cyan drop-shadow and razor-sharp white text on hover.
-  - Interactive hover state (`transform: translateY(-1.5px)`) for a premium digital health card experience.
+- **Live OPD Waiting Hall TV Display (`/opd/tv/` & `/opd/tv/api/`)**:
+  - Wall-mounted public Smart TV waiting hall display supporting unauthenticated hospital subdomain access (e.g. `shaheen-health-care.sehatyar.online/opd/tv/`).
+  - Scopes doctors and appointments to the resolved hospital tenant with live rotating carousel pagination for large clinics.
 - **Zero DB Load & Defensive Fault-Tolerance**: Single indexed lookup on `patient_id` returning <15 KB compressed payload rendered in <40ms with isolated try-except blocks across clinical modules.
 
 

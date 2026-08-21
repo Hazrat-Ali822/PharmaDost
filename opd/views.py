@@ -459,10 +459,31 @@ def appointment_update_status(request, pk):
     return JsonResponse({'success': False, 'error': 'Invalid status'}, status=400)
 
 
-def _get_tv_queue_data(user, department_id=None):
+def _get_tv_queue_data(user_or_request, department_id=None, hospital=None):
     today = timezone.localdate()
+    from saas.utils import get_current_hospital, hospital_from_host
+
+    user = None
+    if hasattr(user_or_request, 'user'):
+        user = user_or_request.user if user_or_request.user.is_authenticated else None
+        if hospital is None:
+            hospital = get_current_hospital() or hospital_from_host(user_or_request.get_host())
+    elif getattr(user_or_request, 'is_authenticated', False):
+        user = user_or_request
+
+    if hospital is None and user is not None:
+        hospital = getattr(user, 'hospital', None)
+
     doctors = doctors_with_availability(user)
-    if department_id:
+    if hospital:
+        doctors = doctors.filter(hospital=hospital)
+    elif user and not user.is_superuser:
+        doctors = doctors.filter(hospital=getattr(user, 'hospital', None))
+    elif not user and not hospital:
+        # Desktop / LAN single site fallback
+        doctors = doctors.filter(hospital__isnull=True)
+
+    if department_id and department_id != 'all':
         try:
             doctors = doctors.filter(department_id=department_id)
         except Exception:
@@ -513,14 +534,14 @@ def _get_tv_queue_data(user, department_id=None):
             'state_label': state.get('label', '') if isinstance(state, dict) else '',
             'serving': {
                 'token_no': in_consult.token_no,
-                'patient_name': in_consult.patient.full_name,
+                'patient_name': in_consult.patient.full_name if in_consult.patient else '',
                 'status': in_consult.get_status_display(),
                 'label': serving_label,
                 'is_active_consult': is_active_consult,
             } if in_consult else None,
             'waiting': [{
                 'token_no': w.token_no,
-                'patient_name': w.patient.full_name,
+                'patient_name': w.patient.full_name if w.patient else '',
                 'status': w.get_status_display(),
             } for w in waiting],
             'done_count': done_count,
@@ -530,25 +551,51 @@ def _get_tv_queue_data(user, department_id=None):
     return queue
 
 
-@feature_required('tv_display', 'opd')
 def opd_tv_display(request):
     """Full-screen Live OPD Waiting Hall TV Display for public TV / monitors."""
+    from saas.utils import get_current_hospital, hospital_from_host, set_current_hospital, clear_current_hospital
+    from user_mgmt.models import SiteSettings
+
+    hospital = get_current_hospital() or hospital_from_host(request.get_host())
+    if not hospital and request.user.is_authenticated:
+        hospital = getattr(request.user, 'hospital', None)
+
     dept_id = request.GET.get('dept')
-    queue = _get_tv_queue_data(request.user, department_id=dept_id)
-    departments = Department.objects.filter(is_active=True).order_by('name')
+    queue = _get_tv_queue_data(request, department_id=dept_id, hospital=hospital)
+
+    dept_qs = Department.objects.filter(is_active=True)
+    if hospital:
+        dept_qs = dept_qs.filter(hospital=hospital)
+    elif request.user.is_authenticated and not request.user.is_superuser:
+        dept_qs = dept_qs.filter(hospital=request.user.hospital)
+    departments = dept_qs.order_by('name')
+
+    if hospital:
+        set_current_hospital(hospital)
+    try:
+        branding = SiteSettings.load()
+    finally:
+        clear_current_hospital()
+
     return render(request, 'opd/tv_display.html', {
         'queue': queue,
         'today': timezone.localdate(),
         'departments': departments,
         'selected_dept': dept_id,
+        'branding': branding,
+        'hospital': hospital,
     })
 
 
-@feature_required('tv_display', 'opd')
 def opd_tv_api(request):
     """JSON API endpoint for background auto-refreshing the TV display."""
+    from saas.utils import get_current_hospital, hospital_from_host
+    hospital = get_current_hospital() or hospital_from_host(request.get_host())
+    if not hospital and request.user.is_authenticated:
+        hospital = getattr(request.user, 'hospital', None)
+
     dept_id = request.GET.get('dept')
-    queue = _get_tv_queue_data(request.user, department_id=dept_id)
+    queue = _get_tv_queue_data(request, department_id=dept_id, hospital=hospital)
     return JsonResponse({
         'success': True,
         'timestamp': timezone.now().isoformat(),
