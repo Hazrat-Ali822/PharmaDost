@@ -2647,6 +2647,11 @@ almost always means a query moved inside a loop; find that before raising the nu
 - **Multi-Tenant MRN Prefix Collision Guard**:
   - Every hospital tenant receives a globally unique MRN prefix derived from hospital brand.
   - `SiteSettingsForm.clean_mrn_prefix` and `patients.services.derive_prefix` enforce strict multi-tenant global prefix uniqueness.
+- **Live OPD Token & Real-Time Queue Tracker Banner**:
+  - When a patient has an active today's OPD booking (e.g. Token #5 with Dr. Shariq), their portal displays a prominent live queue banner right at the top.
+  - Displays: Token Number, Doctor name, Specialty, Currently consulting token, and number of patients ahead.
+  - Live Calling Alert: When doctor updates status to `IN_CONSULT`, banner updates with pulsing "🔔 NOW CALLING YOUR NUMBER: Please Enter Doctor Room".
+  - Auto-refreshes every 15s in background while patient is in waiting queue.
 - **Zero DB Load & Defensive Fault-Tolerance**: Single indexed lookup on `patient_id` returning <15 KB compressed payload rendered in <40ms with isolated try-except blocks across clinical modules.
 
 

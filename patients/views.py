@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from pharma_mgmt.pagination import paginate
 
 from accounts.decorators import role_required, feature_required
+from django.utils import timezone
 from .forms import PatientForm, ClinicalRecordForm
 from .search import apply_search
 from .models import Patient
@@ -492,6 +493,35 @@ def patient_portal_hub(request, token):
 
     hospital = getattr(patient, 'hospital', None)
 
+    # 0. Active Today's OPD Token
+    active_appointment = None
+    patients_ahead = 0
+    current_token = None
+    try:
+        from opd.models import Appointment
+        today = timezone.localdate()
+        today_appts = Appointment.objects.filter(
+            patient=patient,
+            appointment_date=today
+        ).select_related('doctor', 'doctor__department').order_by('-id')
+        active_appointment = today_appts.first()
+
+        if active_appointment and active_appointment.status not in ['DONE', 'CANCELLED', 'NO_SHOW']:
+            doc_appts = Appointment.objects.filter(
+                doctor=active_appointment.doctor,
+                appointment_date=today
+            ).order_by('token_no')
+            in_consult = doc_appts.filter(status='IN_CONSULT').first()
+            if in_consult:
+                current_token = in_consult.token_no
+
+            patients_ahead = doc_appts.filter(
+                status__in=['BOOKED', 'ARRIVED'],
+                token_no__lt=active_appointment.token_no
+            ).count()
+    except Exception:
+        active_appointment = None
+
     # 1. Prescriptions with medicines
     try:
         from prescriptions.models import Prescription
@@ -536,6 +566,9 @@ def patient_portal_hub(request, token):
     return render(request, 'patients/portal_hub.html', {
         'patient': patient,
         'hospital': hospital,
+        'active_appointment': active_appointment,
+        'patients_ahead': patients_ahead,
+        'current_token': current_token,
         'prescriptions': prescriptions,
         'lab_orders': lab_orders,
         'imaging_studies': imaging_studies,

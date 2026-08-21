@@ -47,6 +47,8 @@ class PatientPortalTests(TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, 'Zahid Ahmed')
         self.assertContains(r, 'City Care Hospital')
+        self.assertContains(r, 'Your Token #')
+        self.assertContains(r, 'Dr. Shariq Khan')
         self.assertContains(r, 'Acute Pharyngitis')
         self.assertContains(r, 'Tab Paracetamol 500mg')
 
