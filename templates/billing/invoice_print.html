@@ -3,10 +3,23 @@
 {% block doctitle %}Invoice {{ invoice.display_no }}{% endblock %}
 
 {% block headmeta %}
-  <b>{{ invoice.patient.full_name }}</b><br>
-  MRN: {{ invoice.patient.mrn }}<br>
-  {% if invoice.patient.phone %}&#9742; {{ invoice.patient.phone }}<br>{% endif %}
-  Date: {{ invoice.created_at|date:"d M Y" }}
+  <div style="display:flex; gap:12px; align-items:center; justify-content:flex-end;">
+    <div style="text-align:right;">
+      <b>{{ invoice.patient.full_name }}</b><br>
+      MRN: {{ invoice.patient.mrn }}<br>
+      {% if invoice.patient.phone %}&#9742; {{ invoice.patient.phone }}<br>{% endif %}
+      Date: {{ invoice.created_at|date:"d M Y" }}
+    </div>
+    {% if invoice.patient.portal_token %}
+    <div>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data={{ request.scheme }}://{{ request.get_host }}{% url 'patient_portal_hub' invoice.patient.portal_token %}" 
+           alt="Digital Health Portal QR" 
+           style="width:52px; height:52px; border:1px solid #cbd5e1; border-radius:4px; padding:1px; display:block;" 
+           title="Scan with phone to view your lifetime digital records & invoices">
+      <span style="font-size:8.5px; color:var(--soft); font-weight:700; display:block; text-align:center; margin-top:2px;">Patient Portal</span>
+    </div>
+    {% endif %}
+  </div>
 {% endblock %}
 
 {% block body %}

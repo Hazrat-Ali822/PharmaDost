@@ -3,8 +3,21 @@
 {% block doctitle %}Laboratory Report{% endblock %}
 
 {% block headmeta %}
-  <b>Report #{{ order.id }}</b><br>
-  {{ order.order_date|date:"d M Y · g:i A" }}
+  <div style="display:flex; gap:12px; align-items:center; justify-content:flex-end;">
+    <div style="text-align:right;">
+      <b>Report #{{ order.id }}</b><br>
+      {{ order.order_date|date:"d M Y · g:i A" }}
+    </div>
+    {% if order.patient.portal_token %}
+    <div>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data={{ request.scheme }}://{{ request.get_host }}{% url 'patient_portal_hub' order.patient.portal_token %}" 
+           alt="Digital Health Portal QR" 
+           style="width:52px; height:52px; border:1px solid #cbd5e1; border-radius:4px; padding:1px; display:block;" 
+           title="Scan with phone to view your lifetime digital records & live lab results">
+      <span style="font-size:8.5px; color:var(--soft); font-weight:700; display:block; text-align:center; margin-top:2px;">Live Results QR</span>
+    </div>
+    {% endif %}
+  </div>
 {% endblock %}
 
 {% block body %}
