@@ -21,6 +21,9 @@
       {% if nav.ipd %}<a class="btn alt" href="{% url 'ipd:admission_advise' patient.pk %}">🛏️ Advise Admission</a>{% endif %}
       {% if nav.ot %}<a class="btn alt" href="{% url 'ot:surgery_advise' patient.pk %}">🔪 Advise Surgery</a>{% endif %}
     {% endif %}
+    {% if patient.portal_token %}
+      <a class="btn" style="background:#0284c7; color:#fff; border-color:#0284c7;" href="{% url 'patient_portal_hub' patient.portal_token %}" target="_blank">📱 Digital Portal</a>
+    {% endif %}
     <a class="btn alt" href="{% url 'patient_edit' patient.pk %}">Edit</a>
     <a class="btn alt" href="{% url 'patient_list' %}">Back</a>
   </div>

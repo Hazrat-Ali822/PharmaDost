@@ -29,6 +29,9 @@
         <td>
           <a class="btn sm" href="{% url 'patient_detail' patient.pk %}">History</a>
           <a class="btn sm alt" href="{% url 'patient_edit' patient.pk %}">Edit</a>
+          {% if patient.portal_token %}
+            <a class="btn sm" style="background:#0284c7; color:#fff; border-color:#0284c7;" href="{% url 'patient_portal_hub' patient.portal_token %}" target="_blank" title="Digital Health Portal">📱 Portal</a>
+          {% endif %}
         </td>
       </tr>
       {% empty %}
