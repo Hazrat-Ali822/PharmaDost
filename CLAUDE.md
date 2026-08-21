@@ -2612,7 +2612,11 @@ almost always means a query moved inside a loop; find that before raising the nu
 
 ## Rush-Hour Fast Operations & Automation
 
-- **Doctor Desk 1-Click Clinical Presets**: Disease buttons (`Flu`, `Gastroenteritis`, `Typhoid`, `Hypertension`, `Diabetes`, `Body Aches`) on `prescription_form.html` auto-fill complaints, diagnoses, clinical notes, standard medicines, dosages, and frequencies in 0.5s.
+- **Doctor Desk 1-Click Clinical Presets (Doctor-Scoped)**:
+  - Presets (`RxPreset`) are scoped by `hospital` AND `doctor` (`Q(doctor=doc) | Q(doctor__isnull=True)`).
+  - Every doctor (e.g. Gynecologist, Cardiologist, Pediatrician, General Physician) creates their own custom templates via `+ Add My Preset`.
+  - Presets store custom `complaint`, `diagnosis`, `notes`, and itemized medicines (`custom_medicine_name`, `dosage`, `duration_days`, `instructions`).
+  - Clicking any chip auto-populates the entire prescription in <0.5s. Doctors only see their own specialty presets.
 - **Pharmacy POS Continuous Barcode Scanning & Audio Feedback**:
   - Scanning the same barcode repeatedly automatically increments quantity (`qty + 1`) while keeping input focus.
   - Web Audio API synthesizes a 0.1s confirmation beep (`playScanBeep()`) on each scan.
