@@ -429,6 +429,6 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS(f"Bill items imported successfully!"))
 
         self.stdout.write(self.style.SUCCESS(
-            f"\n[DONE] Umair Pharmacy data import complete for '{tenant.name}' on sehatyar.online!"
+            f"\n[DONE] Data import complete for '{tenant.name}' on sehatyar.online!"
         ))
 
