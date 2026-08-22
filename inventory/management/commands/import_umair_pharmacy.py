@@ -123,7 +123,7 @@ class Command(BaseCommand):
         # 2. Import Suppliers
         supplier_obj = None
         if os.path.exists(supp_file):
-            with open(supp_file, mode='r', encoding='utf-8') as f:
+            with open(supp_file, mode='r', encoding='utf-8-sig') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
                     s_name = row.get('name', '').strip()
@@ -141,7 +141,7 @@ class Command(BaseCommand):
 
         # 3. Import Customers
         if os.path.exists(cust_file):
-            with open(cust_file, mode='r', encoding='utf-8') as f:
+            with open(cust_file, mode='r', encoding='utf-8-sig') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
                     c_name = row.get('name', '').strip()
@@ -165,7 +165,7 @@ class Command(BaseCommand):
         medicines_updated = 0
 
         if os.path.exists(med_file):
-            with open(med_file, mode='r', encoding='utf-8') as f:
+            with open(med_file, mode='r', encoding='utf-8-sig') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
                     name = row.get('name', '').strip()
@@ -224,7 +224,7 @@ class Command(BaseCommand):
         # 5. Import Batches
         batches_created = 0
         if os.path.exists(batch_file):
-            with open(batch_file, mode='r', encoding='utf-8') as f:
+            with open(batch_file, mode='r', encoding='utf-8-sig') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
                     b_code = row.get('barcode', '').strip()
@@ -257,6 +257,128 @@ class Command(BaseCommand):
         else:
             self.stdout.write(self.style.WARNING(f"Batches file not found: {batch_file}"))
 
+        # 6. Import Historical Bills & Sales
+        sales_file = os.path.join(data_dir, 'sales.csv')
+        sale_items_file = os.path.join(data_dir, 'sale_items.csv')
+
+        if os.path.exists(sales_file):
+            self.stdout.write("Importing Sales Bills (Invoices)...")
+            from sales.models import Sale, SaleItem
+
+            # Build Sale objects
+            sales_to_create = []
+            inv_map = {} # invoice_no -> Sale object
+
+            with open(sales_file, mode='r', encoding='utf-8-sig') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    inv_no = row.get('invoice_no', '').strip()
+                    if not inv_no:
+                        continue
+                    s_date = row.get('sale_date', '').strip()
+                    s_time = row.get('sale_time', '').strip()
+                    subtotal = self.parse_decimal(row.get('subtotal', '0'))
+                    discount = self.parse_decimal(row.get('discount', '0'))
+                    total = self.parse_decimal(row.get('total', '0'))
+                    paid = self.parse_decimal(row.get('paid', '0'))
+                    cust_name = row.get('customer_name', '').strip()
+
+                    # Parse datetime
+                    dt_str = f"{s_date} {s_time}".strip()
+                    created_at = timezone.now()
+                    try:
+                        created_at = timezone.make_aware(datetime.strptime(dt_str, '%Y-%m-%d %I:%M:%S %p'))
+                    except Exception:
+                        try:
+                            created_at = timezone.make_aware(datetime.strptime(dt_str, '%Y-%m-%d %H:%M:%S'))
+                        except Exception:
+                            try:
+                                created_at = timezone.make_aware(datetime.strptime(s_date, '%Y-%m-%d'))
+                            except Exception:
+                                pass
+
+                    sale_obj = Sale(
+                        sale_type=Sale.RETAIL,
+                        customer_name=cust_name or 'Walk-in Customer',
+                        subtotal=subtotal,
+                        discount=discount,
+                        total=total,
+                        paid=paid,
+                        payment_method='CASH',
+                        created_at=created_at,
+                        hospital=tenant
+                    )
+                    sales_to_create.append(sale_obj)
+                    inv_map[inv_no] = sale_obj
+
+            # Bulk create sales in batches
+            batch_size = 1000
+            for i in range(0, len(sales_to_create), batch_size):
+                Sale.objects.bulk_create(sales_to_create[i:i + batch_size])
+            self.stdout.write(self.style.SUCCESS(f"Created {len(sales_to_create)} Sale Bills."))
+
+            # Import Sale Items
+            if os.path.exists(sale_items_file):
+                self.stdout.write("Importing Bill Items...")
+                # Reload created sales to get their DB IDs
+                # We can map by created_at and total or store sequentially
+                db_sales = list(Sale.objects.filter(hospital=tenant).order_by('id'))
+                # Map original inv_no to created db sale by sequential index
+                inv_keys = list(inv_map.keys())
+                seq_inv_to_sale = {}
+                for idx, k in enumerate(inv_keys):
+                    if idx < len(db_sales):
+                        seq_inv_to_sale[k] = db_sales[idx]
+
+                # Fallback general medicine if item not found
+                fallback_med, _ = Medicine.objects.get_or_create(
+                    name="General Item",
+                    brand="General",
+                    hospital=tenant,
+                    defaults={
+                        'price': Decimal('100.00'),
+                        'cost_price': Decimal('80.00'),
+                        'expiry_date': timezone.localdate() + timezone.timedelta(days=365)
+                    }
+                )
+
+                items_to_create = []
+                with open(sale_items_file, mode='r', encoding='utf-8-sig') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        inv_no = row.get('invoice_no', '').strip()
+                        sale = seq_inv_to_sale.get(inv_no)
+                        if not sale:
+                            continue
+
+                        barcode = row.get('barcode', '').strip()
+                        item_name = row.get('item_name', '').strip()
+                        qty = max(1, int(float(row.get('quantity', 1) or 1)))
+                        unit_price = self.parse_decimal(row.get('unit_price', '0'))
+                        discount = self.parse_decimal(row.get('discount', '0'))
+                        cost_price = self.parse_decimal(row.get('cost_price', '0'))
+
+                        med = barcode_to_medicine.get(barcode) or name_to_medicine.get(item_name.lower()) or fallback_med
+
+                        item_obj = SaleItem(
+                            sale=sale,
+                            medicine=med,
+                            unit_price=unit_price if unit_price > 0 else med.price,
+                            quantity=qty,
+                            discount=discount,
+                            cost_price=cost_price if cost_price > 0 else med.cost_price
+                        )
+                        items_to_create.append(item_obj)
+
+                        if len(items_to_create) >= 2000:
+                            SaleItem.objects.bulk_create(items_to_create)
+                            items_to_create = []
+
+                if items_to_create:
+                    SaleItem.objects.bulk_create(items_to_create)
+                self.stdout.write(self.style.SUCCESS(f"Bill items imported successfully!"))
+
         self.stdout.write(self.style.SUCCESS(
             f"\n[DONE] Umair Pharmacy data import complete for '{tenant.name}' on sehatyar.online!"
         ))
+

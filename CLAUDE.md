@@ -2743,9 +2743,11 @@ almost always means a query moved inside a loop; find that before raising the nu
 - **Extracted Datasets (`umair_pharmacy_data/`)**:
   - `medicines.csv`: 2,446 retail/wholesale pharmacy stock medicines with retail prices, trade/purchase prices, pack sizes, rack locations, barcodes, brands, and generic formulas.
   - `batches.csv`: 2,276 batches with expiry dates, quantities, and cost prices.
+  - `sales.csv`: 10,280 historical pharmacy sales bills and receipts.
+  - `sale_items.csv`: 49,904 sold line items with quantities, margins, and prices.
   - `suppliers.csv`: Vendor and distributor profiles.
   - `customers.csv`: Customer khata / credit profiles.
 - **1-Click Injection Runner**:
   - Script: `inject_sehatyar_umair.py`
   - Management Command: `python manage.py import_umair_pharmacy [--tenant-slug umair-pharmacy] [--clear-existing]`
-  - Safely creates or targets the tenant `Hospital` (slug: `umair-pharmacy`), automatically categorises medicine types (TABLET, CAPSULE, SYRUP, INJECTION, DROPS, CREAM, INHALER, SACHET, SUPPOSITORY, OTHER), links batches, and populates initial inventory.
+  - Safely creates or targets the tenant `Hospital` (slug: `umair-pharmacy`), automatically categorises medicine types (TABLET, CAPSULE, SYRUP, INJECTION, DROPS, CREAM, INHALER, SACHET, SUPPOSITORY, OTHER), links batches, imports all historical sales bills and line items, and populates initial inventory.
