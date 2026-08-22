@@ -2747,7 +2747,8 @@ almost always means a query moved inside a loop; find that before raising the nu
   - `sale_items.csv`: 49,904 sold line items with quantities, margins, and prices.
   - `suppliers.csv`: Vendor and distributor profiles.
   - `customers.csv`: Customer khata / credit profiles.
-- **1-Click Injection Runner**:
-  - Script: `inject_sehatyar_umair.py`
-  - Management Command: `python manage.py import_umair_pharmacy [--tenant-slug umair-pharmacy] [--clear-existing]`
-  - Safely creates or targets the tenant `Hospital` (slug: `umair-pharmacy`), automatically categorises medicine types (TABLET, CAPSULE, SYRUP, INJECTION, DROPS, CREAM, INHALER, SACHET, SUPPOSITORY, OTHER), links batches, imports all historical sales bills and line items, and populates initial inventory.
+- **1-Click Injection Runners**:
+  - `inject_sehatyar_umair.py`: Injects dataset into Umair Pharmacy tenant.
+  - `inject_sehatyar_shaheen.py`: Wipes old medicines from Shaheen Health Care tenant and injects clean dataset.
+  - Management Command: `python manage.py import_umair_pharmacy [--tenant-slug <slug>] [--clear-existing]`
+  - Safely creates or targets the tenant `Hospital`, automatically categorises medicine types (TABLET, CAPSULE, SYRUP, INJECTION, DROPS, CREAM, INHALER, SACHET, SUPPOSITORY, OTHER), links batches, imports all historical sales bills and line items, and populates initial inventory.
