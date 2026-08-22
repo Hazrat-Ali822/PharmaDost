@@ -221,39 +221,64 @@ class Command(BaseCommand):
         else:
             self.stdout.write(self.style.ERROR(f"Medicines file not found: {med_file}"))
 
-        # 5. Import Batches
+        # 5. Import Batches (Synchronized with Current Physical Stock)
+        StockBatch.objects.filter(hospital=tenant).delete()
         batches_created = 0
+        med_assigned_stock = {}
+
         if os.path.exists(batch_file):
             with open(batch_file, mode='r', encoding='utf-8-sig') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
                     b_code = row.get('barcode', '').strip()
                     batch_num = row.get('batch_number', '').strip()
-                    b_qty = int(float(row.get('quantity', 0) or 0))
                     b_cost = self.parse_decimal(row.get('cost_price', '0'))
                     b_tp = self.parse_decimal(row.get('tp_price', '0'))
                     exp_date = self.parse_date(row.get('expiry_date', ''))
 
                     # Find corresponding medicine
-                    med = barcode_to_medicine.get(b_code)
-                    if not med:
-                        # Fallback try finding by code in medicine barcodes
-                        med = Medicine.objects.filter(barcode=b_code, hospital=tenant).first()
+                    med = barcode_to_medicine.get(b_code) or Medicine.objects.filter(barcode=b_code, hospital=tenant).first()
 
                     if med:
+                        already_assigned = med_assigned_stock.get(med.id, 0)
+                        remaining_med_qty = max(0, med.quantity - already_assigned)
+                        
+                        # Assign up to remaining current stock
+                        raw_b_qty = int(float(row.get('quantity', 0) or 0))
+                        assign_qty = max(0, min(raw_b_qty, remaining_med_qty))
+                        if assign_qty == 0 and remaining_med_qty > 0 and raw_b_qty >= 0:
+                            assign_qty = remaining_med_qty
+
                         cost = b_cost if b_cost > 0 else (b_tp if b_tp > 0 else med.cost_price)
                         StockBatch.objects.create(
                             medicine=med,
                             batch_number=batch_num or f"BATCH-{b_code}",
-                            quantity=max(0, b_qty),
+                            quantity=max(0, assign_qty),
                             cost_price=cost,
                             expiry_date=exp_date,
                             supplier=supplier_obj,
                             hospital=tenant
                         )
+                        med_assigned_stock[med.id] = already_assigned + assign_qty
                         batches_created += 1
 
-            self.stdout.write(self.style.SUCCESS(f"Batches imported: {batches_created} batches created."))
+            # Ensure all medicines with quantity > 0 have at least one batch covering their stock
+            for med in Medicine.objects.filter(hospital=tenant, quantity__gt=0):
+                assigned = med_assigned_stock.get(med.id, 0)
+                if assigned < med.quantity:
+                    diff = max(0, med.quantity - assigned)
+                    StockBatch.objects.create(
+                        medicine=med,
+                        batch_number=f"BATCH-{med.barcode or med.id}",
+                        quantity=diff,
+                        cost_price=med.cost_price,
+                        expiry_date=med.expiry_date,
+                        supplier=supplier_obj,
+                        hospital=tenant
+                    )
+                    batches_created += 1
+
+            self.stdout.write(self.style.SUCCESS(f"Batches imported: {batches_created} batches synchronized with physical stock."))
         else:
             self.stdout.write(self.style.WARNING(f"Batches file not found: {batch_file}"))
 
@@ -264,6 +289,7 @@ class Command(BaseCommand):
         if os.path.exists(sales_file):
             self.stdout.write("Importing Sales Bills (Invoices)...")
             from sales.models import Sale, SaleItem
+            Sale.objects.filter(hospital=tenant).delete()
 
             # Build Sale objects
             sales_to_create = []
