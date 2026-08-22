@@ -98,6 +98,7 @@ Two traps when adding tests:
 | `expiry_alert [--days N]` | Notify pharmacist/admin about near-expiry stock (daily cron) |
 | `send_reminders [--hospital <slug>] [--dry-run]` | SMS/email patients: tomorrow's appointments, lab report ready, vaccination due (daily cron). Idempotent — a `dedupe_key` per message stops a re-run messaging anyone twice. |
 | `low_stock_alert` | Notify pharmacist/admin about low stock (daily cron) |
+| `import_umair_pharmacy [--tenant-slug <slug>] [--clear-existing]` | Imports Umair Pharmacy SQL Server backup data (2,446 medicines, 2,276 batches, suppliers, customers) into a specified tenant. |
 | `reconcile_stock [--fix]` | Repair `Medicine.quantity` drift vs the sum of its `StockBatch` rows (weekly cron) |
 | `repair_tenant_orphans` | Fix rows left with `hospital = NULL` |
 | `db_preflight` | Find data PostgreSQL would reject (over-length values, NULLs in NOT NULL columns, orphaned FKs) **before** migrating. Read-only; exits non-zero if anything blocks. |
@@ -2736,5 +2737,15 @@ almost always means a query moved inside a loop; find that before raising the nu
   - SaaS Admin can toggle Biometric Machine Sync ON/OFF per hospital without affecting standard staff management or manual attendance.
 - **Zero DB Load & Defensive Fault-Tolerance**: Single indexed lookup on `patient_id` returning <15 KB compressed payload rendered in <40ms with isolated try-except blocks across clinical modules.
 
+## Umair Pharmacy Dataset & Tenant Injection Tool
 
-
+- **Source**: Microsoft SQL Server POS backup (`DataSetRetail_Backup_SQL5 (22_Aug_2026)20_33.bak` / `DSRetailer`).
+- **Extracted Datasets (`umair_pharmacy_data/`)**:
+  - `medicines.csv`: 2,446 retail/wholesale pharmacy stock medicines with retail prices, trade/purchase prices, pack sizes, rack locations, barcodes, brands, and generic formulas.
+  - `batches.csv`: 2,276 batches with expiry dates, quantities, and cost prices.
+  - `suppliers.csv`: Vendor and distributor profiles.
+  - `customers.csv`: Customer khata / credit profiles.
+- **1-Click Injection Runner**:
+  - Script: `inject_sehatyar_umair.py`
+  - Management Command: `python manage.py import_umair_pharmacy [--tenant-slug umair-pharmacy] [--clear-existing]`
+  - Safely creates or targets the tenant `Hospital` (slug: `umair-pharmacy`), automatically categorises medicine types (TABLET, CAPSULE, SYRUP, INJECTION, DROPS, CREAM, INHALER, SACHET, SUPPOSITORY, OTHER), links batches, and populates initial inventory.
