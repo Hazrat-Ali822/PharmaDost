@@ -2737,18 +2737,15 @@ almost always means a query moved inside a loop; find that before raising the nu
   - SaaS Admin can toggle Biometric Machine Sync ON/OFF per hospital without affecting standard staff management or manual attendance.
 - **Zero DB Load & Defensive Fault-Tolerance**: Single indexed lookup on `patient_id` returning <15 KB compressed payload rendered in <40ms with isolated try-except blocks across clinical modules.
 
-## Umair Pharmacy Dataset & Tenant Injection Tool
+## Datasets & Tenant Injection Tools
 
-- **Source**: Microsoft SQL Server POS backup (`DataSetRetail_Backup_SQL5 (22_Aug_2026)20_33.bak` / `DSRetailer`).
-- **Extracted Datasets (`umair_pharmacy_data/`)**:
-  - `medicines.csv`: 2,446 retail/wholesale pharmacy stock medicines with retail prices, trade/purchase prices, pack sizes, rack locations, barcodes, brands, and generic formulas.
-  - `batches.csv`: 2,276 batches with expiry dates, quantities, and cost prices.
-  - `sales.csv`: 10,280 historical pharmacy sales bills and receipts.
-  - `sale_items.csv`: 49,904 sold line items with quantities, margins, and prices.
-  - `suppliers.csv`: Vendor and distributor profiles.
-  - `customers.csv`: Customer khata / credit profiles.
-- **1-Click Injection Runners**:
-  - `inject_sehatyar_umair.py`: Injects dataset into Umair Pharmacy tenant.
-  - `inject_sehatyar_shaheen.py`: Wipes old medicines from Shaheen Health Care tenant and injects clean dataset.
-  - Management Command: `python manage.py import_umair_pharmacy [--tenant-slug <slug>] [--clear-existing]`
-  - Safely creates or targets the tenant `Hospital`, automatically categorises medicine types (TABLET, CAPSULE, SYRUP, INJECTION, DROPS, CREAM, INHALER, SACHET, SUPPOSITORY, OTHER), links batches, imports all historical sales bills and line items, and populates initial inventory.
+- **Umair Pharmacy Dataset (`umair_pharmacy_data/`)**:
+  - Source: SQL Server POS backup (`DSRetailer`).
+  - Contains: 2,446 medicines, 2,276 batches, 10,280 historical bills, 49,904 sold items, suppliers, customers.
+  - Runner: `python inject_sehatyar_umair.py`
+
+- **Shaheen Health Care Dataset (`shaheen_health_care_data/`)**:
+  - Source: `medicen.xls` (Available Stock Report, Hasnain Khan).
+  - Contains: 5,312 medicines, 942 on-hand physical stock batches (Total units: 38,280, Value: Rs 1.70M).
+  - Runner: `python inject_sehatyar_shaheen.py` (Wipes any old stock in Shaheen Health Care tenant and loads clean 5,312 medicines catalogue; NO bills, NO Umair khata).
+

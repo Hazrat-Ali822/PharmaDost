@@ -39,13 +39,13 @@ if __name__ == '__main__':
         print(f"Tenant not found, will create: '{tenant_name}' (slug: '{tenant_slug}')")
 
     print("\n[STEP 1] Clearing all previous medicines and stock for Shaheen Health Care...")
-    print("[STEP 2] Injecting 2,446 Medicines & Batches (NO sales bills, NO Umair khata)...")
+    print("[STEP 2] Injecting 5,312 Medicines & Batches from medicen.xls for Shaheen Health Care...")
     
     call_command(
         'import_umair_pharmacy',
         tenant_slug=tenant_slug,
         tenant_name=tenant_name,
-        data_dir='umair_pharmacy_data',
+        data_dir='shaheen_health_care_data',
         clear_existing=True,
         medicines_only=True
     )
