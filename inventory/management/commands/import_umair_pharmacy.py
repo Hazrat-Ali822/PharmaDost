@@ -38,6 +38,11 @@ class Command(BaseCommand):
             action='store_true',
             help='Wipe existing medicines/batches for this tenant before import'
         )
+        parser.add_argument(
+            '--medicines-only',
+            action='store_true',
+            help='Only import medicine stock catalogue (no sales bills, no customer khata)'
+        )
 
     def detect_category(self, name, category_name):
         n = (name + " " + category_name).lower()
@@ -88,8 +93,9 @@ class Command(BaseCommand):
         tenant_name = options['tenant_name'].strip()
         data_dir = options['data_dir']
         clear_existing = options['clear_existing']
+        medicines_only = options.get('medicines_only', False)
 
-        self.stdout.write(self.style.SUCCESS(f"Starting import for tenant: '{tenant_slug}' ({tenant_name})"))
+        self.stdout.write(self.style.SUCCESS(f"Starting import for tenant: '{tenant_slug}' ({tenant_name}) (medicines_only={medicines_only})"))
 
         # 1. Resolve or Create Hospital / Tenant
         tenant = Hospital.objects.filter(slug=tenant_slug).first()
@@ -138,9 +144,9 @@ class Command(BaseCommand):
         supp_file = os.path.join(data_dir, 'suppliers.csv')
         cust_file = os.path.join(data_dir, 'customers.csv')
 
-        # 2. Import Suppliers
+        # 2. Import Suppliers (Skip if medicines_only)
         supplier_obj = None
-        if os.path.exists(supp_file):
+        if not medicines_only and os.path.exists(supp_file):
             with open(supp_file, mode='r', encoding='utf-8-sig') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
@@ -157,8 +163,8 @@ class Command(BaseCommand):
                         )
             self.stdout.write(self.style.SUCCESS("Suppliers processed."))
 
-        # 3. Import Customers
-        if os.path.exists(cust_file):
+        # 3. Import Customers (Skip if medicines_only)
+        if not medicines_only and os.path.exists(cust_file):
             with open(cust_file, mode='r', encoding='utf-8-sig') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
@@ -300,11 +306,11 @@ class Command(BaseCommand):
         else:
             self.stdout.write(self.style.WARNING(f"Batches file not found: {batch_file}"))
 
-        # 6. Import Historical Bills & Sales
+        # 6. Import Historical Bills & Sales (Skip if medicines_only)
         sales_file = os.path.join(data_dir, 'sales.csv')
         sale_items_file = os.path.join(data_dir, 'sale_items.csv')
 
-        if os.path.exists(sales_file):
+        if not medicines_only and os.path.exists(sales_file):
             self.stdout.write("Importing Sales Bills (Invoices)...")
             from sales.models import Sale, SaleItem
             Sale.objects.filter(hospital=tenant).delete()
