@@ -110,9 +110,27 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f"Using existing Tenant: {tenant.name} (id={tenant.id}, slug={tenant.slug})"))
 
         if clear_existing:
-            self.stdout.write("Clearing existing medicines and batches for this tenant...")
+            self.stdout.write(f"Clearing existing sales, orders, adjustments, batches, and medicines for tenant '{tenant.name}'...")
+            try:
+                from sales.models import Sale, SaleItem, WholesaleOrder, WholesaleOrderItem
+                SaleItem.objects.filter(sale__hospital=tenant).delete()
+                Sale.objects.filter(hospital=tenant).delete()
+                WholesaleOrderItem.objects.filter(order__hospital=tenant).delete()
+                WholesaleOrder.objects.filter(hospital=tenant).delete()
+            except Exception:
+                pass
+            try:
+                from inventory.models import StockAdjustment
+                StockAdjustment.objects.filter(hospital=tenant).delete()
+            except Exception:
+                pass
+            try:
+                from ipd.models import MedicationLog
+                MedicationLog.objects.filter(hospital=tenant).delete()
+            except Exception:
+                pass
             StockBatch.objects.filter(hospital=tenant).delete()
-            Medicine.objects.filter(hospital=tenant).delete()
+            Medicine.all_objects.filter(hospital=tenant).delete()
 
         # File paths
         med_file = os.path.join(data_dir, 'medicines.csv')
