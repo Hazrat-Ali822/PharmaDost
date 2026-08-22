@@ -98,7 +98,6 @@ Two traps when adding tests:
 | `expiry_alert [--days N]` | Notify pharmacist/admin about near-expiry stock (daily cron) |
 | `send_reminders [--hospital <slug>] [--dry-run]` | SMS/email patients: tomorrow's appointments, lab report ready, vaccination due (daily cron). Idempotent — a `dedupe_key` per message stops a re-run messaging anyone twice. |
 | `low_stock_alert` | Notify pharmacist/admin about low stock (daily cron) |
-| `import_umair_pharmacy [--tenant-slug <slug>] [--clear-existing]` | Imports Umair Pharmacy SQL Server backup data (2,446 medicines, 2,276 batches, suppliers, customers) into a specified tenant. |
 | `reconcile_stock [--fix]` | Repair `Medicine.quantity` drift vs the sum of its `StockBatch` rows (weekly cron) |
 | `repair_tenant_orphans` | Fix rows left with `hospital = NULL` |
 | `db_preflight` | Find data PostgreSQL would reject (over-length values, NULLs in NOT NULL columns, orphaned FKs) **before** migrating. Read-only; exits non-zero if anything blocks. |
@@ -2737,15 +2736,29 @@ almost always means a query moved inside a loop; find that before raising the nu
   - SaaS Admin can toggle Biometric Machine Sync ON/OFF per hospital without affecting standard staff management or manual attendance.
 - **Zero DB Load & Defensive Fault-Tolerance**: Single indexed lookup on `patient_id` returning <15 KB compressed payload rendered in <40ms with isolated try-except blocks across clinical modules.
 
-## Datasets & Tenant Injection Tools
+## Tenant Dataset Injection & Migration Protocol
 
-- **Umair Pharmacy Dataset (`umair_pharmacy_data/`)**:
-  - Source: SQL Server POS backup (`DSRetailer`).
-  - Contains: 2,446 medicines, 2,276 batches, 10,280 historical bills, 49,904 sold items, suppliers, customers.
-  - Runner: `python inject_sehatyar_umair.py`
+Standard procedure for migrating external pharmacy/hospital datasets (SQL Server `.bak`, Excel `.xls`/`.xlsx`, Access `.mdb`/`.accdb`, CSV) into a specific Sehatyar SaaS tenant:
 
-- **Shaheen Health Care Dataset (`shaheen_health_care_data/`)**:
-  - Source: `medicen.xls` (Available Stock Report, Hasnain Khan).
-  - Contains: 5,312 medicines, 942 on-hand physical stock batches (Total units: 38,280, Value: Rs 1.70M).
-  - Runner: `python inject_sehatyar_shaheen.py` (Wipes any old stock in Shaheen Health Care tenant and loads clean 5,312 medicines catalogue; NO bills, NO Umair khata).
+1. **Format Handling & Parsing**:
+   - **SQL Server `.bak`**: Restored into local `MSSQLLocalDB` via PowerShell .NET `System.Data.SqlClient` or SSMS; core tables (`Stock`, `BatchExpiry`, `InvM`, `Invoice`, `Supplier`, `Customer`) extracted to CSVs.
+   - **Excel `.xls` (XML Spreadsheet 2003)**: Parsed via `xml.etree.ElementTree` namespace `urn:schemas-microsoft-com:office:spreadsheet` extracting `Code`, `Name`, `Cost Price`, `Stock`, and stock values.
+2. **Multi-Tenant Schema Mapping**:
+   - `Medicine`: Scoped to `hospital=tenant` with `name`, `brand`, `generic_name`, `category` (auto-categorised into `TABLET`, `CAPSULE`, `SYRUP`, `INJECTION`, `DROPS`, `CREAM`, `INHALER`, `SACHET`, `SUPPOSITORY`, `OTHER`), `barcode`, `cost_price`, `price` (15% retail markup over trade cost if unlisted), and `quantity`.
+   - `StockBatch`: Scoped to `hospital=tenant` with `batch_number`, `quantity` (strictly bounded to on-hand physical stock), `cost_price`, `expiry_date`.
+   - `Sale` & `SaleItem`: Historical bills linked to `hospital=tenant` preserving exact timestamps, line quantities, profit margins, and payment methods.
+3. **Safe Tenant Cascade Wipe (When Refreshing a Tenant)**:
+   - To prevent `django.db.models.deletion.ProtectedError`, dependent models must be deleted in reverse order:
+     ```python
+     SaleItem.objects.filter(sale__hospital=tenant).delete()
+     Sale.objects.filter(hospital=tenant).delete()
+     WholesaleOrderItem.objects.filter(order__hospital=tenant).delete()
+     WholesaleOrder.objects.filter(hospital=tenant).delete()
+     StockAdjustment.objects.filter(hospital=tenant).delete()
+     MedicationLog.objects.filter(hospital=tenant).delete()
+     StockBatch.objects.filter(hospital=tenant).delete()
+     Medicine.all_objects.filter(hospital=tenant).delete()
+     ```
+4. **Data Privacy & Cleanliness Rule**:
+   - Raw clinic backups (`*.bak`, `*.accdb`, `*.mdb`, `*.xls`, `*.xlsx`, `*.csv`) must never be kept in the long-term repository and are ignored in `.gitignore`.
 
